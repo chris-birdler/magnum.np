@@ -1,5 +1,6 @@
 from anisotropy import AnisotropyField
 from demag import DemagField
+from demagPBC import DemagFieldPBC
 from exchange import ExchangeField
 from external import ExternalField
 from llg import LLG
@@ -11,6 +12,7 @@ from write_vtr import write_vtr
 __all__ = [
         "AnisotropyField",
         "DemagField",
+        "DemagFieldPBC",
         "ExchangeField",
         "ExternalField",
         "LLG",
