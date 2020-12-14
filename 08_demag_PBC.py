@@ -17,7 +17,7 @@ demag = DemagFieldPBC(mesh, material)
 # initialize magnetization that relaxes into s-state
 m = np.zeros(n + (3,))
 m[:,:,:,:] = [1, 0, 0]
-m[3:7,3:7,3:7,:] = [0, -1, 0]
+m[3:7,3:7,3:7,:] = [-1, 0, 0]
 #m[4:6,:,:,:] = [-1, 0, 0]
 
 h, u, div = demag.h(0., m)
