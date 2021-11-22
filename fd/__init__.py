@@ -6,6 +6,7 @@ from external import ExternalField
 from llg import LLG
 from mesh import Mesh
 from minimize import Minimizer
+from oersted import OerstedField
 from spin_torque import SpinTorque
 from write_vtr import write_vtr
 
@@ -18,6 +19,7 @@ __all__ = [
         "LLG",
         "Mesh",
         "Minimizer",
+        "OerstedField",
         "write_vtr",
         "SpinTorque",
         ]
