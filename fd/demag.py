@@ -50,7 +50,10 @@ def newell_g(p):
 class DemagField(object):
     def __init__(self, mesh, material):
         self._mesh = mesh
-        self._Ms = material["Ms"]
+        if isinstance(material["Ms"], np.ndarray):
+            self._Ms = material["Ms"][...,np.newaxis]
+        else:
+            self._Ms = material["Ms"]
         self._init_N()
 
     def _init_N_component(self, c, permute, func):
@@ -58,9 +61,9 @@ class DemagField(object):
         while not it.finished:
             value = 0.0
             for i in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
-                idx = map(lambda k: (it.multi_index[k] + self._mesh.n[k]) % \
-                                    (2*self._mesh.n[k]) - self._mesh.n[k], range(3))
-                value += (-1)**sum(i) * func(map(lambda j: (idx[j] + i[j] - i[j+3]) * self._mesh.dx[j], permute))
+                idx = list(map(lambda k: (it.multi_index[k] + self._mesh.n[k]) % \
+                                    (2*self._mesh.n[k]) - self._mesh.n[k], range(3)))
+                value += (-1)**sum(i) * func(list(map(lambda j: (idx[j] + i[j] - i[j+3]) * self._mesh.dx[j], permute)))
             it[0] = - value / (4 * pi * np.prod(self._mesh.dx))
             it.iternext()
 
@@ -79,7 +82,8 @@ class DemagField(object):
 
             np.save("cache/%s" % self._mesh, self._N)
 
-        self._N_fft = np.fft.rfftn(self._N, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        print("N:", self._N.shape, self._N)
+        self._N_fft = np.fft.rfftn(self._N, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
 
         # init scratch spaces
         self._m_pad = np.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
@@ -88,14 +92,19 @@ class DemagField(object):
 
     def h(self, t, m):
         self._m_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = self._Ms * m
-        m_pad_fft = np.fft.rfftn(self._m_pad, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        m_pad_fft = np.fft.rfftn(self._m_pad, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
 
         self._h_fft[:,:,:,0] = (self._N_fft[:,:,:,(0, 1, 2)]*m_pad_fft).sum(axis = 3)
         self._h_fft[:,:,:,1] = (self._N_fft[:,:,:,(1, 3, 4)]*m_pad_fft).sum(axis = 3)
         self._h_fft[:,:,:,2] = (self._N_fft[:,:,:,(2, 4, 5)]*m_pad_fft).sum(axis = 3)
 
-        h_pad = np.fft.irfftn(self._h_fft, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
-        return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
+        h_pad = np.fft.irfftn(self._h_fft, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
+        res = h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
+        if isinstance(self._Ms, np.ndarray):
+            (res[:,:,:,0])[self._Ms[:,:,:,0] == 0] = 0.
+            (res[:,:,:,1])[self._Ms[:,:,:,0] == 0] = 0.
+            (res[:,:,:,2])[self._Ms[:,:,:,0] == 0] = 0.
+        return res
 
     def E(self, t, m):
         return - 0.5 * constants.mu_0 * self._mesh.cell_volume \

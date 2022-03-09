@@ -11,9 +11,9 @@ class AnisotropyField(object):
 
     def h(self, t, m):
         h = np.zeros(m.shape)
-        return 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * np.sum(self._K_axis * m, axis=3)
-        #return 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * \
-        #       np.sum(m * self._K_axis, axis=3).repeat(3).reshape(m.shape)
+        #return 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * np.sum(self._K_axis * m, axis=3)
+        return 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * \
+               np.sum(m * self._K_axis, axis=3).repeat(3).reshape(m.shape)
 
 
     def E(self, t, m):

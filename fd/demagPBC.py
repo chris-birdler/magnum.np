@@ -7,7 +7,7 @@ class DemagFieldPBC_numpy(object):
         self._Ms = material["Ms"]
 
     def h(self, t, m):
-        m_fft = np.fft.fftn(self._Ms * m, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        m_fft = np.fft.fftn(self._Ms * m, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
         dx, dy, dz = self._mesh.dx
 
         kx = (2. * np.pi * np.arange(self._mesh.n[0]) / self._mesh.n[0]).reshape(-1,1,1)
@@ -29,7 +29,7 @@ class DemagFieldPBC_numpy(object):
         h_fft[:,:,:,1] = (1.-np.exp(1j*ky)) * u_fft / dy 
         h_fft[:,:,:,2] = (1.-np.exp(1j*kz)) * u_fft / dz 
 
-        h = np.fft.ifftn(h_fft, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        h = np.fft.ifftn(h_fft, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
         return h.real
 
 class DemagFieldPBC_scipy(object):
@@ -38,7 +38,7 @@ class DemagFieldPBC_scipy(object):
         self._Ms = material["Ms"]
 
     def h(self, t, m):
-        m_fft = scipy.fftpack.fftn(self._Ms * m, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        m_fft = scipy.fftpack.fftn(self._Ms * m, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
         dx, dy, dz = self._mesh.dx
 
         kx = (2. * np.pi * np.arange(self._mesh.n[0]) / self._mesh.n[0]).reshape(-1,1,1)
@@ -60,7 +60,7 @@ class DemagFieldPBC_scipy(object):
         h_fft[:,:,:,1] = (1.-np.exp(1j*ky)) * u_fft / dy 
         h_fft[:,:,:,2] = (1.-np.exp(1j*kz)) * u_fft / dz 
 
-        h = scipy.fftpack.fftn(h_fft, axes = filter(lambda i: self._mesh.n[i] > 1, range(3)))
+        h = scipy.fftpack.fftn(h_fft, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
         return h.real
 
 class DemagFieldPBC_numpy_real(object):
@@ -69,7 +69,7 @@ class DemagFieldPBC_numpy_real(object):
         self._Ms = material["Ms"]
 
     def h(self, t, m):
-        m_fft = np.fft.rfftn(self._Ms * m, axes = filter(lambda i: self._mesh.n[i] > 1, range(3))[::-1])
+        m_fft = np.fft.rfftn(self._Ms * m, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3)))[::-1])
         dx, dy, dz = self._mesh.dx
 
         kx = (2. * np.pi * np.arange(self._mesh.n[0] // 2+1) / self._mesh.n[0]).reshape(-1,1,1)
@@ -91,6 +91,6 @@ class DemagFieldPBC_numpy_real(object):
         h_fft[:,:,:,1] = (1.-np.exp(1j*ky)) * u_fft / dy 
         h_fft[:,:,:,2] = (1.-np.exp(1j*kz)) * u_fft / dz 
 
-        h = np.fft.irfftn(h_fft, axes = filter(lambda i: self._mesh.n[i] > 1, range(3))[::-1])
+        h = np.fft.irfftn(h_fft, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3)))[::-1])
         return h
 

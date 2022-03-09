@@ -1,14 +1,15 @@
-from anisotropy import AnisotropyField
-from demag import DemagField
-from demagPBC import DemagFieldPBC_numpy, DemagFieldPBC_scipy, DemagFieldPBC_numpy_real
-from exchange import ExchangeField
-from external import ExternalField
-from llg import LLG
-from mesh import Mesh
-from minimize import Minimizer
-from oersted import OerstedField
-from spin_torque import SpinTorque
-from write_vtr import write_vtr
+from fd.anisotropy import AnisotropyField
+from fd.demag import DemagField
+from fd.demagPBC import DemagFieldPBC_numpy, DemagFieldPBC_scipy, DemagFieldPBC_numpy_real
+from fd.exchange import ExchangeField
+from fd.llg import LLG
+from fd.external import ExternalField
+from fd.llg import LLG
+from fd.mesh import Mesh
+from fd.minimize import Minimizer
+from fd.oersted import OerstedField
+from fd.spin_torque import SpinTorque
+from fd.write_vtr import write_vtr
 
 __all__ = [
         "AnisotropyField",

@@ -17,10 +17,11 @@ class ExchangeField(object):
         self._h = np.zeros(mesh.n + (3,))
 
     def h(self, t, m):
-        f = 2. * self._A / (constants.mu_0 * self._Ms)
+        f = np.nan_to_num(2. * self._A / (constants.mu_0 * self._Ms), posinf=0, neginf=0)
         for i in range(3):
             self._h[:,:,:,i] = f * ndimage.convolve(m[:,:,:,i], self._kernel)
-
+        if isinstance(self._Ms, np.ndarray):
+            self._h[self._Ms == 0] = 0.
         return self._h
 
     def E(self, t, m):
