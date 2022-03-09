@@ -1,48 +1,88 @@
 import os
-import numpy as np
-from math import asinh, atan, sqrt, pi
 from scipy import constants
+import numpy as np
+import torch
+import torch.fft
+from torch import asinh, atan, sqrt, log, abs
+from torch.cuda import IntTensor, DoubleTensor
+import os
+CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
+cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
+from time import time
 
-# newell f
-def newell_f(p):
-    x, y, z = abs(p[0]), abs(p[1]), abs(p[2])
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+
+def newell_f(points):
+    x = abs(points[:,:,:,0])
+    y = abs(points[:,:,:,1])
+    z = abs(points[:,:,:,2])
 
     result = 1.0 / 6.0 * (2*x**2 - y**2 - z**2) * sqrt(x**2 + y**2 + z**2)
 
-    if x**2 + z**2 > 0:
-        result += y / 2.0 * (z**2 - x**2) * asinh(y / (sqrt(x**2 + z**2)))
-  
-    if x**2 + y**2 > 0:
-        result += z / 2.0 * (y**2 - x**2) * asinh(z / (sqrt(x**2 + y**2)))
-  
-    if x * (x**2 + y**2 + z**2) > 0:
-        result -= x*y*z * atan(y*z / (x * sqrt(x**2 + y**2 + z**2)))
+    # x**2 + z**2 > 0:
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2 + z**2).gt(0)
+    temp[mask] = (y / 2.0 * (z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
+    result += temp
+
+    # x**2 + y**2 > 0:
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2 + y**2).gt(0)
+    temp[mask] = (z / 2.0 * (y**2 - x**2) * asinh(z / sqrt(x**2 + y**2)))[mask]
+    result += temp
+
+    # x * (x**2 + y**2 + z**2) > 0:
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x * (x**2 + y**2 + z**2)).gt(0)
+    temp[mask] = (x * y * z * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
+    result -= temp
 
     return result
 
-# newell g
-def newell_g(p):
-    x, y, z = p[0], p[1], abs(p[2])
-    
+def newell_g(points):
+    x = points[:,:,:,0]
+    y = points[:,:,:,1]
+    z = abs(points[:,:,:,2])
+
     result = - x*y * sqrt(x**2 + y**2 + z**2) / 3.0
 
-    if x**2 + y**2 > 0:
-        result += x*y*z * asinh(z / (sqrt(x**2 + y**2)))
+    # x**2 + y**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2 + y**2).gt(0)
+    temp[mask] = (x*y*z * asinh(z / sqrt(x**2 + y**2)))[mask]
+    result += temp
 
-    if y**2 + z**2 > 0:
-        result += y / 6.0 * (3.0 * z**2 - y**2) * asinh(x / (sqrt(y**2 + z**2)))
+    # y**2 + z**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (y**2 + z**2).gt(0)
+    temp[mask] = (y / 6.0 * (3.0 * z**2 - y**2) * asinh(x / sqrt(y**2 + z**2)))[mask]
+    result += temp
 
-    if x**2 + z**2 > 0:
-        result += x / 6.0 * (3.0 * z**2 - x**2) * asinh(y / (sqrt(x**2 + z**2)))
+    # x**2 + z**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2 + z**2).gt(0)
+    temp[mask] = (x / 6.0 * (3.0 * z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
+    result += temp
 
-    if z * (x**2 + y**2 + z**2) != 0:
-        result -= z**3 / 6.0 * atan(x*y / (z * sqrt(x**2 + y**2 + z**2)))
+    # z * (x**2 + y**2 + z**2) != 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (z * (x**2 + y**2 + z**2)).ne(0)
+    temp[mask] = ( z**3 / 6.0 * atan(x*y / (z * sqrt(x**2 + y**2 + z**2))))[mask]
+    result -= temp
 
-    if y * (x**2 + y**2 + z**2) != 0:
-        result -= z * y**2 / 2.0 * atan(x*z / (y * sqrt(x**2 + y**2 + z**2)))
+    # y * (x**2 + y**2 + z**2) != 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (y * (x**2 + y**2 + z**2)).ne(0)
+    temp[mask] = (z * y**2 / 2.0 * atan(x*z / (y * sqrt(x**2 + y**2 + z**2))))[mask]
+    result -= temp
 
-    if x * (x**2 + y**2 + z**2) != 0:
-        result -= z * x**2 / 2.0 * atan(y*z / (x * sqrt(x**2 + y**2 + z**2)))
+    # x * (x**2 + y**2 + z**2) != 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x * (x**2 + y**2 + z**2)).ne(0)
+    temp[mask] = (z * x**2 / 2.0 * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
+    result -= temp
 
     return result
 
@@ -50,28 +90,28 @@ def newell_g(p):
 class DemagField(object):
     def __init__(self, mesh, material):
         self._mesh = mesh
-        if isinstance(material["Ms"], np.ndarray):
-            self._Ms = material["Ms"][...,np.newaxis]
-        else:
-            self._Ms = material["Ms"]
+        self._Ms = material["Ms"]
         self._init_N()
 
-    def _init_N_component(self, c, permute, func):
-        it = np.nditer(self._N[:,:,:,c], flags=['multi_index'], op_flags=['writeonly'])
-        while not it.finished:
-            value = 0.0
-            for i in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
-                idx = list(map(lambda k: (it.multi_index[k] + self._mesh.n[k]) % \
-                                    (2*self._mesh.n[k]) - self._mesh.n[k], range(3)))
-                value += (-1)**sum(i) * func(list(map(lambda j: (idx[j] + i[j] - i[j+3]) * self._mesh.dx[j], permute)))
-            it[0] = - value / (4 * pi * np.prod(self._mesh.dx))
-            it.iternext()
+    def _init_N_component(self, c, perm, func):
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.int32, device=cuda)) - n//2 for n in self._N.shape[:3]]
+        ij = torch.meshgrid(*ij,indexing='ij')
+
+        kl_indices = np.indices((2,)*6).transpose(1,2,3,4,5,6,0).reshape(64,6)
+        for kl in kl_indices:
+            k, l = kl[:3], kl[3:]
+            r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
+            self._N[:,:,:,c] -= (-1)**np.sum(kl) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
     def _init_N(self):
-        if os.path.isfile("cache/%s.npy" % self._mesh):
-            self._N = np.load("cache/%s.npy" % self._mesh)
+        if os.path.isfile("cache/%s.pt" % self._mesh):
+            self._N = torch.load("cache/%s.pt" % self._mesh, map_location=cuda)
+            logging.info("[DEMAG]: Use cached demag kernel")
         else:
-            self._N = np.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6])
+            self._N = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6], dtype=torch.float64, device=cuda)
+
+            # FIXME measure calculation time of demag kernel
+            time_kernel = time()
             for i, t in enumerate(((newell_f,0,1,2),
                                    (newell_g,0,1,2),
                                    (newell_g,0,2,1),
@@ -79,33 +119,36 @@ class DemagField(object):
                                    (newell_g,1,2,0),
                                    (newell_f,2,0,1))):
                 self._init_N_component(i, t[1:], t[0])
+            print("N:", self._N.shape, self._N.cpu().detach().numpy())
 
-            np.save("cache/%s" % self._mesh, self._N)
+            logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
+            kernelPath = "cache/%s.pt" % self._mesh
+            if (os.path.isfile(kernelPath)):
+                os.remove(kernelPath)
+            torch.save(self._N, kernelPath)
+            logging.info("[DEMAG]: Saved demag kernel")
 
-        print("N:", self._N.shape, self._N)
-        self._N_fft = np.fft.rfftn(self._N, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
+        self._N_fft = torch.fft.rfftn(self._N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         # init scratch spaces
-        self._m_pad = np.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
-        self._h_fft = np.zeros(self._N_fft.shape[:3] + (3,), dtype=self._N_fft.dtype)
-
+        self._m_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+        self._h_fft = torch.zeros(list(self._N_fft.shape[:3]) + [3], dtype=self._N_fft.dtype, device=cuda)
 
     def h(self, t, m):
         self._m_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = self._Ms * m
-        m_pad_fft = np.fft.rfftn(self._m_pad, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
+        m_pad_fft = torch.fft.rfftn(self._m_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         self._h_fft[:,:,:,0] = (self._N_fft[:,:,:,(0, 1, 2)]*m_pad_fft).sum(axis = 3)
         self._h_fft[:,:,:,1] = (self._N_fft[:,:,:,(1, 3, 4)]*m_pad_fft).sum(axis = 3)
         self._h_fft[:,:,:,2] = (self._N_fft[:,:,:,(2, 4, 5)]*m_pad_fft).sum(axis = 3)
 
-        h_pad = np.fft.irfftn(self._h_fft, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
-        res = h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
-        if isinstance(self._Ms, np.ndarray):
-            (res[:,:,:,0])[self._Ms[:,:,:,0] == 0] = 0.
-            (res[:,:,:,1])[self._Ms[:,:,:,0] == 0] = 0.
-            (res[:,:,:,2])[self._Ms[:,:,:,0] == 0] = 0.
-        return res
+        h_pad = torch.fft.irfftn(self._h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+
+        return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
 
     def E(self, t, m):
         return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-               * np.sum(self._Ms * m * self.h(t, m))
+               * torch.sum(self._Ms * m * self.h(t, m))
+
+    def __str__(self):
+        return "demag"
