@@ -1,10 +1,8 @@
-import os
 from scipy import constants
 import numpy as np
 import torch
 import torch.fft
 from torch import asinh, atan, sqrt, log, abs
-from torch.cuda import IntTensor, DoubleTensor
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
@@ -145,8 +143,7 @@ class DemagField(object):
         return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
 
     def E(self, t, m):
-        return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-               * torch.sum(self._Ms * m * self.h(t, m))
+        return - 0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))
 
     def __str__(self):
         return "demag"
