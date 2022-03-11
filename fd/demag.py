@@ -94,7 +94,7 @@ class DemagField(object):
         self._init_N()
 
     def _init_N_component(self, c, perm, func):
-        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.int32, device=cuda)) - n//2 for n in self._N.shape[:3]]
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._N.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         kl_indices = np.indices((2,)*6).transpose(1,2,3,4,5,6,0).reshape(64,6)
@@ -110,7 +110,6 @@ class DemagField(object):
         else:
             self._N = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6], dtype=torch.float64, device=cuda)
 
-            # FIXME measure calculation time of demag kernel
             time_kernel = time()
             for i, t in enumerate(((newell_f,0,1,2),
                                    (newell_g,0,1,2),
@@ -119,7 +118,6 @@ class DemagField(object):
                                    (newell_g,1,2,0),
                                    (newell_f,2,0,1))):
                 self._init_N_component(i, t[1:], t[0])
-            print("N:", self._N.shape, self._N.cpu().detach().numpy())
 
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
             kernelPath = "cache/%s.pt" % self._mesh
