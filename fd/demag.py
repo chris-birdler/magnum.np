@@ -95,8 +95,7 @@ class DemagField(object):
         ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._N.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
-        kl_indices = np.indices((2,)*6).transpose(1,2,3,4,5,6,0).reshape(64,6)
-        for kl in kl_indices:
+        for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
             k, l = kl[:3], kl[3:]
             r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
             self._N[:,:,:,c] -= (-1)**np.sum(kl) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
