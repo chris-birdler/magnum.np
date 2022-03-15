@@ -1,5 +1,10 @@
 from fd import *
 import numpy as np
+import torch
+import os
+
+CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
+cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 # initialize mesh
 N = 31
@@ -11,8 +16,10 @@ mesh = Mesh(n, dx)
 oersted = OerstedField(mesh)
 
 # initialize current
-j = np.zeros(n + (3,))
-j[N//2,N//2,:,:] = [0, 0, 1]
+j = torch.zeros(n + (3,), dtype=torch.float64, device=cuda)
+j[N//2,N//2,:,0] = 0.
+j[N//2,N//2,:,1] = 0.
+j[N//2,N//2,:,2] = 1.
 
 h = oersted.h(0., j)
 write_vtr(j, "data/j", mesh)
