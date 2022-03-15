@@ -1,69 +1,116 @@
 import os
-import numpy as np
-from math import atan, sqrt, pi, log
 from scipy import constants
+import numpy as np
+import torch
+import torch.fft
+from torch import asinh, atan, sqrt, log, abs
+from torch.cuda import IntTensor, DoubleTensor
+import os
+CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
+cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
+from time import time
 
-def krueger_g(p):
-    x, y, z = p
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+
+def krueger_g(points):
+    x = points[:,:,:,0]
+    y = points[:,:,:,1]
+    z = points[:,:,:,2]
+
     R = sqrt(x**2 + y**2 + z**2)
 
     res = (3.*x**2 + 3.*y**2 - 2.*z**2)*z*R/24. 
-    res += pi*z/4.*abs(x*y*z)
+    res += np.pi*z/4.*abs(x*y*z)
 
-    if x != 0. or y != 0:
-        res += (x**4 - 6.*x**2*y**2 + y**4)/24. * log(z+R)
-    if y != 0:
-        res += x*y/6. * (y**2 - 3.*z**2) * atan(x*z/(y*R))
-    if x != 0:
-        res += x*y/6. * (x**2 - 3.*z**2) * atan(y*z/(x*R))
-    if y != 0. or z != 0:
-        res += z/6. * x * (z**2 - 3.*y**2) * log(x+R) 
-    if x != 0. or z != 0:
-        res += z/6. * y * (z**2 - 3.*x**2) * log(y+R)
+    #x**2 + y**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2 + y**2).gt(0)
+    temp[mask] = ((x**4 - 6.*x**2*y**2 + y**4)/24. * log(z+R))[mask]
+    res += temp
+
+    #y**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (y**2).gt(0)
+    temp[mask] = (x*y/6. * (y**2 - 3.*z**2) * atan(x*z/(y*R)))[mask]
+    res += temp
+
+    #x**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2).gt(0)
+    temp[mask] = (x*y/6. * (x**2 - 3.*z**2) * atan(y*z/(x*R)))[mask]
+    res += temp
+
+    #y**2 + z**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (y**2+z**2).gt(0)
+    temp[mask] = (z/6. * x * (z**2 - 3.*y**2) * log(x+R))[mask]
+    res += temp
+
+    #x**2 + z**2 > 0
+    temp = torch.zeros_like(x, device = cuda)
+    mask = (x**2+z**2).gt(0)
+    temp[mask] = (z/6. * y * (z**2 - 3.*x**2) * log(y+R))[mask]
+    res += temp
 
     return res
+
 
 class OerstedField(object):
     def __init__(self, mesh):
         self._mesh = mesh
         self._init_K()
 
-    def _init_K_component(self, c, permute, func):
-        it = np.nditer(self._K[:,:,:,c], flags=['multi_index'], op_flags=['writeonly'])
-        while not it.finished:
-            value = 0.0
-            for i in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
-                idx = [(it.multi_index[k] + self._mesh.n[k]) % (2*self._mesh.n[k]) - self._mesh.n[k] for k in range(3)]
-                value += np.prod(2.-3*abs(i)) * func([(idx[j] + i[j]) * self._mesh.dx[j] for j in permute])
-            it[0] = value / (4 * pi * np.prod(self._mesh.dx))
-            it.iternext()
+    def _init_K_component(self, c, perm, func):
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._K.shape[:3]]
+        ij = torch.meshgrid(*ij,indexing='ij')
+
+        for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
+            r = torch.stack([(ij[ind] + k[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
+            self._K[:,:,:,c] += np.prod(2.-3*np.abs(k)) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
     def _init_K(self):
-        if os.path.isfile("cache/K%s.npy" % self._mesh):
-            self._K = np.load("cache/K%s.npy" % self._mesh)
+        if os.path.isfile("cache/K%s.pt" % self._mesh):
+            self._K = torch.load("cache/K%s.pt" % self._mesh, map_location=cuda)
+            logging.info("[DEMAG]: Use cached oersted kernel")
         else:
-            self._K = np.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
+            self._K = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+
+            time_kernel = time()
             for i, t in enumerate(((krueger_g,0,1,2),
                                    (krueger_g,1,2,0),
                                    (krueger_g,2,0,1))):
                 self._init_K_component(i, t[1:], t[0])
 
-            np.save("cache/K%s" % self._mesh, self._K)
+            logging.info(f"[OERSTED]: Time calculation of demag kernel = {time() - time_kernel} s")
+            kernelPath = "cache/K%s.pt" % self._mesh
+            if (os.path.isfile(kernelPath)):
+                os.remove(kernelPath)
+            torch.save(self._K, kernelPath)
+            logging.info("[OERSTED]: Saved demag kernel")
 
-        self._K_fft = np.fft.rfftn(self._K, axes = [i for i in range(3) if self._mesh.n[i] > 1])
+        self._K_fft = torch.fft.rfftn(self._K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         # init scratch spaces
-        self._j_pad = np.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
-        self._h_fft = np.zeros(self._K_fft.shape[:3] + (3,), dtype=self._K_fft.dtype)
+        self._j_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+        self._h_fft = torch.zeros(list(self._K_fft.shape[:3]) + [3], dtype=self._K_fft.dtype, device=cuda)
 
-
-    def h(self, t, m):
-        self._j_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = m
-        j_pad_fft = np.fft.rfftn(self._j_pad, axes = [i for i in range(3) if self._mesh.n[i] > 1])
+    def h(self, t, j):
+        self._j_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = j
+        j_pad_fft = torch.fft.rfftn(self._j_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         self._h_fft[:,:,:,0] =                                           - self._K_fft[:,:,:,0]*j_pad_fft[:,:,:,1] + self._K_fft[:,:,:,2]*j_pad_fft[:,:,:,2]
         self._h_fft[:,:,:,1] = + self._K_fft[:,:,:,0]*j_pad_fft[:,:,:,0]                                           - self._K_fft[:,:,:,1]*j_pad_fft[:,:,:,2]
         self._h_fft[:,:,:,2] = - self._K_fft[:,:,:,2]*j_pad_fft[:,:,:,0] + self._K_fft[:,:,:,1]*j_pad_fft[:,:,:,1]
 
-        h_pad = np.fft.irfftn(self._h_fft, axes = [i for i in range(3) if self._mesh.n[i] > 1])
+        h_pad = torch.fft.irfftn(self._h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+
         return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
+
+#    def E(self, t, m):
+#        return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
+#               * torch.sum(self._Ms * m * self.h(t, m))
+
+    def __str__(self):
+        return "oersted"
