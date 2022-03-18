@@ -61,36 +61,33 @@ class OerstedField(object):
     def __init__(self, mesh):
         self._mesh = mesh
         self._init_K()
+        torch.cuda.empty_cache()
 
-    def _init_K_component(self, c, perm, func):
-        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._K.shape[:3]]
+    def _init_K_component(self, K, c, perm, func):
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in K.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
             r = torch.stack([(ij[ind] + k[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
-            self._K[:,:,:,c] += np.prod(2.-3*np.abs(k)) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
+            K[:,:,:,c] += np.prod(2.-3*np.abs(k)) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
     def _init_K(self):
         if os.path.isfile("cache/K%s.pt" % self._mesh):
-            self._K = torch.load("cache/K%s.pt" % self._mesh, map_location=cuda)
+            K = torch.load("cache/K%s.pt" % self._mesh, map_location=cuda)
             logging.info("[DEMAG]: Use cached oersted kernel")
         else:
-            self._K = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+            K = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
 
             time_kernel = time()
             for i, t in enumerate(((krueger_g,0,1,2),
                                    (krueger_g,1,2,0),
                                    (krueger_g,2,0,1))):
-                self._init_K_component(i, t[1:], t[0])
+                self._init_K_component(K, i, t[1:], t[0])
+            torch.save(K, "cache/K%s.pt" % self._mesh)
+            logging.info("[OERSTED]: Saved oersted kernel")
 
-            logging.info(f"[OERSTED]: Time calculation of demag kernel = {time() - time_kernel} s")
-            kernelPath = "cache/K%s.pt" % self._mesh
-            if (os.path.isfile(kernelPath)):
-                os.remove(kernelPath)
-            torch.save(self._K, kernelPath)
-            logging.info("[OERSTED]: Saved demag kernel")
-
-        self._K_fft = torch.fft.rfftn(self._K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        self._K_fft = torch.fft.rfftn(K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        logging.info("[OERSTED]: Setup oersted kernel (time = %.5e [s]" % (time() - time_kernel)
 
         # init scratch spaces
         self._j_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
