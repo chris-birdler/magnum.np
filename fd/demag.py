@@ -117,10 +117,9 @@ class DemagField(object):
                 self._init_N_component(i, t[1:], t[0])
 
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-            kernelPath = "cache/%s.pt" % self._mesh
-            if (os.path.isfile(kernelPath)):
-                os.remove(kernelPath)
-            torch.save(self._N, kernelPath)
+            if not os.path.isdir("cache"):
+                os.makedirs("cache")
+            torch.save(self._N, "cache/%s.pt" % self._mesh)
             logging.info("[DEMAG]: Saved demag kernel")
 
         self._N_fft = torch.fft.rfftn(self._N, dim = [i for i in range(3) if self._mesh.n[i] > 1])

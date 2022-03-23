@@ -84,10 +84,9 @@ class OerstedField(object):
                 self._init_K_component(i, t[1:], t[0])
 
             logging.info(f"[OERSTED]: Time calculation of demag kernel = {time() - time_kernel} s")
-            kernelPath = "cache/K%s.pt" % self._mesh
-            if (os.path.isfile(kernelPath)):
-                os.remove(kernelPath)
-            torch.save(self._K, kernelPath)
+            if not os.path.isdir("cache"):
+                os.makedirs("cache")
+            torch.save(self._K, "cache/K%s.pt" % self._mesh)
             logging.info("[OERSTED]: Saved demag kernel")
 
         self._K_fft = torch.fft.rfftn(self._K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
