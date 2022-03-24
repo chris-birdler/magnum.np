@@ -1,5 +1,6 @@
 from fd.anisotropy import AnisotropyField
 from fd.demag import DemagField
+from fd.demag_dipole import DemagFieldDipole
 from fd.demagPBC import DemagFieldPBC_numpy, DemagFieldPBC_scipy, DemagFieldPBC_numpy_real
 from fd.exchange import ExchangeField
 from fd.llg import LLG
@@ -14,6 +15,7 @@ from fd.write_vtr import write_vtr
 __all__ = [
         "AnisotropyField",
         "DemagField",
+        "DemagFieldDipole",
         "DemagFieldPBC_numpy", "DemagFieldPBC_scipy", "DemagFieldPBC_numpy_real",
         "ExchangeField",
         "ExternalField",
