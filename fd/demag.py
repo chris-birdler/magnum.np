@@ -85,41 +85,75 @@ def newell_g(points):
     return result
 
 
-class DemagField(object):
-    def __init__(self, mesh, material):
+def dipole_f(points):
+    x = points[:,:,:,0]
+    y = points[:,:,:,1]
+    z = points[:,:,:,2]
+
+    result = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
+    result[0,0,0] = 0.
+    return result
+
+def dipole_g(points):
+    x = points[:,:,:,0]
+    y = points[:,:,:,1]
+    z = points[:,:,:,2]
+
+    result = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
+    result[0,0,0] = 0.
+    return result
+
+
+class DemagFieldDipole(object):
+    def __init__(self, mesh, material, p = 15):
         self._mesh = mesh
         self._Ms = material["Ms"]
+        self._p = p
         self._init_N()
 
-    def _init_N_component(self, c, perm, func):
+    def _init_N_component(self, c, perm, func_near, func_far):
+        # dipole far-field
         ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._N.shape[:3]]
+        ij = torch.meshgrid(*ij,indexing='ij')
+
+        r = torch.stack([(ij[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
+        self._N[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
+
+        # newell near-field
+        N_near = torch.zeros([1 if i==1 else 2*i for i in np.minimum(self._mesh.n, self._p)], dtype=torch.float64, device=cuda)
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in N_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
             k, l = kl[:3], kl[3:]
             r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
-            self._N[:,:,:,c] -= (-1)**np.sum(kl) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
+            N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
+
+        n_near = np.minimum(self._mesh.n, self._p)
+        self._N[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = N_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
+        self._N[:n_near[0],:n_near[1],:n_near[2],c] = N_near[:n_near[0],:n_near[1],:n_near[2]]
+
 
     def _init_N(self):
-        if os.path.isfile("cache/%s.pt" % self._mesh):
-            self._N = torch.load("cache/%s.pt" % self._mesh, map_location=cuda)
+        if os.path.isfile("cache/Ndipole_%s.pt" % self._mesh):
+            self._N = torch.load("cache/Ndipole_%s.pt" % self._mesh, map_location=cuda)
             logging.info("[DEMAG]: Use cached demag kernel")
         else:
             self._N = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6], dtype=torch.float64, device=cuda)
 
             time_kernel = time()
-            for i, t in enumerate(((newell_f,0,1,2),
-                                   (newell_g,0,1,2),
-                                   (newell_g,0,2,1),
-                                   (newell_f,1,2,0),
-                                   (newell_g,1,2,0),
-                                   (newell_f,2,0,1))):
-                self._init_N_component(i, t[1:], t[0])
+            for i, t in enumerate(((newell_f,dipole_f,0,1,2),
+                                   (newell_g,dipole_g,0,1,2),
+                                   (newell_g,dipole_g,0,2,1),
+                                   (newell_f,dipole_f,1,2,0),
+                                   (newell_g,dipole_g,1,2,0),
+                                   (newell_f,dipole_f,2,0,1))):
+                self._init_N_component(i, t[2:], t[0], t[1])
 
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
             if not os.path.isdir("cache"):
                 os.makedirs("cache")
-            torch.save(self._N, "cache/%s.pt" % self._mesh)
+            torch.save(self._N, "cache/Ndipole_%s.pt" % self._mesh)
             logging.info("[DEMAG]: Saved demag kernel")
 
         self._N_fft = torch.fft.rfftn(self._N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
