@@ -57,18 +57,43 @@ def krueger_g(points):
     return res
 
 
+def dipole_g(points):
+    x = points[:,:,:,0]
+    y = points[:,:,:,1]
+    z = points[:,:,:,2]
+
+    R = sqrt(x**2 + y**2 + z**2)
+    res = -z/R**3
+    res[0,0,0] = 0.
+    return res
+
+
 class OerstedField(object):
-    def __init__(self, mesh):
+    def __init__(self, mesh, p = 15):
         self._mesh = mesh
+        self._p = p
         self._init_K()
 
-    def _init_K_component(self, c, perm, func):
+    def _init_K_component(self, c, perm, func_near, func_far):
+        # dipole far-field
         ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._K.shape[:3]]
+        ij = torch.meshgrid(*ij,indexing='ij')
+
+        r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
+        self._K[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
+
+        # newell near-field
+        K_near = torch.zeros([1 if i==1 else 2*i for i in np.minimum(self._mesh.n, self._p)], dtype=torch.float64, device=cuda)
+        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in K_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
             r = torch.stack([(ij[ind] + k[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
-            self._K[:,:,:,c] += np.prod(2.-3*np.abs(k)) * func(r) / (4.*np.pi*np.prod(self._mesh.dx))
+            K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
+
+        n_near = np.minimum(self._mesh.n, self._p)
+        self._K[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = K_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
+        self._K[:n_near[0],:n_near[1],:n_near[2],c] = K_near[:n_near[0],:n_near[1],:n_near[2]]
 
     def _init_K(self):
         if os.path.isfile("cache/K%s.pt" % self._mesh):
@@ -78,16 +103,16 @@ class OerstedField(object):
             self._K = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
 
             time_kernel = time()
-            for i, t in enumerate(((krueger_g,0,1,2),
-                                   (krueger_g,1,2,0),
-                                   (krueger_g,2,0,1))):
-                self._init_K_component(i, t[1:], t[0])
+            for i, t in enumerate(((krueger_g,dipole_g,0,1,2),
+                                   (krueger_g,dipole_g,1,2,0),
+                                   (krueger_g,dipole_g,2,0,1))):
+                self._init_K_component(i, t[2:], t[0], t[1])
 
-            logging.info(f"[OERSTED]: Time calculation of demag kernel = {time() - time_kernel} s")
+            logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
             if not os.path.isdir("cache"):
                 os.makedirs("cache")
             torch.save(self._K, "cache/K%s.pt" % self._mesh)
-            logging.info("[OERSTED]: Saved demag kernel")
+            logging.info("[OERSTED]: Saved oersted kernel")
 
         self._K_fft = torch.fft.rfftn(self._K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
