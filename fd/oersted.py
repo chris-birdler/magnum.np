@@ -115,7 +115,6 @@ class OerstedField(object):
             torch.save(K, "cache/K%s.pt" % self._mesh)
 
         self._K_fft = torch.fft.rfftn(K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
-        logging.info("[OERSTED]: Setup oersted kernel (time = %.5e [s]" % (time() - time_kernel))
 
         # init scratch spaces
         self._j_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
