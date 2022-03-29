@@ -9,6 +9,7 @@ from fd.llg import LLG
 from fd.mesh import Mesh
 from fd.minimize import Minimizer
 from fd.oersted import OerstedField
+from fd.oersted_dipole import OerstedFieldDipole
 from fd.spin_torque import SpinTorque
 from fd.write_vtr import write_vtr
 
@@ -23,6 +24,7 @@ __all__ = [
         "Mesh",
         "Minimizer",
         "OerstedField",
+        "OerstedFieldDipole",
         "write_vtr",
         "SpinTorque",
         ]

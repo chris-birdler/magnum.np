@@ -104,7 +104,7 @@ def dipole_g(points):
     return result
 
 
-class DemagFieldDipole(object):
+class DemagField(object):
     def __init__(self, mesh, material, p = 15):
         self._mesh = mesh
         self._Ms = material["Ms"]
@@ -116,7 +116,7 @@ class DemagFieldDipole(object):
         ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in self._N.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
-        r = torch.stack([(ij[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
+        r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
         self._N[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
 
         # newell near-field
