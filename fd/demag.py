@@ -20,19 +20,19 @@ def newell_f(points):
     result = 1.0 / 6.0 * (2*x**2 - y**2 - z**2) * sqrt(x**2 + y**2 + z**2)
 
     # x**2 + z**2 > 0:
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x**2 + z**2).gt(0)
     temp[mask] = (y / 2.0 * (z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
     result += temp
 
     # x**2 + y**2 > 0:
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x**2 + y**2).gt(0)
     temp[mask] = (z / 2.0 * (y**2 - x**2) * asinh(z / sqrt(x**2 + y**2)))[mask]
     result += temp
 
     # x * (x**2 + y**2 + z**2) > 0:
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x * (x**2 + y**2 + z**2)).gt(0)
     temp[mask] = (x * y * z * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
     result -= temp
@@ -47,37 +47,37 @@ def newell_g(points):
     result = - x*y * sqrt(x**2 + y**2 + z**2) / 3.0
 
     # x**2 + y**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x**2 + y**2).gt(0)
     temp[mask] = (x*y*z * asinh(z / sqrt(x**2 + y**2)))[mask]
     result += temp
 
     # y**2 + z**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (y**2 + z**2).gt(0)
     temp[mask] = (y / 6.0 * (3.0 * z**2 - y**2) * asinh(x / sqrt(y**2 + z**2)))[mask]
     result += temp
 
     # x**2 + z**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x**2 + z**2).gt(0)
     temp[mask] = (x / 6.0 * (3.0 * z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
     result += temp
 
     # z * (x**2 + y**2 + z**2) != 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (z * (x**2 + y**2 + z**2)).ne(0)
     temp[mask] = ( z**3 / 6.0 * atan(x*y / (z * sqrt(x**2 + y**2 + z**2))))[mask]
     result -= temp
 
     # y * (x**2 + y**2 + z**2) != 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (y * (x**2 + y**2 + z**2)).ne(0)
     temp[mask] = (z * y**2 / 2.0 * atan(x*z / (y * sqrt(x**2 + y**2 + z**2))))[mask]
     result -= temp
 
     # x * (x**2 + y**2 + z**2) != 0
-    temp = torch.zeros_like(x, device = cuda)
+    temp = torch.zeros_like(x, dtype=torch.float64, device = cuda)
     mask = (x * (x**2 + y**2 + z**2)).ne(0)
     temp[mask] = (z * x**2 / 2.0 * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
     result -= temp
