@@ -1,6 +1,5 @@
 import torch
-import numpy as np
-from scipy import ndimage, constants
+from scipy import constants
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
@@ -23,17 +22,21 @@ class ExchangeField(object):
         next = (slice(1, None), full, full)
 
         for dim in range(3):
-            self._h[current] += (A[next]*A[current]) / (A[next]+A[current]) * (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
-            self._h[next]    += (A[next]*A[current]) / (A[next]+A[current]) * (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
+            if isinstance(self._A, torch.Tensor):
+                self._h[current] += (2.*A[next]*A[current]) / (A[next]+A[current]) * (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
+                self._h[next]    += (2.*A[next]*A[current]) / (A[next]+A[current]) * (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
+            else:
+                self._h[current] += A * (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
+                self._h[next]    += A * (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
 
             # rotate dimension
             current = current[-1:] + current[:-1]
             next = next[-1:] + next[:-1]
 
-        self._h *= 4. / (constants.mu_0 * self._Ms)
+        self._h *= 2. / (constants.mu_0 * self._Ms)
         self._h = torch.nan_to_num(self._h, posinf=0, neginf=0)
         return self._h
 
     def E(self, t, m):
         return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-               * np.sum(self._Ms * m * self.h(t, m))
+               * torch.sum(self._Ms * m * self.h(t, m))
