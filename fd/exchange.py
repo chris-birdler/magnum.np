@@ -1,5 +1,9 @@
+import torch
 import numpy as np
 from scipy import ndimage, constants
+import os
+CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
+cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 class ExchangeField(object):
     def __init__(self, mesh, material):
@@ -7,21 +11,33 @@ class ExchangeField(object):
         self._A = material["A"]
         self._Ms = material["Ms"]
 
-        # initialize laplace kernel
-        self._kernel = np.zeros((3,3,3))
-        self._kernel[:,1,1] += np.array((1,-2,1)) / mesh.dx[0]**2
-        self._kernel[1,:,1] += np.array((1,-2,1)) / mesh.dx[1]**2
-        self._kernel[1,1,:] += np.array((1,-2,1)) / mesh.dx[2]**2
-
         # initialize scratch space
-        self._h = np.zeros(mesh.n + (3,))
+        self._h = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
 
     def h(self, t, m):
-        f = np.nan_to_num(2. * self._A / (constants.mu_0 * self._Ms), posinf=0, neginf=0)
-        for i in range(3):
-            self._h[:,:,:,i] = f * ndimage.convolve(m[:,:,:,i], self._kernel)
-        if isinstance(self._Ms, np.ndarray):
-            self._h[self._Ms == 0] = 0.
+        self._h[:,:,:,:] = 0.
+
+        full = slice(None, None)
+        current = (slice(None, -1), full, full)
+        next = (slice(1, None), full, full)
+
+    #    for dim in range(3):
+    #        self._h += torch.diff(m, dim=dim, append=m[bnd2[-dim:]+bnd2[:-dim]]) / self._mesh.dx[dim]**2
+    #        self._h -= torch.diff(m, dim=dim, prepend=m[bnd1[-dim:]+bnd1[:-dim]]) / self._mesh.dx[dim]**2
+
+        for dim in range(3):
+            #self._h[:-1,:,:,:] += (m[1:,:,:,:] - m[:-1,:,:,:]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
+            #self._h[1:,:,:,:] += (m[:-1,:,:,:] - m[1:,:,:,:]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
+
+            self._h[current] += (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
+            self._h[next]    += (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
+
+            # rotate dimension
+            current = current[-1:] + current[:-1]
+            next = next[-1:] + next[:-1]
+
+        self._h *= 2. * self._A / (constants.mu_0 * self._Ms)
+        self._h = torch.nan_to_num(self._h, posinf=0, neginf=0)
         return self._h
 
     def E(self, t, m):
