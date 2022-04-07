@@ -1,16 +1,20 @@
+import torch
 import numpy as np
 from scipy import constants
+import os
+CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
+cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 class ExternalField(object):
     def __init__(self, mesh, material, h):
         self._mesh = mesh
         self._Ms = material["Ms"]
-        self._h = np.zeros(mesh.n + (3,))
-        self._h[:,:,:,:] = np.array(h)
+        self._h = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
+        self._h[:,:,:,:] = torch.DoubleTensor(h)
 
     def h(self, t, m):
         return self._h
 
     def E(self, t, m):
         return - constants.mu_0 * self._mesh.cell_volume \
-               * np.sum(self._Ms * m * self.h(t, m))
+               * torch.sum(self._Ms * m * self.h(t, m))
