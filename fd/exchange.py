@@ -15,28 +15,22 @@ class ExchangeField(object):
         self._h = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
 
     def h(self, t, m):
+        A = self._A
         self._h[:,:,:,:] = 0.
 
         full = slice(None, None)
         current = (slice(None, -1), full, full)
         next = (slice(1, None), full, full)
 
-    #    for dim in range(3):
-    #        self._h += torch.diff(m, dim=dim, append=m[bnd2[-dim:]+bnd2[:-dim]]) / self._mesh.dx[dim]**2
-    #        self._h -= torch.diff(m, dim=dim, prepend=m[bnd1[-dim:]+bnd1[:-dim]]) / self._mesh.dx[dim]**2
-
         for dim in range(3):
-            #self._h[:-1,:,:,:] += (m[1:,:,:,:] - m[:-1,:,:,:]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
-            #self._h[1:,:,:,:] += (m[:-1,:,:,:] - m[1:,:,:,:]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
-
-            self._h[current] += (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
-            self._h[next]    += (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
+            self._h[current] += (A[next]*A[current]) / (A[next]+A[current]) * (m[next] - m[current]) / self._mesh.dx[dim]**2 # m_i+1 - m_i
+            self._h[next]    += (A[next]*A[current]) / (A[next]+A[current]) * (m[current] - m[next]) / self._mesh.dx[dim]**2 # m_i-1 - m_i
 
             # rotate dimension
             current = current[-1:] + current[:-1]
             next = next[-1:] + next[:-1]
 
-        self._h *= 2. * self._A / (constants.mu_0 * self._Ms)
+        self._h *= 4. / (constants.mu_0 * self._Ms)
         self._h = torch.nan_to_num(self._h, posinf=0, neginf=0)
         return self._h
 
