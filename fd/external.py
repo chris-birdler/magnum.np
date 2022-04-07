@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 from scipy import constants
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
