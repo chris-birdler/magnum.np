@@ -3,9 +3,8 @@ from fd.demag import DemagField
 from fd.demag_dipole import DemagFieldDipole
 from fd.demagPBC import DemagFieldPBC_numpy, DemagFieldPBC_scipy, DemagFieldPBC_numpy_real
 from fd.exchange import ExchangeField
-from fd.llg import LLG
+from fd.llg import LLGSolver
 from fd.external import ExternalField
-from fd.llg import LLG
 from fd.mesh import Mesh
 from fd.minimize import Minimizer
 from fd.oersted import OerstedField
@@ -20,7 +19,7 @@ __all__ = [
         "DemagFieldPBC_numpy", "DemagFieldPBC_scipy", "DemagFieldPBC_numpy_real",
         "ExchangeField",
         "ExternalField",
-        "LLG",
+        "LLGSolver",
         "Mesh",
         "Minimizer",
         "OerstedField",

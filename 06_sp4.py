@@ -37,7 +37,7 @@ m = minimizer.minimize(m0, 1e-2, 1e-4)
 write_vtr(m, "data/sp4_m0")
 
 # perform integration with external field
-llg = LLG([demag, exchange, external], material, m)
+llg = LLGSolver([demag, exchange, external], material, m)
 def E(m):
     return demag.E(material, m) + exchange.E(material, m) + external.E(material, m)
 
