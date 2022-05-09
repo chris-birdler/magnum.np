@@ -16,17 +16,19 @@ class Minimizer(object):
         h = sum([term.h(t, m) for term in self._terms])
         return -torch.cross(m, torch.cross(m, h))
 
-    def minimize(self, m, rtol = 1e-4, dt = 1e-4, method = 'dopri5', options = {'first_step':1e-7}):
+    def minimize(self, m, rtol = 1e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
         m_old = torch.zeros_like(m)
         t     = 0.
         dmdt  = torch.inf
 
-        while dmdt > rtol:
+        for i in range(maxiter):
             m_old[:,:,:,:] = m
 
             m = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t + dt], device=cuda), method=method, options=options)[1] # TODO: reuse Solver object?
             t += dt
             dmdt = torch.linalg.norm((m - m_old).reshape(-1), ord = float("Inf")) / dt
             E = sum([term.E(t, m) for term in self._terms])
-            logging.info("[MIN]: dmdt=%g E=%g" % (dmdt.item(), E.item()))
+            logging.info("[MIN]: i=%g dmdt=%g E=%g" % (i, dmdt.item(), E.item()))
+            if dmdt < rtol:
+                break
         return m
