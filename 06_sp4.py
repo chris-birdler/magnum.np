@@ -41,12 +41,11 @@ llg = LLGSolver([demag, exchange, external], material, m)
 def E(m):
     return demag.E(material, m) + exchange.E(material, m) + external.E(material, m)
 
-i = 0
+res = llg.solve(1e-9, 1e-12)
+t = torch.arange(0,1e-9,1e-12)
 with open('data/sp4.dat', 'w') as f:
-    while llg.t < 1e-9:
+    for i in range(res.shape[0]):
+        m = res[i,:,:,:]
         if i % 10 == 0:
             write_vtr(m, "data/sp4_m_%04d" % (i/10))
-        f.write("%g %g %g %g %g\n" % ((llg.t,) + tuple(torch.mean(m, axis=(0,1,2))) + (E(m),)))
-
-        m = llg.step(1e-12)
-        i += 1
+        f.write("%g %g %g %g %g\n" % ((t[i],) + tuple(torch.mean(m, axis=(0,1,2))) + (E(m),)))

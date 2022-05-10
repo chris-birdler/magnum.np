@@ -26,3 +26,9 @@ class LLGSolver(object):
         self.t += dt
         logging.info("[LLG]: t=%g" % self.t)
         return self.m
+
+    def solve(self, t_final, dt, method = 'dopri5', options = {}):
+        res = odeint(lambda t, m: self._dm(t, m), self.m, torch.arange(self.t, t_final, dt, device=cuda, dtype=torch.float64), method=method, options=options)
+        self.t = t_final
+        logging.info("[LLG]: t=%g" % self.t)
+        return res
