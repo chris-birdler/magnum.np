@@ -105,7 +105,7 @@ def dipole_g(points):
 
 
 class DemagField(object):
-    def __init__(self, mesh, material, p = 15):
+    def __init__(self, mesh, material, p = 20):
         self._mesh = mesh
         self._Ms = material["Ms"]
         self._p = p
@@ -121,7 +121,8 @@ class DemagField(object):
         N[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
 
         # newell near-field
-        N_near = torch.zeros([1 if i==1 else 2*i for i in np.minimum(self._mesh.n, self._p)], dtype=torch.float64, device=cuda)
+        n_near = np.minimum(self._mesh.n, self._p)
+        N_near = torch.zeros([1 if i==1 else 2*i for i in n_near], dtype=torch.float64, device=cuda)
         ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in N_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
@@ -130,10 +131,14 @@ class DemagField(object):
             r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
             N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
-        n_near = np.minimum(self._mesh.n, self._p)
+        N[ :n_near[0], :n_near[1], :n_near[2],c] = N_near[ :n_near[0], :n_near[1], :n_near[2]]
+        N[ :n_near[0], :n_near[1],-n_near[2]:,c] = N_near[ :n_near[0], :n_near[1],-n_near[2]:]
+        N[ :n_near[0],-n_near[1]:, :n_near[2],c] = N_near[ :n_near[0],-n_near[1]:, :n_near[2]]
+        N[ :n_near[0],-n_near[1]:,-n_near[2]:,c] = N_near[ :n_near[0],-n_near[1]:,-n_near[2]:]
+        N[-n_near[0]:, :n_near[1], :n_near[2],c] = N_near[-n_near[0]:, :n_near[1], :n_near[2]]
+        N[-n_near[0]:, :n_near[1],-n_near[2]:,c] = N_near[-n_near[0]:, :n_near[1],-n_near[2]:]
+        N[-n_near[0]:,-n_near[1]:, :n_near[2],c] = N_near[-n_near[0]:,-n_near[1]:, :n_near[2]]
         N[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = N_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
-        N[:n_near[0],:n_near[1],:n_near[2],c] = N_near[:n_near[0],:n_near[1],:n_near[2]]
-
 
     def _init_N(self):
         if os.path.isfile("cache/Ndipole_%s.pt" % self._mesh):
