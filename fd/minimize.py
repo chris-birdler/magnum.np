@@ -32,3 +32,23 @@ class Minimizer(object):
             if dmdt < rtol:
                 break
         return m
+
+    def minimize_event(self, m, tol = 1e-2, T = 10e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
+        m_old = torch.zeros_like(m)
+        t     = 0.
+        t_old = 0.
+        t_old_log = -1.
+        dmdt  = torch.inf
+
+        def event_fn(t, m):
+            nonlocal m_old, t_old, t_old_log
+            dmdt = torch.linalg.norm((m - m_old).reshape(-1), ord = float("Inf")) / (t-t_old)
+            if t - t_old_log > 1e-4:
+                logging.info("[MIN]: t= %.04g   dmdt=%.04g" % (t, dmdt.item()))
+                t_old_log = t
+            m_old[:,:,:,:] = m
+            t_old = t
+            return t < T
+
+        t, m_opt = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t+T], device=cuda), method=method, options=options, event_fn = event_fn)
+        return m_opt[-1,:,:,:]
