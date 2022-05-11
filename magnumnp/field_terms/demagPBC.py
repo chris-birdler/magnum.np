@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.fftpack
 
+__all__ = ["DemagFieldPBC_numpy", "DemagFieldPBC_scipy", "DemagFieldPBC_numpy_real"]
+
 class DemagFieldPBC_numpy(object):
     def __init__(self, mesh, material):
         self._mesh = mesh

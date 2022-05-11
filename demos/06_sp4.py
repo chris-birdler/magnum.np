@@ -1,4 +1,4 @@
-from fd import *
+from magnumnp import *
 from scipy import constants
 import torch
 import os
@@ -33,7 +33,8 @@ m0[(-1,0),:,:,1] = 1.0
 
 # initialize sstate
 minimizer = Minimizer([demag, exchange])
-m = minimizer.minimize(m0, 1e-2, 1e-4)
+#m = minimizer.minimize(m0, 1e-2, 1e-4)
+m = minimizer.minimize_event(m0)
 write_vtr(m, "data/sp4_m0")
 
 # perform integration with external field

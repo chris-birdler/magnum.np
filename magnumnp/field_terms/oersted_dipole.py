@@ -1,3 +1,4 @@
+from magnumnp.common import logging
 import os
 from scipy import constants
 import numpy as np
@@ -10,9 +11,7 @@ CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 from time import time
 
-import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-                    level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+__all__ = ["OerstedFieldDipole"]
 
 def dipole_g(points):
     x = points[:,:,:,0]

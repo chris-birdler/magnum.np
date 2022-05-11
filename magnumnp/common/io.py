@@ -1,6 +1,8 @@
 import numpy as np
 from pyevtk.hl import gridToVTK
 
+__all__ = ["write_vtr"]
+
 def write_vtr(field, filename, mesh = None):
     if mesh is None:
         n = field.shape[:3]

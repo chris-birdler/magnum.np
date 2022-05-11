@@ -4,6 +4,8 @@ import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
+__all__ = ["ExchangeField"]
+
 class ExchangeField(object):
     def __init__(self, mesh, material):
         self._mesh = mesh

@@ -4,6 +4,8 @@ import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
+__all__ = ["ExternalField"]
+
 class ExternalField(object):
     def __init__(self, mesh, material, h):
         self._mesh = mesh

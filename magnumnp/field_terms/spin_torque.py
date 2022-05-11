@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import ndimage, constants
 
+__all__ = ["SpinTorque"]
+
 class SpinTorque(object):
     def __init__(self, mesh, material, j):
         self._stencil = np.zeros((3,3,3,3))

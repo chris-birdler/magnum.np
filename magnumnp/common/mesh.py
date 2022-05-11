@@ -1,3 +1,5 @@
+__all__ = ["Mesh"]
+
 class Mesh(object):
     def __init__(self, n, dx):
         self.n = n
