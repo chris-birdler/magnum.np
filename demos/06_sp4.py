@@ -2,9 +2,6 @@ from magnumnp import *
 import torch
 import os
 
-CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
-
 Timer.enable()
 
 # initialize mesh

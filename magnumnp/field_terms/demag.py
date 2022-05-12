@@ -74,6 +74,7 @@ def dipole_g(points):
 
 
 class DemagField(object):
+    @timedmethod
     def __init__(self, state, p = 20):
         self._state = state
         self._mesh = state._mesh
