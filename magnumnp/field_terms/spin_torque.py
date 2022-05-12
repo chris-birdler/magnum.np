@@ -1,5 +1,6 @@
+from magnumnp.common import timedmethod, constants
 import numpy as np
-from scipy import ndimage, constants
+from scipy import ndimage
 
 __all__ = ["SpinTorque"]
 
@@ -20,6 +21,7 @@ class SpinTorque(object):
         self._jgradm = np.zeros(mesh.n + (3,))
         #self._h = np.zeros(mesh.n + (3,))
 
+    @timedmethod
     def h(self, t, m):
         self._jgradm.fill(0.)
         for i in np.arange(3):

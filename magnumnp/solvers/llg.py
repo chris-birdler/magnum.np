@@ -1,13 +1,9 @@
-from magnumnp.common import logging
+from magnumnp.common import logging, timedmethod
 import torch
 from torchdiffeq import odeint
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
-
-#import logging
-#logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-#                    level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 __all__ = ["LLGSolver"]
 
@@ -30,6 +26,7 @@ class LLGSolver(object):
         logging.info("[LLG]: t=%g" % self.t)
         return self.m
 
+    @timedmethod
     def solve(self, t_final, dt, method = 'dopri5', options = {}):
         res = odeint(lambda t, m: self._dm(t, m), self.m, torch.arange(self.t, t_final, dt, device=cuda, dtype=torch.float64), method=method, options=options)
         self.t = t_final

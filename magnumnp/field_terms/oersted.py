@@ -1,6 +1,5 @@
-from magnumnp.common import logging
+from magnumnp.common import logging, timedmethod, constants
 import os
-from scipy import constants
 import numpy as np
 import torch
 import torch.fft
@@ -119,6 +118,7 @@ class OerstedField(object):
         self._j_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
         self._h_fft = torch.zeros(list(self._K_fft.shape[:3]) + [3], dtype=self._K_fft.dtype, device=cuda)
 
+    @timedmethod
     def h(self, t, j):
         self._j_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = j
         j_pad_fft = torch.fft.rfftn(self._j_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])

@@ -1,5 +1,4 @@
-from magnumnp.common import logging
-from scipy import constants
+from magnumnp.common import logging, timedmethod, constants
 import numpy as np
 import torch
 import torch.fft
@@ -166,6 +165,7 @@ class DemagField(object):
         self._m_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
         self._h_fft = torch.zeros(list(self._N_fft.shape[:3]) + [3], dtype=self._N_fft.dtype, device=cuda)
 
+    @timedmethod
     def h(self, t, m):
         self._m_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = self._Ms * m
         m_pad_fft = torch.fft.rfftn(self._m_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])

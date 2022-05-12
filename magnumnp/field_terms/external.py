@@ -1,5 +1,5 @@
+from magnumnp.common import constants
 import torch
-from scipy import constants
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")

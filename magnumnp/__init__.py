@@ -6,8 +6,6 @@ try:
     import setproctitle
     setproctitle.setproctitle("magnumnp")
 
-    from torch import *
-
     from magnumnp.common import *
     from magnumnp.field_terms import *
     from magnumnp.solvers import *

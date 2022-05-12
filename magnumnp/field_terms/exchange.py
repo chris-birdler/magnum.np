@@ -1,5 +1,5 @@
+from magnumnp.common import timedmethod, constants
 import torch
-from scipy import constants
 import os
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
@@ -15,6 +15,7 @@ class ExchangeField(object):
         # initialize scratch space
         self._h = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
 
+    @timedmethod
     def h(self, t, m):
         A = self._A
         self._h[:,:,:,:] = 0.

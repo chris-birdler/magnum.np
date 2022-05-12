@@ -1,10 +1,11 @@
 from magnumnp import *
-from scipy import constants
 import torch
 import os
 
 CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
 cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
+
+Timer.enable()
 
 # initialize mesh
 n  = (100, 25, 1)
@@ -39,14 +40,14 @@ write_vtr(m, "data/sp4_m0")
 
 # perform integration with external field
 llg = LLGSolver([demag, exchange, external], material, m)
-def E(m):
-    return demag.E(material, m) + exchange.E(material, m) + external.E(material, m)
-
 res = llg.solve(1e-9, 1e-12)
+
 t = torch.arange(0,1e-9,1e-12)
 with open('data/sp4.dat', 'w') as f:
     for i in range(res.shape[0]):
         m = res[i,:,:,:]
         if i % 10 == 0:
             write_vtr(m, "data/sp4_m_%04d" % (i/10))
-        f.write("%g %g %g %g %g\n" % ((t[i],) + tuple(torch.mean(m, axis=(0,1,2))) + (E(m),)))
+        f.write("%g %g %g %g\n" % ((t[i],) + tuple(torch.mean(m, axis=(0,1,2)))))
+
+Timer.print_report()

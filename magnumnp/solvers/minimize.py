@@ -1,4 +1,4 @@
-from magnumnp.common import logging
+from magnumnp.common import logging, timedmethod
 import torch
 from torchdiffeq import odeint
 import os
@@ -15,6 +15,7 @@ class Minimizer(object):
         h = sum([term.h(t, m) for term in self._terms])
         return -torch.cross(m, torch.cross(m, h))
 
+    @timedmethod
     def minimize(self, m, rtol = 1e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
         m_old = torch.zeros_like(m)
         t     = 0.
@@ -32,6 +33,7 @@ class Minimizer(object):
                 break
         return m
 
+    @timedmethod
     def minimize_event(self, m, tol = 1e-2, T = 10e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
         m_old = torch.zeros_like(m)
         t     = 0.

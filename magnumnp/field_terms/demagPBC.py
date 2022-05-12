@@ -1,3 +1,4 @@
+from magnumnp.common import timedmethod
 import numpy as np
 import scipy.fftpack
 
@@ -8,6 +9,7 @@ class DemagFieldPBC_numpy(object):
         self._mesh = mesh
         self._Ms = material["Ms"]
 
+    @timedmethod
     def h(self, t, m):
         m_fft = np.fft.fftn(self._Ms * m, axes = list(filter(lambda i: self._mesh.n[i] > 1, range(3))))
         dx, dy, dz = self._mesh.dx
