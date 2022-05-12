@@ -1,13 +1,10 @@
 from magnumnp.common import logging, timedmethod, constants
-import os
 import numpy as np
 import torch
 import torch.fft
 from torch import asinh, atan, sqrt, log, abs
 from torch.cuda import IntTensor, DoubleTensor
 import os
-CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 from time import time
 
 __all__ = ["OerstedField"]
@@ -22,35 +19,20 @@ def krueger_g(points):
     res = (3.*x**2 + 3.*y**2 - 2.*z**2)*z*R/24.
     res += np.pi*z/4.*abs(x*y*z)
 
-    #x**2 + y**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
     mask = (x**2 + y**2).gt(0)
-    temp[mask] = ((x**4 - 6.*x**2*y**2 + y**4)/24. * log(z+R))[mask]
-    res += temp
+    res[mask] += ((x**4 - 6.*x**2*y**2 + y**4)/24. * log(z+R))[mask]
 
-    #y**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
     mask = (y**2).gt(0)
-    temp[mask] = (x*y/6. * (y**2 - 3.*z**2) * atan(x*z/(y*R)))[mask]
-    res += temp
+    res[mask] += (x*y/6. * (y**2 - 3.*z**2) * atan(x*z/(y*R)))[mask]
 
-    #x**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
     mask = (x**2).gt(0)
-    temp[mask] = (x*y/6. * (x**2 - 3.*z**2) * atan(y*z/(x*R)))[mask]
-    res += temp
+    res[mask] += (x*y/6. * (x**2 - 3.*z**2) * atan(y*z/(x*R)))[mask]
 
-    #y**2 + z**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
     mask = (y**2+z**2).gt(0)
-    temp[mask] = (z/6. * x * (z**2 - 3.*y**2) * log(x+R))[mask]
-    res += temp
+    res[mask] += (z/6. * x * (z**2 - 3.*y**2) * log(x+R))[mask]
 
-    #x**2 + z**2 > 0
-    temp = torch.zeros_like(x, device = cuda)
     mask = (x**2+z**2).gt(0)
-    temp[mask] = (z/6. * y * (z**2 - 3.*x**2) * log(y+R))[mask]
-    res += temp
+    res[mask] += (z/6. * y * (z**2 - 3.*x**2) * log(y+R))[mask]
 
     return res
 
@@ -67,8 +49,9 @@ def dipole_g(points):
 
 
 class OerstedField(object):
-    def __init__(self, mesh, p = 15):
-        self._mesh = mesh
+    def __init__(self, state, p = 15):
+        self._state = state
+        self._mesh = state._mesh
         self._p = p
         self._init_K()
         torch.cuda.empty_cache()
@@ -82,24 +65,30 @@ class OerstedField(object):
         K[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
 
         # newell near-field
-        K_near = torch.zeros([1 if i==1 else 2*i for i in np.minimum(self._mesh.n, self._p)], dtype=torch.float64, device=cuda)
-        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in K_near.shape[:3]]
+        n_near = np.minimum(self._mesh.n, self._p)
+        K_near = self._state.zeros([1 if i==1 else 2*i for i in n_near])
+        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in K_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
             r = torch.stack([(ij[ind] + k[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
             K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
-        n_near = np.minimum(self._mesh.n, self._p)
+        K[ :n_near[0], :n_near[1], :n_near[2],c] = K_near[ :n_near[0], :n_near[1], :n_near[2]]
+        K[ :n_near[0], :n_near[1],-n_near[2]:,c] = K_near[ :n_near[0], :n_near[1],-n_near[2]:]
+        K[ :n_near[0],-n_near[1]:, :n_near[2],c] = K_near[ :n_near[0],-n_near[1]:, :n_near[2]]
+        K[ :n_near[0],-n_near[1]:,-n_near[2]:,c] = K_near[ :n_near[0],-n_near[1]:,-n_near[2]:]
+        K[-n_near[0]:, :n_near[1], :n_near[2],c] = K_near[-n_near[0]:, :n_near[1], :n_near[2]]
+        K[-n_near[0]:, :n_near[1],-n_near[2]:,c] = K_near[-n_near[0]:, :n_near[1],-n_near[2]:]
+        K[-n_near[0]:,-n_near[1]:, :n_near[2],c] = K_near[-n_near[0]:,-n_near[1]:, :n_near[2]]
         K[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = K_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
-        K[:n_near[0],:n_near[1],:n_near[2],c] = K_near[:n_near[0],:n_near[1],:n_near[2]]
 
     def _init_K(self):
         if os.path.isfile("cache/K%s.pt" % self._mesh):
-            K = torch.load("cache/K%s.pt" % self._mesh, map_location=cuda)
+            K = torch.load("cache/K%s.pt" % self._mesh, map_location=self._state._device)
             logging.info("[DEMAG]: Use cached oersted kernel")
         else:
-            K = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+            K = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
 
             time_kernel = time()
             for i, t in enumerate(((krueger_g,dipole_g,0,1,2),
@@ -115,8 +104,8 @@ class OerstedField(object):
         self._K_fft = torch.fft.rfftn(K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         # init scratch spaces
-        self._j_pad = torch.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
-        self._h_fft = torch.zeros(list(self._K_fft.shape[:3]) + [3], dtype=self._K_fft.dtype, device=cuda)
+        self._j_pad = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
+        self._h_fft = self._state.zeros(list(self._K_fft.shape[:3]) + [3], dtype=self._K_fft.dtype)
 
     @timedmethod
     def h(self, t, j):
