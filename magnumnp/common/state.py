@@ -17,7 +17,10 @@ class State(object):
     def zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
-    def arange(self, start, end, step=1, dtype=torch.float64, **kwargs):
+    def arange(self, start, end=None, step=1, dtype=torch.float64, **kwargs):
+        if end == None:
+           end = start
+           start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
     def SpatialCoordinates(self):
