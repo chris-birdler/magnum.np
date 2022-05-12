@@ -1,17 +1,16 @@
 from magnumnp.common import timedmethod, constants
 import torch
-import os
-CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 __all__ = ["AnisotropyField"]
 
 class AnisotropyField(object):
-    def __init__(self, mesh, material):
-        self._mesh = mesh
-        self._Ms = material["Ms"]
-        self._K = material["K"]
-        self._K_axis = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
+    def __init__(self, state):
+        self._state = state
+
+        self._mesh = state._mesh
+        self._Ms = state._material["Ms"]
+        self._K = state._material["K"]
+        self._K_axis = state.function(state._mesh.n + (3,))
         self._K_axis[:,:,:,:] = torch.DoubleTensor(material["K_axis"])
 
         # initialize scratch space

@@ -1,19 +1,15 @@
 from magnumnp.common import logging, timedmethod
 import torch
 from torchdiffeq import odeint
-import os
-CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 __all__ = ["LLGSolver"]
 
 class LLGSolver(object):
-    def __init__(self, terms, material, m0, t0 = 0.0):
+    def __init__(self, state, terms):
+        self._state = state
         self._terms = terms
-        self.t = t0
-        self.m = m0
-        self._gamma_prime = material["gamma"] / (1. + material["alpha"]**2)
-        self._alpha_prime = material["alpha"] * self._gamma_prime
+        self._gamma_prime = state._material["gamma"] / (1. + state._material["alpha"]**2)
+        self._alpha_prime = state._material["alpha"] * self._gamma_prime
 
     def _dm(self, t, m):
         h = sum([term.h(t, m) for term in self._terms])
@@ -21,14 +17,15 @@ class LLGSolver(object):
                - self._alpha_prime * torch.cross(m, torch.cross(m, h))
 
     def step(self, dt, method = 'dopri5', options = {}):
-        self.m = odeint(lambda t, m: self._dm(t, m), self.m, torch.DoubleTensor([self.t, self.t + dt], device=cuda), method=method, options=options)[1] # TODO: reuse Solver object?
-        self.t += dt
-        logging.info("[LLG]: t=%g" % self.t)
-        return self.m
+        self.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self.t, self.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
+        self._state.t += dt
+        logging.info("[LLG]: t=%g" % self._state.t)
 
     @timedmethod
     def solve(self, t_final, dt, method = 'dopri5', options = {}):
-        res = odeint(lambda t, m: self._dm(t, m), self.m, torch.arange(self.t, t_final, dt, device=cuda, dtype=torch.float64), method=method, options=options)
-        self.t = t_final
-        logging.info("[LLG]: t=%g" % self.t)
-        return res
+        tt = self._state.arange(self._state.t, t_final, dt)
+        res = odeint(lambda t, m: self._dm(t, m), self._state.m, tt, method=method, options=options)
+        self._state.t = t_final
+        self._state.m[:,:,:,:] = res[-1,:,:,:,:]
+        logging.info("[LLG]: t=%g" % self._state.t)
+        return tt, res

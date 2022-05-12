@@ -1,14 +1,12 @@
 from magnumnp.common import logging, timedmethod
 import torch
 from torchdiffeq import odeint
-import os
-CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-cuda = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
 
 __all__ = ["Minimizer"]
 
 class Minimizer(object):
-    def __init__(self, terms):
+    def __init__(self, state, terms):
+        self._state = state
         self._terms = terms
 
     def _dm(self, t, m):
@@ -16,7 +14,8 @@ class Minimizer(object):
         return -torch.cross(m, torch.cross(m, h))
 
     @timedmethod
-    def minimize(self, m, rtol = 1e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
+    def minimize(self, rtol = 1e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
+        m = self._state.m
         m_old = torch.zeros_like(m)
         t     = 0.
         dmdt  = torch.inf
@@ -31,10 +30,10 @@ class Minimizer(object):
             logging.info("[MIN]: i=%g dmdt=%g E=%g" % (i, dmdt.item(), E.item()))
             if dmdt < rtol:
                 break
-        return m
 
     @timedmethod
-    def minimize_event(self, m, tol = 1e-2, T = 10e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
+    def minimize_event(self, tol = 1e-2, T = 10e-4, dt = 1e-4, maxiter = 1000, method = 'dopri5', options = {'first_step':1e-7}):
+        m = self._state.m
         m_old = torch.zeros_like(m)
         t     = 0.
         t_old = 0.
@@ -51,5 +50,5 @@ class Minimizer(object):
             t_old = t
             return t < T
 
-        t, m_opt = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t+T], device=cuda), method=method, options=options, event_fn = event_fn)
-        return m_opt[-1,:,:,:]
+        t, m_opt = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t+T]), method=method, options=options, event_fn = event_fn)
+        self._state.m[:,:,:,:] = m_opt[-1,:,:,:,:]
