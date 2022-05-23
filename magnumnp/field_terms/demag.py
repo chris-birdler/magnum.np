@@ -112,8 +112,8 @@ class DemagField(object):
         N[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = N_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
 
     def _init_N(self):
-        if os.path.isfile("cache/Ndipole_%s.pt" % self._mesh):
-            N = torch.load("cache/Ndipole_%s.pt" % self._mesh, map_location=self._state._device)
+        if os.path.isfile("cache/N_%s.pt" % self._mesh):
+            N = torch.load("cache/N_%s.pt" % self._mesh, map_location=self._state._device)
             logging.info("[DEMAG]: Use cached demag kernel")
         else:
             N = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6])
@@ -130,7 +130,7 @@ class DemagField(object):
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
             if not os.path.isdir("cache"):
                 os.makedirs("cache")
-            torch.save(N, "cache/Ndipole_%s.pt" % self._mesh)
+            torch.save(N, "cache/N_%s.pt" % self._mesh)
 
         self._N_fft = torch.fft.rfftn(N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 

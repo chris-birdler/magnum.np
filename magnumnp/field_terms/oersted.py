@@ -3,7 +3,6 @@ import numpy as np
 import torch
 import torch.fft
 from torch import asinh, atan, sqrt, log, abs
-from torch.cuda import IntTensor, DoubleTensor
 import os
 from time import time
 
