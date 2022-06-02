@@ -1,6 +1,5 @@
 from magnumnp import *
 import torch
-import os
 
 Timer.enable()
 
