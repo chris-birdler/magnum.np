@@ -18,8 +18,9 @@ class RKKYField(object):
 
     @timedmethod
     def h(self, t, m):
-        h1 = m2*J_rkky 
-        h2 = m1*J_rkky 
+        self._h[:,:,(self._id2,),:] = -self._J_rkky * m[:,:,(self._id1,),:]
+        self._h[:,:,(self._id1,),:] = -self._J_rkky * m[:,:,(self._id2,),:]
+        return self._h
 
     def E(self, t, m):
         E = (m[:,:,(self._id2,),:] * m[:,:,(self._id1,),:]).sum()

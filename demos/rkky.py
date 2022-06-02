@@ -32,4 +32,5 @@ for phi in torch.linspace(0, 2*np.pi, 100):
     state.m[domain2] = torch.DoubleTensor([np.cos(phi), np.sin(phi), 0])
     E_rkky = rkky.E(0.,state.m).detach().cpu().numpy()
     E_ex = exchange.E(0.,state.m).detach().cpu().numpy()
+    h = rkky.h(0., state.m)
     print("phi:", phi.numpy(), "E_rkky:", E_rkky, "E_ex:", E_ex, "E_tot:", E_rkky+E_ex, "m:", state.m[:,:,:,0].mean().numpy(), state.m[:,:,:,1].mean().numpy(), state.m[:,:,:,2].mean().numpy())
