@@ -5,11 +5,13 @@ from torchdiffeq import odeint
 __all__ = ["LLGSolver"]
 
 class LLGSolver(object):
-    def __init__(self, state, terms):
+    def __init__(self, state, terms, rtol = 1e-4, atol = 1e-4):
         self._state = state
         self._terms = terms
         self._gamma_prime = state._material["gamma"] / (1. + state._material["alpha"]**2)
         self._alpha_prime = state._material["alpha"] * self._gamma_prime
+        self._rtol = rtol
+        self._atol = atol
 
     def _dm(self, t, m):
         h = sum([term.h(t, m) for term in self._terms])
@@ -24,8 +26,9 @@ class LLGSolver(object):
     @timedmethod
     def solve(self, t_final, dt, method = 'dopri5', options = {}):
         tt = self._state.arange(self._state.t, t_final, dt)
-        res = odeint(lambda t, m: self._dm(t, m), self._state.m, tt, method=method, options=options)
+        res = odeint(lambda t, m: self._dm(t, m), self._state.m, tt, rtol = self._rtol, atol = self._atol, method=method, options=options)
         self._state.t = t_final
         self._state.m[:,:,:,:] = res[-1,:,:,:,:]
+         
         logging.info("[LLG]: t=%g" % self._state.t)
         return tt, res
