@@ -4,13 +4,13 @@ import torch
 __all__ = ["ExchangeField"]
 
 class ExchangeField(object):
-    def __init__(self, state):
+    def __init__(self, state, domain=None):
         self._state = state
         self._mesh = state._mesh
-        self._A = state._material["A"]
         self._Ms = state._material["Ms"]
-
-        # initialize scratch space
+        self._A = state._material["A"]
+        if domain != None:
+            self._A *= domain[:,:,:,None]
         self._h = state.zeros(self._mesh.n + (3,))
 
     @timedmethod
@@ -39,5 +39,4 @@ class ExchangeField(object):
         return self._h
 
     def E(self, t, m):
-        return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-               * torch.sum(self._Ms * m * self.h(t, m))
+        return -0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))
