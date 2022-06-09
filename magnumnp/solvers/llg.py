@@ -24,11 +24,15 @@ class LLGSolver(object):
         logging.info("[LLG]: t=%g" % self._state.t)
 
     @timedmethod
-    def solve(self, t_final, dt, method = 'dopri5', options = {}):
-        tt = self._state.arange(self._state.t, t_final, dt)
-        res = odeint(lambda t, m: self._dm(t, m), self._state.m, tt, rtol = self._rtol, atol = self._atol, method=method, options=options)
+    def solve(self, t_final, dt=None, method = 'dopri5', options = {}):
+        if dt == None:
+            tt = self._state.linspace(self._state.t, t_final, steps=2)
+            print("tt:", tt)
+        else:
+            tt = self._state.arange(self._state.t, t_final, dt)
+        res = odeint(lambda t, m: self._dm(t, m), self._state.m, tt, rtol=self._rtol, atol=self._atol, method=method, options=options)
         self._state.t = t_final
         self._state.m[:,:,:,:] = res[-1,:,:,:,:]
-         
+
         logging.info("[LLG]: t=%g" % self._state.t)
         return tt, res
