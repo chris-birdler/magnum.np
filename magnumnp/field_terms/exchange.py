@@ -11,6 +11,8 @@ class ExchangeField(object):
         self._A = state._material["A"]
         if domain != None:
             self._A *= domain[:,:,:,None]
+
+        # initialize scratch space
         self._h = state.zeros(self._mesh.n + (3,))
 
     @timedmethod

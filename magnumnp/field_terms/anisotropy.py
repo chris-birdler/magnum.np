@@ -10,11 +10,11 @@ class AnisotropyField(object):
         self._mesh = state._mesh
         self._Ms = state._material["Ms"]
         self._K = state._material["K"]
-        self._K_axis = state.function(state._mesh.n + (3,))
-        self._K_axis[:,:,:,:] = torch.DoubleTensor(material["K_axis"])
+        self._K_axis = state.zeros(state._mesh.n + (3,))
+        self._K_axis[:,:,:,:] = torch.DoubleTensor(state._material["K_axis"])
 
         # initialize scratch space
-        self._h = torch.zeros(mesh.n + (3,), dtype=torch.float64, device = cuda)
+        self._h = state.zeros(self._mesh.n + (3,)) #TODO: check if scatch spaces make sense!!
 
     @timedmethod
     def h(self, t, m):
@@ -23,5 +23,4 @@ class AnisotropyField(object):
         return self._h
 
     def E(self, t, m):
-        return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-               * torch.sum(self._Ms * m * self.h(t, m))
+        return -0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))

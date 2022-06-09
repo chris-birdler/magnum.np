@@ -9,7 +9,8 @@ from magnumnp.field_terms.oersted_dipole import *
 from magnumnp.field_terms.rkky import *
 from magnumnp.field_terms.spin_torque import *
 
-__all__ = (demag.__all__ +
+__all__ = (anisotropy.__all__ +
+           demag.__all__ +
            demag_dipole.__all__ +
            demagPBC.__all__ +
            exchange.__all__ +
