@@ -24,9 +24,9 @@ def write_vtr(field, filename, mesh = None, name="f"):
         field = field[...,0]
 
     if len(field.shape) == 3:
-        gridToVTK(filename, x, y, z, cellData = {"f" : field.detach().cpu().numpy().copy()})
+        gridToVTK(filename, x, y, z, cellData = {name: field.detach().cpu().numpy().copy()})
     else:
         gridToVTK(filename, x, y, z, cellData = {
-                "f": (field[:,:,:,0].detach().cpu().numpy().copy(),
-                      field[:,:,:,1].detach().cpu().numpy().copy(),
-                      field[:,:,:,2].detach().cpu().numpy().copy())})
+                name: (field[:,:,:,0].detach().cpu().numpy().copy(),
+                       field[:,:,:,1].detach().cpu().numpy().copy(),
+                       field[:,:,:,2].detach().cpu().numpy().copy())})

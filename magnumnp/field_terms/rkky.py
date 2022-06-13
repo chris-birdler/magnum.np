@@ -42,7 +42,7 @@ class RKKYField(object):
 
         self._J_rkky = J_rkky
         self._Ms = state._material["Ms"]
-        self._dir = dir
+        self._dir = dir #TODO: dir is ignored
         self._id1 = id1
         self._id2 = id2
 
@@ -52,7 +52,7 @@ class RKKYField(object):
     def h(self, t, m):
         self._h[:,:,(self._id2,),:] = self._J_rkky * m[:,:,(self._id1,),:]
         self._h[:,:,(self._id1,),:] = self._J_rkky * m[:,:,(self._id2,),:]
-        self._h /= constants.mu_0 * self._Ms * self._mesh.cell_volume
+        self._h /= constants.mu_0 * self._Ms * self._mesh.dx[2]
         return torch.nan_to_num(self._h)
 
     def E(self, t, m):

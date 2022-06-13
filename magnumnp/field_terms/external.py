@@ -9,9 +9,18 @@ class ExternalField(object):
         self._mesh = state._mesh
         self._Ms = state._material["Ms"]
         self._h = state.zeros(self._mesh.n + (3,))
-        self._h[:,:,:,:] = torch.DoubleTensor(h)
+        if isinstance(h, list):
+            self._h[:,:,:,:] = torch.DoubleTensor(h)
+        elif isinstance(h, torch.Tensor):
+            self._h[:,:,:,:] = h
+        elif callable(h):
+            self._lambda_h = h
+        else:
+            raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
 
     def h(self, t, m):
+        if hasattr(self, "_lambda_h"):
+            self._h[:,:,:,:] = torch.DoubleTensor(self._lambda_h(t))
         return self._h
 
     def E(self, t, m):

@@ -1,4 +1,4 @@
-from magnumnp.common import logging, timedmethod
+from magnumnp.common import logging, timedmethod, constants
 import torch
 from torchdiffeq import odeint
 
@@ -8,7 +8,7 @@ class LLGSolver(object):
     def __init__(self, state, terms, rtol = 1e-4, atol = 1e-4):
         self._state = state
         self._terms = terms
-        self._gamma_prime = state._material["gamma"] / (1. + state._material["alpha"]**2)
+        self._gamma_prime = constants.gamma / (1. + state._material["alpha"]**2)
         self._alpha_prime = state._material["alpha"] * self._gamma_prime
         self._rtol = rtol
         self._atol = atol
@@ -19,7 +19,7 @@ class LLGSolver(object):
                - self._alpha_prime * torch.cross(m, torch.cross(m, h))
 
     def step(self, dt, method = 'dopri5', options = {}):
-        self.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self.t, self.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
+        self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
         self._state.t += dt
         logging.info("[LLG]: t=%g" % self._state.t)
 
