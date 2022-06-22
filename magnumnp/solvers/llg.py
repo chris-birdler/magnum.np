@@ -1,4 +1,5 @@
 from magnumnp.common import logging, timedmethod, constants
+from .rkf45 import RKF45
 import torch
 from torchdiffeq import odeint
 
@@ -12,6 +13,7 @@ class LLGSolver(object):
         self._alpha_prime = state._material["alpha"] * self._gamma_prime
         self._rtol = rtol
         self._atol = atol
+        self._solver = RKF45(lambda t, m: self._dm(t, m), self._state.m, self._state.t)
 
     def _dm(self, t, m):
         h = sum([term.h(t, m) for term in self._terms])
@@ -36,3 +38,11 @@ class LLGSolver(object):
 
         logging.info("[LLG]: t=%g" % self._state.t)
         return tt, res
+
+    @timedmethod
+    def solve_rkf45(self, t_final):
+        while self._solver.t < 1e-9:
+            solver.step()
+
+    def step_rkf45(self):
+        self._solver.step()
