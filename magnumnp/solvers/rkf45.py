@@ -55,18 +55,18 @@ class RKF45(object):
             dt_opt = self._maxstep
         return dt_opt
 
-    def step(self):
-        while True:
-            y1, t1, err = self._try_step()
+    def step(self, dt):
+        t0, t1 = self._t, self._t + dt
+        while self._t < t1:
+            _y1, _t1, err = self._try_step()
             dt_opt = self._optimal_stepsize(err)
-            if dt_opt < self._dt:
+            if self._dt > dt_opt or self._dt > t1 - self._t:
                 # step size was too large, retry with optimal stepsize
-                print("REVERT step: %g, new step size: %g" % (self._dt, dt_opt))
-                self._dt = dt_opt
+                self._dt = min(dt_opt, t1 - self._t)
+                print("REVERT step: %g, new step size: %g, t1-_t: %g" % (self._dt, dt_opt, t1 - self._t))
             else:
                 # accept step, adapt stepsize for next step
-                print("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._t))
-                self._y = y1
-                self._t = t1
+                self._y = _y1
+                self._t = _t1
                 self._dt = dt_opt
-                break
+                print("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._t))

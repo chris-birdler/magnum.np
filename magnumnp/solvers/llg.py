@@ -20,13 +20,20 @@ class LLGSolver(object):
         return - self._gamma_prime * torch.cross(m, h) \
                - self._alpha_prime * torch.cross(m, torch.cross(m, h))
 
-    def step(self, dt, method = 'dopri5', options = {}):
+    @timedmethod
+    def step(self, dt):
+        self._solver.step(dt)
+
+
+    # Deprecated Functions (will be removed)
+    @timedmethod
+    def step_torchdiffeq(self, dt, method = 'dopri5', options = {}):
         self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
         self._state.t += dt
         logging.info("[LLG]: t=%g" % self._state.t)
 
     @timedmethod
-    def solve(self, t_final, dt=None, method = 'dopri5', options = {}):
+    def solve_torchdiffeq(self, t_final, dt=None, method = 'dopri5', options = {}):
         if dt == None:
             tt = self._state.linspace(self._state.t, t_final, steps=2)
             print("tt:", tt)
@@ -39,10 +46,3 @@ class LLGSolver(object):
         logging.info("[LLG]: t=%g" % self._state.t)
         return tt, res
 
-    @timedmethod
-    def solve_rkf45(self, t_final):
-        while self._solver.t < 1e-9:
-            solver.step()
-
-    def step_rkf45(self):
-        self._solver.step()
