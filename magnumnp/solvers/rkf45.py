@@ -1,4 +1,5 @@
 import torch
+from magnumnp.common import logging
 
 __all__ = ["RKF45"]
 
@@ -63,10 +64,10 @@ class RKF45(object):
             if self._dt > dt_opt or self._dt > t1 - self._t:
                 # step size was too large, retry with optimal stepsize
                 self._dt = min(dt_opt, t1 - self._t)
-                print("REVERT step: %g, new step size: %g, t1-_t: %g" % (self._dt, dt_opt, t1 - self._t))
+                logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._t))
             else:
                 # accept step, adapt stepsize for next step
                 self._y = _y1
                 self._t = _t1
                 self._dt = dt_opt
-                print("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._t))
+                logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._t))

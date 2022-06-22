@@ -23,7 +23,8 @@ class LLGSolver(object):
     @timedmethod
     def step(self, dt):
         self._solver.step(dt)
-
+        self._state.t = self._solver._t
+        self._state.m = self._solver._y
 
     # Deprecated Functions (will be removed)
     @timedmethod
