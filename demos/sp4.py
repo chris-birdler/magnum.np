@@ -4,6 +4,7 @@ import torch
 Timer.enable()
 
 # initialize mesh
+eps = 1e-15
 n  = (100, 25, 1)
 dx = (5e-9, 5e-9, 3e-9)
 mesh = Mesh(n, dx)
@@ -38,13 +39,9 @@ write_vtr(state.m, "data/sp4_m0")
 
 # perform integration with external field
 llg = LLGSolver(state, [demag, exchange, external])
-tt, mm = llg.solve(1e-9, 1e-12)
-
 with open('data/sp4.dat', 'w') as f:
-    for i in range(mm.shape[0]):
-        m = mm[i,:,:,:]
-        if i % 10 == 0:
-            write_vtr(m, "data/sp4_m_%04d" % (i/10))
-        f.write("%g %g %g %g\n" % ((tt[i],) + tuple(torch.mean(m, axis=(0,1,2)))))
+    while state.t < 1e-9-eps:
+        llg.step(1e-11)
+        f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
 
 Timer.print_report()

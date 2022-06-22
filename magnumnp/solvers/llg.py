@@ -25,6 +25,9 @@ class LLGSolver(object):
         self._solver.step(dt)
         self._state.t = self._solver._t
         self._state.m = self._solver._y
+        logging.info("[LLG] step: dt= %g  t=%g" % (dt, self._state.t))
+
+
 
     # Deprecated Functions (will be removed)
     @timedmethod
