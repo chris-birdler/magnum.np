@@ -26,20 +26,10 @@ class State(object):
     def linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
-    def SpatialCoordinates(self, which="all"):
-        if which == "all":
-            x = self.arange(0, (0.1 + self._mesh.n[0]) * self._mesh.dx[0], self._mesh.dx[0])
-            y = self.arange(0, (0.1 + self._mesh.n[1]) * self._mesh.dx[1], self._mesh.dx[1])
-            z = self.arange(0, (0.1 + self._mesh.n[2]) * self._mesh.dx[2], self._mesh.dx[2])
-            return x, y, z
-        elif which == "x":
-            x = self.arange(0, (0.1 + self._mesh.n[0]) * self._mesh.dx[0], self._mesh.dx[0])
-            return x
-        elif which == "y":
-            y = self.arange(0, (0.1 + self._mesh.n[1]) * self._mesh.dx[1], self._mesh.dx[1])
-            return y
-        elif which == "z":
-            z = self.arange(0, (0.1 + self._mesh.n[2]) * self._mesh.dx[2], self._mesh.dx[2])
-            return z
-        else:
-            raise ValueError("Parameter 'which' needs to be 'x', 'y', 'z', or 'all'")
+    def SpatialCoordinates(self):
+        x = self.arange(self._mesh.dx[0]/2., (0.1 + self._mesh.n[0]) * self._mesh.dx[0], self._mesh.dx[0])
+        y = self.arange(self._mesh.dx[1]/2., (0.1 + self._mesh.n[1]) * self._mesh.dx[1], self._mesh.dx[1])
+        z = self.arange(self._mesh.dx[2]/2., (0.1 + self._mesh.n[2]) * self._mesh.dx[2], self._mesh.dx[2])
+
+        XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
+        return XX, YY, ZZ
