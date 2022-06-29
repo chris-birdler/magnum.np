@@ -2,6 +2,7 @@ from magnumnp import *
 import torch
 
 Timer.enable()
+set_log_level(10)
 
 # initialize mesh
 eps = 1e-15
@@ -39,7 +40,7 @@ write_vtr(state.m, "data/m0")
 llg = LLGSolver(state, [demag, exchange, external])
 with open('data/m.dat', 'w') as f:
     while state.t < 1e-9-eps:
-        llg.step(1e-11)
+        llg.step(1e-12)
         f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
         f.flush()
 
