@@ -1,35 +1,23 @@
 from magnumnp.common import timedmethod, constants
-import numpy as np
-from scipy import ndimage
+import torch
 
-__all__ = ["SpinTorque"]
+__all__ = ["SpinTorqueZhangLi"]
 
-class SpinTorque(object):
-    def __init__(self, mesh, material, j):
-        self._stencil = np.zeros((3,3,3,3))
-        self._stencil[0,:,1,1] = np.array([1,0,-1]) / (2 * mesh.dx[0])
-        self._stencil[1,1,:,1] = np.array([1,0,-1]) / (2 * mesh.dx[1])
-        self._stencil[2,1,1,:] = np.array([1,0,-1]) / (2 * mesh.dx[2])
-
-        self._mesh = mesh
-        self._j = j
-        self._gamma = material["gamma"]
-        self._b = material["b"]
-        self._xi = material["xi"]
-
-        # initialize scratch spaces
-        self._jgradm = np.zeros(mesh.n + (3,))
-        #self._h = np.zeros(mesh.n + (3,))
+class SpinTorqueZhangLi(object):
+    def __init__(self, state):
+        self._state = state
+        self._mesh = state._mesh
+        self._b = self._state._material["b"]
+        self._xi = self._state._material["xi"]
+        self.j = self._state.j
 
     @timedmethod
     def h(self, t, m):
-        self._jgradm.fill(0.)
-        for i in np.arange(3):
-            for k in np.arange(3):
-                if self._j[k] != 0:
-                    self._jgradm[:, :, :, i] += self._j[k] * ndimage.convolve(m[:,:,:,i], self._stencil[k], mode = 'mirror')
+        dim = [i for i in range(3) if self._mesh.n[i] > 1]
+        dx = [self._mesh.dx[i] for i in range(3) if self._mesh.n[i] > 1]
+        jgradm = (torch.stack(torch.gradient(m, spacing=dx, dim=dim), dim=-1)*self.j[dim]).sum(axis=-1) 
 
-        return self._b / self._gamma * (np.cross(m, self._jgradm) + self._xi * self._jgradm)
+        return self._b / constants.gamma * (torch.cross(m, jgradm) + self._xi * jgradm)
 
     def E(self, t, m):
         raise NotImplemented()

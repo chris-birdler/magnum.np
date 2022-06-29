@@ -13,7 +13,6 @@ mesh = Mesh(n, dx)
 material = {
         "Ms": 8e5,
         "A": 1.3e-11,
-        "gamma": 2.211e5,
         "alpha": 0.02
         }
 
@@ -33,15 +32,15 @@ state.m[(-1,0),:,:,1] = 1.0
 
 # initialize sstate
 minimizer = Minimizer(state, [demag, exchange])
-#m = minimizer.minimize(m0, 1e-2, 1e-4)
 minimizer.minimize_event()
-write_vtr(state.m, "data/sp4_m0")
+write_vtr(state.m, "data/m0")
 
 # perform integration with external field
 llg = LLGSolver(state, [demag, exchange, external])
-with open('data/sp4.dat', 'w') as f:
+with open('data/m.dat', 'w') as f:
     while state.t < 1e-9-eps:
         llg.step(1e-11)
         f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
+        f.flush()
 
 Timer.print_report()
