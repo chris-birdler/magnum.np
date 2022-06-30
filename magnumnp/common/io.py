@@ -1,9 +1,10 @@
+import torch
 import numpy as np
 from pyevtk.hl import gridToVTK
 import pyvista as pv
 import os
 
-__all__ = ["write_vtr", "write_vti"]
+__all__ = ["write_vtr", "write_vti", "read_vti"]
 
 r"""
 write vti files (compressed) using pyvista
@@ -19,7 +20,8 @@ write vti files (compressed) using pyvista
     write_vti([state.m, h], "list.vti")
     write_vti({'m':state.m, 'h':h}, "dict.vti")
 """
-def write_vti(fields, filename, mesh = None):
+#TODO: maybe move to state, or introduce decorated function
+def write_vti(fields, filename, state = None):
     dirname = os.path.dirname(filename)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -29,14 +31,14 @@ def write_vti(fields, filename, mesh = None):
     if not isinstance(fields, dict):
         fields = {"f%03d"%i:f for (i,f) in enumerate(fields)}
 
-    if mesh is None:
+    if state is None:
         n = list(fields.values())[0].shape[:3]
         dx = (1., 1., 1.)
         origin = (0., 0., 0.)
     else:
-        n = mesh.n
-        dx = mesh.dx
-        origin = mesh.origin
+        n = state._mesh.n
+        dx = state._mesh.dx
+        origin = state._mesh.origin
 
     grid = pv.UniformGrid(dims = np.array(n) + 1,
                           spacing = dx,
@@ -51,6 +53,20 @@ def write_vti(fields, filename, mesh = None):
     grid.save(filename)
 
 
+def read_vti(filename, state):
+    fields = {}
+    data = pv.read(filename)
+    for name in data.array_names:
+        f = data.get_array(name)
+        vals = data.get_array(name)
+        if len(vals.shape) == 1:
+            dim = state._mesh.n
+        else:
+            dim = state._mesh.n + (vals.shape[-1],)
+        f = state.zeros(dim)
+        f[...] = torch.from_numpy(vals.reshape(dim, order="F"))
+        fields[name] = f
+    return fields
 
 
 ### deprecated functions (will be removed)
