@@ -1,5 +1,6 @@
 import torch
 import os
+from magnumnp.common import logging
 
 __all__ = ["State"]
 
@@ -13,6 +14,7 @@ class State(object):
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
         else:
             self._device = device
+        logging.info_green("[State] running on device:%s" % self._device)
 
     def zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
