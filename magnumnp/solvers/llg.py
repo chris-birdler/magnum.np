@@ -32,7 +32,7 @@ class LLGSolver(object):
     # Deprecated Functions (will be removed)
     @timedmethod
     def step_torchdiffeq(self, dt, method = 'dopri5', options = {}):
-        self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
+        self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, state.DoubleTensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
         self._state.t += dt
         logging.info("[LLG]: t=%g" % self._state.t)
 
