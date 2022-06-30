@@ -1,9 +1,59 @@
 import numpy as np
 from pyevtk.hl import gridToVTK
+import pyvista as pv
 import os
 
-__all__ = ["write_vtr"]
+__all__ = ["write_vtr", "write_vti"]
 
+r"""
+write vti files (compressed) using pyvista
+
+:Examples:
+
+  .. code::
+    # write single scalar or vector
+    write_vti(state.material.Ms, "scalar.vti")
+    write_vti(state.m, "vector.vti")
+
+    # use dictinary or list
+    write_vti([state.m, h], "list.vti")
+    write_vti({'m':state.m, 'h':h}, "dict.vti")
+"""
+def write_vti(fields, filename, mesh = None):
+    dirname = os.path.dirname(filename)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
+    if not (isinstance(fields, list) or isinstance(fields, dict)):
+        fields = [fields]
+    if not isinstance(fields, dict):
+        fields = {"f%03d"%i:f for (i,f) in enumerate(fields)}
+
+    if mesh is None:
+        n = list(fields.values())[0].shape[:3]
+        dx = (1., 1., 1.)
+        origin = (0., 0., 0.)
+    else:
+        n = mesh.n
+        dx = mesh.dx
+        origin = mesh.origin
+
+    grid = pv.UniformGrid(dims = np.array(n) + 1,
+                          spacing = dx,
+                          origin = origin)
+
+    for name, f in fields.items():
+        if len(f.shape) == 3: # scalar data
+            grid.cell_data.set_scalars(f.detach().cpu().numpy().flatten('F'), name)
+        else:
+            grid.cell_data.set_vectors(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
+
+    grid.save(filename)
+
+
+
+
+### deprecated functions (will be removed)
 def write_vtr(field, filename, mesh = None, name="f"):
     dirname = os.path.dirname(filename)
     if not os.path.isdir(dirname):
@@ -20,7 +70,7 @@ def write_vtr(field, filename, mesh = None, name="f"):
     y = np.arange(0, (0.1 + n[1]) * dx[1], dx[1], dtype='float64')
     z = np.arange(0, (0.1 + n[2]) * dx[2], dx[2], dtype='float64')
 
-    if field.shape[-1] == 1: 
+    if field.shape[-1] == 1:
         field = field[...,0]
 
     if len(field.shape) == 3:
