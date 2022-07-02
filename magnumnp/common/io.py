@@ -3,6 +3,7 @@ import numpy as np
 from pyevtk.hl import gridToVTK
 import pyvista as pv
 import os
+from . import Mesh
 
 __all__ = ["write_vtr", "write_vti", "read_vti"]
 
@@ -53,20 +54,22 @@ def write_vti(fields, filename, state = None):
     grid.save(filename)
 
 
-def read_vti(filename, state):
+def read_vti(filename):
     fields = {}
     data = pv.read(filename)
+
+    mesh = Mesh(np.array(data.dimensions)-1, data.spacing, data.origin)
+
     for name in data.array_names:
         f = data.get_array(name)
         vals = data.get_array(name)
         if len(vals.shape) == 1:
-            dim = state._mesh.n
+            dim = mesh.n
         else:
-            dim = state._mesh.n + (vals.shape[-1],)
-        f = state.zeros(dim)
-        f[...] = torch.from_numpy(vals.reshape(dim, order="F"))
+            dim = mesh.n + (vals.shape[-1],)
+        f = torch.from_numpy(vals.reshape(dim, order="F"))
         fields[name] = f
-    return fields
+    return mesh, fields
 
 
 ### deprecated functions (will be removed)
