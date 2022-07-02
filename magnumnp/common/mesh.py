@@ -7,7 +7,6 @@ class Mesh(object):
         self.n = tuple(n)
         self.dx = tuple(dx)
         self.origin = tuple(origin)
-        logging.info_green("[Mesh] initialize mesh %dx%dx%d (size= %g x %g x %g)" % (self.n + self.dx))
 
     @property
     def cell_volume(self):

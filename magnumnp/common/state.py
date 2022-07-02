@@ -15,6 +15,7 @@ class State(object):
         else:
             self._device = device
         logging.info_green("[State] running on device:%s" % self._device)
+        logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
 
     def zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)

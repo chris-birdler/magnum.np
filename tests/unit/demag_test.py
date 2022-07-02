@@ -3,8 +3,8 @@ import pathlib
 from magnumnp import *
 
 def test_energy_cube():
-    n  = (20,20,20)
-    dx = (1e-9, 1e-9, 1e-9)
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
     Ms = 1.
     mesh = Mesh(n, dx)
     material = {"Ms": Ms}
