@@ -23,7 +23,7 @@ class LLGSolver(object):
     @timedmethod
     def step(self, dt):
         self._solver.step(dt)
-        logging.info("[LLG] step: dt= %g  t=%g" % (dt, self._state.t))
+        logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, self._state.t))
 
 
 
