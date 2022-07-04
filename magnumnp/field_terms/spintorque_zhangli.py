@@ -15,7 +15,7 @@ class SpinTorqueZhangLi(object):
     def h(self, t, m):
         dim = [i for i in range(3) if self._mesh.n[i] > 1]
         dx = [self._mesh.dx[i] for i in range(3) if self._mesh.n[i] > 1]
-        jgradm = (torch.stack(torch.gradient(m, spacing=dx, dim=dim), dim=-1)*self.j[dim]).sum(axis=-1) 
+        jgradm = (torch.stack(torch.gradient(m, spacing=dx, dim=dim), dim=-1)*self.j[dim]).sum(axis=-1)
 
         return self._b / constants.gamma * (torch.cross(m, jgradm) + self._xi * jgradm)
 

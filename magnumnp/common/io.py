@@ -46,7 +46,9 @@ def write_vti(fields, filename, state = None):
                           origin = origin)
 
     for name, f in fields.items():
-        if len(f.shape) == 3: # scalar data
+        if len(f.shape) == 4 and f.shape[-1] == 1:
+            f = f[: ,:, :, 0]
+        if len(f.shape) == 3:
             grid.cell_data.set_scalars(f.detach().cpu().numpy().flatten('F'), name)
         else:
             grid.cell_data.set_vectors(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
