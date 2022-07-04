@@ -29,8 +29,8 @@ class State(object):
     def linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
-    def DoubleTensor(self, data):
-        return torch.DoubleTensor(data).to(self._device)
+    def tensor(self, data, dtype=torch.float64):
+        return torch.tensor(data, dtype=dtype, device=self._device)
 
     def SpatialCoordinates(self):
         x = self.arange(self._mesh.dx[0]/2., (0.1 + self._mesh.n[0]) * self._mesh.dx[0], self._mesh.dx[0])

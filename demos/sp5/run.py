@@ -26,7 +26,7 @@ state.m[20:,:,:,1] = 1.
 state.m[20,20,:,1] = 0.
 state.m[20,20,:,2] = 1.
 
-state.j = state.DoubleTensor((1e12, 0, 0))
+state.j = state.tensor((1e12, 0, 0))
 
 # initialize field terms
 demag    = DemagField(state)

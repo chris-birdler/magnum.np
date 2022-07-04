@@ -29,7 +29,7 @@ class RKKYField(object):
         domain2[:-n[0]//2:,:,:] = True
 
         # rotate magnetization within one subdomain
-        state.m[domain1] = state.DoubleTensor([np.cos(phi), np.sin(phi), 0])
+        state.m[domain1] = state.tensor([np.cos(phi), np.sin(phi), 0])
 
         # without interface layer, two seperate exchange fields need to be defined
         exchange1 = ExchangeField(state, Aex1, domain1)

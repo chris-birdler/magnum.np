@@ -8,12 +8,12 @@ class RKF45(object):
     def __init__(self, f, state, dt=1e-15):
         self._f = f
         self._state = state
-        self._dt = state.DoubleTensor([dt])
+        self._dt = state.tensor([dt])
         self._order = 4
 
         # Numerical Recipies 3rd Edition suggests these values:
         self._headroom = 0.9
-        self._maxstep = state.DoubleTensor([1e-11])
+        self._maxstep = state.tensor([1e-11])
         self._minscale = 0.2
         self._maxscale = 10.
         self._atol = 1e-5

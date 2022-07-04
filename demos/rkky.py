@@ -29,7 +29,7 @@ exchange2 = ExchangeField(state, domain2)
 rkky = RKKYField(state, J_rkky, "z", 0, 1)
 
 for phi in torch.linspace(0, 2*np.pi, 100):
-    state.m[domain2] = state.DoubleTensor([np.cos(phi), np.sin(phi), 0])
+    state.m[domain2] = state.tensor([np.cos(phi), np.sin(phi), 0])
     E_rkky = rkky.E(0.,state.m).detach().cpu().numpy()
     E_ex1 = exchange1.E(0.,state.m).detach().cpu().numpy()
     E_ex2 = exchange1.E(0.,state.m).detach().cpu().numpy()

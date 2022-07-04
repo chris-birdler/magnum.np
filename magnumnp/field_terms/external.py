@@ -10,7 +10,7 @@ class ExternalField(object):
         self._Ms = state._material["Ms"]
         self._h = state.zeros(self._mesh.n + (3,))
         if isinstance(h, list):
-            self._h[:,:,:,:] = state.DoubleTensor(h)
+            self._h[:,:,:,:] = state.tensor(h)
         elif isinstance(h, torch.Tensor):
             self._h[:,:,:,:] = h
         elif callable(h):
@@ -20,7 +20,7 @@ class ExternalField(object):
 
     def h(self, t, m):
         if hasattr(self, "_lambda_h"):
-            self._h[:,:,:,:] = state.DoubleTensor(self._lambda_h(t))
+            self._h[:,:,:,:] = state.tensor(self._lambda_h(t))
         return self._h
 
     def E(self, t, m):
