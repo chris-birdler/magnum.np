@@ -10,7 +10,7 @@ class InterfaceDMIField(object):
         self._Js = constants.mu_0 * self._state._material["Ms"]
         self._Di = self._state._material["Di"]
         self._Di_axis = state.zeros(state._mesh.n + (3,))
-        self._Di_axis[:,:,:,:] = state.DoubleTensor([0, 0, 1])
+        self._Di_axis[:,:,:,:] = state.tensor([0, 0, 1])
 
     @timedmethod
     def h(self, t, m):
@@ -21,8 +21,8 @@ class InterfaceDMIField(object):
         dmydy = torch.gradient(self._state.m[:,:,:,1], spacing = dx[1], dim = 1)[0]
         dmzdx = torch.gradient(self._state.m[:,:,:,2], spacing = dx[0], dim = 0)[0]
         dmzdy = torch.gradient(self._state.m[:,:,:,2], spacing = dx[1], dim = 1)[0]
-        return -2.*self._Di/self._Js * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
- 
+        h = -2.*self._Di/self._Js * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
+        return torch.nan_to_num(h, posinf=0, neginf=0)
 
     def E(self, t, m):
         return -0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Js * m * self.h(t, m)) 
@@ -36,7 +36,7 @@ class InterfaceDMIFieldFULL(object):
         self._Ms = self._state._material["Ms"]
         self._Di = self._state._material["Di"]
         self._Di_axis = state.zeros(state._mesh.n + (3,))
-        self._Di_axis[:,:,:,:] = state.DoubleTensor(state._material["Di_axis"])
+        self._Di_axis[:,:,:,:] = state.tensor(state._material["Di_axis"])
 
     @timedmethod
     def h(self, t, m):
