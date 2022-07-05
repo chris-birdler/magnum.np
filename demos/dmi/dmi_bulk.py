@@ -15,7 +15,7 @@ state = State(mesh, {})
 state._material = {
         "alpha": 1.,
         "A":  13e-12, # [J/m]
-        "Di": 3.0e-3, # [J/m2]
+        "Db": 3.0e-3, # [J/m2]
         "K": 0.4e6,   # [J/m3]
         "K_axis": [0.0, 0.0, 1.0]
         }
@@ -30,7 +30,7 @@ state._material["Ms"] = Ms
 # initialize field terms
 exchange = ExchangeField(state)
 aniso = AnisotropyField(state)
-dmi = InterfaceDMIField(state)
+dmi = BulkDMIField(state)
 
 # initialize magnetization that relaxes into s-state
 state.m = state.zeros(n + (3,))
@@ -41,14 +41,14 @@ write_vti(state.m, "data/m_init.vti", state)
 # perform integration with external field
 llg = LLGSolver(state, [exchange, aniso, dmi])
 i = 0
-with open('data/m_interface.dat', 'w') as f:
+with open('data/m_bulk.dat', 'w') as f:
     while state.t < 5e-9-eps:
         llg.step(1e-11)
         f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
         f.flush()
 
         if i % 10 == 0:
-            write_vti(state.m, "data/m_interface_%.5d.vti" % (i//10))
+            write_vti(state.m, "data/m_bulk_%.5d.vti" % (i//10))
         i += 1
 
 Timer.print_report()
