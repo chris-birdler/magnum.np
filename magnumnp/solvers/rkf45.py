@@ -70,5 +70,5 @@ class RKF45(object):
                 # accept step, adapt stepsize for next step
                 self._state.m = _m1
                 self._state.t = _t1
-                self._dt = dt_opt
                 logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._state.t))
+                self._dt = dt_opt
