@@ -18,7 +18,7 @@ class SpinOrbitTorque(object):
          
         self._p = self._state.zeros(self._mesh.n + (3,))
         if isinstance(p, list):
-            self._p[:,:,:,:] = self._state.DoubleTensor(p)
+            self._p[:,:,:,:] = self._state.tensor(p)
         elif isinstance(p, torch.Tensor):
             self._p[:,:,:,:] = p
         elif callable(p):
