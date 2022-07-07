@@ -20,7 +20,7 @@ class ExternalField(object):
 
     def h(self, t, m):
         if hasattr(self, "_lambda_h"):
-            self._h[:,:,:,:] = state.tensor(self._lambda_h(t))
+            self._h[:,:,:,:] = self._state.tensor(self._lambda_h(t))
         return self._h
 
     def E(self, t, m):
