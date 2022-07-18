@@ -23,7 +23,7 @@ class Minimizer(object):
         for i in range(maxiter):
             m_old[:,:,:,:] = m
 
-            m = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t + dt], device=cuda), method=method, options=options)[1] # TODO: reuse Solver object?
+            m = odeint(lambda t, m: self._dm(t, m), m, self._state.tensor([t, t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
             t += dt
             dmdt = torch.linalg.norm((m - m_old).reshape(-1), ord = float("Inf")) / dt
             E = sum([term.E(t, m) for term in self._terms])
@@ -50,5 +50,5 @@ class Minimizer(object):
             t_old = t
             return t < T
 
-        t, m_opt = odeint(lambda t, m: self._dm(t, m), m, torch.DoubleTensor([t, t+T]), method=method, options=options, event_fn = event_fn)
+        t, m_opt = odeint(lambda t, m: self._dm(t, m), m, self._state.tensor([t, t+T]), method=method, options=options, event_fn = event_fn)
         self._state.m[:,:,:,:] = m_opt[-1,:,:,:,:]

@@ -14,8 +14,8 @@ class LLGSolver(object):
         self._alpha_prime = state._material["alpha"] * self._gamma_prime
         self._rtol = rtol
         self._atol = atol
-        #self._solver = RKF45(lambda t, m: self._dm(t, m), self._state.m, self._state.t)
-        self._solver = Adams45(lambda t, m: self._dm(t, m), self._state.m, self._state.t)
+        #self._solver = Adams45(lambda t, m: self._dm(t, m), state)
+        self._solver = RKF45(lambda t, m: self._dm(t, m), state)
 
     def _dm(self, t, m):
         h = sum([term.h(t, m) for term in self._terms])
@@ -25,16 +25,14 @@ class LLGSolver(object):
     @timedmethod
     def step(self, dt):
         self._solver.step(dt)
-        self._state.t = self._solver._t
-        self._state.m = self._solver._y
-        logging.info("[LLG] step: dt= %g  t=%g" % (dt, self._state.t))
+        logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, self._state.t))
 
 
 
     # Deprecated Functions (will be removed)
     @timedmethod
     def step_torchdiffeq(self, dt, method = 'dopri5', options = {}):
-        self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, torch.DoubleTensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
+        self._state.m = odeint(lambda t, m: self._dm(t, m), self._state.m, state.tensor([self._state.t, self._state.t + dt]), method=method, options=options)[1] # TODO: reuse Solver object?
         self._state.t += dt
         logging.info("[LLG]: t=%g" % self._state.t)
 

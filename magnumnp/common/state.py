@@ -1,5 +1,6 @@
 import torch
 import os
+from magnumnp.common import logging
 
 __all__ = ["State"]
 
@@ -13,6 +14,12 @@ class State(object):
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
         else:
             self._device = device
+        logging.info_green("[State] running on device:%s" % self._device)
+        logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
+
+    def renorm(self):
+        self.m /= torch.linalg.norm(self.m, dim = 3, keepdim = True)
+        self.m = torch.nan_to_num(self.m, posinf=0, neginf=0)
 
     def zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
@@ -26,10 +33,13 @@ class State(object):
     def linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
+    def tensor(self, data, dtype=torch.float64):
+        return torch.tensor(data, dtype=dtype, device=self._device)
+
     def SpatialCoordinates(self):
-        x = self.arange(self._mesh.dx[0]/2., (0.1 + self._mesh.n[0]) * self._mesh.dx[0], self._mesh.dx[0])
-        y = self.arange(self._mesh.dx[1]/2., (0.1 + self._mesh.n[1]) * self._mesh.dx[1], self._mesh.dx[1])
-        z = self.arange(self._mesh.dx[2]/2., (0.1 + self._mesh.n[2]) * self._mesh.dx[2], self._mesh.dx[2])
+        x = self.arange(self._mesh.n[0]) * self._mesh.dx[0] + self._mesh.dx[0]/2. + self._mesh.origin[0]
+        y = self.arange(self._mesh.n[1]) * self._mesh.dx[1] + self._mesh.dx[1]/2. + self._mesh.origin[1]
+        z = self.arange(self._mesh.n[2]) * self._mesh.dx[2] + self._mesh.dx[2]/2. + self._mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ

@@ -11,14 +11,14 @@ class AnisotropyField(object):
         self._Ms = state._material["Ms"]
         self._K = state._material["K"]
         self._K_axis = state.zeros(state._mesh.n + (3,))
-        self._K_axis[:,:,:,:] = torch.DoubleTensor(state._material["K_axis"])
+        self._K_axis[:,:,:,:] = state.tensor(state._material["K_axis"])
 
         # initialize scratch space
         self._h = state.zeros(self._mesh.n + (3,)) #TODO: check if scatch spaces make sense!!
 
     @timedmethod
     def h(self, t, m):
-        self._h[:,:,:,:] = 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * torch.sum(self._K_axis * m, dim=3).unsqueeze(-1)
+        self._h[:,:,:,:] = 2. * self._K * self._K_axis / (constants.mu_0 * self._Ms) * torch.sum(self._K_axis * m, dim=3, keepdim=True)
         self._h = torch.nan_to_num(self._h, posinf=0, neginf=0)
         return self._h
 

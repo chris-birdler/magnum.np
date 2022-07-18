@@ -26,7 +26,7 @@ state.m[20:,:,:,1] = 1.
 state.m[20,20,:,1] = 0.
 state.m[20,20,:,2] = 1.
 
-state.j = torch.DoubleTensor((1e12, 0, 0))
+state.j = state.tensor((1e12, 0, 0))
 
 # initialize field terms
 demag    = DemagField(state)
@@ -43,7 +43,7 @@ i = 0
 with open('data/m.dat', 'w') as f:
     while state.t < 5e-9:
         if i % 10 == 0:
-            write_vtr(state.m, "data/m_%04d" % (i/10))
+            write_vti(state.m, "data/m_%04d.vti" % (i/10), state)
         f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
         f.flush()
 
