@@ -139,25 +139,29 @@ class DemagField(object):
 
     @timedmethod
     def h(self, t, m):
-        h_fft = self._state.zeros(list(self._N[0][0].shape[:3]) + [3], dtype=torch.complex128)
-        with Timer("fft"):
-            m_pad_fft = torch.fft.rfftn(self._Ms * m, dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1])
+        hx = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
+        hy = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
+        hz = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
+        for ax in range(3):
+            with Timer("fft"):
+                m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,ax], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1])
 
-        with Timer("multiply"):
-            h_fft[:,:,:,0] = self._N[0][0] * m_pad_fft[:,:,:,0] + \
-                             self._N[0][1] * m_pad_fft[:,:,:,1] + \
-                             self._N[0][2] * m_pad_fft[:,:,:,2]
-            h_fft[:,:,:,1] = self._N[1][0] * m_pad_fft[:,:,:,0] + \
-                             self._N[1][1] * m_pad_fft[:,:,:,1] + \
-                             self._N[1][2] * m_pad_fft[:,:,:,2]
-            h_fft[:,:,:,2] = self._N[2][0] * m_pad_fft[:,:,:,0] + \
-                             self._N[2][1] * m_pad_fft[:,:,:,1] + \
-                             self._N[2][2] * m_pad_fft[:,:,:,2]
+            with Timer("multiply"):
+                hx[:,:,:] += self._N[0][ax] * m_pad_fft1D[:,:,:]
+                hy[:,:,:] += self._N[1][ax] * m_pad_fft1D[:,:,:]
+                hz[:,:,:] += self._N[2][ax] * m_pad_fft1D[:,:,:]
+
 
         with Timer("ifft"):
-            h_fft = torch.fft.irfftn(h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+            hx = torch.fft.irfftn(hx, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+            hy = torch.fft.irfftn(hy, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+            hz = torch.fft.irfftn(hz, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
-        return h_fft[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
+        with Timer("stack"):
+            h_fft = torch.stack([hx[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]], \
+                                 hy[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]], \
+                                 hz[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]]], dim=3)
+        return h_fft
 
     def E(self, t, m):
         return - 0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))
