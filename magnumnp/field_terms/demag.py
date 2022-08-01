@@ -126,13 +126,14 @@ class DemagField(object):
 
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
 
-        N_fft = torch.fft.rfftn(N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
-        Nxx = N_fft[:,:,:,0].real.clone()
-        Nxy = N_fft[:,:,:,1].real.clone()
-        Nxz = N_fft[:,:,:,2].real.clone()
-        Nyy = N_fft[:,:,:,3].real.clone()
-        Nyz = N_fft[:,:,:,4].real.clone()
-        Nzz = N_fft[:,:,:,5].real.clone()
+        N = torch.fft.rfftn(N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        Nxx = N[:,:,:,0].real.clone()
+        Nxy = N[:,:,:,1].real.clone()
+        Nxz = N[:,:,:,2].real.clone()
+        Nyy = N[:,:,:,3].real.clone()
+        Nyz = N[:,:,:,4].real.clone()
+        Nzz = N[:,:,:,5].real.clone()
+
         self._N = [[Nxx, Nxy, Nxz],
                    [Nxy, Nyy, Nyz],
                    [Nxz, Nyz, Nzz]]
@@ -144,7 +145,7 @@ class DemagField(object):
         hz = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
         for ax in range(3):
             with Timer("fft"):
-                m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,ax], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1])
+                m_pad_fft1D = torch.fft.rfftn(self._Ms[:,:,:,0] * m[:,:,:,ax], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1])
 
             with Timer("multiply"):
                 hx[:,:,:] += self._N[0][ax] * m_pad_fft1D[:,:,:]
