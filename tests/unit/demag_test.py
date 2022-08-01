@@ -36,3 +36,25 @@ def test_Ms_domain():
 
     h = demag.h(0,state.m)
     E = demag.E(0,state.m)
+
+def test_symmetry():
+    n  = (30, 1, 1)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    material = {"Ms": 3e8}
+    state = State(mesh, material)
+
+    demag = DemagField(state)
+    N = state.zeros([1 if i==1 else 2*i for i in mesh.n] + [6])
+
+    for i, t in enumerate(((newell_f,dipole_f,0,1,2),
+                           (newell_g,dipole_g,0,1,2),
+                           (newell_g,dipole_g,0,2,1),
+                           (newell_f,dipole_f,1,2,0),
+                           (newell_g,dipole_g,1,2,0),
+                           (newell_f,dipole_f,2,0,1))):
+        demag._init_N_component(N, i, t[2:], t[0], t[1])
+
+    N_fft = torch.fft.rfftn(N, dim = [i for i in range(3) if mesh.n[i] > 1])
+    assert torch.allclose(N_fft.imag, state.tensor([0.]))
+    

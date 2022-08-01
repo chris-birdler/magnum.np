@@ -1,4 +1,4 @@
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, Timer
 import numpy as np
 import torch
 import torch.fft
@@ -6,7 +6,7 @@ from torch import asinh, atan, sqrt, log, abs
 from time import time
 import os
 
-__all__ = ["DemagField"]
+__all__ = ["DemagField", "newell_f", "newell_g", "dipole_f", "dipole_g"]
 
 def newell_f(points):
     x = abs(points[:,:,:,0])
@@ -102,52 +102,50 @@ class DemagField(object):
             r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
             N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
-        N[ :n_near[0], :n_near[1], :n_near[2],c] = N_near[ :n_near[0], :n_near[1], :n_near[2]]
-        N[ :n_near[0], :n_near[1],-n_near[2]:,c] = N_near[ :n_near[0], :n_near[1],-n_near[2]:]
-        N[ :n_near[0],-n_near[1]:, :n_near[2],c] = N_near[ :n_near[0],-n_near[1]:, :n_near[2]]
-        N[ :n_near[0],-n_near[1]:,-n_near[2]:,c] = N_near[ :n_near[0],-n_near[1]:,-n_near[2]:]
-        N[-n_near[0]:, :n_near[1], :n_near[2],c] = N_near[-n_near[0]:, :n_near[1], :n_near[2]]
-        N[-n_near[0]:, :n_near[1],-n_near[2]:,c] = N_near[-n_near[0]:, :n_near[1],-n_near[2]:]
-        N[-n_near[0]:,-n_near[1]:, :n_near[2],c] = N_near[-n_near[0]:,-n_near[1]:, :n_near[2]]
-        N[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = N_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
+        N[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ,c] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
+        N[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:,c] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
+        N[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ,c] = N_near[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ]
+        N[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:,c] = N_near[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:]
+        N[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ,c] = N_near[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ]
+        N[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:,c] = N_near[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:]
+        N[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ,c] = N_near[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ]
+        N[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:,c] = N_near[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:]
+
 
     def _init_N(self):
-        if os.path.isfile("cache/N_%s.pt" % self._mesh):
-            N = torch.load("cache/N_%s.pt" % self._mesh, map_location=self._state._device)
-            logging.info("[DEMAG]: Use cached demag kernel")
-        else:
-            N = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6])
+        N = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [6])
 
-            time_kernel = time()
-            for i, t in enumerate(((newell_f,dipole_f,0,1,2),
-                                   (newell_g,dipole_g,0,1,2),
-                                   (newell_g,dipole_g,0,2,1),
-                                   (newell_f,dipole_f,1,2,0),
-                                   (newell_g,dipole_g,1,2,0),
-                                   (newell_f,dipole_f,2,0,1))):
-                self._init_N_component(N, i, t[2:], t[0], t[1])
+        time_kernel = time()
+        for i, t in enumerate(((newell_f,dipole_f,0,1,2),
+                               (newell_g,dipole_g,0,1,2),
+                               (newell_g,dipole_g,0,2,1),
+                               (newell_f,dipole_f,1,2,0),
+                               (newell_g,dipole_g,1,2,0),
+                               (newell_f,dipole_f,2,0,1))):
+            self._init_N_component(N, i, t[2:], t[0], t[1])
 
-            logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-            if not os.path.isdir("cache"):
-                os.makedirs("cache")
-            torch.save(N, "cache/N_%s.pt" % self._mesh)
+        logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
 
         self._N_fft = torch.fft.rfftn(N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        self._N_fft = self._N_fft.real.clone()
 
         # init scratch spaces
         self._m_pad = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
-        self._h_fft = self._state.zeros(list(self._N_fft.shape[:3]) + [3], dtype=self._N_fft.dtype)
+        self._h_fft = self._state.zeros(list(self._N_fft.shape[:3]) + [3], dtype=torch.complex128)
 
     @timedmethod
     def h(self, t, m):
-        self._m_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = self._Ms * m
-        m_pad_fft = torch.fft.rfftn(self._m_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        with Timer("fft"):
+            self._m_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = self._Ms * m
+            m_pad_fft = torch.fft.rfftn(self._m_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
-        self._h_fft[:,:,:,0] = (self._N_fft[:,:,:,(0, 1, 2)]*m_pad_fft).sum(axis = 3)
-        self._h_fft[:,:,:,1] = (self._N_fft[:,:,:,(1, 3, 4)]*m_pad_fft).sum(axis = 3)
-        self._h_fft[:,:,:,2] = (self._N_fft[:,:,:,(2, 4, 5)]*m_pad_fft).sum(axis = 3)
+        with Timer("multiply"):
+            self._h_fft[:,:,:,0] = (self._N_fft[:,:,:,(0, 1, 2)]*m_pad_fft).sum(axis = 3)
+            self._h_fft[:,:,:,1] = (self._N_fft[:,:,:,(1, 3, 4)]*m_pad_fft).sum(axis = 3)
+            self._h_fft[:,:,:,2] = (self._N_fft[:,:,:,(2, 4, 5)]*m_pad_fft).sum(axis = 3)
 
-        h_pad = torch.fft.irfftn(self._h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        with Timer("ifft"):
+            h_pad = torch.fft.irfftn(self._h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
 
