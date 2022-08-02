@@ -81,15 +81,15 @@ class DemagField(object):
         self._Ms = state._material["Ms"]
         self._p = p
         self._init_N()
-        torch.cuda.empty_cache()
 
-    def _init_N_component(self, N, c, perm, func_near, func_far):
+    def _init_N_component(self, perm, func_near, func_far):
         # dipole far-field
-        ij = [torch.fft.fftfreq(n,1/n) for n in N.shape[:3]]
+        shape = [1 if i==1 else 2*i-1 for i in self._mesh.n]
+        ij = [torch.fft.fftfreq(n,1/n) for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
-        N[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
+        Nc = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
 
         # newell near-field
         n_near = np.minimum(self._mesh.n, self._p)
@@ -102,56 +102,44 @@ class DemagField(object):
             r = torch.stack([(ij[ind] + k[ind] - l[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
             N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
 
-        N[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ,c] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
-        N[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:,c] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
-        N[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ,c] = N_near[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ]
-        N[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:,c] = N_near[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:]
-        N[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ,c] = N_near[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ]
-        N[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:,c] = N_near[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:]
-        N[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ,c] = N_near[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ]
-        N[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:,c] = N_near[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:]
+        Nc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
+        Nc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
+        Nc[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ] = N_near[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ]
+        Nc[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:] = N_near[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:]
+        Nc[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ] = N_near[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ]
+        Nc[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:] = N_near[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:]
+        Nc[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ] = N_near[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ]
+        Nc[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:] = N_near[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:]
 
+        return torch.fft.rfftn(Nc, dim = [i for i in range(3) if self._mesh.n[i] > 1]).real.clone()
 
     def _init_N(self):
-        N = self._state.zeros([1 if i==1 else 2*i-1 for i in self._mesh.n] + [6])
-
         time_kernel = time()
-        for i, t in enumerate(((newell_f,dipole_f,0,1,2),
-                               (newell_g,dipole_g,0,1,2),
-                               (newell_g,dipole_g,0,2,1),
-                               (newell_f,dipole_f,1,2,0),
-                               (newell_g,dipole_g,1,2,0),
-                               (newell_f,dipole_f,2,0,1))):
-            self._init_N_component(N, i, t[2:], t[0], t[1])
-
-        logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-
-        N = torch.fft.rfftn(N, dim = [i for i in range(3) if self._mesh.n[i] > 1])
-        Nxx = N[:,:,:,0].real.clone()
-        Nxy = N[:,:,:,1].real.clone()
-        Nxz = N[:,:,:,2].real.clone()
-        Nyy = N[:,:,:,3].real.clone()
-        Nyz = N[:,:,:,4].real.clone()
-        Nzz = N[:,:,:,5].real.clone()
+        Nxx = self._init_N_component([0,1,2], newell_f, dipole_f)
+        Nxy = self._init_N_component([0,1,2], newell_g, dipole_g)
+        Nxz = self._init_N_component([0,2,1], newell_g, dipole_g)
+        Nyy = self._init_N_component([1,2,0], newell_f, dipole_f)
+        Nyz = self._init_N_component([1,2,0], newell_g, dipole_g)
+        Nzz = self._init_N_component([2,0,1], newell_f, dipole_f)
 
         self._N = [[Nxx, Nxy, Nxz],
                    [Nxy, Nyy, Nyz],
                    [Nxz, Nyz, Nzz]]
+        logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
 
     @timedmethod
     def h(self, t, m):
-        hx = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
-        hy = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
-        hz = self._state.zeros(list(self._N[0][0].shape[:3]), dtype=torch.complex128)
+        hx = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hy = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hz = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         for ax in range(3):
             with Timer("fft"):
                 m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i]-1 for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
 
             with Timer("multiply"):
-                hx[:,:,:] += self._N[0][ax] * m_pad_fft1D[:,:,:]
-                hy[:,:,:] += self._N[1][ax] * m_pad_fft1D[:,:,:]
-                hz[:,:,:] += self._N[2][ax] * m_pad_fft1D[:,:,:]
-
+                hx += self._N[0][ax] * m_pad_fft1D
+                hy += self._N[1][ax] * m_pad_fft1D
+                hz += self._N[2][ax] * m_pad_fft1D
 
         with Timer("ifft"):
             hx = torch.fft.irfftn(hx, dim = [i for i in range(3) if self._mesh.n[i] > 1])
@@ -159,8 +147,8 @@ class DemagField(object):
             hz = torch.fft.irfftn(hz, dim = [i for i in range(3) if self._mesh.n[i] > 1])
 
         with Timer("stack"):
-            h_fft = torch.stack([hx[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]], \
-                                 hy[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]], \
+            h_fft = torch.stack([hx[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]],
+                                 hy[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]],
                                  hz[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]]], dim=3)
         return h_fft
 
