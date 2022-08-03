@@ -84,8 +84,10 @@ class DemagField(object):
 
     def _init_N_component(self, perm, func_near, func_far):
         # dipole far-field
-        shape = [1 if i==1 else 2*i-1 for i in self._mesh.n]
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape]
+        #shape = [1 if i==1 else 2*i-1 for i in self._mesh.n]
+        #ij = [torch.fft.fftfreq(n,1/n) for n in shape]
+        shape = [1 if i==1 else 2*i for i in self._mesh.n]
+        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
@@ -93,8 +95,10 @@ class DemagField(object):
 
         # newell near-field
         n_near = np.minimum(self._mesh.n, self._p)
-        N_near = self._state.zeros([1 if i==1 else 2*i-1 for i in n_near])
-        ij = [torch.fft.fftfreq(n,1/n) for n in N_near.shape[:3]]
+        #N_near = self._state.zeros([1 if i==1 else 2*i-1 for i in n_near])
+        #ij = [torch.fft.fftfreq(n,1/n) for n in N_near.shape[:3]]
+        N_near = self._state.zeros([1 if i==1 else 2*i for i in n_near])
+        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in N_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
@@ -134,7 +138,8 @@ class DemagField(object):
         hz = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         for ax in range(3):
             with Timer("fft"):
-                m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i]-1 for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
+                #m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i]-1 for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
+                m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
 
             with Timer("multiply"):
                 hx += self._N[0][ax] * m_pad_fft1D
