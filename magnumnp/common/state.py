@@ -29,8 +29,19 @@ class State(object):
     def _linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
+    # TODO: make this _tensor
     def tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
+
+    def Tensor(self, data, dtype=torch.float64):
+        if isinstance(data, list):
+            return torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
+        elif isinstance(data, torch.Tensor):
+            return data.as_subclass(DecoratedTensor)
+        elif callable(data):
+            return data
+        else:
+            raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c):
         c = self.tensor(c)

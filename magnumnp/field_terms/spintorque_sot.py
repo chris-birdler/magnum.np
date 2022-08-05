@@ -14,7 +14,7 @@ class SpinOrbitTorque(object):
         self.Ms = self._state._material["Ms"]
         self.je = self._state._material["je"]
         self.d = self._state._material["d"] #thickness of FM
-        p = self._state._material["p"] #thickness of FM
+        p = self._state._material["p"]
          
         self._p = self._state.zeros(self._mesh.n + (3,))
         if isinstance(p, list):
