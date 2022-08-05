@@ -10,8 +10,7 @@ class AnisotropyField(object):
         self._mesh = state._mesh
         self._Ms = state._material["Ms"]
         self._K = state._material["K"]
-        self._K_axis = state._zeros(state._mesh.n + (3,)) #TODO: fix this and add unit tests for anisotropy field
-        self._K_axis[:,:,:,:] = state.tensor(state._material["K_axis"])
+        self._K_axis = state.Tensor(state._material["K_axis"])
 
     @timedmethod
     def h(self, t, m):
