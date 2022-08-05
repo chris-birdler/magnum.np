@@ -13,6 +13,9 @@ try:
     import magnumnp.common.logging as logging
     logging.info_green("magnum.np %s" % VERSION)
 
+    import torch
+    torch.set_default_dtype(torch.float64)
+
 except Exception as e:
     import magnumnp.common.logging as logging
     logging.error(str(e).split("\n")[0])
