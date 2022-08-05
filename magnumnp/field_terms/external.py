@@ -8,7 +8,7 @@ class ExternalField(object):
         self._state = state
         self._mesh = state._mesh
         self._Ms = state._material["Ms"]
-        self._h = state.zeros(self._mesh.n + (3,))
+        self._h = state._zeros(self._mesh.n + (3,))
         if isinstance(h, list):
             self._h[:,:,:,:] = state.tensor(h)
         elif isinstance(h, torch.Tensor):

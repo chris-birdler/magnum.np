@@ -85,7 +85,7 @@ class DemagField(object):
     def _init_N_component(self, perm, func_near, func_far):
         # dipole far-field
         shape = [1 if n==1 else 2*n for n in self._mesh.n]
-        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in shape]
+        ij = [torch.fft.fftshift(self._state._arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
@@ -93,8 +93,8 @@ class DemagField(object):
 
         # newell near-field
         n_near = np.minimum(self._mesh.n, self._p)
-        N_near = self._state.zeros([1 if n==1 else 2*n for n in n_near])
-        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in N_near.shape[:3]]
+        N_near = self._state._zeros([1 if n==1 else 2*n for n in n_near])
+        ij = [torch.fft.fftshift(self._state._arange(n)) - n//2 for n in N_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
@@ -129,9 +129,9 @@ class DemagField(object):
 
     @timedmethod
     def h(self, t, m):
-        hx = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
-        hy = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
-        hz = self._state.zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hx = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hy = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hz = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
 

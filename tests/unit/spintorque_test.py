@@ -16,16 +16,14 @@ def test_zhangli():
             }
     
     state = State(mesh, material)
-    state.m = state.zeros(n + (3,))
+    state.m = state.Constant([0,1,0])
     state.m[:1,:,:,1] = -1.
-    state.m[1:,:,:,1] = 1.
     
     state.j = state.tensor((1e12, 0, 0))
     torque = SpinTorqueZhangLi(state)
     h1 = torque.h(0, state.m)
 
-    state.j = state.zeros(n + (3,))
-    state.j[:,:,:,0] = 1e12
+    state.j = state.Constant([1e12,0,0])
     torque = SpinTorqueZhangLi(state)
     h2 = torque.h(0, state.m)
 

@@ -26,7 +26,7 @@ external = ExternalField(state, [-24.6e-3/constants.mu_0,
                                  0.0])
 
 # initialize magnetization that relaxes into s-state
-state.m = state.zeros(n + (3,))
+state.m = state.Constant([0,0,0])
 state.m[1:-1,:,:,0]   = 1.0
 state.m[(-1,0),:,:,1] = 1.0
 

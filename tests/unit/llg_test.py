@@ -20,8 +20,7 @@ def test_simple():
                                      +4.3e-3/constants.mu_0,
                                      0.0])
 
-    state.m = state.zeros(n + (3,))
-    state.m[:5,:,:,0] = 1.0
+    state.m = state.Constant([1,0,0])
     state.m[5:,:,:,0] = -1.0
 
     llg = LLGSolver(state, [demag, exchange, external])
@@ -36,16 +35,11 @@ def test_material_tensors():
     material = {}
     state = State(mesh, material)
 
-    material["alpha"] = state.zeros(n + (1,))
-    material["alpha"][...] = 0.02
-    material["Ms"] = state.zeros(n + (1,))
-    material["Ms"][...] = 8e5
-    material["A"] = state.zeros(n + (1,))
-    material["A"][...] = 1.3e-11
-    material["K"] = state.zeros(n + (1,))
-    material["K"][...] = 1e5
-    material["K_axis"] = state.zeros(n + (3,))
-    material["K_axis"][...] = state.tensor([0,1,0])
+    material["alpha"] = state.Constant([0.02])
+    material["Ms"] = state.Constant([8e5])
+    material["A"] = state.Constant([1.3e-11])
+    material["K"] = state.Constant([1e5])
+    material["K_axis"] = state.Constant([0,1,0])
 
     demag    = DemagField(state)
     exchange = ExchangeField(state)
@@ -54,8 +48,7 @@ def test_material_tensors():
                                      +4.3e-3/constants.mu_0,
                                      0.0])
 
-    state.m = state.zeros(n + (3,))
-    state.m[:5,:,:,0] = 1.0
+    state.m = state.Constant([1,0,0])
     state.m[5:,:,:,0] = -1.0
 
     llg = LLGSolver(state, [demag, exchange, aniso, external])

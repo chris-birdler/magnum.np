@@ -1,6 +1,6 @@
 import torch
 import os
-from magnumnp.common import logging
+from magnumnp.common import logging, DecoratedTensor
 
 __all__ = ["State"]
 
@@ -17,24 +17,26 @@ class State(object):
         logging.info_green("[State] running on device:%s" % self._device)
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
 
-    def renorm(self):
-        self.m /= torch.linalg.norm(self.m, dim = 3, keepdim = True)
-        self.m = torch.nan_to_num(self.m, posinf=0, neginf=0)
-
-    def zeros(self, size, dtype=torch.float64, **kwargs):
+    def _zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
-    def arange(self, start, end=None, step=1, dtype=torch.float64, **kwargs):
+    def _arange(self, start, end=None, step=1, dtype=torch.float64, **kwargs):
         if end == None:
            end = start
            start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
-    def linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
+    def _linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
     def tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
+
+    def Constant(self, c):
+        c = self.tensor(c)
+        x = self._zeros(self._mesh.n + c.shape).as_subclass(DecoratedTensor)
+        x[...] =  c
+        return x
 
     def SpatialCoordinates(self):
         x = self.arange(self._mesh.n[0]) * self._mesh.dx[0] + self._mesh.dx[0]/2. + self._mesh.origin[0]
