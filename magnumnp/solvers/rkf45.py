@@ -5,7 +5,7 @@ __all__ = ["RKF45"]
 
 #Runge-Kutta-Fehlberg method with stepsize control
 class RKF45(object):
-    def __init__(self, f, state, dt=1e-15):
+    def __init__(self, f, state, dt=1e-15, atol=1e-5):
         self._f = f
         self._state = state
         self._dt = state.tensor([dt])
@@ -16,7 +16,7 @@ class RKF45(object):
         self._maxstep = state.tensor([1e-11])
         self._minscale = 0.2
         self._maxscale = 10.
-        self._atol = 1e-5
+        self._atol = atol
 
     def _try_step(self):
         f, m, t, dt = self._f, self._state.m, self._state.t, self._dt
