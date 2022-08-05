@@ -25,7 +25,7 @@ def test_different_tensors():
     # test lambda [3]
     h_func = lambda t: state.Tensor([t,0,0])
     external = ExternalField(state, h_func)
-    torch.testing.assert_close(external.h(0,state.m), state.tensor([0,0,0]))
+    torch.testing.assert_close(external.h(0,state.m).avg(), state.tensor([0,0,0]))
     torch.testing.assert_close(external.h(1.,state.m), state.tensor([1,0,0]))
 
     # test lambda [nx,ny,nz,3]
