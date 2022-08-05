@@ -50,9 +50,9 @@ class State(object):
         return x
 
     def SpatialCoordinates(self):
-        x = self.arange(self._mesh.n[0]) * self._mesh.dx[0] + self._mesh.dx[0]/2. + self._mesh.origin[0]
-        y = self.arange(self._mesh.n[1]) * self._mesh.dx[1] + self._mesh.dx[1]/2. + self._mesh.origin[1]
-        z = self.arange(self._mesh.n[2]) * self._mesh.dx[2] + self._mesh.dx[2]/2. + self._mesh.origin[2]
+        x = self._arange(self._mesh.n[0]) * self._mesh.dx[0] + self._mesh.dx[0]/2. + self._mesh.origin[0]
+        y = self._arange(self._mesh.n[1]) * self._mesh.dx[1] + self._mesh.dx[1]/2. + self._mesh.origin[1]
+        z = self._arange(self._mesh.n[2]) * self._mesh.dx[2] + self._mesh.dx[2]/2. + self._mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ
