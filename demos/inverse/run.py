@@ -41,7 +41,7 @@ m_t.normalize()
 
 demag    = DemagField(state)
 exchange = ExchangeField(state)
-phi = state.Tensor(state.Tensor([0.]), requires_grad = True)
+phi = state.Tensor([0.], requires_grad = True)
 theta = state.Tensor([1.5708], requires_grad = True)
 
 external = ExternalField(state, torch.stack([sin(theta)*cos(phi),

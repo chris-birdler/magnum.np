@@ -39,13 +39,11 @@ class State(object):
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
-            t = data.as_subclass(DecoratedTensor)
-            t.requires_grad = requires_grad
-            return t
+            return data.as_subclass(DecoratedTensor)
         elif callable(data): # TODO: allow returning List instead of Tensors
             return data
         else:
-            raise TypeError("h needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
+            raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c):
         c = self.tensor(c)
