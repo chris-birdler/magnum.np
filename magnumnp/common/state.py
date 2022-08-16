@@ -33,15 +33,19 @@ class State(object):
     def tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
 
-    def Tensor(self, data, dtype=torch.float64):
-        if isinstance(data, list):
-            return torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
+    def Tensor(self, data, dtype=torch.float64, requires_grad = False):
+        if isinstance(data, list) or isinstance(data, tuple):
+            t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
+            t.requires_grad = requires_grad
+            return t
         elif isinstance(data, torch.Tensor):
-            return data.as_subclass(DecoratedTensor)
-        elif callable(data):
+            t = data.as_subclass(DecoratedTensor)
+            t.requires_grad = requires_grad
+            return t
+        elif callable(data): # TODO: allow returning List instead of Tensors
             return data
         else:
-            raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
+            raise TypeError("h needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c):
         c = self.tensor(c)
