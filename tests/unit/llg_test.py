@@ -38,12 +38,12 @@ def test_material_tensors():
     material["alpha"] = state.Constant([0.02])
     material["Ms"] = state.Constant([8e5])
     material["A"] = state.Constant([1.3e-11])
-    material["K"] = state.Constant([1e5])
-    material["K_axis"] = state.Constant([0,1,0])
+    material["Ku"] = state.Constant([1e5])
+    material["Ku_axis"] = state.Constant([0,1,0])
 
     demag    = DemagField(state)
     exchange = ExchangeField(state)
-    aniso    = AnisotropyField(state)
+    aniso    = UniaxialAnisotropyField(state)
     external = ExternalField(state, [-24.6e-3/constants.mu_0,
                                      +4.3e-3/constants.mu_0,
                                      0.0])

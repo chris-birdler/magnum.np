@@ -23,8 +23,8 @@ Keff = 1200e3*constants.mu_0*0.4/2./constants.mu_0
 state._material = {
         "Ms": 1200e3,
         "A": 15e-12,
-        "K": Keff,
-        "K_axis": [0, 0, 1], 
+        "Ku": Keff,
+        "Ku_axis": [0, 0, 1], 
         "gamma": 2.211e5,
         "alpha": 0.048,
         "eta_damp": -0.1,# both eta with opposite sign as magnum.af, same as magnum.pi
@@ -39,7 +39,7 @@ state.m[:,:,:,2]   = 1.
 
 # initialize field terms
 exchange = ExchangeField(state)
-aniso = AnisotropyField(state)
+aniso = UniaxialAnisotropyField(state)
 torque = SpinOrbitTorque(state)
 
 #relax magnetization state before applying SOT

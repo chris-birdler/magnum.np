@@ -16,8 +16,8 @@ state._material = {
         "alpha": 1.,
         "A":  13e-12, # [J/m]
         "Db": 3.0e-3, # [J/m2]
-        "K": 0.4e6,   # [J/m3]
-        "K_axis": [0.0, 0.0, 1.0]
+        "Ku": 0.4e6,   # [J/m3]
+        "Ku_axis": [0.0, 0.0, 1.0]
         }
 
 XX, YY, ZZ = state.SpatialCoordinates()
@@ -29,7 +29,7 @@ state._material["Ms"] = Ms
 
 # initialize field terms
 exchange = ExchangeField(state)
-aniso = AnisotropyField(state)
+aniso = UniaxialAnisotropyField(state)
 dmi = BulkDMIField(state)
 
 # initialize magnetization that relaxes into s-state
