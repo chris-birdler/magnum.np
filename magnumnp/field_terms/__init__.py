@@ -6,8 +6,7 @@ from magnumnp.field_terms.exchange import *
 from magnumnp.field_terms.external import *
 from magnumnp.field_terms.oersted import *
 from magnumnp.field_terms.rkky import *
-from magnumnp.field_terms.spintorque_zhangli import *
-from magnumnp.field_terms.spintorque_sot import *
+from magnumnp.field_terms.spintorque import *
 
 __all__ = (anisotropy.__all__ +
            demag.__all__ +
@@ -17,5 +16,4 @@ __all__ = (anisotropy.__all__ +
            external.__all__ +
            oersted.__all__ +
            rkky.__all__ +
-           spintorque_zhangli.__all__ +
-           spintorque_sot.__all__)
+           spintorque.__all__)
