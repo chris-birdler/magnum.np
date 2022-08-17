@@ -64,7 +64,7 @@ class RKF45(object):
             dt_opt = self._optimal_stepsize(err)
             if self._dt > dt_opt or self._dt > t1 - self._state.t:
                 # step size was too large, retry with optimal stepsize
-                self._dt = min(dt_opt, t1 - self._state.t)
+                self._dt = min(dt_opt, t1 - self._state.t).detach()
                 logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, self._state.t))
             else:
                 # accept step, adapt stepsize for next step
