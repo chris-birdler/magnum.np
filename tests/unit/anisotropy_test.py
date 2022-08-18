@@ -29,9 +29,12 @@ def test_cubic_anisotropy():
         assert h_sim[0,0,0,0] == pytest.approx(hx_analytic[0].cpu().numpy())
         assert E_sim == pytest.approx(E_analytic.cpu().numpy())
 
+
+    state._material["Kc_alpha"] = state.Constant([pi/4.])
+    aniso = CubicAnisotropyField(state)
     for phi in torch.linspace(0., pi, steps=10):
-        mx = cos(phi + pi/4)
-        my = sin(phi + pi/4)
+        mx = cos(phi - pi/4)
+        my = sin(phi - pi/4)
         mz = 0.
         state.m = state.Constant((mx, my, mz))
         h_sim = aniso.h(0, state.m)
@@ -43,4 +46,5 @@ def test_cubic_anisotropy():
         hx_analytic = -2. / constants.mu_0 / state._material["Ms"] * state._material["Kc1"] * mx * (my**2 + mz**2)
         E_analytic = state._material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * mesh.cell_volume
 
+#        assert h_sim[0,0,0,0] == pytest.approx(hx_analytic[0].cpu().numpy())
         assert E_sim == pytest.approx(E_analytic.cpu().numpy())
