@@ -42,7 +42,6 @@ class CubicAnisotropyField(object):
                          torch.stack([-sin(a)*cos(g) - cos(a)*cos(b)*sin(g), cos(a)*cos(g) - sin(a)*cos(b)*sin(g),  sin(b)*sin(g)], dim = -1),
                          torch.stack([ cos(a)*sin(b)                       , sin(a)*sin(b)                       ,  cos(b)], dim = -1)], dim = -1)
 
-
         A = A.squeeze(dim = 3)
         m = m.unsqueeze(dim = 3)
         if inv:
@@ -61,7 +60,13 @@ class CubicAnisotropyField(object):
         h =  2. * self._Kc1 * torch.stack([mrx * (mry**2 + mrz**2), mry*(mrz**2 + mrx**2), mrz*(mrx**2 + mry**2)], dim = -1) + \
              2. * self._Kc2 * torch.stack([mrx * mry**2. * mrz**2., mrx**2. * mry * mrz**2., mrx**2. * mry**2. * mrz], dim = -1)
         h = self._m_rotated(self._state, h, inv = True)
-        return torch.nan_to_num(-1./constants.mu_0/self._Ms * h , posinf=0, neginf=0)
+        return torch.nan_to_num(-1./constants.mu_0/self._Ms * h, posinf=0, neginf=0)
 
     def E(self, t, m):
-        return -0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))
+        mr = self._m_rotated(self._state, m)
+        mx = mr[:,:,:,0]
+        my = mr[:,:,:,1]
+        mz = mr[:,:,:,2]
+
+        return (self._Kc1 * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2).sum() +
+                self._Kc2 * (mx**2 * my**2 * mz**2).sum()) * self._mesh.cell_volume

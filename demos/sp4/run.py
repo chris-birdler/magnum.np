@@ -33,7 +33,7 @@ state.m[(-1,0),:,:,1] = 1.0
 # initialize sstate
 minimizer = Minimizer(state, [demag, exchange])
 minimizer.minimize_event()
-write_vtr(state.m, "data/m0")
+write_vti(state.m, "data/m0.vti", state)
 
 # perform integration with external field
 llg = LLGSolver(state, [demag, exchange, external])
