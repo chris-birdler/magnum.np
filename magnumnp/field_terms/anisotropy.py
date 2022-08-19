@@ -33,40 +33,28 @@ class CubicAnisotropyField(object):
         self._K_beta  = state._material["Kc_beta"]
         self._K_gamma = state._material["Kc_gamma"]
 
-    def _m_rotated(self, state, m, inv = False):
+    def _R(self, state):
         a = self._K_alpha
         b = self._K_beta
         g = self._K_gamma
 
-        A = torch.stack([torch.stack([-sin(a)*sin(g) + cos(a)*cos(b)*cos(g), cos(a)*sin(g) + sin(a)*cos(b)*cos(g), -sin(b)*cos(g)], dim = -1),
-                         torch.stack([-sin(a)*cos(g) - cos(a)*cos(b)*sin(g), cos(a)*cos(g) - sin(a)*cos(b)*sin(g),  sin(b)*sin(g)], dim = -1),
-                         torch.stack([ cos(a)*sin(b)                       , sin(a)*sin(b)                       ,  cos(b)], dim = -1)], dim = -1)
-
-        A = A.squeeze(dim = 3)
-        m = m.unsqueeze(dim = 3)
-        if inv:
-            return torch.matmul(m, A.permute(0,1,2,4,3)).squeeze(dim=3)
-        else:
-            return torch.matmul(m, A).squeeze(dim=3)
-
+        return torch.stack([torch.concat([-sin(a)*sin(g) + cos(a)*cos(b)*cos(g), cos(a)*sin(g) + sin(a)*cos(b)*cos(g), -sin(b)*cos(g)], dim = -1),
+                            torch.concat([-sin(a)*cos(g) - cos(a)*cos(b)*sin(g), cos(a)*cos(g) - sin(a)*cos(b)*sin(g),  sin(b)*sin(g)], dim = -1),
+                            torch.concat([ cos(a)*sin(b)                       , sin(a)*sin(b)                       ,  cos(b)], dim = -1)], dim = -1)
 
     @timedmethod
     def h(self, t, m):
-        mr = self._m_rotated(self._state, m)
-        mrx = mr[:,:,:,0]
-        mry = mr[:,:,:,1]
-        mrz = mr[:,:,:,2]
+        R = self._R(self._state)
+        mx, my, mz = torch.einsum('...a, ...ab-> ...b', m, R).unbind(dim=-1) # matmult
 
-        h =  2. * self._Kc1 * torch.stack([mrx * (mry**2 + mrz**2), mry*(mrz**2 + mrx**2), mrz*(mrx**2 + mry**2)], dim = -1) + \
-             2. * self._Kc2 * torch.stack([mrx * mry**2. * mrz**2., mrx**2. * mry * mrz**2., mrx**2. * mry**2. * mrz], dim = -1)
-        h = self._m_rotated(self._state, h, inv = True)
+        h =  2. * self._Kc1 * torch.stack([mx * (my**2 + mz**2), my*(mz**2 + mx**2), mz*(mx**2 + my**2)], dim = -1) + \
+             2. * self._Kc2 * torch.stack([mx * my**2. * mz**2., mx**2. * my * mz**2., mx**2. * my**2. * mz], dim = -1)
+        h = torch.einsum('...a, ...ba-> ...b', h, R) # matmult transpose
         return torch.nan_to_num(-1./constants.mu_0/self._Ms * h, posinf=0, neginf=0)
 
     def E(self, t, m):
-        mr = self._m_rotated(self._state, m)
-        mx = mr[:,:,:,0]
-        my = mr[:,:,:,1]
-        mz = mr[:,:,:,2]
+        R = self._R(self._state)
+        mx, my, mz = torch.einsum('...a, ...ab-> ...b', m, R).unbind(dim=-1) # matmult
 
         return (self._Kc1 * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2).sum() +
                 self._Kc2 * (mx**2 * my**2 * mz**2).sum()) * self._mesh.cell_volume
