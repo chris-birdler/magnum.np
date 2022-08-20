@@ -66,32 +66,32 @@ def test_cubic_field():
     state._material = {"Kc_alpha": state.Constant([pi/4.]),
                        "Kc_beta": state.Constant([0.]),
                        "Kc_gamma": state.Constant([0.]),
-                       "Kc1": state.tensor([1e3]),
-                       "Kc2": state.tensor([0.]),
+                       "Kc1": state.Constant([1e3]),
+                       "Kc2": state.Constant([0.]),
                        "Ms": 800e3}
     aniso = CubicAnisotropyField(state)
-    phi = 0.123 
+    phi = 0.123
     mx = cos(phi - pi/4)
     my = sin(phi - pi/4)
     mz = 0.
     state.m = state.Constant((mx, my, mz))
     torch.testing.assert_close(aniso.h(0, state.m).avg(), state.tensor([-191.01109252, -148.98001006, 0.]))
 
-def test_cubic_materialtypes():
+def test_cubic_material_tensor():
     n  = (2, 3, 4)
     dx = (1, 2, 5)
     mesh = Mesh(n, dx)
     state = State(mesh, {})
-    state._material = {"Kc_alpha": state.Constant([0.]),
-                       "Kc_beta": state.Constant([0.]),
-                       "Kc_gamma": state.Constant([0.]),
+    state._material = {"Kc_alpha": state.tensor([pi/4.]),
+                       "Kc_beta": state.tensor([0.]),
+                       "Kc_gamma": state.tensor([0.]),
                        "Kc1": state.tensor([1e3]),
                        "Kc2": state.tensor([0.]),
                        "Ms": 800e3}
     aniso = CubicAnisotropyField(state)
-    state.m = state.Constant((1,0,0))
-    try:
-        h = aniso.h(0., state.m)
-    except:
-        pass
-    return aniso
+    phi = 0.123
+    mx = cos(phi - pi/4)
+    my = sin(phi - pi/4)
+    mz = 0.
+    state.m = state.Constant((mx, my, mz))
+    torch.testing.assert_close(aniso.h(0, state.m).avg(), state.tensor([-191.01109252, -148.98001006, 0.]))
