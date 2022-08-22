@@ -51,19 +51,16 @@ state.m = state.Constant([0.0, 0.0, 0.0])
 state.m[disk] = state.Tensor((0.,0.,-1.))
 state.m[n[0]//2-5:n[0]//2+5, n[1]//2-5:n[1]//2+5, :, 2] = 1.0
 state.m.normalize()
-write_vti(state.m, "data/m_init.vti", state)
+write_vti(state.m, "data/m0.vti", state)
 
 # relax structure without external fields
 llg = LLGSolver([exchange, aniso, dmi])
 i = 0
-with open('data/log.dat', 'w') as f:
+with open('data/m_interface.dat', 'w') as f:
     while state.t < 5e-9-eps:
         llg.step(state, 1e-11)
         f.write("%g %g %g %g\n" % ((state.t,) + tuple(state.m.avg())))
         f.flush()
-
-        if i % 10 == 0:
-            write_vti(state.m, "data/m_%.5d.vti" % (i//10))
-        i += 1
+write_vti(state.m, "data/m_interface.vti")
 
 Timer.print_report()
