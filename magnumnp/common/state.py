@@ -29,8 +29,8 @@ class State(object):
     def _linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
-    # TODO: make this _tensor
-    def tensor(self, data, dtype=torch.float64):
+    # _tensor for internal use only
+    def _tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
 
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
@@ -45,10 +45,10 @@ class State(object):
         else:
             raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
 
-    def Constant(self, c):
-        c = self.tensor(c)
-        x = self._zeros(self.mesh.n + c.shape).as_subclass(DecoratedTensor)
-        x[...] =  c
+    def Constant(self, c, dtype=torch.float64):
+        c = self._tensor(c, dtype=dtype)
+        x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
+        x[...] = c
         return x
 
     def SpatialCoordinates(self):

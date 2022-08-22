@@ -5,14 +5,14 @@ __all__ = ["RKF45"]
 
 #Runge-Kutta-Fehlberg method with stepsize control
 class RKF45(object):
-    def __init__(self, f, dt=1e-15, atol=1e-5): # remove state?
+    def __init__(self, f, dt=1e-15, atol=1e-5):
         self._f = f
-        self._dt = dt #state.tensor([dt])
+        self._dt = dt #state._tensor([dt])
         self._order = 4
 
         # Numerical Recipies 3rd Edition suggests these values:
         self._headroom = 0.9
-        self._maxstep = 1e-11 #state.tensor([1e-11])
+        self._maxstep = 1e-11 #state._tensor([1e-11])
         self._minscale = 0.2
         self._maxscale = 10.
         self._atol = atol

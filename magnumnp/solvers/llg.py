@@ -8,7 +8,7 @@ class LLGSolver(object):
     def __init__(self, terms, atol = 1e-5):
         self._terms = terms
         def dm(state, t, m):
-            t0 = state.tensor(state.t)
+            t0 = state._tensor(state.t)
             m0 = state.m.detach()
             state.t = t
             state.m = m # TODO: m needs to be reset after changing
@@ -30,3 +30,18 @@ class LLGSolver(object):
     def step(self, state, dt):
         self._solver.step(state, dt)
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
+
+    @timedmethod
+    def relax(self, state, maxiter = 500, rtol = 1e-5, dt = 1e-11):
+        s = state.duplicate()
+        s.material["alpha"] = 1.0
+        E0 = sum([term.E(s) for term in self._terms])
+        for i in range(maxiter) :
+            self._solver.step(s, dt)
+            E = sum([term.E(s) for term in self._terms])
+            dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
+            logging.info_blue("[LLG] relax: i=%g dE=%g E=%g" % (i, dE, E))
+            if dE < rtol:
+                break
+            E0 = E
+        state.m = s.m
