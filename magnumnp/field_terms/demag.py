@@ -75,10 +75,9 @@ def dipole_g(points):
 
 class DemagField(object):
     @timedmethod
-    def __init__(self, state, p = 20):
+    def __init__(self, state, p = 20): # TODO: remove state
         self._state = state
-        self._mesh = state._mesh
-        self._Ms = state._material["Ms"]
+        self._mesh = state.mesh
         self._p = p
         self._init_N()
 
@@ -128,12 +127,12 @@ class DemagField(object):
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
 
     @timedmethod
-    def h(self, t, m):
+    def h(self, state):
         hx = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         hy = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         hz = self._state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
         for ax in range(3):
-            m_pad_fft1D = torch.fft.rfftn(self._Ms * m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
+            m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = [i for i in range(3) if self._mesh.n[i] > 1], s = [2*self._mesh.n[i] for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
 
             hx += self._N[0][ax] * m_pad_fft1D
             hy += self._N[1][ax] * m_pad_fft1D
@@ -148,8 +147,8 @@ class DemagField(object):
                              hz[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2]]], dim=3)
         return h_fft
 
-    def E(self, t, m):
-        return - 0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(self._Ms * m * self.h(t, m))
+    def E(self, state):
+        return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
 
     def __str__(self):
         return "demag"

@@ -5,10 +5,9 @@ from magnumnp.common import logging, DecoratedTensor
 __all__ = ["State"]
 
 class State(object):
-    def __init__(self, mesh, material, t0=0, device=None):
+    def __init__(self, mesh, t0=0, device=None):
         self.t = t0
-        self._mesh = mesh
-        self._material = material
+        self.mesh = mesh
         if device == None:
             CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
@@ -47,14 +46,14 @@ class State(object):
 
     def Constant(self, c):
         c = self.tensor(c)
-        x = self._zeros(self._mesh.n + c.shape).as_subclass(DecoratedTensor)
+        x = self._zeros(self.mesh.n + c.shape).as_subclass(DecoratedTensor)
         x[...] =  c
         return x
 
     def SpatialCoordinates(self):
-        x = self._arange(self._mesh.n[0]) * self._mesh.dx[0] + self._mesh.dx[0]/2. + self._mesh.origin[0]
-        y = self._arange(self._mesh.n[1]) * self._mesh.dx[1] + self._mesh.dx[1]/2. + self._mesh.origin[1]
-        z = self._arange(self._mesh.n[2]) * self._mesh.dx[2] + self._mesh.dx[2]/2. + self._mesh.origin[2]
+        x = self._arange(self.mesh.n[0]) * self.mesh.dx[0] + self.mesh.dx[0]/2. + self.mesh.origin[0]
+        y = self._arange(self.mesh.n[1]) * self.mesh.dx[1] + self.mesh.dx[1]/2. + self.mesh.origin[1]
+        z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ

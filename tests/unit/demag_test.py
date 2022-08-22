@@ -8,28 +8,26 @@ def test_energy_cube():
     dx = (1e-9, 2e-9, 5e-9)
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
-    material = {"Ms": Ms}
-    state = State(mesh, material)
+    state = State(mesh)
+    state.material = {"Ms": Ms}
     demag = DemagField(state)
 
     state.m = state.Constant([1,0,0])
 
-    h = demag.h(0,state.m)
-    E = demag.E(0,state.m)
+    h = demag.h(state)
+    E = demag.E(state)
     assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
 
 def test_Ms_domain():
     n  = (4,4,4)
     dx = (1e-9, 1e-9, 1e-9)
+    Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
-    material = {}
-    state = State(mesh, material)
-
-    state._material['Ms'] = state.Constant([1])
-
+    state = State(mesh)
+    state.material = {'Ms': state.Constant([Ms])}
     state.m = state.Constant([1,0,0])
-
     demag = DemagField(state)
 
-    h = demag.h(0,state.m)
-    E = demag.E(0,state.m)
+    h = demag.h(state)
+    E = demag.E(state)
+    assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
