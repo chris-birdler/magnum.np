@@ -16,7 +16,6 @@ class LLGSolver(object):
             state.t = t0
             state.m = m0
             return dm
-        #self._solver = RKF45(lambda state: self._dm(state), atol=atol)
         self._solver = RKF45(dm, atol=atol)
 
     def _dm(self, state):
