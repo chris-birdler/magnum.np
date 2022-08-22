@@ -28,9 +28,9 @@ A = state.Constant([0])
 A[disk] = 13e-12 # [pJ/m]
 state.material["A"] = A
 
-D = state.Constant([0])
-D[disk] = 3e-3 # [mJ/m²]
-state.material["Di"] = D
+DD2d = state.Constant([0])
+DD2d[disk] = 3e-3 # [mJ/m²]
+state.material["DD2d"] = DD2d
 
 K = state.Constant([0])
 K[disk] = 0.4e6 # [J/m³]
@@ -44,7 +44,7 @@ state.material["Ku_axis"] = K_axis
 # initialize field terms
 exchange = ExchangeField()
 aniso = UniaxialAnisotropyField()
-dmi = InterfaceDMIField()
+dmi = D2dDMIField()
 
 # initialize magnetization that relaxes into s-state
 state.m = state.Constant([0.0, 0.0, 0.0]) 

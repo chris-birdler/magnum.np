@@ -35,9 +35,9 @@ def write_vti(fields, filename, state = None):
         dx = (1., 1., 1.)
         origin = (0., 0., 0.)
     else:
-        n = state._mesh.n
-        dx = state._mesh.dx
-        origin = state._mesh.origin
+        n = state.mesh.n
+        dx = state.mesh.dx
+        origin = state.mesh.origin
 
     grid = pv.UniformGrid(dims = np.array(n) + 1,
                           spacing = dx,
