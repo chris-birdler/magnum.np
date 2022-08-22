@@ -8,8 +8,8 @@ def test_decorated_function():
     dx = (1e-9, 2e-9, 5e-9)
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
-    material = {"Ms": Ms}
-    state = State(mesh, material)
+    state = State(mesh)
+    state.material = {"Ms": Ms}
     state.m = state.Constant([1,1,1])
     torch.testing.assert_close(state.m.avg(), state.tensor([1,1,1]))
 
@@ -28,6 +28,7 @@ def test_Constant():
     dx = (1e-9, 2e-9, 5e-9)
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
-    material = {"Ms": Ms}
-    state = State(mesh, material)
+    state = State(mesh)
+    state.material = {"Ms": Ms}
     state.m = state.Constant([0,0,1])
+    torch.testing.assert_close(state.m.avg(), state.tensor([0,0,1]))

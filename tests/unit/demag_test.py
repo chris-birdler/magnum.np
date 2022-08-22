@@ -10,7 +10,7 @@ def test_energy_cube():
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {"Ms": Ms}
-    demag = DemagField(state)
+    demag = DemagField()
 
     state.m = state.Constant([1,0,0])
 
@@ -26,7 +26,7 @@ def test_Ms_domain():
     state = State(mesh)
     state.material = {'Ms': state.Constant([Ms])}
     state.m = state.Constant([1,0,0])
-    demag = DemagField(state)
+    demag = DemagField()
 
     h = demag.h(state)
     E = demag.E(state)

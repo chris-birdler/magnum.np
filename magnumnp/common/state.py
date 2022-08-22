@@ -13,6 +13,7 @@ class State(object):
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
         else:
             self._device = device
+        self.material = {}
         logging.info_green("[State] running on device:%s" % self._device)
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
 
