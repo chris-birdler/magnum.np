@@ -19,7 +19,7 @@ state.material = {
 
 
 # initialize field terms
-demag    = DemagField(state)
+demag    = DemagField()
 exchange = ExchangeField()
 external = ExternalField(state, [-24.6e-3/constants.mu_0,
                                  +4.3e-3/constants.mu_0,
