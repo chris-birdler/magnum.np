@@ -1,7 +1,6 @@
 from magnumnp import *
 import torch
 
-set_log_level(10)
 Timer.enable()
 
 # initialize mesh
@@ -31,11 +30,12 @@ state.m[1:-1,:,:,0]   = 1.0
 state.m[(-1,0),:,:,1] = 1.0
 
 # relax without external field
-#llg = LLGSolver(state, [demag, exchange])
-#llg.relax()
-#write_vti(state.m, "data/m0.vti", state)
+llg = LLGSolver([demag, exchange])
+llg.relax(state)
+write_vti(state.m, "data/m0.vti", state)
 
 # perform integration with external field
+state.t = 0.
 state.material["alpha"] = 0.02
 llg = LLGSolver([demag, exchange, external])
 with open('data/m.dat', 'w') as f:

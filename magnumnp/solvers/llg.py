@@ -33,15 +33,16 @@ class LLGSolver(object):
 
     @timedmethod
     def relax(self, state, maxiter = 500, rtol = 1e-5, dt = 1e-11):
-        s = state.duplicate()
-        s.material["alpha"] = 1.0
-        E0 = sum([term.E(s) for term in self._terms])
+        alpha0 = state.material["alpha"]
+        t0 = state.t
+        state.material["alpha"] = 1.0
+        E0 = sum([term.E(state) for term in self._terms])
         for i in range(maxiter) :
-            self._solver.step(s, dt)
-            E = sum([term.E(s) for term in self._terms])
+            self._solver.step(state, dt)
+            E = sum([term.E(state) for term in self._terms])
             dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
-            logging.info_blue("[LLG] relax: i=%g dE=%g E=%g" % (i, dE, E))
+            logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
             if dE < rtol:
                 break
             E0 = E
-        state.m = s.m
+        state.t = t0
