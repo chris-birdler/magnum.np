@@ -8,10 +8,10 @@ class LLGSolver(object):
     def __init__(self, terms, atol = 1e-5):
         self._terms = terms
         def dm(state, t, m):
-            t0 = state._tensor(state.t)
+            t0 = state.t
             m0 = state.m.detach()
             state.t = t
-            state.m = m # TODO: m needs to be reset after changing
+            state.m = m
             dm = self._dm(state)
             state.t = t0
             state.m = m0
