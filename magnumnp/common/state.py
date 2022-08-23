@@ -5,8 +5,7 @@ from magnumnp.common import logging, DecoratedTensor
 __all__ = ["State"]
 
 class State(object):
-    def __init__(self, mesh, t0=0, device=None):
-        self.t = t0
+    def __init__(self, mesh, t0=0., device=None):
         self.mesh = mesh
         if device == None:
             CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
@@ -14,8 +13,17 @@ class State(object):
         else:
             self._device = device
         self.material = {}
+        self.t = t0
         logging.info_green("[State] running on device:%s" % self._device)
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
+
+    @property
+    def t(self):
+        return self._t
+
+    @t.setter
+    def t(self, value):
+        self._t = self.Tensor(value)
 
     def _zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
@@ -34,7 +42,7 @@ class State(object):
         return torch.tensor(data, dtype=dtype, device=self._device)
 
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
-        if isinstance(data, list) or isinstance(data, tuple):
+        if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int):
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
             t.requires_grad = requires_grad
             return t

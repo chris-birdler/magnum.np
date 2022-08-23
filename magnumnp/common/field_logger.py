@@ -1,7 +1,9 @@
 import torch
 import os
 from magnumnp.common import logging
-from xml.etree import ElementTree
+import xml.etree.cElementTree as ET
+from xml.etree import ElementTree, cElementTree
+from xml.dom import minidom
 from .io import write_vti 
 
 __all__ = ["FieldLogger"]
@@ -38,19 +40,21 @@ class FieldLogger(object):
                 if exc.errno != errno.EEXIST:
                     raise
 
+        filename, ext = os.path.splitext(filename)
+        if ext != ".pvd":
+            raise NameError("Only .pvd extention allowed")
         self._filename = filename
-        self._file  = None
         self._every = every
         if isinstance(fields, str):
             fields = [fields]
         self._fields = fields
         self._i = 0
+        self._xmlroot = cElementTree.Element("VTKFile", type="Collection", version="0.1", byte_order="LittleEndian")
+        cElementTree.SubElement(self._xmlroot, "Collection")
 
     def log(self, state):
-        if self._file is None: # TODO: write pvd file
-            self._file = open(self._filename+".pvd", 'w')
         self._i += 1
-        if ((self._i - 1) % self._every > 0):
+        if ((self._i-1) % self._every > 0):
             return
 
         values = {}
@@ -71,14 +75,14 @@ class FieldLogger(object):
                 raise RuntimeError('Column type not supported.')
             values[name] = value
 
-        write_vti(values, "%s_%04d.vti" % (self._filename, self._i // self._every), state = state)
+        filename = "%s_%04d.vti" % (self._filename, self._i // self._every)
+        write_vti(values, filename, state = state)
+        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
+        with open(self._filename + ".pvd", 'w') as fd:
+            fd.write(minidom.parseString(ElementTree.tostring(self._xmlroot, 'utf-8')).toprettyxml(indent="  "))
 
     def __lshift__(self, state):
         self.log(state)
 
     def reset(self):
         self._i = 0
-
-    def __del__(self):
-        if self._file is not None:
-            self._file.close()
