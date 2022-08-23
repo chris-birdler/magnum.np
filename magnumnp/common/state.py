@@ -40,10 +40,10 @@ class State(object):
             return t
         elif isinstance(data, torch.Tensor):
             return data.as_subclass(DecoratedTensor)
-        elif callable(data): # TODO: allow returning List instead of Tensors
-            return data
+        elif callable(data):
+            return lambda t: self.Tensor(data(t))
         else:
-            raise TypeError("h needs to be 'list', 'torch.Tensor', or 'function'!")
+            raise TypeError("h needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c, dtype=torch.float64):
         c = self._tensor(c, dtype=dtype)

@@ -8,7 +8,7 @@ class DecoratedTensor(torch.Tensor):
         return super().__new__(cls, x, *args, **kwargs) 
       
     def avg(self, dim=(0,1,2)):
-        if self.dim() == 1: # e.g. [0,0,1]
+        if self.dim() <= 1: # e.g. [0,0,1]
             return self
         elif self.dim() == 2: # state.m[domain]
             return self.mean(dim=0) 

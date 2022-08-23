@@ -3,7 +3,7 @@ from scipy import interpolate
 
 __all__ = ["TimeInterpolator"]
 
-class TimeInterpolator(object):
+class TimeInterpolator(object): # TODO: use torch in order to prevent additional type-cases
     def __init__(self, points):
         xp = np.array(list(points.keys()))
         fp = np.array(list(points.values()))

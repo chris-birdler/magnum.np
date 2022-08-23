@@ -1,4 +1,4 @@
-from magnumnp.common import constants
+from magnumnp.common import timedmethod, constants
 import torch
 
 __all__ = ["ExternalField"]
@@ -7,6 +7,7 @@ class ExternalField(object):
     def __init__(self, h):
         self._h = h
 
+    @timedmethod
     def h(self, state):
         return state.Tensor(self._h)(state.t)
 

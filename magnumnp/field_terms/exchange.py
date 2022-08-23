@@ -32,7 +32,7 @@ class ExchangeField(object):
 
         h *= 2. / (constants.mu_0 * state.material["Ms"])
         h = torch.nan_to_num(h, posinf=0, neginf=0)
-        return h
+        return state.Tensor(h)
 
     def E(self, state):
         return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
