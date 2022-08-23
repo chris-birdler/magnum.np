@@ -101,14 +101,16 @@ class ScalarLogger(object):
             if isinstance(column[1], Iterable):
                 if (len(column[1]) == 3):
                     for i in ('x', 'y', 'z'):
-                        headings.append("%24s" % (column[0] + '_' + i))
+                        headings.append(column[0] + '_' + i)
                 else:
                     for i in range(len(column[1])):
-                        headings.append("%24s" % (column[0] + '_' + str(i)))
+                        headings.append(column[0] + '_' + str(i))
             else:
-                headings.append("%24s" % column[0])
+                headings.append(column[0])
 
-        self._file.write("#" + "    ".join(headings) + "\n")
+        format_str = "#" + "    ".join(["%-22s"] * len(headings)) + "\n"
+        self._file.write(format_str % tuple(headings))
+        self._file.flush()
         
     def _write_row(self, columns):
         flat_values = reduce(lambda x,y: x+y,
