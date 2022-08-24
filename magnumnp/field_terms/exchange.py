@@ -18,7 +18,7 @@ class ExchangeField(object):
         current = (slice(None, -1), full, full)
         next = (slice(1, None), full, full)
 
-        for dim in range(3):
+        for dim in range(3): # TODO: [] could be overloaded for constant Decorated Tensor in order to handle both cases
             if isinstance(A, torch.Tensor): # TODO: A could be a 1D tensor instead of a 4D tensor field
                 h[current] += (2.*A[next]*A[current]) / (A[next]+A[current]) * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
                 h[next]    += (2.*A[next]*A[current]) / (A[next]+A[current]) * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
