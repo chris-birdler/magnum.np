@@ -4,7 +4,7 @@ __all__ = ["DecoratedTensor"]
 
 class DecoratedTensor(torch.Tensor):
     @staticmethod 
-    def __new__(cls, x, *args, **kwargs): 
+    def __new__(cls, x, *args, **kwargs): # TODO: is this needed?
         return super().__new__(cls, x, *args, **kwargs) 
       
     def avg(self, dim=(0,1,2)):

@@ -1,6 +1,6 @@
 import torch
 import os
-from magnumnp.common import logging, DecoratedTensor
+from magnumnp.common import logging, DecoratedTensor, Material
 
 __all__ = ["State"]
 
@@ -12,7 +12,7 @@ class State(object):
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
         else:
             self._device = device
-        self.material = {}
+        self._material = Material(self)
         self.t = t0
         logging.info_green("[State] running on device:%s" % self._device)
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
@@ -24,6 +24,18 @@ class State(object):
     @t.setter
     def t(self, value):
         self._t = self.Tensor(value)
+
+    @property
+    def material(self):
+        return self._material
+
+    @material.setter
+    def material(self, values):
+        if isinstance(values, dict):
+            for key, value in values.items(): 
+                self._material[key] = value
+        else:
+            raise ValueError("Dictionary needs to be provided to set material")
 
     def _zeros(self, size, dtype=torch.float64, **kwargs):
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
@@ -41,6 +53,7 @@ class State(object):
     def _tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
 
+    #TODO: this gives a DecoratedTensor! Should this be moved to the DecoratedTensor class
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int):
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)

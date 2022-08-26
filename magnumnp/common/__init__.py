@@ -1,6 +1,7 @@
 from magnumnp.common.decorated_tensor import *
 from magnumnp.common.constants import *
 from magnumnp.common.logging import *
+from magnumnp.common.material import *
 from magnumnp.common.mesh import *
 from magnumnp.common.state import *
 from magnumnp.common.tabulate import *
@@ -13,6 +14,7 @@ from magnumnp.common.time_interpolator import *
 __all__ = (["constants"] +
            decorated_tensor.__all__ +
            logging.__all__ +
+           material.__all__ +
            mesh.__all__ +
            state.__all__ +
            timer.__all__ +
