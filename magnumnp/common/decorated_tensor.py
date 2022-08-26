@@ -21,3 +21,6 @@ class DecoratedTensor(torch.Tensor):
 
     def __call__(self, t):
         return self
+
+    def __getitem__(self, slice):
+        return self
