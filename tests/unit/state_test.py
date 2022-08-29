@@ -11,7 +11,7 @@ def test_decorated_function():
     state = State(mesh)
     state.material = {"Ms": Ms}
     state.m = state.Constant([1,1,1])
-    torch.testing.assert_close(state.m.avg(), state.tensor([1,1,1]))
+    torch.testing.assert_close(state.m.avg(), state.Tensor([1,1,1]))
 
     state.m.normalize()
     avg = state.m.avg()
@@ -20,8 +20,8 @@ def test_decorated_function():
     x, y, z = state.SpatialCoordinates()
     domain1 = x < 4e-9
     state.m[domain1] = state.Tensor([0,0,1])
-    torch.testing.assert_close(state.m[domain1].avg(), state.tensor([0,0,1]))
-    torch.testing.assert_close(state.m.avg(), state.tensor([0.28867513, 0.28867513, 0.78867513]))
+    torch.testing.assert_close(state.m[domain1].avg(), state.Tensor([0,0,1]))
+    torch.testing.assert_close(state.m.avg(), state.Tensor([0.28867513, 0.28867513, 0.78867513]))
 
 def test_Constant():
     n  = (8,10,12)
@@ -31,4 +31,4 @@ def test_Constant():
     state = State(mesh)
     state.material = {"Ms": Ms}
     state.m = state.Constant([0,0,1])
-    torch.testing.assert_close(state.m.avg(), state.tensor([0,0,1]))
+    torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]))

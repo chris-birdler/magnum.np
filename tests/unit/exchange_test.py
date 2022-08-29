@@ -4,7 +4,7 @@ from math import pi, cos, sin
 from magnumnp import *
 
 def test_call():
-    n  = (1, 1, 1)
+    n  = (2, 3, 4)
     dx = (1, 2, 5)
     mesh = Mesh(n, dx)
     state = State(mesh)
