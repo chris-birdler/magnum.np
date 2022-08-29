@@ -32,6 +32,7 @@ class State(object):
     @material.setter
     def material(self, values):
         if isinstance(values, dict):
+            self._material = Material(self)
             for key, value in values.items(): 
                 self._material[key] = value
         else:

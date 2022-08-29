@@ -31,3 +31,17 @@ def test_Ms_domain():
     h = demag.h(state)
     E = demag.E(state)
     assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
+
+def test_PBC():
+    n  = (4,4,4)
+    dx = (1e-9, 1e-9, 1e-9)
+    Ms = 1./constants.mu_0
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {'Ms': state.Constant([Ms])}
+    state.m = state.Constant([1,0,0])
+    demag = DemagFieldPBC()
+
+    h = demag.h(state)
+    E = demag.E(state)
+    assert E == pytest.approx(0.)

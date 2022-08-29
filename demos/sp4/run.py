@@ -10,6 +10,7 @@ dx = (5e-9, 5e-9, 3e-9)
 mesh = Mesh(n, dx)
 state = State(mesh)
 
+
 state.material = {
     "Ms": 8e5,
     "A": 1.3e-11,

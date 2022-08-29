@@ -1,22 +1,18 @@
-from magnumnp.common import timedmethod
+from magnumnp.common import timedmethod, constants
+from math import pi
 import torch
 
 __all__ = ["DemagFieldPBC"]
 
 class DemagFieldPBC(object):
-    def __init__(self, state):
-        self._state = state
-        self._mesh = self._state._mesh
-        self._Ms = self._state._material["Ms"]
-
     @timedmethod
-    def h(self, t, m):
-        m_fft = torch.fft.rfftn(self._Ms * m, dim = [i for i in range(3) if self._mesh.n[i] > 1]).squeeze(-1)
-        dx, dy, dz = self._mesh.dx
+    def h(self, state):
+        m_fft = torch.fft.fftn(state.material["Ms"] * state.m, dim = [i for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1) #TODO: use rfftn -> kz should be size N//2+1
+        dx, dy, dz = state.mesh.dx
 
-        kx = (2. * np.pi * self._state._arange(self._mesh.n[0]) / self._mesh.n[0]).reshape(-1,1,1)
-        ky = (2. * np.pi * self._state._arange(self._mesh.n[1]) / self._mesh.n[1]).reshape(1,-1,1)
-        kz = (2. * np.pi * self._state._arange(self._mesh.n[2]) / self._mesh.n[2]).reshape(1,1,-1)
+        kx = (2. * pi * state._arange(state.mesh.n[0]) / state.mesh.n[0]).reshape(-1,1,1)
+        ky = (2. * pi * state._arange(state.mesh.n[1]) / state.mesh.n[1]).reshape(1,-1,1)
+        kz = (2. * pi * state._arange(state.mesh.n[2]) / state.mesh.n[2]).reshape(1,1,-1)
 
         div_fft = (1.-torch.exp(-1j*kx)) * m_fft[:,:,:,0] / dx \
                 + (1.-torch.exp(-1j*ky)) * m_fft[:,:,:,1] / dy \
@@ -32,5 +28,8 @@ class DemagFieldPBC(object):
         h_fft[:,:,:,1] = (1.-torch.exp(1j*ky)) * u_fft / dy 
         h_fft[:,:,:,2] = (1.-torch.exp(1j*kz)) * u_fft / dz 
 
-        h = torch.fft.irfftn(h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        h = torch.fft.ifftn(h_fft, dim = [i for i in range(3) if state.mesh.n[i] > 1])
         return h.real
+
+    def E(self, state):
+        return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
