@@ -13,7 +13,7 @@ class ExchangeField(object):
 
         A = state.material["A"]
         if self._domain != None:
-            A *= self._domain[:,:,:,None]
+            A = A * self._domain[:,:,:,None]
         full = slice(None, None)
         current = (slice(None, -1), full, full)
         next = (slice(1, None), full, full)
