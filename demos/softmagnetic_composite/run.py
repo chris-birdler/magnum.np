@@ -25,30 +25,30 @@ state.material = {
         }
 
 x, y, z = state.SpatialCoordinates()
-r = 16 * dc 
+r = 16 * dc
 gap = 50*dc - 2. * r
 l = 2.*r + gap
 
-magnetic1  = ((x  )**2 + (y  )**2 + (z  )**2 <= r**2) 
-magnetic2  = ((x-l)**2 + (y  )**2 + (z  )**2 <= r**2) 
-magnetic3  = ((x  )**2 + (y-l)**2 + (z  )**2 <= r**2) 
-magnetic4  = ((x  )**2 + (y  )**2 + (z-l)**2 <= r**2) 
-magnetic5  = ((x-l)**2 + (y  )**2 + (z-l)**2 <= r**2) 
-magnetic6  = ((x-l)**2 + (y-l)**2 + (z  )**2 <= r**2) 
-magnetic7  = ((x  )**2 + (y-l)**2 + (z-l)**2 <= r**2) 
-magnetic8  = ((x-l)**2 + (y-l)**2 + (z-l)**2 <= r**2) 
-magnetic9  = ((x-l/2.)**2 + (y     )**2 + (z-l/2.)**2 <= r**2) 
-magnetic10 = ((x-l/2.)**2 + (y-l/2.)**2 + (z     )**2 <= r**2) 
-magnetic11 = ((x     )**2 + (y-l/2.)**2 + (z-l/2.)**2 <= r**2) 
-magnetic12 = ((x-l/2.)**2 + (y-l   )**2 + (z-l/2.)**2 <= r**2) 
-magnetic13 = ((x-l/2.)**2 + (y-l/2.)**2 + (z-l   )**2 <= r**2) 
-magnetic14 = ((x-l   )**2 + (y-l/2.)**2 + (z-l/2.)**2 <= r**2) 
+magnetic1  = ((x  )**2 + (y  )**2 + (z  )**2 <= r**2)
+magnetic2  = ((x-l)**2 + (y  )**2 + (z  )**2 <= r**2)
+magnetic3  = ((x  )**2 + (y-l)**2 + (z  )**2 <= r**2)
+magnetic4  = ((x  )**2 + (y  )**2 + (z-l)**2 <= r**2)
+magnetic5  = ((x-l)**2 + (y  )**2 + (z-l)**2 <= r**2)
+magnetic6  = ((x-l)**2 + (y-l)**2 + (z  )**2 <= r**2)
+magnetic7  = ((x  )**2 + (y-l)**2 + (z-l)**2 <= r**2)
+magnetic8  = ((x-l)**2 + (y-l)**2 + (z-l)**2 <= r**2)
+magnetic9  = ((x-l/2.)**2 + (y     )**2 + (z-l/2.)**2 <= r**2)
+magnetic10 = ((x-l/2.)**2 + (y-l/2.)**2 + (z     )**2 <= r**2)
+magnetic11 = ((x     )**2 + (y-l/2.)**2 + (z-l/2.)**2 <= r**2)
+magnetic12 = ((x-l/2.)**2 + (y-l   )**2 + (z-l/2.)**2 <= r**2)
+magnetic13 = ((x-l/2.)**2 + (y-l/2.)**2 + (z-l   )**2 <= r**2)
+magnetic14 = ((x-l   )**2 + (y-l/2.)**2 + (z-l/2.)**2 <= r**2)
 
-magnetic = magnetic1 | magnetic2 | magnetic3 | magnetic4 | magnetic5 | magnetic6 | magnetic7 | magnetic8 | magnetic9 | magnetic10 | magnetic11 | magnetic12 | magnetic13 | magnetic14 
+magnetic = magnetic1 | magnetic2 | magnetic3 | magnetic4 | magnetic5 | magnetic6 | magnetic7 | magnetic8 | magnetic9 | magnetic10 | magnetic11 | magnetic12 | magnetic13 | magnetic14
 write_vti(magnetic, "data/domain.vti")
 
 Ms = state.Constant([0.0])
-Ms[magnetic] = 1.07 / constants.mu_0 
+Ms[magnetic] = 1.07 / constants.mu_0
 
 Kc1 = state.Constant([0.0])
 Kc1[magnetic] = 6e3
@@ -57,13 +57,13 @@ Kc2 = state.Constant([0.0])
 Kc2[magnetic] = 5e2
 
 A = state.Constant([0.0])
-A[magnetic] = 1e-11 
+A[magnetic] = 1e-11
 
-state.material["Ms"] = Ms 
-state.material["A"] = A 
-state.material["Kc1"] = Kc1 
+state.material["Ms"] = Ms
+state.material["A"] = A
+state.material["Kc1"] = Kc1
 state.material["Kc2"] = Kc2
- 
+
 state.material["Kc_alpha"] =  state.Constant([0.])
 state.material["Kc_beta"] =  state.Constant([0.])
 state.material["Kc_gamma"] =  state.Constant([0.])

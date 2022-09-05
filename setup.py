@@ -16,5 +16,5 @@ setup(name='magnumnp',
             'setproctitle',
             'pyvista',
             'xitorch'
-            ] 
+            ]
      )
