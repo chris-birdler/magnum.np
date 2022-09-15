@@ -11,7 +11,7 @@ class UniaxialAnisotropyField(object):
         return torch.nan_to_num(h, posinf=0, neginf=0)
 
     def E(self, state):
-        return -0.5 * constants.mu_0 * self._mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(t, m))
+        return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
 
 
 class CubicAnisotropyField(object):
