@@ -45,7 +45,10 @@ class ExchangeDMI(object):
 
     @timedmethod
     def h(self, state):
+        #TODO: maybe pad m internally
         h = state._zeros(state.mesh.n + (3,))
+        laplace = state._zeros(state.mesh.n + (3,))
+        dm = state._zeros(state.mesh.n + (3,))
 
         # exchange contribution
         A = state.material["A"]
@@ -53,29 +56,59 @@ class ExchangeDMI(object):
         current = (slice(None, -1), full, full)
         next = (slice(1, None), full, full)
 
-        for dim in range(3):
-            if isinstance(A, torch.Tensor) and A.dim() == 4: # TODO: A could be a 1D tensor instead of a 4D tensor field
-                A_avg = 2.*A[next]*A[current]/(A[next]+A[current])
-                h[current] += A_avg * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
-                h[next]    += A_avg * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
-            else:
-                h[current] += A * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
-                h[next]    += A * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
+        # x - component
+        dim = 0
+        A_avg = 2.*A[next]*A[current]/(A[next]+A[current]) # assume A is tensor-field
+        dm_next    = A_avg * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        dm_current = A_avg * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
+        laplace[...] = 0
+        laplace[current] = dm_next
+        laplace[next] += dm_current
 
-            # rotate dimension
-            current = current[-1:] + current[:-1]
-            next = next[-1:] + next[:-1]
+        h += laplace
+
+        dm[current] = dm_next
+        dm[next] -= dm_current
+        h[:,:,:,(0,)] += -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * dm[:,:,:,(2,)]
+        h[:,:,:,(2,)] -= -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * dm[:,:,:,(0,)]
+
+        current = current[-1:] + current[:-1] # rotate dimension
+        next = next[-1:] + next[:-1]
+
+        # y - component
+        dim = 1
+        A_avg = 2.*A[next]*A[current]/(A[next]+A[current]) # assume A is tensor-field
+        dm_next    = A_avg * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        dm_current = A_avg * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
+        laplace[...] = 0
+        laplace[current] = dm_next
+        laplace[next] += dm_current
+
+        h += laplace
+
+        dm[current] = dm_next
+        dm[next] -= dm_current
+        h[:,:,:,(1,)] += -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * dm[:,:,:,(2,)]
+        h[:,:,:,(2,)] -= -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * dm[:,:,:,(1,)]
+
+        current = current[-1:] + current[:-1] # rotate dimension
+        next = next[-1:] + next[:-1]
+
+        # z - component
+        dim = 2
+        A_avg = 2.*A[next]*A[current]/(A[next]+A[current]) # assume A is tensor-field
+        dm_next    = A_avg * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        dm_current = A_avg * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
+        laplace[...] = 0
+        laplace[current] = dm_next
+        laplace[next] += dm_current
+
+        h += laplace
+
+        current = current[-1:] + current[:-1] # rotate dimension
+        next = next[-1:] + next[:-1]
+
         h *= 2. / (constants.mu_0 * state.material["Ms"])
-
-#        # DMI contribution
-#        dim = [i for i in range(3) if state.mesh.n[i] > 1]
-#        dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
-#
-#        dmxdx = torch.gradient(state.m[:,:,:,0], spacing = dx[0], dim = 0)[0]
-#        dmydy = torch.gradient(state.m[:,:,:,1], spacing = dx[1], dim = 1)[0]
-#        dmzdx = torch.gradient(state.m[:,:,:,2], spacing = dx[0], dim = 0)[0]
-#        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = dx[1], dim = 1)[0]
-#        h += -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
         h = torch.nan_to_num(h, posinf=0, neginf=0)
         return state.Tensor(h)
 
