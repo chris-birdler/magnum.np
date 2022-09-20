@@ -6,16 +6,14 @@ import math
 
 
 Timer.enable()
-N = 80
-J_rkky = -1e-3
-K1 = 1e5
 Hextmax=2.5/constants.mu_0
 Hextmin=0.0/constants.mu_0
 tfinal = 20e-9
 
-n  = (N, 1, 1)
+n  = (80, 1, 1)
 dx = (1e-9, 1e-9, 1e-9)
 origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.,)
+
 mesh = Mesh(n, dx, origin)
 state = State(mesh)
 state.material = {"alpha": 1.}
