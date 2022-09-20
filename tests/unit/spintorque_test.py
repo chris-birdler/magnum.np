@@ -4,7 +4,7 @@ import torch
 from magnumnp import *
 
 def test_zhangli():
-    n  = (2,2,2)
+    n  = (2,1,2)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)

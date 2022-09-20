@@ -22,7 +22,7 @@ class SpinTorqueZhangLi(object):
         dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
 
         j = state.j(state.t)
-        jgradm = torch.einsum('...a,...ab-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
+        jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
 
         return state.material["b"] / constants.gamma * (torch.cross(state.m, jgradm) + state.material["xi"] * jgradm)
 

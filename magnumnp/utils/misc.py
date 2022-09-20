@@ -4,7 +4,7 @@ __all__ = ["add_noise", "nsk"]
 
 def add_noise(x, dev = 1.0, mean = 0.0):
    if torch.is_tensor(x):
-        x += torch.empty_like(x).normal_(mean = mean, std = dev) 
+        x += torch.empty_like(x).normal_(mean = mean, std = dev)
         x.normalize()
 
 def nsk(x, axis = 2):
