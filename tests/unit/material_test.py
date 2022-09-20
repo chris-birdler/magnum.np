@@ -73,3 +73,11 @@ def test_lambda():
     h2 = demag.h(state).avg()
     torch.testing.assert_close(h2, 2*h1)
 
+def test_material_as_dict():
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"A": 1, "B": 2}
+
+    assert len(state.material.items()) == 2
