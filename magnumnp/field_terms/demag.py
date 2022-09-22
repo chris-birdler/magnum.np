@@ -74,7 +74,6 @@ def dipole_g(points):
 
 
 class DemagField(object):
-    @timedmethod
     def __init__(self, p = 20):
         self._p = p
 
@@ -149,6 +148,3 @@ class DemagField(object):
 
     def E(self, state):
         return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
-
-    def __str__(self):
-        return "demag"
