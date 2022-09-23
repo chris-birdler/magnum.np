@@ -141,10 +141,9 @@ class DemagField(object):
         hy = torch.fft.irfftn(hy, dim = [i for i in range(3) if state.mesh.n[i] > 1])
         hz = torch.fft.irfftn(hz, dim = [i for i in range(3) if state.mesh.n[i] > 1])
 
-        h_fft = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                             hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                             hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
-        return h_fft
+        return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                            hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                            hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
 
     def E(self, state):
         return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
