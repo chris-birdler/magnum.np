@@ -1,5 +1,6 @@
 import torch
 import os
+import numpy as np
 from magnumnp.common import logging, DecoratedTensor, Material
 
 __all__ = ["State"]
@@ -56,7 +57,7 @@ class State(object):
 
     #TODO: this gives a DecoratedTensor! Should this be moved to the DecoratedTensor class
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
-        if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int):
+        if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
             t.requires_grad = requires_grad
             return t
@@ -65,7 +66,7 @@ class State(object):
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
-            raise TypeError("h needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
+            raise TypeError("data needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c, dtype=torch.float64):
         c = self._tensor(c, dtype=dtype)

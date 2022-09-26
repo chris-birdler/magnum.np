@@ -16,8 +16,9 @@ class DecoratedTensor(torch.Tensor):
             return self.mean(dim=dim) 
 
     def normalize(self):
-        self /= torch.linalg.norm(self, dim = 3, keepdim = True)
+        self /= torch.linalg.norm(self, dim = -1, keepdim = True)
         self[...] = torch.nan_to_num(self, posinf=0, neginf=0)
+        return self
 
     def __call__(self, t):
         return self

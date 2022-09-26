@@ -46,3 +46,4 @@ class LLGSolver(object):
                 break
             E0 = E
         state.t = t0
+        state.material["alpha"] = alpha0

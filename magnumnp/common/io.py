@@ -44,12 +44,16 @@ def write_vti(fields, filename, state = None):
                           origin = origin)
 
     for name, f in fields.items():
-        if len(f.shape) == 4 and f.shape[-1] == 1:
+        if len(f.shape) == 0: # expand constant tensor to tensorfield
+            f = f.expand(n)
+        if len(f.shape) == 4 and f.shape[-1] == 1: # remove dim for scalar field (nx,ny,nz,1) => (nx,ny,nz)
             f = f[: ,:, :, 0]
-        if len(f.shape) == 3:
-            grid.cell_data.set_scalars(f.detach().cpu().numpy().flatten('F'), name)
+        if len(f.shape) == 3: # scalar data
+            grid.cell_data.set_array(f.detach().cpu().numpy().flatten('F'), name)
+        elif len(f.shape) == 4: # vector data
+            grid.cell_data.set_array(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
         else:
-            grid.cell_data.set_vectors(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
+            raise ValueError("write_vti: unsupported data format (", name, f.shape, ")")
 
     grid.save(filename)
 
