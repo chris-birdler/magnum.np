@@ -1,8 +1,9 @@
 image: python:3.10
 
 test:
-  tags:
-    - docker_new
+    tags:
+        - docker
+
     script:
         - apt install -y libgl1-mesa-glx
         - pip install setuptools pytest
