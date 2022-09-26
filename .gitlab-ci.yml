@@ -2,8 +2,9 @@ image: python:3.10
 
 test:
     script:
-            #        - apt update -yq
+        - apt update -yq
             #        - apt install -y libgl1-mesa-glx
+        - apt install -y python3-opencv
         - pip install setuptools pytest opencv
         - pip install .
         - python -m pytest tests/
