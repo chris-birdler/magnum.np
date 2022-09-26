@@ -1,7 +1,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["ExchangeField", "ExchangeDMI"]
+__all__ = ["ExchangeField", "ExchangeDMI", "ExchangeDMIField2"]
 
 class ExchangeField(object):
     def __init__(self, domain=None):
@@ -107,6 +107,55 @@ class ExchangeDMI(object):
 
         current = current[-1:] + current[:-1] # rotate dimension
         next = next[-1:] + next[:-1]
+
+        h *= 2. / (constants.mu_0 * state.material["Ms"])
+        h = torch.nan_to_num(h, posinf=0, neginf=0)
+        return state.Tensor(h)
+
+    def E(self, state):
+        return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
+
+
+
+
+
+
+class ExchangeDMIField2(object):
+    def __init__(self, domain=None):
+        self._domain = domain
+
+    @timedmethod
+    def h(self, state):
+        h = state._zeros(state.mesh.n + (3,))
+
+        A = state.material["A"]
+        Di = state.material["Di"]
+        if self._domain != None:
+            A = A * self._domain[:,:,:,None]
+        full = slice(None, None)
+        current = (slice(None, -1), full, full)
+        next = (slice(1, None), full, full)
+
+        # assue 1. dimension
+        # calculate m_1.5:
+        dim = 0
+        rhs = (4.*A[current]*state.m[current] + 4.*A[next]*state.m[next])
+        m_15 = torch.concat([+rhs[...,(0,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
+                            -rhs[...,(2,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2),
+
+                            rhs[...,(1,)] / (4.*A[current] + 4.*A[next]),
+
+                            -rhs[...,(0,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
+                            +rhs[...,(2,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)], dim=-1)
+
+        ml = 2*m_15 - state.m[next]
+        mr = 2*m_15 - state.m[current]
+
+        #h[current] += A[current] * (mr - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        #h[next]    += A[next]    * (ml - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
+
+        h[current] += A[current] * (mr - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        h[next]    += A[next]    * (ml - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * state.material["Ms"])
         h = torch.nan_to_num(h, posinf=0, neginf=0)
