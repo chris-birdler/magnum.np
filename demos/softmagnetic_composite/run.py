@@ -13,16 +13,7 @@ mesh = Mesh(n, dx)
 
 # initialize state
 state = State(mesh)
-state.material = {
-        "Ms": 1.07 / constants.mu_0,
-        "A": 1.0e-11,
-        "alpha": 0.10,
-        "Kc1": 6e3,
-        "Kc2": 5e2,
-        "Kc_alpha": 0.,
-        "Kc_beta ": 0.,
-        "Kc_gamma": 0.
-        }
+state.material = {"alpha": 0.10}
 
 x, y, z = state.SpatialCoordinates()
 r = 16 * dc

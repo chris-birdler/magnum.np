@@ -48,80 +48,71 @@ def dipole_g(points):
 
 
 class OerstedField(object):
-    def __init__(self, state, p = 15):
-        self._state = state
-        self._mesh = state._mesh
+    def __init__(self, p = 20):
         self._p = p
-        self._init_K()
-        torch.cuda.empty_cache()
 
-    def _init_K_component(self, K, c, perm, func_near, func_far):
+    def _init_K_component(self, state, perm, func_near, func_far):
         # dipole far-field
-        ij = [torch.fft.fftshift(torch.arange(n, dtype=torch.float64, device=cuda)) - n//2 for n in K.shape[:3]]
+        shape = [1 if n==1 else 2*n for n in state.mesh.n]
+        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
-        r = torch.stack([ij[ind]*self._mesh.dx[ind] for ind in perm], dim=-1)
-        K[:,:,:,c] = func_far(r) * np.prod(self._mesh.dx) / (4.*np.pi)
+        r = torch.stack([ij[ind]*state.mesh.dx[ind] for ind in perm], dim=-1)
+        Kc = func_far(r) * np.prod(state.mesh.dx) / (4.*np.pi)
 
         # newell near-field
-        n_near = np.minimum(self._mesh.n, self._p)
-        K_near = self._state.zeros([1 if i==1 else 2*i for i in n_near])
-        ij = [torch.fft.fftshift(self._state.arange(n)) - n//2 for n in K_near.shape[:3]]
+        n_near = np.minimum(state.mesh.n, self._p)
+        K_near = state._zeros([1 if i==1 else 2*i for i in n_near])
+        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in K_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
-            r = torch.stack([(ij[ind] + k[ind])*self._mesh.dx[ind] for ind in perm], dim=-1)
-            K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(self._mesh.dx))
+            r = torch.stack([(ij[ind] + k[ind])*state.mesh.dx[ind] for ind in perm], dim=-1)
+            K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(state.mesh.dx))
 
-        K[ :n_near[0], :n_near[1], :n_near[2],c] = K_near[ :n_near[0], :n_near[1], :n_near[2]]
-        K[ :n_near[0], :n_near[1],-n_near[2]:,c] = K_near[ :n_near[0], :n_near[1],-n_near[2]:]
-        K[ :n_near[0],-n_near[1]:, :n_near[2],c] = K_near[ :n_near[0],-n_near[1]:, :n_near[2]]
-        K[ :n_near[0],-n_near[1]:,-n_near[2]:,c] = K_near[ :n_near[0],-n_near[1]:,-n_near[2]:]
-        K[-n_near[0]:, :n_near[1], :n_near[2],c] = K_near[-n_near[0]:, :n_near[1], :n_near[2]]
-        K[-n_near[0]:, :n_near[1],-n_near[2]:,c] = K_near[-n_near[0]:, :n_near[1],-n_near[2]:]
-        K[-n_near[0]:,-n_near[1]:, :n_near[2],c] = K_near[-n_near[0]:,-n_near[1]:, :n_near[2]]
-        K[-n_near[0]:,-n_near[1]:,-n_near[2]:,c] = K_near[-n_near[0]:,-n_near[1]:,-n_near[2]:]
+        Kc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = K_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
+        Kc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = K_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
+        Kc[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ] = K_near[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ]
+        Kc[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:] = K_near[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:]
+        Kc[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ] = K_near[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ]
+        Kc[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:] = K_near[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:]
+        Kc[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ] = K_near[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ]
+        Kc[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:] = K_near[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:]
 
-    def _init_K(self):
-        if os.path.isfile("cache/K%s.pt" % self._mesh):
-            K = torch.load("cache/K%s.pt" % self._mesh, map_location=self._state._device)
-            logging.info("[DEMAG]: Use cached oersted kernel")
-        else:
-            K = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3], dtype=torch.float64, device=cuda)
+        return torch.fft.rfftn(Kc, dim = [i for i in range(3) if state.mesh.n[i] > 1])#.real.clone()
 
-            time_kernel = time()
-            for i, t in enumerate(((krueger_g,dipole_g,0,1,2),
-                                   (krueger_g,dipole_g,1,2,0),
-                                   (krueger_g,dipole_g,2,0,1))):
-                self._init_K_component(K, i, t[2:], t[0], t[1])
+    def _init_K(self, state):
+        time_kernel = time()
+        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g)
+        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g)
+        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g)
 
-            logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
-            if not os.path.isdir("cache"):
-                os.makedirs("cache")
-            torch.save(K, "cache/K%s.pt" % self._mesh)
+        self._K = [[  0., -Kxy, +Kxz],
+                   [+Kxy,   0., -Kyz],
+                   [-Kxz, +Kyz,   0.]]
 
-        self._K_fft = torch.fft.rfftn(K, dim = [i for i in range(3) if self._mesh.n[i] > 1])
-
-        # init scratch spaces
-        self._j_pad = self._state.zeros([1 if i==1 else 2*i for i in self._mesh.n] + [3])
-        self._h_fft = self._state.zeros(list(self._K_fft.shape[:3]) + [3], dtype=self._K_fft.dtype)
+        logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
 
     @timedmethod
-    def h(self, t, j):
-        self._j_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:] = j
-        j_pad_fft = torch.fft.rfftn(self._j_pad, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+    def h(self, state):
+        if not hasattr(self, "_K"):
+            self._init_K(state)
 
-        self._h_fft[:,:,:,0] =                                           - self._K_fft[:,:,:,0]*j_pad_fft[:,:,:,1] + self._K_fft[:,:,:,2]*j_pad_fft[:,:,:,2]
-        self._h_fft[:,:,:,1] = + self._K_fft[:,:,:,0]*j_pad_fft[:,:,:,0]                                           - self._K_fft[:,:,:,1]*j_pad_fft[:,:,:,2]
-        self._h_fft[:,:,:,2] = - self._K_fft[:,:,:,2]*j_pad_fft[:,:,:,0] + self._K_fft[:,:,:,1]*j_pad_fft[:,:,:,1]
+        hx = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
+        hy = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
+        hz = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
 
-        h_pad = torch.fft.irfftn(self._h_fft, dim = [i for i in range(3) if self._mesh.n[i] > 1])
+        for ax in range(3):
+            j_pad_fft1D = torch.fft.rfftn(state.j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])
 
-        return h_pad[:self._mesh.n[0],:self._mesh.n[1],:self._mesh.n[2],:]
+            hx += self._K[0][ax] * j_pad_fft1D
+            hy += self._K[1][ax] * j_pad_fft1D
+            hz += self._K[2][ax] * j_pad_fft1D
 
-#    def E(self, t, m):
-#        return - 0.5 * constants.mu_0 * self._mesh.cell_volume \
-#               * torch.sum(self._Ms * m * self.h(t, m))
+        hx = torch.fft.irfftn(hx, dim = [i for i in range(3) if state.mesh.n[i] > 1])
+        hy = torch.fft.irfftn(hy, dim = [i for i in range(3) if state.mesh.n[i] > 1])
+        hz = torch.fft.irfftn(hz, dim = [i for i in range(3) if state.mesh.n[i] > 1])
 
-    def __str__(self):
-        return "oersted"
+        return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                            hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                            hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)

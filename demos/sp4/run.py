@@ -14,7 +14,7 @@ state = State(mesh)
 state.material = {
     "Ms": 8e5,
     "A": 1.3e-11,
-    "alpha": 1.00
+    "alpha": 0.02
     }
 
 
@@ -36,13 +36,10 @@ llg.relax(state)
 write_vti(state.m, "data/m0.vti", state)
 
 # perform integration with external field
-state.t = 0.
-state.material["alpha"] = 0.02
 llg = LLGSolver([demag, exchange, external])
-with open('data/m.dat', 'w') as f:
-    while state.t < 1e-9-eps:
-        llg.step(state, 1e-11)
-        f.write("%g %g %g %g\n" % ((state.t,) + tuple(torch.mean(state.m, axis=(0,1,2)))))
-        f.flush()
+logger = ScalarLogger("data/m.dat", ['t', 'm'])
+while state.t < 1e-9-eps:
+    llg.step(state, 1e-11)
+    logger << state
 
 Timer.print_report()
