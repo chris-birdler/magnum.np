@@ -141,21 +141,16 @@ class ExchangeDMIField2(object):
         dim = 0
         rhs = (4.*A[current]*state.m[current] + 4.*A[next]*state.m[next])
         m_15 = torch.concat([+rhs[...,(0,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
-                            -rhs[...,(2,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2),
+                             -rhs[...,(2,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2),
 
-                            rhs[...,(1,)] / (4.*A[current] + 4.*A[next]),
+                             rhs[...,(1,)] / (4.*A[current] + 4.*A[next]),
 
-                            -rhs[...,(0,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
-                            +rhs[...,(2,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)], dim=-1)
+                             -rhs[...,(0,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
+                             +rhs[...,(2,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)], dim=-1)
 
-        ml = 2*m_15 - state.m[next]
-        mr = 2*m_15 - state.m[current]
-
-        #h[current] += A[current] * (mr - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
-        #h[next]    += A[next]    * (ml - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
-
-        h[current] += A[current] * (mr - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
-        h[next]    += A[next]    * (ml - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
+        # exchange field
+        h[current] += 2.*A[current] * (m_15 - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
+        h[next]    += 2.*A[next]    * (m_15 - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * state.material["Ms"])
         h = torch.nan_to_num(h, posinf=0, neginf=0)
