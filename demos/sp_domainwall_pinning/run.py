@@ -2,12 +2,11 @@ from magnumnp import *
 import numpy as np
 
 Timer.enable()
-N = 80
 Hextmax=2.5/constants.mu_0
 Hextmin=0.0/constants.mu_0
 tfinal = 20e-9
 
-n  = (N, 1, 1)
+n  = (80, 1, 1)
 dx = (1e-9, 1e-9, 1e-9)
 origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.,)
 mesh = Mesh(n, dx, origin)
@@ -41,9 +40,6 @@ state.m.normalize()
 
 exchange = ExchangeField()
 aniso = UniaxialAnisotropyField()
-
-#llg = LLGSolver([exchange, aniso])
-#llg.relax(state, rtol = 1e-5)
 
 external = ExternalField(lambda t: state.Constant([0, (Hextmax-Hextmin)*t/tfinal+Hextmin, 0]))
 
