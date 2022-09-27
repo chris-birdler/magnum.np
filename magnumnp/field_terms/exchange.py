@@ -152,6 +152,21 @@ class ExchangeDMIField2(object):
         h[current] += 2.*A[current] * (m_15 - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
         h[next]    += 2.*A[next]    * (m_15 - state.m[next])    / state.mesh.dx[dim]**2 # m_i-1 - m_i
 
+        # DMI field
+        #m:       0     1     2     3     4
+        #m15:  *     0     1     2     3      *   (*==0)???
+        dm = state._zeros(state.mesh.n + (3,))
+        dm[current] = m_15 - state.m[current]
+        dm[next] -=   m_15 - state.m[next]
+
+
+        #dm[0] = m_15[0] - m[0]
+        #      - 0
+        #dm[1] = m_15[1] - m[1]
+        #      - m_15[0] + m[1] =
+        #      = m_15[1] - m_15[0]
+        h += -state.material["Di"] * torch.stack((dm[...,2], 0.*dm[...,1], -dm[...,0]), dim=-1)
+
         h *= 2. / (constants.mu_0 * state.material["Ms"])
         h = torch.nan_to_num(h, posinf=0, neginf=0)
         return state.Tensor(h)
