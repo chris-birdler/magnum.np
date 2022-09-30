@@ -6,14 +6,12 @@ __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 class InterfaceDMIField(object):
     @timedmethod
     def h(self, state):
-        dim = [i for i in range(3) if state.mesh.n[i] > 1]
-        dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
-
-        dmxdx = torch.gradient(state.m[:,:,:,0], spacing = dx[0], dim = 0)[0]
-        dmydy = torch.gradient(state.m[:,:,:,1], spacing = dx[1], dim = 1)[0]
-        dmzdx = torch.gradient(state.m[:,:,:,2], spacing = dx[0], dim = 0)[0]
-        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = dx[1], dim = 1)[0]
-        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
+        dmxdx = torch.gradient(state.m[:,:,:,0], spacing = state.mesh.dx[0], dim = 0)[0]
+#        dmydy = torch.gradient(state.m[:,:,:,1], spacing = state.mesh.dx[1], dim = 1)[0]
+        dmzdx = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[0], dim = 0)[0]
+#        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[1], dim = 1)[0]
+#        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
+        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, 0.*dmzdx, -dmxdx), dim=-1)
         return torch.nan_to_num(h, posinf=0, neginf=0)
 
     def E(self, state):
