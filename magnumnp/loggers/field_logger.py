@@ -1,17 +1,16 @@
-import torch
 import os
 from magnumnp.common import logging
 import xml.etree.cElementTree as ET
 from xml.etree import ElementTree, cElementTree
 from xml.dom import minidom
-from .io import write_vti 
+from magnumnp.common.io import write_vti 
 
 __all__ = ["FieldLogger"]
 
 class FieldLogger(object):
     def __init__(self, filename, fields, every = 1):
         """
-        Logger class to fields
+        Logger class for fields
 
         *Arguments*
             filename (:class:`str`)

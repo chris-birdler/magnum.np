@@ -10,7 +10,7 @@ plot \
     'data/m_ref.dat' using ($1*1e9):2 title "x" w l lw 2 lc 1, \
     ''               using ($1*1e9):3 title "y" w l lw 2 lc 2, \
     ''               using ($1*1e9):4 title "z" w l lw 2 lc 3, \
-    'data/m.dat'     using ($1*1e9):2 notitle w p lc 1, \
+    'data/log.dat'   using ($1*1e9):2 notitle w p lc 1, \
     ''               using ($1*1e9):3 notitle w p lc 2, \
     ''               using ($1*1e9):4 notitle w p lc 3
 

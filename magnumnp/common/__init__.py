@@ -7,8 +7,6 @@ from magnumnp.common.state import *
 from magnumnp.common.tabulate import *
 from magnumnp.common.timer import *
 from magnumnp.common.io import *
-from magnumnp.common.scalar_logger import *
-from magnumnp.common.field_logger import *
 from magnumnp.common.time_interpolator import *
 
 __all__ = (["constants"] +
@@ -19,6 +17,4 @@ __all__ = (["constants"] +
            state.__all__ +
            timer.__all__ +
            io.__all__ +
-           scalar_logger.__all__ +
-           field_logger.__all__  +
            time_interpolator.__all__ )

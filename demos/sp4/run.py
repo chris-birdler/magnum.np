@@ -37,7 +37,7 @@ write_vti(state.m, "data/m0.vti", state)
 
 # perform integration with external field
 llg = LLGSolver([demag, exchange, external])
-logger = ScalarLogger("data/m.dat", ['t', 'm'])
+logger = Logger("data", ['t', 'm'])
 while state.t < 1e-9-eps:
     llg.step(state, 1e-11)
     logger << state
