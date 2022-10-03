@@ -139,14 +139,15 @@ class ExchangeDMIField2(object):
         # assue 1. dimension
         # calculate m_1.5:
         dim = 0
-        rhs = (4.*A[current]*state.m[current] + 4.*A[next]*state.m[next])
-        m_15 = torch.concat([+rhs[...,(0,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
-                             -rhs[...,(2,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2),
+        rhs = (A[current]*state.m[current] + A[next]*state.m[next])
 
-                             rhs[...,(1,)] / (4.*A[current] + 4.*A[next]),
+        m_15 = torch.concat([+rhs[...,(0,)] *                       (A[current] + A[next]) / ((A[current] + A[next])**2 + (state.mesh.dx[0]/4.*(Di[current]-Di[next]))**2)
+                             -rhs[...,(2,)] * state.mesh.dx[dim]/4.*(Di[current]-Di[next]) / ((A[current] + A[next])**2 + (state.mesh.dx[0]/4.*(Di[current]-Di[next]))**2),
 
-                             -rhs[...,(0,)] * (Di[current]-Di[next])       / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)
-                             +rhs[...,(2,)] * (4.*A[current] + 4.*A[next]) / ((4.*A[current] + 4.*A[next])**2 - (Di[current]-Di[next])**2)], dim=-1)
+                             rhs[...,(1,)] / (A[current] + A[next]),
+
+                             +rhs[...,(0,)] * state.mesh.dx[dim]/4.*(Di[current]-Di[next]) / ((A[current] + A[next])**2 + (state.mesh.dx[0]/4.*(Di[current]-Di[next]))**2)
+                             +rhs[...,(2,)] *                       (A[current] + A[next]) / ((A[current] + A[next])**2 + (state.mesh.dx[0]/4.*(Di[current]-Di[next]))**2)], dim=-1)
 
         # exchange field
         h[current] += 2.*A[current] * (m_15 - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
