@@ -6,8 +6,8 @@ import math
 
 Timer.enable()
 
-n  = (202, 1, 1)
-dx = (0.5e-9, 1e-9, 1e-9)
+n  = (102, 1, 1)
+dx = (1e-9, 1e-9, 1e-9)
 origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.,)
 
 mesh = Mesh(n, dx, origin)
