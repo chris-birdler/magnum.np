@@ -1,7 +1,7 @@
 import torch
+import os
 from collections.abc import Iterable
 from functools import reduce
-import os
 from magnumnp.common import logging, DecoratedTensor 
 
 __all__ = ["ScalarLogger"]
