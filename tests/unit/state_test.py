@@ -32,3 +32,22 @@ def test_Constant():
     state.material = {"Ms": Ms}
     state.m = state.Constant([0,0,1])
     torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]))
+
+def test_padding():
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material["Ms"] = state.Constant([1.])
+
+    # pad right
+    padded = state.material["Ms"].pad(dim=0, n=+1)
+    assert list(padded.shape) == [9,10,12,1]
+    assert padded[-1,0,0] == pytest.approx(0.)
+    assert padded[0,0,0] == pytest.approx(1.)
+
+    # pad left
+    padded = state.material["Ms"].pad(dim=1, n=-1)
+    assert list(padded.shape) == [8,11,12,1]
+    assert padded[0,-1,0] == pytest.approx(1.)
+    assert padded[0,0,0] == pytest.approx(0.)

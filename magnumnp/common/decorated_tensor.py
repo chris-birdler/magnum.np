@@ -20,5 +20,17 @@ class DecoratedTensor(torch.Tensor):
         self[...] = torch.nan_to_num(self, posinf=0, neginf=0)
         return self
 
+    def pad(self, dim, n):
+        shape = list(self.shape)
+        shape[dim] = abs(n)
+        zeros = torch.zeros(shape)
+
+        if n > 0:
+            return torch.concat([self, zeros], dim=dim)
+        elif n < 0:
+            return torch.concat([zeros, self], dim=dim)
+        else:
+            return self
+
     def __call__(self, t):
         return self
