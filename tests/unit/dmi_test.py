@@ -22,3 +22,29 @@ def test_call():
     dmi = D2dDMIField()
     dmi.h(state)
 
+def test_exchange_only():
+    n  = (20, 20, 1)
+    dx = (0.5e-9, 0.5e-9, 1e-9)
+    mesh = Mesh(n, dx, origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0.0))
+    state = State(mesh)
+    state.material["Ms"] = state.Constant([1./constants.mu_0])
+    state.material["A"] = state.Constant([1e-12])
+    state.material["Di"] = state.Constant([0.])
+
+    x, y, z = state.SpatialCoordinates()
+    domain = x**2 + y**2 < 5e-9**2
+
+    state.m = torch.stack([-y,x,0*z], dim=-1)
+    state.m[~domain] = 0
+
+    exchange1 = ExchangeField()
+    exchange2 = ExchangeDMIField()
+
+    h1 = exchange1.h(state)
+    h2 = exchange2.h(state)
+
+    write_vti(domain, "data/domain.vti", state)
+    write_vti(h1, "data/h1.vti", state)
+    write_vti(h2, "data/h2.vti", state)
+
+    torch.testing.assert_close(h1, h2)
