@@ -80,4 +80,4 @@ class State(object):
         z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
-        return XX, YY, ZZ
+        return DecoratedTensor(XX), DecoratedTensor(YY), DecoratedTensor(ZZ)
