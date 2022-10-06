@@ -43,8 +43,4 @@ def test_exchange_only():
     h1 = exchange1.h(state)
     h2 = exchange2.h(state)
 
-    write_vti(domain, "data/domain.vti", state)
-    write_vti(h1, "data/h1.vti", state)
-    write_vti(h2, "data/h2.vti", state)
-
     torch.testing.assert_close(h1, h2)
