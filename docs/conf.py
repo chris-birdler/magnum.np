@@ -39,6 +39,7 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
@@ -77,7 +78,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -89,6 +90,17 @@ html_theme = 'alabaster'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+#html_logo = "images/logo_magnum_np.svg"
+mathjax_config = {
+        "TeX": {
+            "Macros": {
+                "vec": ["{\\mathbf #1}", 1],
+                "mat": ["{\\mathbf #1}", 1],
+                "dx":  "{\\;\\text{d}\\vec{x}}",
+                "ds":  "{\\;\\text{d}\\vec{s}}"
+                }
+            }
+        }
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -109,22 +121,22 @@ htmlhelp_basename = 'magnumnpdoc'
 
 # -- Options for LaTeX output ------------------------------------------------
 
+#latex_logo = "images/logo_magnum_np.pdf"
 latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    # 'papersize': 'letterpaper',
-
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    # 'pointsize': '10pt',
-
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
+'papersize': 'a4paper',
+'pointsize': '11pt',
+'classoptions': ',openany,oneside',
+'babel': '\\usepackage[english]{babel}',
+'preamble': r"""
+ \definecolor{VerbatimBorderColor}{rgb}{1,1,1}
+ \renewcommand{\vec}[1]{\boldsymbol{#1}}
+ \newcommand{\mat}[1]{\boldsymbol{#1}}
+ \newcommand{\dx}{\;\text{d}\boldsymbol{x}}
+ \newcommand{\ds}{\;\text{d}\boldsymbol{s}}
+ \usepackage{amsmath, amssymb, amsthm}
+ \usepackage{bbm}
+ \renewcommand{\mathbb}[1]{\mathbbm{#1}}
+""",
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
