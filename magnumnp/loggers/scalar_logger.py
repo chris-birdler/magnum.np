@@ -122,3 +122,74 @@ class ScalarLogger(object):
     def __del__(self):
         if self._file is not None:
             self._file.close()
+
+    def resumable_step(self):
+        """
+        Returns the last step the logger can resume from, e.g. if the logger
+        logs every 10th step and the first (i = 0) step was already logged,
+        the result is 10.
+
+        *Returns*
+            :class:`int`
+                The step number the logger is able to resume from
+        """
+        if self._file is not None:
+            raise RuntimeError("Cannot resume from log file that is already open for writing.")
+
+        i = 0
+        with open(self._filename, 'r') as f:
+            for i, l in enumerate(f):
+                pass
+        return i * self._every
+
+    def resume(self, i):
+        """
+        Try to resume existing log file from log step i. The log file
+        is truncated accordingly.
+
+        *Arguments*
+            i (:class:`int`)
+                The log step to resume from
+        """
+        number = (self.resumable_step() - i) / self._every
+
+        # from https://superuser.com/questions/127786/efficiently-remove-the-last-two-lines-of-an-extremely-large-text-file
+        count = 0
+        #with open(self._filename, 'r+b') as f:
+        #    f.seek(0, os.SEEK_END)
+        #    end = f.tell()
+        #    while f.tell() > 0:
+        #        f.seek(-1, os.SEEK_CUR)
+        #        char = f.read(1)
+        #        if char != '\n' and f.tell() == end:
+        #            raise RuntimeError("Cannot resume: logfile does not end with a newline.")
+        #        if char == '\n':
+        #            count += 1
+        #        if count == number + 1:
+        #            f.truncate()
+        #            break
+        #        f.seek(-1, os.SEEK_CUR)
+
+        with open(self._filename, 'r+b', buffering=0) as f:
+            f.seek(0, os.SEEK_END)
+            end = f.tell()
+            while f.tell() > 0:
+                f.seek(-1, os.SEEK_CUR)
+                #print(f.tell())
+                char = f.read(1)
+                if char != b'\n' and f.tell() == end:
+                    raise RuntimeError("Cannot resume: logfile does not end with a newline.")
+                    #print ("No change: file does not end with a newline")
+                    #exit(1)
+                if char == b'\n':
+                    count += 1
+                if count == number + 1:
+                    f.truncate()
+                    break
+                    #print ("Removed " + str(number) + " lines from end of file")
+                    #exit(0)
+                f.seek(-1, os.SEEK_CUR)
+
+        self._i = i
+        if self._i > 0:
+            self._file = open(self._filename, 'a')

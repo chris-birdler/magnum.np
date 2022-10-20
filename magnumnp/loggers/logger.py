@@ -47,3 +47,39 @@ class Logger(object):
 
     def __lshift__(self, state):
         self.log(state)
+
+    def resume(self, state):
+        """
+        Tries to resume from existing log files. If resume is possible
+        the state object is updated with latest possible values of t
+        and m and the different log files are aligned and resumed.
+        If resume is not possible the state is not modiefied and the
+        simulations starts from the beginning.
+
+        *Arguments*
+            state (:class:`State`)
+                The state to be resumed from the log data
+        """
+        last_recorded_step = self.loggers["fields"].last_recorded_step()
+        if last_recorded_step is None:
+            logging.warning("Resume not possible. Start over.")
+            return
+
+        resumable_step = min(map(lambda logger: logger.resumable_step(), self.loggers.values()))
+        assert resumable_step >= last_recorded_step + 1
+
+        state.m, state.t = self.loggers["fields"].step_data(last_recorded_step, "m")
+        logging.info_green("Resuming from step %d (t = %g)." % (last_recorded_step, state.t))
+
+        for logger in self.loggers.values():
+            logger.resume(last_recorded_step + 1)
+
+    def is_resumable(self):
+        """
+        Returns True if logger can resume from log files.
+
+        *Returns*
+            :class:`bool`
+                True if resumable, False otherwise
+        """
+        return self.loggers["fields"].last_recorded_step() is not None
