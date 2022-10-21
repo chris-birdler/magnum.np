@@ -10,9 +10,9 @@ __all__ = ["LTEM", "MFM"]
 class LTEM(object):
     def __init__(self, state, comp = 2, voltage = 300e3, kcx = 0.1, kcy = 0.1):
         self._state = state
-        self._mesh = state._mesh
-        self._Ms = self._state._material["Ms"]
-        self._m = (self._state.m(self._state.t)*self._state._material["Ms"])
+        self._mesh = state.mesh
+        self._Ms = self._state.material["Ms"]
+        self._m = (self._state.m(self._state.t)*self._state.material["Ms"])
         self._h = self._mesh.n[comp] * self._mesh.dx[comp]
         self._dim = [0, 1]
         self._volt = voltage

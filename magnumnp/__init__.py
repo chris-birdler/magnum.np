@@ -10,6 +10,7 @@ try:
     from magnumnp.field_terms import *
     from magnumnp.solvers import *
     from magnumnp.loggers import *
+    from magnumnp.utils import *
 
     import magnumnp.common.logging as logging
     logging.info_green("magnum.np %s" % VERSION)
