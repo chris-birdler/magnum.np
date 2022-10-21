@@ -1,5 +1,5 @@
 import os
-from magnumnp.common import logging
+from magnumnp.common import logging, read_vti
 import xml.etree.cElementTree as ET
 from xml.etree import ElementTree, cElementTree
 from xml.dom import minidom
@@ -48,12 +48,15 @@ class FieldLogger(object):
             fields = [fields]
         self._fields = fields
         self._i = 0
+        self._i_start = 0
         self._xmlroot = cElementTree.Element("VTKFile", type="Collection", version="0.1", byte_order="LittleEndian")
         cElementTree.SubElement(self._xmlroot, "Collection")
 
     def log(self, state):
         self._i += 1
         if ((self._i-1) % self._every > 0):
+            return
+        if (self._i <= self._i_start):
             return
 
         values = {}
@@ -85,3 +88,61 @@ class FieldLogger(object):
 
     def reset(self):
         self._i = 0
+
+    def resumable_step(self):
+        try:
+            xml = ElementTree.parse(self._filename + ".pvd").getroot()
+            return len(list(xml.find('Collection'))) * self._every
+        except IOError:
+            return 0
+
+    def last_recorded_step(self):
+        """
+        Returns the number of the last step logged and None if no
+        step was yet logged.
+
+        *Returns*
+            :class:`int`
+                Number of the last step recorded
+        """
+        result = (self.resumable_step() // self._every - 1) * self._every
+        if result < 0:
+            return None
+        else:
+            return result
+
+    def step_data(self, i, field = None):
+        """
+        Returns field and time to a given step number.
+
+        *Arguments*
+            i (:class:`int`)
+                The step number
+            field (:class:`str`)
+                The field to be read
+
+        *Returns*
+            (:class:`dolfin.Function`, :class:`float`)
+                The field of step i and the corresponding time
+        """
+        if i % self._every > 0:
+            raise Exception()
+
+        xml = ElementTree.parse(self._filename + ".pvd").getroot()
+        item = list(xml.find('Collection'))[i // self._every]
+        mesh, data = read_vti(os.path.join(os.path.dirname(self._filename), item.attrib['file']))
+
+        return data[field], float(item.attrib['timestep'])
+
+    def resume(self, i):
+        """
+        Try to resume existing log file from log step i. The log file
+        is truncated accordingly.
+
+        *Arguments*
+            i (:class:`int`)
+                The log step to resume from
+        """
+        self._i = i
+        self._i_start = self.last_recorded_step() + 1
+        self._xmlroot = ElementTree.parse(self._filename + ".pvd").getroot()
