@@ -1,7 +1,7 @@
 import os
 from magnumnp.common import logging, read_vti
 import xml.etree.cElementTree as ET
-from xml.etree import ElementTree, cElementTree
+from xml.etree import cElementTree
 from xml.dom import minidom
 from magnumnp.common.io import write_vti 
 
@@ -81,7 +81,7 @@ class FieldLogger(object):
         write_vti(values, filename, state = state)
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
-            fd.write(minidom.parseString(ElementTree.tostring(self._xmlroot, 'utf-8')).toprettyxml(indent="  "))
+            fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
 
     def __lshift__(self, state):
         self.log(state)
@@ -91,7 +91,7 @@ class FieldLogger(object):
 
     def resumable_step(self):
         try:
-            xml = ElementTree.parse(self._filename + ".pvd").getroot()
+            xml = cElementTree.parse(self._filename + ".pvd").getroot()
             return len(list(xml.find('Collection'))) * self._every
         except IOError:
             return 0
@@ -128,7 +128,7 @@ class FieldLogger(object):
         if i % self._every > 0:
             raise Exception()
 
-        xml = ElementTree.parse(self._filename + ".pvd").getroot()
+        xml = cElementTree.parse(self._filename + ".pvd").getroot()
         item = list(xml.find('Collection'))[i // self._every]
         mesh, data = read_vti(os.path.join(os.path.dirname(self._filename), item.attrib['file']))
 
@@ -145,4 +145,4 @@ class FieldLogger(object):
         """
         self._i = i
         self._i_start = self.last_recorded_step() + 1
-        self._xmlroot = ElementTree.parse(self._filename + ".pvd").getroot()
+        self._xmlroot = cElementTree.parse(self._filename + ".pvd").getroot()

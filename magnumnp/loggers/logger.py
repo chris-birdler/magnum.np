@@ -36,12 +36,16 @@ class Logger(object):
     """
     def __init__(self, directory, scalars = [], fields = [], scalars_every = 1, fields_every = 1):
         self.loggers = {}
+        self._resume_time = None
         if len(scalars) > 0:
             self.loggers["scalars"] = ScalarLogger(os.path.join(directory, "log.dat"), scalars, every = scalars_every)
         if len(fields) > 0:
             self.loggers["fields"] = FieldLogger(os.path.join(directory, "fields.pvd"), fields, every = fields_every)
 
     def log(self, state):
+        if state.t == self._resume_time: # avoid logging directly after resume
+            self._resume_time = None
+            return
         for logger in self.loggers.values():
             logger << state
 
@@ -73,6 +77,8 @@ class Logger(object):
 
         for logger in self.loggers.values():
             logger.resume(last_recorded_step + 1)
+
+        self._resume_time = state.t
 
     def is_resumable(self):
         """
