@@ -3,15 +3,30 @@ import torch
 
 __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
+#        self.dmi_vector = np.array([0, -1., 0,  # -x
+#                                    0, 1., 0,   # +x
+#                                    1., 0, 0,   # -y
+#                                    -1., 0, 0,  # +y
+#                                    0, 0, 0,    # -z
+#                                    0, 0, 0     # +z
+#                                    ])              
+
 class InterfaceDMIField(object):
     @timedmethod
     def h(self, state):
         dmxdx = torch.gradient(state.m[:,:,:,0], spacing = state.mesh.dx[0], dim = 0)[0]
-#        dmydy = torch.gradient(state.m[:,:,:,1], spacing = state.mesh.dx[1], dim = 1)[0]
+        dmydy = torch.gradient(state.m[:,:,:,1], spacing = state.mesh.dx[1], dim = 1)[0]
         dmzdx = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[0], dim = 0)[0]
-#        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[1], dim = 1)[0]
-#        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
-        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, 0.*dmzdx, -dmxdx), dim=-1)
+        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[1], dim = 1)[0]
+
+        #m0       m1       m2       m3   ...   m_n-3      m_n-2       m_n-1                  N terms
+        #dmdx = state._zeros(state.mesh.n + (3,))
+        #dmdx[current] += state.m[next]    / state.mesh.dx[dim] #  m_i+1 - m_i
+        #dmdx[next]    -= state.m[current] / state.mesh.dx[dim] # -m_i-1 + m_i
+        #m2-m0 m3-m1 ...                                              m_n-1 - m_n-3          N-2 terms
+
+
+        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
         return torch.nan_to_num(h, posinf=0, neginf=0)
 
     def E(self, state):
