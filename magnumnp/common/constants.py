@@ -15,3 +15,9 @@ kb = 1.380648813e-23
 
 hbar = 1.0545718e-34
 """reduced Planck constant"""
+
+me = 9.1093837e-31
+"""Electron Mass"""
+
+c = 299792458
+"""Speed of Light"""
