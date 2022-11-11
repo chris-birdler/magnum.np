@@ -22,7 +22,7 @@ write vti files (compressed) using pyvista
 """
 def write_vti(fields, filename, state = None):
     dirname = os.path.dirname(filename)
-    if not os.path.isdir(dirname):
+    if dirname and not os.path.isdir(dirname):
         os.makedirs(dirname)
 
     if not (isinstance(fields, list) or isinstance(fields, dict)):
