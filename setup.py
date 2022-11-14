@@ -8,7 +8,7 @@ setup(name='magnumnp',
       author='Florian Bruckner',
       author_email='florian.bruckner@univie.ac.at',
       url='http://micromagnetics.org/magnum.np/',
-      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.solvers'],
+      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.utils'],
       install_requires = [
             'torch',
             'numpy',
