@@ -1,33 +1,39 @@
 from magnumnp.common import timedmethod, constants
 import torch
+import numpy as np
 
 __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
-#        self.dmi_vector = np.array([0, -1., 0,  # -x
-#                                    0, 1., 0,   # +x
-#                                    1., 0, 0,   # -y
-#                                    -1., 0, 0,  # +y
-#                                    0, 0, 0,    # -z
-#                                    0, 0, 0     # +z
-#                                    ])              
-
 class InterfaceDMIField(object):
+    def __init__(self):
+        self._dmi_vector = [[ 0, 1, 0], # x
+                            [-1, 0, 0], # y
+                            [ 0, 0, 0]] # z
+
     @timedmethod
     def h(self, state):
-        dmxdx = torch.gradient(state.m[:,:,:,0], spacing = state.mesh.dx[0], dim = 0)[0]
-        dmydy = torch.gradient(state.m[:,:,:,1], spacing = state.mesh.dx[1], dim = 1)[0]
-        dmzdx = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[0], dim = 0)[0]
-        dmzdy = torch.gradient(state.m[:,:,:,2], spacing = state.mesh.dx[1], dim = 1)[0]
+        h = state._zeros(state.mesh.n + (3,))
+        Di = state.material["Di"]
 
-        #m0       m1       m2       m3   ...   m_n-3      m_n-2       m_n-1                  N terms
-        #dmdx = state._zeros(state.mesh.n + (3,))
-        #dmdx[current] += state.m[next]    / state.mesh.dx[dim] #  m_i+1 - m_i
-        #dmdx[next]    -= state.m[current] / state.mesh.dx[dim] # -m_i-1 + m_i
-        #m2-m0 m3-m1 ...                                              m_n-1 - m_n-3          N-2 terms
+        full = slice(None, None)
+        current = (slice(None, -1), full, full)
+        next = (slice(1, None), full, full)
 
+        for dim in range(3):
+            v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
+            if isinstance(A, torch.Tensor) and A.dim() == 4: # TODO: A could be a 1D tensor instead of a 4D tensor field
+                raise NotImplemented
+            else:
+                h[current] += Di * torch.linalg.cross(v, state.m[next]) / (2.*state.mesh.dx[dim])
+                h[next] -= Di * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
 
-        h = -2. * state.material["Di"] / constants.mu_0 / state.material["Ms"] * torch.stack((dmzdx, dmzdy, -dmxdx-dmydy), dim=-1)
-        return torch.nan_to_num(h, posinf=0, neginf=0)
+            # rotate dimension
+            current = current[-1:] + current[:-1]
+            next = next[-1:] + next[:-1]
+
+        h *= 2. / (constants.mu_0 * state.material["Ms"])
+        h = torch.nan_to_num(h, posinf=0, neginf=0)
+        return state.Tensor(h)
 
     def E(self, state):
         return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * m * self.h(state))
