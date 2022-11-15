@@ -4,11 +4,9 @@ import numpy as np
 
 __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
-class InterfaceDMIField(object):
-    def __init__(self):
-        self._dmi_vector = [[ 0, 1, 0], # x
-                            [-1, 0, 0], # y
-                            [ 0, 0, 0]] # z
+class DMIField(object):
+    def __init__(self, dmi_vector):
+        self._dmi_vector = dmi_vector
 
     @timedmethod
     def h(self, state):
@@ -21,11 +19,15 @@ class InterfaceDMIField(object):
 
         for dim in range(3):
             v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
-            if isinstance(A, torch.Tensor) and A.dim() == 4: # TODO: A could be a 1D tensor instead of a 4D tensor field
-                raise NotImplemented
+            if isinstance(Di, torch.Tensor) and Di.dim() == 4: # TODO: Di could be a 1D tensor instead of a 4D tensor field
+                Di_avg = torch.where(Di[next]*Di[current] < 0,
+                                    torch.sqrt(torch.sqrt(-Di[next]*Di[current])*torch.abs(Di[next]+Di[current]) / 2.),
+                                    2.*Di[next]*Di[current]/(Di[next]+Di[current]))
+                h[current] += Di_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
+                h[next]    -= Di_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
             else:
-                h[current] += Di * torch.linalg.cross(v, state.m[next]) / (2.*state.mesh.dx[dim])
-                h[next] -= Di * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
+                h[current] += Di * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
+                h[next]    -= Di * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
 
             # rotate dimension
             current = current[-1:] + current[:-1]
@@ -37,6 +39,14 @@ class InterfaceDMIField(object):
 
     def E(self, state):
         return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * m * self.h(state))
+
+
+class InterfaceDMIField(DMIField):
+    def __init__(self):
+        dmi_vector = [[ 0, 1, 0], # x
+                      [-1, 0, 0], # y
+                      [ 0, 0, 0]] # z
+        super().__init__(dmi_vector)
 
 
 class BulkDMIField(object):
