@@ -5,13 +5,14 @@ import numpy as np
 __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
 class DMIField(object):
-    def __init__(self, dmi_vector):
+    def __init__(self, dmi_vector, D = "D"):
         self._dmi_vector = dmi_vector
+        self._D = D
 
     @timedmethod
     def h(self, state):
         h = state._zeros(state.mesh.n + (3,))
-        Di = state.material["Di"]
+        D = state.material[self._D]
 
         full = slice(None, None)
         current = (slice(None, -1), full, full)
@@ -19,15 +20,15 @@ class DMIField(object):
 
         for dim in range(3):
             v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
-            if isinstance(Di, torch.Tensor) and Di.dim() == 4: # TODO: Di could be a 1D tensor instead of a 4D tensor field
-                Di_avg = torch.where(Di[next]*Di[current] < 0,
-                                    torch.sqrt(torch.sqrt(-Di[next]*Di[current])*torch.abs(Di[next]+Di[current]) / 2.),
-                                    2.*Di[next]*Di[current]/(Di[next]+Di[current]))
-                h[current] += Di_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
-                h[next]    -= Di_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
+            if isinstance(D, torch.Tensor) and D.dim() == 4: # TODO: D could be a 1D tensor instead of a 4D tensor field
+                D_avg = torch.where(D[next]*D[current] < 0,
+                                    torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.),
+                                    2.*D[next]*D[current]/(D[next]+D[current]))
+                h[current] += D_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
+                h[next]    -= D_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
             else:
-                h[current] += Di * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
-                h[next]    -= Di * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
+                h[current] += D * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
+                h[next]    -= D * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
 
             # rotate dimension
             current = current[-1:] + current[:-1]
@@ -42,11 +43,11 @@ class DMIField(object):
 
 
 class InterfaceDMIField(DMIField):
-    def __init__(self):
+    def __init__(self, Di = "Di"):
         dmi_vector = [[ 0, 1, 0], # x
                       [-1, 0, 0], # y
                       [ 0, 0, 0]] # z
-        super().__init__(dmi_vector)
+        super().__init__(dmi_vector, Di)
 
 
 class BulkDMIField(object):
