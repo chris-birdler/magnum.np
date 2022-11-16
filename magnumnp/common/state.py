@@ -55,7 +55,6 @@ class State(object):
     def _tensor(self, data, dtype=torch.float64):
         return torch.tensor(data, dtype=dtype, device=self._device)
 
-    #TODO: this gives a DecoratedTensor! Should this be moved to the DecoratedTensor class
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
