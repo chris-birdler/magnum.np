@@ -81,3 +81,13 @@ def test_material_as_dict():
     state.material = {"A": 1, "B": 2}
 
     assert len(state.material.items()) == 2
+
+def test_slice_on_constant():
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"Ms": state.Tensor([1./constants.mu_0])}
+    Ms = state.material["Ms"]
+    x = Ms[1:,:,:]
+    assert x.dim() == Ms.dim()
