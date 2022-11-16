@@ -24,7 +24,7 @@ class State(object):
 
     @t.setter
     def t(self, value):
-        self._t = self.Tensor(value)
+        self._t = self._tensor(value)
 
     @property
     def material(self):
