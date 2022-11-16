@@ -20,15 +20,11 @@ class DMIField(object):
 
         for dim in range(3):
             v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
-            if isinstance(D, torch.Tensor) and D.dim() == 4: # TODO: D could be a 1D tensor instead of a 4D tensor field
-                D_avg = torch.where(D[next]*D[current] < 0,
-                                    torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.),
-                                    2.*D[next]*D[current]/(D[next]+D[current]))
-                h[current] += D_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
-                h[next]    -= D_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
-            else:
-                h[current] += D * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
-                h[next]    -= D * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
+            D_avg = torch.where(D[next]*D[current] < 0,
+                                torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.),
+                                2.*D[next]*D[current]/(D[next]+D[current]))
+            h[current] += D_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
+            h[next]    -= D_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
 
             # rotate dimension
             current = current[-1:] + current[:-1]

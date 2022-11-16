@@ -42,4 +42,4 @@ class DecoratedTensor(torch.Tensor):
         if self.dim() == 0 or (self.dim() == 1 and self.shape[0] == 1):
             return self
         else:
-            super().__getitem__(key)
+            return super().__getitem__(key)
