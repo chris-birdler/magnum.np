@@ -1,24 +1,28 @@
 from magnumnp.common import timedmethod, constants
 import torch
+from .field_terms import FieldTerm, LinearFieldTerm
 
 __all__ = ["ExchangeField", "ExchangeDMIField"]
 
-class ExchangeField(object):
-    def __init__(self, domain=None):
+class ExchangeField(LinearFieldTerm):
+    parameters = ["A"]
+
+    def __init__(self, domain=None, **kwargs):
         self._domain = domain
+        super().__init__(**kwargs)
 
     @timedmethod
     def h(self, state):
         h = state._zeros(state.mesh.n + (3,))
 
-        A = state.material["A"]
+        A = state.material[self.A]
         if self._domain != None:
             A = A * self._domain[:,:,:,None]
         full = slice(None, None)
         current = (slice(None, -1), full, full)
         next = (slice(1, None), full, full)
 
-        for dim in range(3): # TODO: [] could be overloaded for constant Decorated Tensor in order to handle both cases
+        for dim in range(3):
             A_avg = 2.*A[next]*A[current]/(A[next]+A[current])
             h[current] += A_avg * (state.m[next] - state.m[current]) / state.mesh.dx[dim]**2 # m_i+1 - m_i
             h[next]    += A_avg * (state.m[current] - state.m[next]) / state.mesh.dx[dim]**2 # m_i-1 - m_i
@@ -30,11 +34,6 @@ class ExchangeField(object):
         h *= 2. / (constants.mu_0 * state.material["Ms"])
         h = torch.nan_to_num(h, posinf=0, neginf=0)
         return state.Tensor(h)
-
-    def E(self, state):
-        return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
-
-
 
 
 # deprecated version of ExchangeDMI field
