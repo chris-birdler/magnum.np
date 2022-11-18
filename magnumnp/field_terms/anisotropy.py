@@ -18,6 +18,45 @@ class UniaxialAnisotropyField(LinearFieldTerm):
 
 
 class CubicAnisotropyField(FieldTerm):
+    r"""
+    Effective field contribution corresponding to the cubic anisotropy energy
+
+    .. math::
+
+      E = \int_\Omega \Big[
+        K_1 \big( m_x^2 m_y^2 + m_y^2 m_z^2 + m_z^2 m_x^2) +
+        K_2 m_x^2 m_y^2 m_z^2
+      \Big] \dx
+
+    with the anisotropy constants :math:`K_{c1}` and :math:`K_{c2}` given in units of :math:`\text{J/m}^3`.
+
+    If Euler angles :math:`\alpha`, :math:`\beta` and :math:`\gamma` are provided, the cubic anisotropy axes are rotated such that the effective magnetization components :math:`m_i` with :math:`i \in \{x,y,z\}` read
+
+    .. math::
+
+      m_i = (\mat{A} \vec{e}_i) \cdot \vec{m}
+
+    with
+
+    .. math::
+      \small
+      \mat{A} = \begin{pmatrix}
+            \cos(\alpha) \cos(\gamma) - \cos(\beta) \sin(\alpha) \sin(\gamma) & -\cos(\beta) \cos(\gamma) \sin(\alpha) - \cos(\alpha) \sin(\gamma) &  \sin(\alpha) \sin(\beta)\\
+            \cos(\gamma) \sin(\alpha) + \cos(\alpha) \cos(\beta) \sin(\gamma) &  \cos(\alpha) \cos(\beta) \cos(\gamma) - \sin(\alpha) \sin(\gamma) & -\cos(\alpha) \sin(\beta)\\
+            \sin(\beta) \sin(\gamma) & \cos(\gamma) \sin(\beta) & \cos(\beta)
+            \end{pmatrix}
+
+    :param Kc1: Name of the material parameter for the anisotropy constant K1, defaults to "Kc1"
+    :type Kc1: str, optional
+    :param Kc2: Name of the material parameter for the anisotropy constant K2, defaults to "Kc2"
+    :type Kc2: str, optional
+    :param Kc_alpha: Euler angle :math:`\alpha` for the rotation of the anisotropy axes
+    :type Kc_alpha: str, optional
+    :param Kc_beta: Euler angle :math:`\beta` for the rotation of the anisotropy axes
+    :type Kc_beta: str, optional
+    :param Kc_gamma: Euler angle :math:`\gamma` for the rotation of the anisotropy axes
+    :type Kc_gamma: str, optional
+    """
     parameters = ["Kc1", "Kc2", "Kc_alpha", "Kc_beta", "Kc_gamma"]
 
     def _R(self, state):
@@ -25,9 +64,9 @@ class CubicAnisotropyField(FieldTerm):
         b = state.material[self.Kc_beta]
         g = state.material[self.Kc_gamma]
 
-        R = torch.stack([torch.concat([-sin(a)*sin(g) + cos(a)*cos(b)*cos(g), cos(a)*sin(g) + sin(a)*cos(b)*cos(g), -sin(b)*cos(g)], dim = -1),
-                         torch.concat([-sin(a)*cos(g) - cos(a)*cos(b)*sin(g), cos(a)*cos(g) - sin(a)*cos(b)*sin(g),  sin(b)*sin(g)], dim = -1),
-                         torch.concat([ cos(a)*sin(b)                       , sin(a)*sin(b)                       ,  cos(b)], dim = -1)], dim = -1)
+        R = torch.stack([torch.concat([cos(a)*cos(g) - cos(b)*sin(a)*sin(g), -cos(b)*cos(g)*sin(a) - cos(a)*sin(g),  sin(a)*sin(b)], dim = -1),
+                         torch.concat([cos(g)*sin(a) + cos(a)*cos(b)*sin(g),  cos(a)*cos(b)*cos(g) - sin(a)*sin(g), -cos(a)*sin(b)], dim = -1),
+                         torch.concat([sin(b)*sin(g),                         cos(g)*sin(b),                         cos(b)       ], dim = -1)], dim = -1)
         return R
 
     @timedmethod
