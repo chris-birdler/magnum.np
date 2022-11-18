@@ -1,18 +1,20 @@
 from magnumnp.common import timedmethod, constants
 import torch
+from .field_terms import LinearFieldTerm
 import numpy as np
 
 __all__ = ["InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
-class DMIField(object):
-    def __init__(self, dmi_vector, D = "D"):
+class DMIField(LinearFieldTerm):
+    parameters = ["D"]
+    def __init__(self, dmi_vector, **kwargs):
         self._dmi_vector = dmi_vector
-        self._D = D
+        super().__init__(**kwargs)
 
     @timedmethod
     def h(self, state):
         h = state._zeros(state.mesh.n + (3,))
-        D = state.material[self._D]
+        D = state.material[self.D]
 
         full = slice(None, None)
         current = (slice(None, -1), full, full)
@@ -34,16 +36,13 @@ class DMIField(object):
         h = torch.nan_to_num(h, posinf=0, neginf=0)
         return state.Tensor(h)
 
-    def E(self, state):
-        return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * m * self.h(state))
-
 
 class InterfaceDMIField(DMIField):
     def __init__(self, Di = "Di"):
         dmi_vector = [[ 0, 1, 0], # x
                       [-1, 0, 0], # y
                       [ 0, 0, 0]] # z
-        super().__init__(dmi_vector, Di)
+        super().__init__(dmi_vector, D = Di)
 
 
 class BulkDMIField(DMIField):
@@ -51,7 +50,7 @@ class BulkDMIField(DMIField):
         dmi_vector = [[1, 0, 0], # x
                       [0, 1, 0], # y
                       [0, 0, 1]] # z
-        super().__init__(dmi_vector, Db)
+        super().__init__(dmi_vector, D = Db)
 
 
 class D2dDMIField(DMIField):
@@ -59,4 +58,4 @@ class D2dDMIField(DMIField):
         dmi_vector = [[-1, 0, 0], # x
                       [ 0, 1, 0], # y
                       [ 0, 0, 0]] # z
-        super().__init__(dmi_vector, DD2d)
+        super().__init__(dmi_vector, D = DD2d)

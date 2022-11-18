@@ -11,15 +11,15 @@ def test_call():
     state = State(mesh)
     state.m = state.Constant([1,0,0])
     state.material = {"Ms": 1./constants.mu_0,
-                      "Di": 1.,
-                      "Db": 1.,
-                      "DD2d": 1.}
+                      "xDi": 1.,
+                      "xDb": 1.,
+                      "xDD2d": 1.}
 
-    dmi = InterfaceDMIField()
+    dmi = InterfaceDMIField(Di = "xDi")
     dmi.h(state)
-    dmi = BulkDMIField()
+    dmi = BulkDMIField(Db = "xDb")
     dmi.h(state)
-    dmi = D2dDMIField()
+    dmi = D2dDMIField(DD2d = "xDD2d")
     dmi.h(state)
 
 def test_interface_1D():
