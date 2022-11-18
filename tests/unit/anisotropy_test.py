@@ -95,3 +95,22 @@ def test_cubic_material_tensor():
     mz = 0.
     state.m = state.Constant((mx, my, mz))
     torch.testing.assert_close(aniso.h(state).avg(), state.Tensor([-191.01109252, -148.98001006, 0.]))
+
+def test_renamed_parameters():
+    n  = (2, 3, 4)
+    dx = (1, 2, 5)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"K_alpha": state.Tensor([pi/4.]),
+                      "Kc_beta": state.Tensor([0.]),
+                      "Kc_gamma": state.Tensor([0.]),
+                      "Kc1": state.Tensor([1e3]),
+                      "Kc2": state.Tensor([0.]),
+                      "Ms": 800e3}
+    aniso = CubicAnisotropyField(Kc_alpha = "K_alpha")
+    phi = 0.123
+    mx = cos(phi - pi/4)
+    my = sin(phi - pi/4)
+    mz = 0.
+    state.m = state.Constant((mx, my, mz))
+    torch.testing.assert_close(aniso.h(state).avg(), state.Tensor([-191.01109252, -148.98001006, 0.]))
