@@ -7,8 +7,8 @@ class FieldTerm(object):
     parameters = []
 
     def __init__(self):
-        for key in parameters:
-            self.setattr(key, key)
+        for key in self.parameters:
+            setattr(self, key, key)
 
 class LinearFieldTerm(FieldTerm):
     def E(self, state):
