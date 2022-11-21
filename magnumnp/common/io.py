@@ -6,21 +6,28 @@ from . import Mesh, DecoratedTensor
 
 __all__ = ["write_vti", "read_vti"]
 
-r"""
-write vti files (compressed) using pyvista
-
-:Examples:
-
-  .. code::
-    # write single scalar or vector
-    write_vti(state.material.Ms, "scalar.vti")
-    write_vti(state.m, "vector.vti")
-
-    # use dictinary or list
-    write_vti([state.m, h], "list.vti")
-    write_vti({'m':state.m, 'h':h}, "dict.vti")
-"""
 def write_vti(fields, filename, state = None):
+    r"""
+    Write vti files (equidistant rectangular grid, compressed) using pyvista.
+
+    :param fields: single torch Tensor or List/Dictionary of tensors to be written
+    :type fields: :class:`Tensor`, list, dict
+    :param filename: filename to be writen
+    :type filename: str
+    :param state: filename to be writen
+    :type state: :class:`State`
+
+    :Examples:
+
+    .. code::
+        # write single scalar or vector
+        write_vti(state.material.Ms, "scalar.vti")
+        write_vti(state.m, "vector.vti")
+
+        # use dictinary or list
+        write_vti([state.m, h], "list.vti")
+        write_vti({'m':state.m, 'h':h}, "dict.vti")
+    """
     dirname = os.path.dirname(filename)
     if dirname and not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -59,6 +66,16 @@ def write_vti(fields, filename, state = None):
 
 
 def read_vti(filename):
+    r"""
+    Read vti files (equidistant rectangular grid, compressed) using pyvista.
+    One file could contain multiple data arrays, which are returned as a python dictionary.
+
+    :Examples:
+
+      .. code::
+        # read
+        mesh, fields = read_vti("data.vti")
+    """
     fields = {}
     data = pv.read(filename)
 
