@@ -53,7 +53,10 @@ class State(object):
 
     # _tensor for internal use only
     def _tensor(self, data, dtype=torch.float64):
-        return torch.tensor(data, dtype=dtype, device=self._device)
+        if isinstance(data, torch.Tensor):
+            return data
+        else:
+            return torch.tensor(data, dtype=dtype, device=self._device)
 
     def Tensor(self, data, dtype=torch.float64, requires_grad = False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
@@ -61,14 +64,14 @@ class State(object):
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
-            return data.as_subclass(DecoratedTensor)
+            return data.clone().detach().requires_grad_(requires_grad).as_subclass(DecoratedTensor)
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
             raise TypeError("data needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
 
     def Constant(self, c, dtype=torch.float64):
-        c = self._tensor(c, dtype=dtype)
+        c = self.Tensor(c, dtype=dtype)
         x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
         x[...] = c
         return x
