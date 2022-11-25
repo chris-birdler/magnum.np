@@ -6,6 +6,20 @@ from torch import sin, cos
 __all__ = ["UniaxialAnisotropyField", "CubicAnisotropyField"]
 
 class UniaxialAnisotropyField(LinearFieldTerm):
+    r"""
+    Effective field contribution corresponding to the uniaxial anisotropy energy
+
+    .. math::
+
+      E = - \int_\Omega K_u \big( \vec{m} \cdot \vec{e}_k \big)^2 \dx
+
+    with the anisotropy constant :math:`K` given in units of :math:`\text{J/m}^3`.
+
+    :param Ku: Name of the material parameter for the anisotropy constant Ku, defaults to "Ku"
+    :type Ku: str, optional
+    :param Ku_axis: Name of the material parameter for the anisotropy axis e_k, defaults to "Ku_axis"
+    :tye Ku_axis: str, optional
+    """
     parameters = ["Ku", "Ku_axis"]
 
     @timedmethod
