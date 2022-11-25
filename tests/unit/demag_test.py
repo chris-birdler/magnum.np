@@ -16,7 +16,7 @@ def test_energy_cube():
 
     h = demag.h(state)
     E = demag.E(state)
-    assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
+    assert E.cpu() == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
 
 def test_Ms_domain():
     n  = (4,4,4)
@@ -30,7 +30,7 @@ def test_Ms_domain():
 
     h = demag.h(state)
     E = demag.E(state)
-    assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
+    assert E.cpu() == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
 
 def test_PBC():
     n  = (4,4,4)
@@ -44,4 +44,4 @@ def test_PBC():
 
     h = demag.h(state)
     E = demag.E(state)
-    assert E == pytest.approx(0.)
+    assert E.cpu() == pytest.approx(0.)

@@ -25,7 +25,7 @@ def test_simple():
 
     llg = LLGSolver([demag, exchange, external])
     llg.step(state, 1e-11)
-    assert state.t == pytest.approx(1e-11)
+    assert state.t.cpu() == pytest.approx(1e-11)
 
 
 def test_material_tensors():
@@ -52,4 +52,4 @@ def test_material_tensors():
 
     llg = LLGSolver([demag, exchange, aniso, external])
     llg.step(state, 1e-11)
-    assert state.t == pytest.approx(1e-11)
+    assert state.t.cpu() == pytest.approx(1e-11)

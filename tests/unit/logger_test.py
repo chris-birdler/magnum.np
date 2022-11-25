@@ -37,8 +37,8 @@ def test_resume(simple_state, tmpdir):
     assert rlogger.loggers["fields"].resumable_step() == 32
     rlogger.resume(simple_state)
 
-    assert simple_state.m.average() == pytest.approx((2.4, 0, 0))
-    assert simple_state.t == pytest.approx(2.4)
+    torch.testing.assert_close(simple_state.m.average(), simple_state.Tensor([2.4, 0, 0]))
+    assert simple_state.t.cpu() == pytest.approx(2.4)
     for t in np.arange(0., 0.8, 0.1):
         simple_state.t = t
         simple_state.m = simple_state.Constant([t, 0, 0])

@@ -29,6 +29,6 @@ def test_call():
         E_ex1 = exchange1.E(state).detach().cpu().numpy()
         E_ex2 = exchange1.E(state).detach().cpu().numpy()
         h = rkky.h(state)
-        print("phi:", phi.numpy(), "E_rkky:", E_rkky, "E_ex1:", E_ex1, "E_ex2:", E_ex2, "E_tot:", E_rkky+E_ex1+E_ex2, "m:", state.m[:,:,:,0].mean().numpy(), state.m[:,:,:,1].mean().numpy(), state.m[:,:,:,2].mean().numpy())
+        print("phi:", phi.cpu().numpy(), "E_rkky:", E_rkky, "E_ex1:", E_ex1, "E_ex2:", E_ex2, "E_tot:", E_rkky+E_ex1+E_ex2, "m:", state.m[:,:,:,0].mean().cpu().numpy(), state.m[:,:,:,1].mean().cpu().numpy(), state.m[:,:,:,2].mean().cpu().numpy())
     #assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
 

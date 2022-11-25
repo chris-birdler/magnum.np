@@ -12,10 +12,10 @@ def test_float():
     state.m = state.Constant([1,0,0])
     demag = DemagField()
     exchange = ExchangeField()
-    assert Ms == pytest.approx(1./constants.mu_0)
+    assert Ms.cpu() == pytest.approx(1./constants.mu_0)
     assert isinstance(state.t, torch.Tensor)
     assert isinstance(Ms, torch.Tensor)
-    assert Ms.avg() == pytest.approx(1./constants.mu_0)
+    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
     demag.h(state)
     exchange.h(state)
 
@@ -26,10 +26,10 @@ def test_tensor():
     state = State(mesh)
     state.material = {"Ms": state.Tensor([1./constants.mu_0]), "A":state.Tensor([1e-11])}
     Ms = state.material["Ms"]
-    assert Ms == pytest.approx(1./constants.mu_0)
+    assert Ms.cpu() == pytest.approx(1./constants.mu_0)
     assert isinstance(state.t, torch.Tensor)
     assert isinstance(Ms, torch.Tensor)
-    assert Ms.avg() == pytest.approx(1./constants.mu_0)
+    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
 
     state.m = state.Constant([1,0,0])
     demag = DemagField()
@@ -46,7 +46,7 @@ def test_tensorfield():
     Ms = state.material["Ms"]
     assert isinstance(state.t, torch.Tensor)
     assert isinstance(Ms, torch.Tensor)
-    assert Ms.avg() == pytest.approx(1./constants.mu_0)
+    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
 
     state.m = state.Constant([1,0,0])
     demag = DemagField()
@@ -64,7 +64,7 @@ def test_lambda():
     Ms = state.material["Ms"]
     assert isinstance(state.t, torch.Tensor)
     assert isinstance(Ms, torch.Tensor)
-    assert Ms.avg() == pytest.approx(1./constants.mu_0)
+    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
 
     state.m = state.Constant([1,0,0])
     demag = DemagField()
