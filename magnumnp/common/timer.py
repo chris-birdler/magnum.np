@@ -1,7 +1,12 @@
-import time, resource
+import time
 from collections import OrderedDict
 from magnumnp.common import tabulate
 from functools import wraps
+
+try:
+    import resource
+except:
+    resource = None
 
 __all__ = ["Timer", "timedmethod", "TimedOperator"]
 
@@ -177,6 +182,9 @@ class Timer(object):
                 Timer._options[key.lower()] = value
             else:
                 raise ValueError("Option '%s' is not supported by Timer" % key)
+
+        if Timer._options["log_mem"] == True and resource == None:
+            raise RuntimeError("Import of 'resource' package failed. Try running Timer without 'log_mem = True'.")
 
     @staticmethod
     def disable():
