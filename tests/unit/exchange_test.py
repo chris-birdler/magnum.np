@@ -1,7 +1,7 @@
 import pytest
 import torch
-from math import pi, cos, sin
 from magnumnp import *
+from helpers import *
 
 def test_call():
     n  = (2, 3, 4)
@@ -14,3 +14,10 @@ def test_call():
     exchange = ExchangeField()
     exchange.h(state)
     exchange.E(state)
+
+def test_PBC(simple_state):
+    exchange = ExchangeFieldPBC()
+    simple_state.m = simple_state.Constant([0,0,1])
+    simple_state.m[:50,:,:,2] = -1
+    h = exchange.h(simple_state)
+    assert torch.allclose(h[:50,...], -h[50:,...])

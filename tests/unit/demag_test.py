@@ -43,5 +43,6 @@ def test_PBC():
     demag = DemagFieldPBC()
 
     h = demag.h(state)
+    assert torch.allclose(h, state.Tensor(0))
     E = demag.E(state)
     assert E.cpu() == pytest.approx(0.)
