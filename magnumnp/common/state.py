@@ -68,7 +68,7 @@ class State(object):
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
-            raise TypeError("data needs to be 'list', 'tuple', 'torch.Tensor', or 'function'!")
+            raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
     def Constant(self, c, dtype=torch.float64):
         c = self.Tensor(c, dtype=dtype)
