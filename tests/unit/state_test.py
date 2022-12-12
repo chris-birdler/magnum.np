@@ -1,5 +1,4 @@
 import pytest
-import pathlib
 import torch
 from magnumnp import *
 
