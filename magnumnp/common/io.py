@@ -5,7 +5,7 @@ import pyvista as pv
 import os
 from . import Mesh, DecoratedTensor
 
-__all__ = ["write_vti", "read_vti", "read_image"]
+__all__ = ["write_vti", "read_vti", "read_image", "read_mesh"]
 
 def write_vti(fields, filename, state = None):
     r"""
@@ -131,21 +131,23 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None,
         if fix_aspect_ratio == True:
             Ly = Lx * image.dimensions[1] / image.dimensions[0]
 
-    x = np.linspace(0,Lx,image.dimensions[0]) + pos_x
-    y = np.linspace(0,Ly,image.dimensions[1]) + pos_y
-    xx, yy = np.meshgrid(x, y, indexing = "ij")
-    xx = xx.reshape(-1)
-    yy = yy.reshape(-1)
+    x_image = np.linspace(0,Lx,image.dimensions[0]) + pos_x
+    y_image = np.linspace(0,Ly,image.dimensions[1]) + pos_y
+    xx_image, yy_image = np.meshgrid(x_image, y_image, indexing = "ij")
+    xx_image = xx_image.reshape(-1)
+    yy_image = yy_image.reshape(-1)
     data = data.reshape(-1)
 
     # interpolate on mesh
-    x_mesh = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
-    y_mesh = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
-    xx_mesh, yy_mesh = np.meshgrid(x_mesh, y_mesh, indexing = "ij")
+    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
+    xx, yy = np.meshgrid(x, y, indexing = "ij")
 
-    return scipy.interpolate.griddata((xx, yy), data, (xx_mesh, yy_mesh), fill_value=-1)
+    return scipy.interpolate.griddata((xx_image, yy_image), data, (xx, yy), fill_value=-1)
 
-def read_msh(mesh, filename):
+
+
+def read_mesh(mesh, filename, scale = 1.):
     r"""
     Read unstructured msh meshes using pyvista
 
@@ -156,11 +158,19 @@ def read_msh(mesh, filename):
       .. code::
         fields = read_msh(mesh, "cylinder.msh")
     """
+    # read image data and volume domains
     unstructured_mesh = pv.read(filename)
+    #vertices = unstructure_mesh.points
+    #cells = unstructured_mesh.cells_dict[10] # vtkCellType=10 seems to be tet elements
 
-    # read data from file
-    p = unstructured_mesh.points
-    fields = {}
+    center = unstructured_mesh.cell_centers()
+    points = center.points * scale
+    data = center.get_array(0)
 
-    # interpolate files on mesh
-    mesh.SpatialCoordinates()
+    # interpolate on mesh
+    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
+    z = np.arange(mesh.n[2]) * mesh.dx[2] + mesh.dx[2]/2. + mesh.origin[2]
+    xx, yy, zz = np.meshgrid(x, y, z, indexing = "ij")
+
+    return scipy.interpolate.griddata(points, data, (xx, yy, zz), fill_value=-1)
