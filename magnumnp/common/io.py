@@ -89,13 +89,17 @@ def read_vti(filename):
 
 
 #TODO: move to utils since it depends on numpy + scipy
-#TODO: add fix_aspect_ratio option (use x_scale if Ly = 0, ...)
-def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None):
+def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None, fix_aspect_ratio = False):
     r"""
     Read image using pyvista and interpolate on given mesh
 
     :param :class:`Mesh`: Target mesh
     :param str filename:  Filename of the image
+    :param float Lx: Length to which the image should be scaled (defaults to the mesh length)
+    :param float Ly: Height to which the image should be scaled (defaults to the mesh height)
+    :param float pos_x: x-Offest by which the image should be shifted (defaults to the mesh origin)
+    :param float pos_y: y-Offest by which the image should be shifted (defaults to the mesh origin)
+    :param bool fix_aspect_ratio: if True only Lx or Ly can be set. The same scale will then be applied to both dimentions.
     :return :class:`torch.Tensor`: 2D tensor containing the correspoding image data
 
     :Examples:
@@ -115,10 +119,17 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None)
         pos_x = mesh.origin[0]
     if pos_y == None:
         pos_y = mesh.origin[1]
-    if Lx == None:
-        Lx = mesh.n[0] * mesh.dx[0]
+
+    if Lx != None and Ly != None and fix_aspect_ratio == True:
+        raise RuntimeError("Aspect ratio cannot be kept fix, if both Lx and Ly are provided!")
     if Ly == None:
         Ly = mesh.n[1] * mesh.dx[1]
+        if fix_aspect_ratio == True:
+            Lx = Ly * image.dimensions[0] / image.dimensions[1]
+    if Lx == None:
+        Lx = mesh.n[0] * mesh.dx[0]
+        if fix_aspect_ratio == True:
+            Ly = Lx * image.dimensions[1] / image.dimensions[0]
 
     x = np.linspace(0,Lx,image.dimensions[0]) + pos_x
     y = np.linspace(0,Ly,image.dimensions[1]) + pos_y
@@ -132,7 +143,7 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None)
     y_mesh = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
     xx_mesh, yy_mesh = np.meshgrid(x_mesh, y_mesh, indexing = "ij")
 
-    return scipy.interpolate.griddata((xx, yy), data, (xx_mesh, yy_mesh))
+    return scipy.interpolate.griddata((xx, yy), data, (xx_mesh, yy_mesh), fill_value=-1)
 
 def read_msh(mesh, filename):
     r"""
