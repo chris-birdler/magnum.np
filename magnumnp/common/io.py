@@ -160,17 +160,15 @@ def read_mesh(mesh, filename, scale = 1.):
     """
     # read image data and volume domains
     unstructured_mesh = pv.read(filename)
-    #vertices = unstructure_mesh.points
-    #cells = unstructured_mesh.cells_dict[10] # vtkCellType=10 seems to be tet elements
-
-    center = unstructured_mesh.cell_centers()
-    points = center.points * scale
-    data = center.get_array(0)
 
     # interpolate on mesh
     x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
     y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
     z = np.arange(mesh.n[2]) * mesh.dx[2] + mesh.dx[2]/2. + mesh.origin[2]
-    xx, yy, zz = np.meshgrid(x, y, z, indexing = "ij")
+    points = np.stack(np.meshgrid(x, y, z, indexing = "ij"), axis=-1).reshape(-1,3) / scale
 
-    return scipy.interpolate.griddata(points, data, (xx, yy, zz), fill_value=-1)
+    containing_cells = unstructured_mesh.find_containing_cell(points)
+    data = unstructured_mesh.get_array(0)[containing_cells]
+    data[containing_cells == -1] = -1 # containing_cell == -1, if point is not included in any cell
+
+    return data.reshape(mesh.n)
