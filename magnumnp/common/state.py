@@ -64,6 +64,7 @@ class State(object):
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
+            requires_grad = requires_grad or data.requires_grad
             return data.clone().detach().requires_grad_(requires_grad).as_subclass(DecoratedTensor)
         elif callable(data):
             return lambda t: self.Tensor(data(t))
