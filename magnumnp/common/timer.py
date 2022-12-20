@@ -1,6 +1,6 @@
 import time
 from collections import OrderedDict
-from magnumnp.common import tabulate
+from magnumnp.common import tabulate, logging
 from functools import wraps
 
 try:
@@ -127,18 +127,24 @@ class Timer(object):
 
         entries = get_entries()
 
+        measured_time = sum([x[1]['total_time'] for x in Timer._timers.items() if x[1]['parent'] == ''])
+        total_time = time.perf_counter() - Timer._start
+        missing_time = total_time - measured_time
+
         if Timer._options['log_mem']:
             if Timer._start is not None:
-                entries.append(['Total', None, None, time.perf_counter() - Timer._start, None])
+                entries.append(['Total', None, None, total_time, None])
+                entries.append(['Missing', None, None, missing_time, None])
             table = tabulate(entries, ["Operation", "No of calls", "Avg time [ms]", "Total time [s]", "Memory [MB]"])
         else:
             if Timer._start is not None:
-                entries.append(['Total', None, None, time.perf_counter() - Timer._start])
+                entries.append(['Total', None, None, total_time])
+                entries.append(['Missing', None, None, missing_time])
             table = tabulate(entries, ["Operation", "No of calls", "Avg time [ms]", "Total time [s]"])
 
         # insert separator before total line
         lines = table.split('\n')
-        lines.insert(len(lines) - 1, lines[1])
+        lines.insert(len(lines) - 2, lines[1])
         table = "\n".join(lines)
 
         width = len(table.split("\n")[1])
@@ -149,6 +155,7 @@ class Timer(object):
         print(table)
         print("=" * width)
         print("")
+        logging.warning("Too much time missing (%.0f%%). Add some Timers for more complete timing!" % (missing_time / total_time * 100.))
 
     @staticmethod
     def reset():
