@@ -75,7 +75,7 @@ class Timer(object):
         if not Timer._options['active']: return self
 
         Timer._current = self._fullname
-        self._data['start'] = time.time()
+        self._data['start'] = time.perf_counter()
         if Timer._options['log_mem']:
             self._data['mem_start'] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         return self
@@ -87,7 +87,7 @@ class Timer(object):
         if not Timer._options['active']: return self
 
         if Timer._options['skip'] <= self._data['calls']:
-            self.t = time.time() - self._data['start']
+            self.t = time.perf_counter() - self._data['start']
             self._data['total_time'] += self.t
             if Timer._options['log_mem']:
                 self.mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - self._data['mem_start']
@@ -129,11 +129,11 @@ class Timer(object):
 
         if Timer._options['log_mem']:
             if Timer._start is not None:
-                entries.append(['Total', None, None, time.time() - Timer._start, None])
+                entries.append(['Total', None, None, time.perf_counter() - Timer._start, None])
             table = tabulate(entries, ["Operation", "No of calls", "Avg time [ms]", "Total time [s]", "Memory [MB]"])
         else:
             if Timer._start is not None:
-                entries.append(['Total', None, None, time.time() - Timer._start])
+                entries.append(['Total', None, None, time.perf_counter() - Timer._start])
             table = tabulate(entries, ["Operation", "No of calls", "Avg time [ms]", "Total time [s]"])
 
         # insert separator before total line
@@ -198,7 +198,7 @@ class Timer(object):
         """
         Enable all timers. Takes all options that are accepted by :code:`configure`.
         """
-        Timer._start = time.time()
+        Timer._start = time.perf_counter()
         Timer.configure(active = True, **kwargs)
 
 
