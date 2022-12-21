@@ -155,7 +155,9 @@ class Timer(object):
         print(table)
         print("=" * width)
         print("")
-        logging.warning("Too much time missing (%.0f%%). Add some Timers for more complete timing!" % (missing_time / total_time * 100.))
+        missing = missing_time / total_time
+        if missing > 0.2:
+            logging.warning("Too much time missing (%.0f%%). Add some Timers for more complete timing!" % (missing * 100.))
 
     @staticmethod
     def reset():
