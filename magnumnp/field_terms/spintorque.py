@@ -7,6 +7,8 @@ class SpinOrbitTorque(object):
     @timedmethod
     def h(self, state):
         p = state.material["p"]
+        if len(p.shape) == 1: # fixes API change in torch.linalg.cross! Maybe better to expand all parameters in state.material
+            p = p.reshape((1,1,1,-1))
         h = state.material["eta_damp"] * torch.cross(state.m, p) + state.material["eta_field"] * p
         h *= -state.material["je"] * constants.hbar / (2. * constants.e * state.material["Ms"] * constants.mu_0 * state.material["d"])
         return torch.nan_to_num(h, posinf=0, neginf=0)
