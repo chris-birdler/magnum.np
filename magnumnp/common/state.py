@@ -6,7 +6,7 @@ from magnumnp.common import logging, DecoratedTensor, Material
 __all__ = ["State"]
 
 class State(object):
-    def __init__(self, mesh, t0=0., device=None):
+    def __init__(self, mesh, t0=0., device=None, dtype=None):
         self.mesh = mesh
         if device == None:
             CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
@@ -14,6 +14,7 @@ class State(object):
         else:
             self._device = device
         self._material = Material(self)
+        self._dtype = dtype
         self.t = t0
         logging.info_green("[State] running on device:%s" % self._device)
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
@@ -40,23 +41,23 @@ class State(object):
             raise ValueError("Dictionary needs to be provided to set material")
 
     def _zeros(self, size, dtype=None, **kwargs):
-        dtype = dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype or torch.get_default_dtype()
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
     def _arange(self, start, end=None, step=1, dtype=None, **kwargs):
-        dtype = dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype or torch.get_default_dtype()
         if end == None:
            end = start
            start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
     def _linspace(self, start, end, steps, dtype=None, **kwargs):
-        dtype = dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype or torch.get_default_dtype()
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
     # _tensor for internal use only
     def _tensor(self, data, dtype=None):
-        dtype = dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype or torch.get_default_dtype()
         if isinstance(data, torch.Tensor):
             return data
         else:
@@ -64,7 +65,7 @@ class State(object):
 
     def Tensor(self, data, dtype=None, requires_grad=False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
-            dtype = dtype or torch.get_default_dtype()
+            dtype = dtype or self._dtype or torch.get_default_dtype()
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
             t.requires_grad = requires_grad
             return t
@@ -77,7 +78,7 @@ class State(object):
             raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
     def Constant(self, c, dtype=None):
-        dtype = dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype or torch.get_default_dtype()
         c = self.Tensor(c, dtype=dtype)
         x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
         x[...] = c
