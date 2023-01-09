@@ -39,40 +39,45 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
-    def _zeros(self, size, dtype=torch.float64, **kwargs):
+    def _zeros(self, size, dtype=None, **kwargs):
+        dtype = dtype or torch.get_default_dtype()
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
-    def _arange(self, start, end=None, step=1, dtype=torch.float64, **kwargs):
+    def _arange(self, start, end=None, step=1, dtype=None, **kwargs):
+        dtype = dtype or torch.get_default_dtype()
         if end == None:
            end = start
            start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
-    def _linspace(self, start, end, steps, dtype=torch.float64, **kwargs):
+    def _linspace(self, start, end, steps, dtype=None, **kwargs):
+        dtype = dtype or torch.get_default_dtype()
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
     # _tensor for internal use only
-    def _tensor(self, data, dtype=torch.float64):
+    def _tensor(self, data, dtype=None):
+        dtype = dtype or torch.get_default_dtype()
         if isinstance(data, torch.Tensor):
             return data
         else:
             return torch.tensor(data, dtype=dtype, device=self._device)
 
-    def Tensor(self, data, dtype=torch.float64, requires_grad = False):
+    def Tensor(self, data, dtype=None, requires_grad=False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
+            dtype = dtype or torch.get_default_dtype()
             t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
             requires_grad = requires_grad or data.requires_grad
-            #return data.clone().detach().requires_grad_(requires_grad).as_subclass(DecoratedTensor) # This breaks the inverse demo! Not sure why tensor was detached.
             return data.requires_grad_(requires_grad).as_subclass(DecoratedTensor)
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
             raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
-    def Constant(self, c, dtype=torch.float64):
+    def Constant(self, c, dtype=None):
+        dtype = dtype or torch.get_default_dtype()
         c = self.Tensor(c, dtype=dtype)
         x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
         x[...] = c

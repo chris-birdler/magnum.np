@@ -73,6 +73,13 @@ def dipole_g(points):
     return result
 
 
+complex_dtype = {
+    torch.float: torch.complex,
+    torch.float32: torch.complex64,
+    torch.float64: torch.complex128
+    }
+
+
 class DemagField(object):
     def __init__(self, p = 20):
         self._p = p
@@ -127,9 +134,9 @@ class DemagField(object):
         if not hasattr(self, "_N"):
             self._init_N(state)
 
-        hx = state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
-        hy = state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
-        hz = state._zeros(list(self._N[0][0].shape), dtype=torch.complex128)
+        hx = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
+        hy = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
+        hz = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1)
 
