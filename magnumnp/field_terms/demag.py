@@ -85,13 +85,17 @@ class DemagField(object):
         self._p = p
 
     def _init_N_component(self, state, perm, func_near, func_far):
+        # rescale dx to avoid NaNs when using single precision
+        dx = np.array(state.mesh.dx)
+        dx /= dx.min()
+
         # dipole far-field
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
-        r = torch.stack([ij[ind]*state.mesh.dx[ind] for ind in perm], dim=-1)
-        Nc = func_far(r) * np.prod(state.mesh.dx) / (4.*np.pi)
+        r = torch.stack([ij[ind]*dx[ind] for ind in perm], dim=-1)
+        Nc = func_far(r) * np.prod(dx) / (4.*np.pi)
 
         # newell near-field
         n_near = np.minimum(state.mesh.n, self._p)
@@ -101,8 +105,8 @@ class DemagField(object):
 
         for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
             k, l = kl[:3], kl[3:]
-            r = torch.stack([(ij[ind] + k[ind] - l[ind])*state.mesh.dx[ind] for ind in perm], dim=-1)
-            N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(state.mesh.dx))
+            r = torch.stack([(ij[ind] + k[ind] - l[ind])*dx[ind] for ind in perm], dim=-1)
+            N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(dx))
 
         Nc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
         Nc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
