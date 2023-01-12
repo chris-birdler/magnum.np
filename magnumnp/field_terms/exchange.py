@@ -1,6 +1,6 @@
 from magnumnp.common import timedmethod, constants
 import torch
-from .field_terms import FieldTerm, LinearFieldTerm
+from .field_terms import LinearFieldTerm
 
 __all__ = ["ExchangeField", "ExchangeDMIField"]
 
