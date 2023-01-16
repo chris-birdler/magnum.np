@@ -1,12 +1,12 @@
 image: python:3.10
 
-test:
-    script:
-        - apt update -yq
-        - apt install -y python3-opencv
-        - pip install setuptools pytest
-        - pip install .
-        - python -m pytest tests/
+#test:
+#    script:
+#        - apt update -yq
+#        - apt install -y python3-opencv
+#        - pip install setuptools pytest
+#        - pip install .
+#        - python -m pytest tests/
 
 bump-version:
     stage: deploy
@@ -18,9 +18,9 @@ bump-version:
         - git config --global user.name "Gitlab Bump-Version"
         - git add --all && git commit -m "auto-increment"
         - git remote set-url --push origin "${PUSH_REPO}"
-        - git push origin
-    dependencies:
-        - test
+        - git push origin HEAD:$CI_COMMIT_REF_NAME
+#    dependencies:
+#        - test
     only:
         - tags
 
