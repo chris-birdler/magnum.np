@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'magnum.np'
-copyright = '2022, Florian Bruckner'
+copyright = '2023, Florian Bruckner'
 author = 'Florian Bruckner'
 
 # The short X.Y version
@@ -62,7 +62,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -91,9 +91,9 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 #html_logo = "images/logo_magnum_np.svg"
-mathjax_config = {
-        "TeX": {
-            "Macros": {
+mathjax3_config = {
+        "tex": {
+            "macros": {
                 "vec": ["{\\mathbf #1}", 1],
                 "mat": ["{\\mathbf #1}", 1],
                 "dx":  "{\\;\\text{d}\\vec{x}}",
@@ -189,3 +189,23 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+
+
+# -- Options for Latex output ------------------------------------------------
+#latex_logo = "images/logo_magnum_pi.pdf"
+latex_elements = {
+'papersize': 'a4paper',
+'pointsize': '11pt',
+'classoptions': ',openany,oneside',
+'babel': '\\usepackage[english]{babel}',
+'preamble': r"""
+ \definecolor{VerbatimBorderColor}{rgb}{1,1,1}
+ \renewcommand{\vec}[1]{\boldsymbol{#1}}
+ \newcommand{\mat}[1]{\boldsymbol{#1}}
+ \newcommand{\dx}{\;\text{d}\boldsymbol{x}}
+ \newcommand{\ds}{\;\text{d}\boldsymbol{s}}
+ \usepackage{amsmath, amssymb, amsthm}
+ \usepackage{bbm}
+ \renewcommand{\mathbb}[1]{\mathbbm{#1}}
+""",
+}
