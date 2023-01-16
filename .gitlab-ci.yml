@@ -18,7 +18,7 @@ bump-version:
         - git remote set-url --push origin "${PUSH_REPO}"
         - git push origin
     dependencies:
-        - unit-test
+        - test
     only:
         - tags
 
