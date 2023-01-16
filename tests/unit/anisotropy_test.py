@@ -26,9 +26,9 @@ def test_cubic_energy():
 
         hx_analytic = -2. / constants.mu_0 / state.material["Ms"] * state.material["Kc1"] * mx * (my**2 + mz**2)
         E_analytic = state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * mesh.cell_volume
-        assert h_sim[0,0,0,0] == pytest.approx(hx_analytic[0].cpu().numpy())
-        assert E_sim == pytest.approx(E_analytic.cpu().numpy())
 
+        torch.testing.assert_close(h_sim[0,0,0,0], hx_analytic[0])
+        torch.testing.assert_close(E_sim, E_analytic)
 
 def test_cubic_energy_rotated():
     n  = (1, 1, 1)
@@ -56,7 +56,7 @@ def test_cubic_energy_rotated():
         hx_analytic = -2. / constants.mu_0 / state.material["Ms"] * state.material["Kc1"] * mx * (my**2 + mz**2)
         E_analytic = state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * mesh.cell_volume
 
-        assert E_sim == pytest.approx(E_analytic.cpu().numpy())
+        torch.testing.assert_close(E_sim, E_analytic)
 
 def test_cubic_field():
     n  = (1, 1, 1)

@@ -15,12 +15,12 @@ def test_different_tensors():
     # test vector [3]
     external = ExternalField([1,0,0])
     torch.testing.assert_close(external.h(state), state.Tensor([1,0,0]))
-    assert external.E(state) / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1.)
+    assert external.E(state).cpu() / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1.)
 
     # test vector [nx,ny,nz,3]
     external = ExternalField(state.Constant([1,0,0]))
     torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]))
-    assert external.E(state) / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1.)
+    assert external.E(state).cpu() / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1.)
 
     # test lambda [3]
     h_func = lambda t: state.Tensor([t,0,0])

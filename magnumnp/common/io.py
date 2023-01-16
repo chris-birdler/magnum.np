@@ -1,10 +1,11 @@
 import torch
 import numpy as np
+import scipy
 import pyvista as pv
 import os
 from . import Mesh, DecoratedTensor
 
-__all__ = ["write_vti", "read_vti"]
+__all__ = ["write_vti", "read_vti", "read_image", "read_mesh"]
 
 def write_vti(fields, filename, state = None):
     r"""
@@ -67,14 +68,14 @@ def write_vti(fields, filename, state = None):
 
 def read_vti(filename):
     r"""
-    Read vti files (equidistant rectangular grid, compressed) using pyvista.
-    One file could contain multiple data arrays, which are returned as a python dictionary.
+    Read vti files using pyvista
+
+    :param str filename: Filename to be read
+    :return :class:`Mesh` & dict: Mesh object and dictionary containing all data tensors
 
     :Examples:
-
       .. code::
-        # read
-        mesh, fields = read_vti("data.vti")
+        mesh, fields = read_vti("m0.vti")
     """
     fields = {}
     data = pv.read(filename)
@@ -91,3 +92,89 @@ def read_vti(filename):
         f = torch.from_numpy(vals.reshape(dim, order="F")).as_subclass(DecoratedTensor)
         fields[name] = f
     return mesh, fields
+
+
+#TODO: move to utils since it depends on numpy + scipy
+def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None, fix_aspect_ratio = False):
+    r"""
+    Read image using pyvista and interpolate on given mesh
+
+    :param :class:`Mesh`: Target mesh
+    :param str filename:  Filename of the image
+    :param float Lx: Length to which the image should be scaled (defaults to the mesh length)
+    :param float Ly: Height to which the image should be scaled (defaults to the mesh height)
+    :param float pos_x: x-Offest by which the image should be shifted (defaults to the mesh origin)
+    :param float pos_y: y-Offest by which the image should be shifted (defaults to the mesh origin)
+    :param bool fix_aspect_ratio: if True only Lx or Ly can be set. The same scale will then be applied to both dimentions.
+    :return :class:`torch.Tensor`: 2D tensor containing the correspoding image data
+
+    :Examples:
+      .. code::
+        field = read_image(mesh, "measurement.png")
+    """
+    # read image data and convert to unique ids (0,1,2,...)
+    image = pv.read(filename)
+    data = image.get_array(image.array_names[0])
+    if len(data.shape) == 2:
+        data = np.prod(data, axis=1)
+    data = np.unique(data, return_inverse=True)[1]
+    data = data.reshape([image.dimensions[1], image.dimensions[0]]).T
+
+    # scale and translate image
+    if pos_x == None:
+        pos_x = mesh.origin[0]
+    if pos_y == None:
+        pos_y = mesh.origin[1]
+
+    if Lx != None and Ly != None and fix_aspect_ratio == True:
+        raise RuntimeError("Aspect ratio cannot be kept fix, if both Lx and Ly are provided!")
+    if Ly == None:
+        Ly = mesh.n[1] * mesh.dx[1]
+        if fix_aspect_ratio == True:
+            Lx = Ly * image.dimensions[0] / image.dimensions[1]
+    if Lx == None:
+        Lx = mesh.n[0] * mesh.dx[0]
+        if fix_aspect_ratio == True:
+            Ly = Lx * image.dimensions[1] / image.dimensions[0]
+
+    x_image = np.linspace(0,Lx,image.dimensions[0]) + pos_x
+    y_image = np.linspace(0,Ly,image.dimensions[1]) + pos_y
+    xx_image, yy_image = np.meshgrid(x_image, y_image, indexing = "ij")
+    xx_image = xx_image.reshape(-1)
+    yy_image = yy_image.reshape(-1)
+    data = data.reshape(-1)
+
+    # interpolate on mesh
+    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
+    xx, yy = np.meshgrid(x, y, indexing = "ij")
+
+    return scipy.interpolate.griddata((xx_image, yy_image), data, (xx, yy), fill_value=-1)
+
+
+
+def read_mesh(mesh, filename, scale = 1.):
+    r"""
+    Read unstructured msh meshes using pyvista
+
+    :param str filename: Filename to be read
+    :return :class:`Mesh` & dict: Mesh object and dictionary containing interpolated data tensors
+
+    :Examples:
+      .. code::
+        fields = read_msh(mesh, "cylinder.msh")
+    """
+    # read image data and volume domains
+    unstructured_mesh = pv.read(filename)
+
+    # interpolate on mesh
+    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
+    z = np.arange(mesh.n[2]) * mesh.dx[2] + mesh.dx[2]/2. + mesh.origin[2]
+    points = np.stack(np.meshgrid(x, y, z, indexing = "ij"), axis=-1).reshape(-1,3) / scale
+
+    containing_cells = unstructured_mesh.find_containing_cell(points)
+    data = unstructured_mesh.get_array(0)[containing_cells]
+    data[containing_cells == -1] = -1 # containing_cell == -1, if point is not included in any cell
+
+    return data.reshape(mesh.n)

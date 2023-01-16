@@ -1,7 +1,7 @@
 from magnumnp import *
 import torch
 
-Timer.enable()
+Timer.enable(log_mem = True)
 
 # initialize mesh
 eps = 1e-15

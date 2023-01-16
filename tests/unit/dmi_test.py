@@ -50,5 +50,5 @@ def test_interface_1D():
     while state.t <= 2e-10:
         logger << state
         llg.step(state, 1e-11)
-    assert state.m[...,0].max() == pytest.approx(0.443, rel=1e-2)
-    assert state.m[...,2].min() == pytest.approx(0.896, rel=1e-2)
+    assert state.m[...,0].max().cpu() == pytest.approx(0.443, rel=1e-2)
+    assert state.m[...,2].min().cpu() == pytest.approx(0.896, rel=1e-2)

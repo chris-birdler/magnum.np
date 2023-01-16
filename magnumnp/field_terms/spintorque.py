@@ -6,7 +6,7 @@ __all__ = ["SpinOrbitTorque", "SpinTorqueZhangLi"]
 class SpinOrbitTorque(object):
     @timedmethod
     def h(self, state):
-        p = state.material["p"]
+        p = state.material["p"].expand_as(state.m)
         h = state.material["eta_damp"] * torch.cross(state.m, p) + state.material["eta_field"] * p
         h *= -state.material["je"] * constants.hbar / (2. * constants.e * state.material["Ms"] * constants.mu_0 * state.material["d"])
         return torch.nan_to_num(h, posinf=0, neginf=0)
