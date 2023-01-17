@@ -17,8 +17,8 @@ Features
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
-* inverse problems via [pytorch](http://www.paraview.org/)'s autograd feature
+* Seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
+* Inverse Problems via [pytorch](http://www.paraview.org/)'s autograd feature
 
 
 Example
@@ -73,6 +73,17 @@ while state.t < 5e-9:
 
 Timer.print_report()
 ```
+
+Documentation
+-------------
+The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
+For example the following commands build an HTML documentation of the actual source code.
+```
+cd doc
+make html
+```
+
+Alternatively, the latest version of the documentation is always available on [https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/](https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/)
 
 
 Citation

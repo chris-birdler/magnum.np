@@ -23,6 +23,17 @@ from .field_terms import LinearFieldTerm
 __all__ = ["ExchangeField", "ExchangeDMIField"]
 
 class ExchangeField(LinearFieldTerm):
+    r"""
+    Exchange Field
+
+    .. math::
+        \vec{h}^\text{ex}_i = \frac{2}{\mu_0 \, M_{s,i}} \; \sum_{k=\pm x, \pm y,\pm z} \frac{2}{\Delta_k} \frac{A_{i+\vec{e}_k} \; A_i}{A_{i+\vec{e}_k} + A_i} \; \left( \vec{m}_{i+\vec{e}_k} - \vec{m}_i \right),
+
+    with the vacuum permeability :math:`\mu_0`, the saturation magnetization :math:`M_s`, and the exchange constant :math:`A`. :math:`\Delta_k` and :math:`\vec{e}_k` represent the grid spacing and the unit vector in direction :math:`k`, respectively.
+
+    :param A: Name of the material parameter for the exchange constant :math:`A`, defaults to "A"
+    :type A: str, optional
+    """
     parameters = ["A"]
 
     def __init__(self, domain=None, **kwargs):

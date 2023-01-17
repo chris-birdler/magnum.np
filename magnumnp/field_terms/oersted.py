@@ -66,6 +66,18 @@ def dipole_g(points):
 
 
 class OerstedField(object):
+    r"""
+    The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law
+
+    .. math::
+
+        \vec{h}^\text{oersted}(\vec{x}) = \frac{1}{4 \pi} \int \vec{j}(\vec{x}') \times \frac{\vec{x}-\vec{x}'}{\vert \vec{x}-\vec{x}'\vert^3} \, d\vec{x}'.
+
+    The occuring equations look very similar to those of the demag field [krueger], and the occuring convolution can be efficiently calculated by means of an FFT method.
+
+    :param p: number of next neighbors for near field via Krueger's equations (default = 20)
+    :type p: int, optional
+    """
     def __init__(self, p = 20):
         self._p = p
 

@@ -22,6 +22,27 @@ import torch
 __all__ = ["ExternalField"]
 
 class ExternalField(object):
+    r"""
+    External Field
+
+    :param h: External Field 
+    :type h: list or tuple or :class:`Tensor` or function
+
+    :Examples:
+
+    .. code::
+
+        # homogenious, constant field
+        external = ExternalField([Hx, 0, 0])
+
+        # homogenious, time-dependent field
+        external = ExternalField(lambda t: [Hx*t, 0, 0])
+
+        # inhomogenious, constant field
+        x, y, z = SpatialCoordinate(state)
+        h = torch.stack([x,y,z], dim=-1)
+        external = ExternalField(h)
+    """
     def __init__(self, h):
         self._h = h
 

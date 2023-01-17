@@ -39,6 +39,7 @@ def write_vti(fields, filename, state = None):
     :Examples:
 
     .. code::
+
         # write single scalar or vector
         write_vti(state.material.Ms, "scalar.vti")
         write_vti(state.m, "vector.vti")

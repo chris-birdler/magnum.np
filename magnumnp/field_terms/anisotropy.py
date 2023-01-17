@@ -3,8 +3,8 @@
  # (https://gitlab.com/magnum.np/magnum.np).
  # Copyright (c) 2023 magnum.np team.
  #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
  # the Free Software Foundation, version 3.
  #
  # This program is distributed in the hope that it will be useful, but
@@ -25,18 +25,17 @@ __all__ = ["UniaxialAnisotropyField", "CubicAnisotropyField"]
 
 class UniaxialAnisotropyField(LinearFieldTerm):
     r"""
-    Effective field contribution corresponding to the uniaxial anisotropy energy
+    Uniaxial Anisotropy Field:
 
     .. math::
+        \vec{h}^\text{u} = \frac{2 K_\text{u}}{\mu_0 \, M_s} \; \vec{e}_\text{u} \; (\vec{e}_\text{u} \cdot \vec{m}),
 
-      E = - \int_\Omega K_u \big( \vec{m} \cdot \vec{e}_k \big)^2 \dx
+    with the anisotropy constant :math:`K_\text{u}` given in units of :math:`\text{J/m}^3`.
 
-    with the anisotropy constant :math:`K` given in units of :math:`\text{J/m}^3`.
-
-    :param Ku: Name of the material parameter for the anisotropy constant Ku, defaults to "Ku"
+    :param Ku: Name of the material parameter for the anisotropy constant :math:`K_\text{u}`, defaults to "Ku"
     :type Ku: str, optional
-    :param Ku_axis: Name of the material parameter for the anisotropy axis e_k, defaults to "Ku_axis"
-    :tye Ku_axis: str, optional
+    :param Ku_axis: Name of the material parameter for the anisotropy axis :math:`\vec{e}_\text{u}`, defaults to "Ku_axis"
+    :type Ku_axis: str, optional
     """
     parameters = ["Ku", "Ku_axis"]
 
@@ -51,21 +50,16 @@ class UniaxialAnisotropyField(LinearFieldTerm):
 
 class CubicAnisotropyField(FieldTerm):
     r"""
-    Effective field contribution corresponding to the cubic anisotropy energy
+    Cubic Anisotropy Field:
 
     .. math::
-
-      E = \int_\Omega \Big[
-        K_1 \big( m_x^2 m_y^2 + m_y^2 m_z^2 + m_z^2 m_x^2) +
-        K_2 m_x^2 m_y^2 m_z^2
-      \Big] \dx
+        \vec{h}^\text{c} = -\frac{2 K_\text{c1}}{\mu_0 \, M_s} \; \begin{pmatrix} m_1 \, m_2^2 + m_1 \, m_3^2 \\ m_2 \, m_3^2 + m_2 \, m_1^2 \\ m_3 \, m_1^2 + m_3 \, m_2^2\end{pmatrix}
+                           -\frac{2 K_\text{c2}}{\mu_0 \, M_s} \; \begin{pmatrix} m_1 \, m_2^2 \, m_3^2 \\ m_1^2 \, m_2 \, m_3^2 \\ m_1^2 \, m_2^2 \, m_3\end{pmatrix},
 
     with the anisotropy constants :math:`K_{c1}` and :math:`K_{c2}` given in units of :math:`\text{J/m}^3`.
-
     If Euler angles :math:`\alpha`, :math:`\beta` and :math:`\gamma` are provided, the cubic anisotropy axes are rotated such that the effective magnetization components :math:`m_i` with :math:`i \in \{x,y,z\}` read
 
     .. math::
-
       m_i = (\mat{A} \vec{e}_i) \cdot \vec{m}
 
     with
@@ -78,9 +72,9 @@ class CubicAnisotropyField(FieldTerm):
             \sin(\beta) \sin(\gamma) & \cos(\gamma) \sin(\beta) & \cos(\beta)
             \end{pmatrix}
 
-    :param Kc1: Name of the material parameter for the anisotropy constant K1, defaults to "Kc1"
+    :param Kc1: Name of the material parameter for the anisotropy constant :math:`K_\text{c1}`, defaults to "Kc1"
     :type Kc1: str, optional
-    :param Kc2: Name of the material parameter for the anisotropy constant K2, defaults to "Kc2"
+    :param Kc2: Name of the material parameter for the anisotropy constant :math:`K_\text{c2}`, defaults to "Kc2"
     :type Kc2: str, optional
     :param Kc_alpha: Euler angle :math:`\alpha` for the rotation of the anisotropy axes
     :type Kc_alpha: str, optional

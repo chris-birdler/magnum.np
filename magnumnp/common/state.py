@@ -102,7 +102,7 @@ class State(object):
         x[...] = c
         return x
 
-    def SpatialCoordinates(self):
+    def SpatialCoordinate(self):
         x = self._arange(self.mesh.n[0]) * self.mesh.dx[0] + self.mesh.dx[0]/2. + self.mesh.origin[0]
         y = self._arange(self.mesh.n[1]) * self.mesh.dx[1] + self.mesh.dx[1]/2. + self.mesh.origin[1]
         z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]

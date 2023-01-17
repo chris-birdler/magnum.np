@@ -3,8 +3,8 @@
  # (https://gitlab.com/magnum.np/magnum.np).
  # Copyright (c) 2023 magnum.np team.
  #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
  # the Free Software Foundation, version 3.
  #
  # This program is distributed in the hope that it will be useful, but
@@ -21,16 +21,28 @@ import torch
 
 __all__ = ["RKKYField"]
 
+# TODO: interface should be generalized and simplified
 class RKKYField(object):
     r"""
-    Effective field contribution corresponding to the RKKY interaction between two interface layers.
+    Interlayer-Exchange interaction between two layers gives rise to the following energy contribution:
 
     .. math::
 
-        E_\text{RKKY} = \int_\Gamma J_\text{RKKY} \, \vec{m}_1 \codt \vec{m}_2 d\vec{A}
+        E^\text{rkky} = -\int\limits_\Gamma J_\text{rkky} \, \vec{m}_i \cdot \vec{m}_j \, d\vec{A},
 
-    :param state: current state
-    :type state: State
+    where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j`
+    with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
+
+    :param J_rkky: Interlayer-Exchange constant :math:`J_\text{rkky}`
+    :type J_rkky: float
+    :param dir: normal direction of the interface (currently "z" is hard-coded")
+    :type filename: str
+    :param id1: Index of the first layer
+    :type id1: int
+    :param id2: Index of the second layer
+    :type id2: int
+    :param order: appoximation order of the magnetization near the interface (default = 0)
+    :type order: int, optional
 
     :Example:
 
