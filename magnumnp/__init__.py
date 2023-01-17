@@ -1,6 +1,6 @@
 """magnum.np main module"""
 
-VERSION = '0.0.1'
+__version__ = '0.0.1'
 
 try:
     import setproctitle
@@ -13,7 +13,7 @@ try:
     from magnumnp.utils import *
 
     import magnumnp.common.logging as logging
-    logging.info_green("magnum.np %s" % VERSION)
+    logging.info_green("magnum.np %s" % __version__)
 
     import torch
     torch.set_default_dtype(torch.float64)
