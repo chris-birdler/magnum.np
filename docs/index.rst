@@ -7,17 +7,17 @@ magnum.np is a Python library for the solution of micromagnetic problems with th
 ********
 Features
 ********
-* Explicit time-integration of the Landau-Lifshitz-Gilbert Equation
-* Implicit time-integration of the Landau-Lifshitz-Gilbert Equation (currently only on CPU, using scipy solvers)
+* Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
-* Fast FFT Oersted-field  optimized for small memory footprint
-* Arbitrary field terms varying in space and time
-* Spin-torque model by Zhang and Li
-* Spin-torque model by Slonczewski
+* Fast FFT Oersted-field optimized for small memory footprint
+* Arbitrary Material Parameters variing in space and time
+* Spin-torque model by Zhang and Li, Slonczewski
 * Antiferromagnetic coupling layers (RKKY)
-* Dzyaloshinskii-Moriya interaction (interface and bulk - Experimental!)
+* Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
+* Seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
+* Inverse Problems via [pytorch](http://www.paraview.org/)'s autograd feature
 
 .. toctree::
    :maxdepth: 2
