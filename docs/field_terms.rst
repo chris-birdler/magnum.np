@@ -74,6 +74,14 @@ RKKYField
 ============
 .. autoclass:: RKKYField
 
+SpinOrbitTorque
+===============
+.. autoclass:: SpinOrbitTorque
+
+SpinTorqueZhangLi
+=================
+.. autoclass:: SpinTorqueZhangLi
+
 OerstedField
 ============
 .. autoclass:: OerstedField

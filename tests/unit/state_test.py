@@ -16,7 +16,7 @@ def test_decorated_function():
     avg = state.m.avg()
     torch.testing.assert_close(avg[0]**2+avg[1]**2+avg[2]**2, state.Tensor(1.))
 
-    x, y, z = state.SpatialCoordinates()
+    x, y, z = state.SpatialCoordinate()
     domain1 = x < 4e-9
     state.m[domain1] = state.Tensor([0,0,1])
     torch.testing.assert_close(state.m[domain1].avg(), state.Tensor([0,0,1]))
