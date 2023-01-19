@@ -20,7 +20,7 @@
 from distutils.core import setup
 
 setup(name='magnumnp',
-      version='0.10.1',
+      version='1.0.0',
       description='magnum.np finite-difference package for the solution of micromagnetic problems',
       author='Florian Bruckner',
       author_email='florian.bruckner@univie.ac.at',
