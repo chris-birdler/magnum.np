@@ -1,6 +1,6 @@
 """magnum.np main module"""
 
-__version__ = '0.0.1'
+__version__ = '0.10.1'
 
 try:
     import setproctitle
