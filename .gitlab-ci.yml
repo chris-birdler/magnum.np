@@ -10,6 +10,7 @@ test:
 
 build-package:
     stage: deploy
+    if: $PYPI_USERNAME
     before_script:
         - python -m pip install --upgrade twine
         - python -m pip install --upgrade build
