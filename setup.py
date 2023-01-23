@@ -32,7 +32,7 @@ setup(name='magnumnp',
       author='Florian Bruckner',
       author_email='florian.bruckner@univie.ac.at',
       url='http://gitlab.com/magnum.np/magnum.np',
-      project_urls = {'Documentation': 'http://gitlab.com/magnum.np/magnum.np',
+      project_urls = {'Documentation': 'https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/',
                       'Changelog': 'https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG'
       },
       packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.utils'],
