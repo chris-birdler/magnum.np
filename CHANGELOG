@@ -1,5 +1,11 @@
+1.0.2 [2023-01-19]
+- update PYPI project informations
+
+1.0.1 [2023-01-19]
+- fix gitlab.ci pipeline
+
+1.0.0 [2023-01-19]
+- first public version
+
 0.9.9 [2023-01-16]
 - initial commit
-
-1.0.0 [2023-01-16]
-- first public version

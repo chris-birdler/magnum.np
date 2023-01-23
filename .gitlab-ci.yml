@@ -22,6 +22,4 @@ build-package:
         - python -m build
         - python -m twine upload dist/*
     rules:
-        - if: $PYPI_USERNAME
-    #    - if: tags
-
+        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
