@@ -77,7 +77,7 @@ external = ExternalField(TimeInterpolator(state, {0.0e-9: [0.0, 0.0, 0.0],
 llg = LLGSolver([demag, exchange, aniso, external])
 logger = ScalarLogger("data/m.dat", ['t', external.h, 'm'])
 
-while state.t < 12.5e-9-eps:
+while state.t < 13.5e-9-eps:
     llg.step(state, 1e-10)
     logger << state
 
