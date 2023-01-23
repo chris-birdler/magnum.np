@@ -1,26 +1,26 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 import torch
 import os
 from collections.abc import Iterable
 from functools import reduce
-from magnumnp.common import logging, DecoratedTensor 
+from magnumnp.common import logging, DecoratedTensor
 
 __all__ = ["ScalarLogger"]
 
@@ -86,7 +86,7 @@ class ScalarLogger(object):
                 raw_value = getattr(state, column)
             elif hasattr(column, '__call__'):
                 try:
-                    name = column.__self__.__class__.__name__ + "." + column.__name__     
+                    name = column.__self__.__class__.__name__ + "." + column.__name__
                 except:
                     name = 'unnamed'
                 raw_value = column(state)
@@ -110,7 +110,7 @@ class ScalarLogger(object):
         self._write_row(values)
 
     def __lshift__(self, state):
-        self.log(state) 
+        self.log(state)
 
     def _write_header(self, columns):
         headings = []
@@ -129,7 +129,7 @@ class ScalarLogger(object):
         format_str = "#" + "    ".join(["%-22s"] * len(headings)) + "\n"
         self._file.write(format_str % tuple(headings))
         self._file.flush()
-        
+
     def _write_row(self, columns):
         flat_values = reduce(lambda x,y: x+y,
             map(lambda x: tuple(x[1]) if isinstance(x[1], Iterable) else (x[1],), columns))

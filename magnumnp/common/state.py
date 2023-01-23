@@ -1,20 +1,20 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 import torch
 import os
@@ -53,7 +53,7 @@ class State(object):
     def material(self, values):
         if isinstance(values, dict):
             self._material = Material(self)
-            for key, value in values.items(): 
+            for key, value in values.items():
                 self._material[key] = value
         else:
             raise ValueError("Dictionary needs to be provided to set material")
@@ -102,7 +102,7 @@ class State(object):
         x[...] = c
         return x
 
-    def SpatialCoordinates(self):
+    def SpatialCoordinate(self):
         x = self._arange(self.mesh.n[0]) * self.mesh.dx[0] + self.mesh.dx[0]/2. + self.mesh.origin[0]
         y = self._arange(self.mesh.n[1]) * self.mesh.dx[1] + self.mesh.dx[1]/2. + self.mesh.origin[1]
         z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]

@@ -1,20 +1,20 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 from magnumnp.common import timedmethod, constants
 import torch
@@ -42,7 +42,7 @@ class ExchangeFieldPBC(LinearFieldTerm):
                 A_next = torch.roll(A, +1, dim) # N
                 A_avg = 2.*A_next*A/(A_next+A)
                 h += A_avg * (torch.roll(state.m, +1, dim) - state.m) / state.mesh.dx[dim]**2 # m_i+1 - m_i
-          
+
                 A_avg = torch.roll(A_avg, -1, dim)
                 h += A_avg * (torch.roll(state.m, -1, dim) - state.m) / state.mesh.dx[dim]**2 # m_i-1 - m_i
             else:
