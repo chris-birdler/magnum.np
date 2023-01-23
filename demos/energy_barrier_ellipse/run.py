@@ -19,7 +19,7 @@ state.material = {
     "alpha": 0.2
     }
 
-x, y, z = state.SpatialCoordinates()
+x, y, z = state.SpatialCoordinate()
 a = 470e-9/2.
 b = 170e-9/2.
 magnetic = ((x/a)**2. + (y/b)**2. <= 1.)

@@ -13,7 +13,7 @@ origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.,)
 mesh = Mesh(n, dx, origin)
 state = State(mesh)
 state.material = {"alpha": 1.}
-x, y, z = state.SpatialCoordinates()
+x, y, z = state.SpatialCoordinate()
 
 state.material['A'] =  state.Constant([13e-12])
 state.material['Ms'] = state.Constant([0.86e6])

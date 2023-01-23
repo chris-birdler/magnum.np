@@ -15,7 +15,7 @@ mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {"alpha": 0.10}
 
-x, y, z = state.SpatialCoordinates()
+x, y, z = state.SpatialCoordinate()
 r = 16 * dc
 gap = 50*dc - 2. * r
 l = 2.*r + gap

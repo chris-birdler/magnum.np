@@ -37,7 +37,7 @@ def test_interface_1D():
                       "Ku_axis": [0,0,1],
                       "Di": -3e-3,
                       "alpha": 1.}
-    x, y, z = state.SpatialCoordinates()
+    x, y, z = state.SpatialCoordinate()
     state.m = state.Constant([0.1,0.0,1.0])
     state.m.normalize()
 

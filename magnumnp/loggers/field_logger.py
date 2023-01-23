@@ -1,27 +1,27 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 import os
 from magnumnp.common import logging, read_vti
 import xml.etree.cElementTree as ET
 from xml.etree import cElementTree
 from xml.dom import minidom
-from magnumnp.common.io import write_vti 
+from magnumnp.common.io import write_vti
 
 __all__ = ["FieldLogger"]
 
@@ -84,7 +84,7 @@ class FieldLogger(object):
                 value = getattr(state, field)
             elif hasattr(field, '__call__'):
                 try:
-                    name = field.__self__.__class__.__name__ + "." + field.__name__     
+                    name = field.__self__.__class__.__name__ + "." + field.__name__
                 except:
                     name = 'unnamed'
                 value = field(state)

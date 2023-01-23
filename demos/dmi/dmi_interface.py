@@ -16,7 +16,7 @@ state.material = {
         "alpha": 1.,
         }
 
-XX, YY, ZZ = state.SpatialCoordinates()
+XX, YY, ZZ = state.SpatialCoordinate()
 R = 50e-9
 disk = XX**2. + YY**2. < R**2.
 

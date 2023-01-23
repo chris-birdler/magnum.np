@@ -1,20 +1,20 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 from magnumnp.common import logging, timedmethod, constants, Timer
 import numpy as np
@@ -99,6 +99,22 @@ complex_dtype = {
 
 
 class DemagField(object):
+    r"""
+    Demagnetization Field:
+
+    The dipole-dipole interaction gives rise to a long-range interaction.
+    The integral formulation of the corresponding Maxwell equations can
+    be represented as convolution of the magnetization :math:`\vec{M} = M_s \; \vec{m}` with a proper
+    demagnetization kernel :math:`\vec{N}`
+
+    .. math::
+        \vec{h}^\text{dem}_{\vec{i}} = \sum\limits_{\vec{j}} \vec{N}_{\vec{i} - \vec{j}} \, \vec{M}_{\vec{j}},
+
+    The convolution can be evaluated efficiently using an FFT method.
+
+    :param p: number of next neighbors for near field via Newell's equation (default = 20)
+    :type p: int, optional
+    """
     def __init__(self, p = 20):
         self._p = p
 

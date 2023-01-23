@@ -1,20 +1,20 @@
- #
- # This file is part of the magnum.np distribution
- # (https://gitlab.com/magnum.np/magnum.np).
- # Copyright (c) 2023 magnum.np team.
- #
- # This program is free software: you can redistribute it and/or modify  
- # it under the terms of the GNU General Public License as published by  
- # the Free Software Foundation, version 3.
- #
- # This program is distributed in the hope that it will be useful, but
- # WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- # General Public License for more details.
- #
- # You should have received a copy of the GNU General Public License
- # along with this program. If not, see <http://www.gnu.org/licenses/>.
- #
+#
+# This file is part of the magnum.np distribution
+# (https://gitlab.com/magnum.np/magnum.np).
+# Copyright (c) 2023 magnum.np team.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, version 3.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 from magnumnp.common import logging, timedmethod, constants
 import numpy as np
@@ -66,6 +66,18 @@ def dipole_g(points):
 
 
 class OerstedField(object):
+    r"""
+    The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law
+
+    .. math::
+
+        \vec{h}^\text{oersted}(\vec{x}) = \frac{1}{4 \pi} \int \vec{j}(\vec{x}') \times \frac{\vec{x}-\vec{x}'}{\vert \vec{x}-\vec{x}'\vert^3} \, d\vec{x}'.
+
+    The occuring equations look very similar to those of the demag field [krueger], and the occuring convolution can be efficiently calculated by means of an FFT method.
+
+    :param p: number of next neighbors for near field via Krueger's equations (default = 20)
+    :type p: int, optional
+    """
     def __init__(self, p = 20):
         self._p = p
 
