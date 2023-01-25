@@ -22,12 +22,15 @@ def test_decorated_function():
     torch.testing.assert_close(state.m[domain1].avg(), state.Tensor([0,0,1]))
     torch.testing.assert_close(state.m.avg(), state.Tensor([0.28867513, 0.28867513, 0.78867513]))
 
-def test_Constant():
+
+@pytest.mark.parametrize("requires_grad", [False, True])
+def test_Constant(requires_grad):
     n  = (8,10,12)
     dx = (1e-9, 2e-9, 5e-9)
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {"Ms": Ms}
-    state.m = state.Constant([0,0,1])
+    state.m = state.Constant([0,0,1], requires_grad = requires_grad)
     torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]))
+    assert state.m.requires_grad == requires_grad
