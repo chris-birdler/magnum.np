@@ -13,10 +13,11 @@ try:
     from magnumnp.utils import *
 
     import magnumnp.common.logging as logging
-    logging.info_green("magnum.np %s" % __version__)
 
     import torch
-    torch.set_default_dtype(torch.float64)
+    #torch.set_default_dtype(torch.float64)
+
+    logging.info_green("magnum.np %s" % __version__)
 
 except Exception as e:
     import magnumnp.common.logging as logging
