@@ -95,11 +95,12 @@ class State(object):
         else:
             raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
-    def Constant(self, c, dtype=None):
+    def Constant(self, c, dtype=None, requires_grad=False):
         dtype = dtype or self._dtype or torch.get_default_dtype()
         c = self.Tensor(c, dtype=dtype)
         x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
         x[...] = c
+        x.requires_grad = requires_grad
         return x
 
     def SpatialCoordinate(self):
