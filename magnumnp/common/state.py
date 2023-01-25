@@ -34,7 +34,10 @@ class State(object):
         self._material = Material(self)
         self._dtype = dtype
         self.t = t0
-        logging.info_green("[State] running on device:%s" % self._device)
+
+        dtype = dtype or torch.get_default_dtype()
+        dtype_str = str(dtype).split('.')[1]
+        logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))
         logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
 
     @property
