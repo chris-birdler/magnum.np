@@ -23,5 +23,5 @@ def test_timeinterpolator():
     torch.testing.assert_close(interpolator(state.t), state.Tensor([0.0,0.0,0.7]))
 
     external = ExternalField(interpolator)
-    torch.testing.assert_close(external.h(state), state.Tensor([0.0,0.0,0.7]))
+    torch.testing.assert_close(external.h(state), state.Tensor([0.0,0.0,0.7]), atol=1e-6, rtol=1e-6)
 

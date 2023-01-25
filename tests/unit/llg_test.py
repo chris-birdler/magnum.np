@@ -15,9 +15,10 @@ def test_simple(simple_state):
 
     llg = LLGSolver([demag, exchange, external])
     llg.step(simple_state, 1e-11)
-    assert simple_state.t.cpu() == pytest.approx(1e-11)
+    assert simple_state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)
 
 
+# TODO: move to fieldterm test
 def test_material_tensors():
     n  = (10, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
@@ -42,4 +43,4 @@ def test_material_tensors():
 
     llg = LLGSolver([demag, exchange, aniso, external])
     llg.step(state, 1e-11)
-    assert state.t.cpu() == pytest.approx(1e-11)
+    assert state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)

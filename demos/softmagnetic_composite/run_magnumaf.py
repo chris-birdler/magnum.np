@@ -1,6 +1,8 @@
-from magnumnp import *
-import torch
+#!/usr/bin/python3
+import arrayfire as af
 import numpy as np
+from magnumaf import *
+import time
 
 #SIZE_CUBE = 900e-9
 #gap = 23.08 14.29 9.09 6.98 4.35
@@ -36,49 +38,69 @@ k_dir = np.array(((1.688281290426342229e-01, -7.18775080428410873e-01, 6.7443268
                   (3.803260297965609382e-01, 9.217214425940288836e-01, 7.603744683751342825e-02),
                   (-7.25468075571367832e-01, 2.563257490022778362e-01, -6.38743439672923241e-01))).reshape(3,3,3,3)
 
-Timer.enable()
+def H_ext(T, Hmax, t, H0=0):
+    while t > T:
+        t -= T
+    if t < T/4:
+        H0 = (Hmax) *t/(T/4)
+    elif t < 3*T/4:
+        H0 = Hmax - 2 * Hmax * (t-(T/4))/(T/2)
+    elif t < 5*T/4:
+        H0 = -Hmax + Hmax*(t-(3*T/4))/(T/4)
+    return H0 / (4*np.pi*1e-7)
 
-# initialize state
-eps = 1e-15
 Nx, Ny, Nz = 3, 3, 3
 nx, ny, nz = N, N, N
 dx, dy, dz = 900e-9 / (N-1), 900e-9 / (N-1), 900e-9 / (N-1)
 
-mesh = Mesh((nx,ny,nz), (dx,dy,dz))
-state = State(mesh)
-state.m = state.Constant((0,0,1))
-state.material = {"alpha": 1.0}
+mesh = Mesh(nx, ny, nz, dx, dy, dz)
 
-state.material["Ms"] = state.Constant([0.0001/constants.mu_0])
-state.material["Ms"][nx%Nx:,ny%Ny:,nz%Nz:] = 1.5/constants.mu_0
+m0 = af.constant(0.0, nx, ny, nz, 3, dtype=af.Dtype.f64)
+m0[:, :, :, 2] = 1.
 
-state.material["A"] = state.Constant([0.])
-state.material["A"][nx%Nx:,ny%Ny:,nz%Nz:] = 10e-12
+Ms = af.constant(0.0001/Constants.mu0, nx, ny, nz, dtype=af.Dtype.f64)
+Ms[nx%Nx:,ny%Ny:,nz%Nz:] = 1.5/Constants.mu0
+#Util.write_vti(Ms, dx, dy, dz, "tmp/Ms")
 
-state.material["Ku"] = state.Constant([0.])
-state.material["Ku"][nx%Nx:,ny%Ny:,nz%Nz:] = 8e3
+A = af.constant(0.0, nx, ny, nz, dtype=af.Dtype.f64)
+A[nx%Nx:,ny%Ny:,nz%Nz:] = 10e-12
+#Util.write_vti(A, dx, dy, dz, "tmp/A")
 
-state.material["Ku_axis"] = state.Constant([1,1,1])
-state.material["Ku_axis"][nx%Nx:,ny%Ny:,nz%Nz:,:] = state.Tensor(k_dir.repeat(nx//Nx,0).repeat(ny//Ny,1).repeat(nz//Nz,2))
+Ku = af.constant(0.0, nx, ny, nz, dtype=af.Dtype.f64)
+Ku[nx%Nx:,ny%Ny:,nz%Nz:] = 8e3
+#Util.write_vti(Ku, dx, dy, dz, "tmp/Ku")
 
-write_vti(state.material, "data/material.vti", state)
+Kdir = af.constant(1.0, nx, ny, nz, 3, dtype=af.Dtype.f64)
+Kdir[nx%Nx:,ny%Ny:,nz%Nz:,:] = af.from_ndarray(k_dir.repeat(nx//Nx,0).repeat(ny//Ny,1).repeat(nz//Nz,2))
+#Util.write_vti(Kdir[:,:,:,0], dx, dy, dz, "tmp/Kdir_x")
 
-# initialize field terms
-demag    = DemagFieldPBC()
-exchange = ExchangeFieldPBC()
-aniso    = UniaxialAnisotropyField()
-external = ExternalField(TimeInterpolator(state, {0.0e-9: [0.0, 0.0, 0.0],
-                                                  1.0e-9: [0.0, 0.0, 0.0],
-                                                  3.5e-9: [0.1/constants.mu_0, 0.0, 0.0],
-                                                  8.5e-9: [-0.1/constants.mu_0, 0.0, 0.0],
-                                                 13.5e-9: [0.1/constants.mu_0, 0.0, 0.0]}))
+# Create state object with timing
+start = time.time()
+state = State(mesh, Ms, m = m0)
 
-# perform integration
-llg = LLGSolver([demag, exchange, aniso, external])
-logger = ScalarLogger("data/m.dat", ['t', external.h, 'm'])
+demag = DemagFieldPBC()
+exch = ExchangeFieldPBC(A,mesh)
+aniso = UniaxialAnisotropyField(Ku, Kdir)
+zee = ExternalField(af.constant(0.0, nx, ny, nz, 3, dtype=af.Dtype.f64))
 
-while state.t < 12.5e-9-eps:
-    llg.step(state, 1e-10)
-    logger << state
+llg = LLGIntegrator(alpha = 1, terms = [aniso, exch, zee, demag], rtol=1e-6, atol=1e-6)
+with open("data/m_ref.dat", "w") as fd:
+    frequency = 1e8
+    Az = 0.1
+    periods = 1
+    H = 0.
 
-Timer.print_report()
+    while state.t < 1e-9:
+        llg.step(state)
+        fd.write("%.15e, %.15e, %.15e, %.15e, %.15e, %.15e, %.15e\n" % (state.t, H, 0, 0, state.mean_mx(), state.mean_my(), state.mean_mz()))
+
+    while state.t < 5./4.*periods/frequency + 1e-9:
+        t0 = state.t
+        H = H_ext(1/frequency, Az, state.t-1e-9)
+        zee.set_homogeneous_field(H, 0, 0)
+        	
+        fd.write("%.15e, %.15e, %.15e, %.15e, %.15e, %.15e, %.15e\n" % (state.t, H, 0, 0, state.mean_mx(), state.mean_my(), state.mean_mz()))
+        fd.flush()
+        llg.step(state)
+
+print("llg.cumulated_steps:", llg.accumulated_steps)
