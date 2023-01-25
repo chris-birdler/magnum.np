@@ -20,4 +20,4 @@ def test_PBC(simple_state):
     simple_state.m = simple_state.Constant([0,0,1])
     simple_state.m[:50,:,:,2] = -1
     h = exchange.h(simple_state)
-    assert torch.allclose(h[:50,...], -h[50:,...])
+    torch.testing.assert_close(h[:50,...], -h[50:,...], atol=1e-15, rtol=1e-15)

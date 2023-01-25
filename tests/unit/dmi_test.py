@@ -4,6 +4,7 @@ import torch
 from magnumnp import *
 import numpy as np
 
+# move to fieldterms test
 def test_call():
     n = (8,10,12)
     dx = (1e-9, 2e-9, 5e-9)
@@ -22,6 +23,8 @@ def test_call():
     dmi = D2dDMIField(DD2d = "xDD2d")
     dmi.h(state)
 
+
+# move to demo as integration test
 def test_interface_1D():
     """ 1D Interface DMI Testcase
         taken from 'Proposal for a micromagnetic standard problem for materials with Dzyaloshinskii–Moriya interaction'
