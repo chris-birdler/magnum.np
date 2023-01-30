@@ -33,8 +33,6 @@ def test_Ms_domain():
     demag = DemagField()
     h = demag.h(state)
     E = demag.E(state)
-    print("E1:", E)
-    print("E2:", 1./6.*mesh.volume*constants.mu_0*Ms**2)
     assert E.cpu() == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
 
 def test_PBC():
