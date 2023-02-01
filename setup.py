@@ -42,6 +42,7 @@ setup(name='magnumnp',
             'scipy',
             'setproctitle',
             'pyvista',
-            'xitorch'
+            'xitorch',
+            'torchdiffeq'
             ]
      )

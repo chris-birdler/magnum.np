@@ -21,6 +21,33 @@ Features
 * Inverse Problems via [pytorch](http://www.paraview.org/)'s autograd feature
 
 
+Installation
+------------
+
+### from Python Package Index (PyPi)
+For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np the available python environment)
+
+    mkdir venv
+    python -m venv venv
+    source venv/bin/activate
+
+Finally install a release versions of magnum.np by means of pip:
+
+    pip install magnum.np
+
+
+### from source code (gitlab.com)
+More advanced users can also install magnum.np from source code.
+It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
+
+After activating the virtual environment magnum.np can be simply installed using pip. For example
+installing with the -e option also allows to modify the source code:
+
+    pip install -e .
+
+Note that a default version of [pytorch](http://www.pytorch.org) is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
+
+
 Example
 -------
 The following demo code shows the solution of the MuMag Standard Problem #5 and can be found in the demos directory:
@@ -78,10 +105,9 @@ Documentation
 -------------
 The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
 For example the following commands build an HTML documentation of the actual source code.
-```
-cd doc
-make html
-```
+
+    cd doc
+    make html
 
 Alternatively, the latest version of the documentation is always available on [https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/](https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/)
 

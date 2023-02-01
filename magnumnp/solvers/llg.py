@@ -16,52 +16,53 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, DecoratedTensor
 from .rkf45 import RKF45
+from .scipy_ode import ScipyODE
 import torch
 
 __all__ = ["LLGSolver"]
 
 class LLGSolver(object):
-    def __init__(self, terms, atol = 1e-5):
+    def __init__(self, terms, solver = RKF45, **kwargs):
         self._terms = terms
-        def dm(state, t, m):
-            t0 = state.t
-            m0 = state.m.detach()
-            state.t = t
-            state.m = m
-            dm = self._dm(state)
-            state.t = t0
-            state.m = m0
-            return dm
-        self._solver = RKF45(dm, atol=atol)
+        self._solver = solver(self.dm, **kwargs)
 
-    def _dm(self, state):
-        gamma_prime = constants.gamma / (1. + state.material["alpha"]**2)
-        alpha_prime = state.material["alpha"] * gamma_prime
+    def dm(self, state, alpha = None, no_precession = False):
+        alpha = alpha or state.material["alpha"]
+
+        gamma_prime = constants.gamma / (1. + alpha**2)
+        alpha_prime = alpha * gamma_prime
 
         h = sum([term.h(state) for term in self._terms])
-        return - gamma_prime * torch.cross(state.m, h) \
-               - alpha_prime * torch.cross(state.m, torch.cross(state.m, h))
+
+        dm = -alpha_prime * torch.cross(state.m, torch.cross(state.m, h))
+        if not no_precession:
+            dm -= gamma_prime * torch.cross(state.m, h)
+
+        return dm
+
+    def E(self, state):
+        return sum([term.E(state) for term in self._terms])
 
     @timedmethod
-    def step(self, state, dt):
-        self._solver.step(state, dt)
+    def step(self, state, dt, **kwargs):
+        self._solver.step(state, dt, **kwargs)
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
     def relax(self, state, maxiter = 500, rtol = 1e-5, dt = 1e-11):
-        alpha0 = state.material["alpha"]
         t0 = state.t
-        state.material["alpha"] = 1.0
-        E0 = sum([term.E(state) for term in self._terms])
-        for i in range(maxiter) :
-            self._solver.step(state, dt)
-            E = sum([term.E(state) for term in self._terms])
+        E0 = self.E(state)
+
+        for i in range(maxiter):
+            self._solver.step(state, dt, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
+
+            E = self.E(state)
             dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
             logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
             if dE < rtol:
                 break
             E0 = E
+
         state.t = t0
-        state.material["alpha"] = alpha0
