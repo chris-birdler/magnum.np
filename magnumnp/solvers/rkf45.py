@@ -30,7 +30,7 @@ class RKF45(object):
 
         # Numerical Recipies 3rd Edition suggests these values:
         self._headroom = 0.9
-        self._maxstep = 1e-11
+        self._maxstep = 1e-10
         self._minscale = 0.2
         self._maxscale = 10.
         self._atol = atol
@@ -60,7 +60,7 @@ class RKF45(object):
         return m+dm, t+dt, rk_error
 
     def _optimal_stepsize(self, rk_error):
-        norm = torch.linalg.norm(rk_error.flatten() / self._atol, torch.inf)
+        norm = torch.linalg.norm(rk_error._base.flatten() / self._atol, torch.inf)
         if torch.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
