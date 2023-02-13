@@ -61,7 +61,7 @@ class DMIField(LinearFieldTerm):
         for dim in range(3):
             v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
             D_avg = torch.where(D[next]*D[current] < 0,
-                                torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.),
+                                torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.), # TODO: is sign missing?
                                 2.*D[next]*D[current]/(D[next]+D[current]))
             h[current] += D_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
             h[next]    -= D_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
