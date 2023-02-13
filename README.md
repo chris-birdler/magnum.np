@@ -50,7 +50,7 @@ Note that a default version of [pytorch](http://www.pytorch.org) is included in 
 
 Example
 -------
-The following demo code shows the solution of the MuMag Standard Problem #5 and can be found in the demos directory:
+The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
 ```python
 from magnumnp import *
