@@ -25,14 +25,14 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='magnumnp',
-      version='1.0.4',
+      version='1.0.5',
       description='magnum.np finite-difference package for the solution of micromagnetic problems',
       long_description=long_description,
       long_description_content_type='text/markdown',
       author='Florian Bruckner',
       author_email='florian.bruckner@univie.ac.at',
       url='http://gitlab.com/magnum.np/magnum.np',
-      project_urls = {'Documentation': 'https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/',
+      project_urls = {'Documentation': 'https://magnum.np.gitlab.io/magnum.np/',
                       'Changelog': 'https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG'
       },
       packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.utils'],
