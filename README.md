@@ -16,7 +16,7 @@ Features
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
 * Seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
-* Inverse Problems via [pytorch](http://www.paraview.org/)'s autograd feature
+* Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
 
 
 Installation
