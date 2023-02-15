@@ -26,8 +26,7 @@ Features
    installation
    getting_started
    field_terms
-
-   demos/sp4/run.ipynb
+   demos
 
 ********
 Citation

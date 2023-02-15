@@ -80,12 +80,20 @@ pygments_style = None
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+#html_theme = 'pydata_sphinx_theme'
+#html_logo = 'logo.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
 # html_theme_options = {}
+#html_theme_options = {
+#   "logo": {
+#      "image_light": "logo.png",
+#      "image_dark": "logo.png",
+#   }
+#}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
