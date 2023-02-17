@@ -1,0 +1,14 @@
+set output "data/results.png"
+set terminal pngcairo enhanced dashed
+set termoption dash
+set grid
+set title "RKKY Standard Problem"
+set xlabel "External Field H_{ext} / H_k [1]"
+set ylabel "Magnetization m"
+set key left
+
+Hk = 2 * 1e5 / 1.
+plot [4.82:5.0][0.99994:1] \
+    'ref/log.dat'    using ($7/Hk):4 title "reference" w l lw 2 lc 1, \
+    'data/log.dat'   using ($7/Hk):4 title "magnum.np" w p lw 2 ps 2 lc 2
+

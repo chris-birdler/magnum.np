@@ -17,8 +17,7 @@
 #
 
 from magnumnp.common import logging, timedmethod, constants, DecoratedTensor
-from .rkf45 import RKF45
-from .scipy_ode import ScipyODE
+from .ode_solvers import RKF45
 import torch
 
 __all__ = ["LLGSolver"]
@@ -56,10 +55,10 @@ class LLGSolver(object):
         E0 = self.E(state)
 
         for i in range(maxiter):
-            self._solver.step(state, dt, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
+            self._solver.step(state, dt, alpha = 1.0, rtol = rtol, atol = rtol) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
             E = self.E(state)
-            dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
+            dE = torch.abs((E - E0)/E)
             logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
             if dE < rtol:
                 break
