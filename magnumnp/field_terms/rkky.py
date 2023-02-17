@@ -33,6 +33,11 @@ class RKKYField(object):
     where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j`
     with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
 
+    Special care has to be taken, if domain walls or partial domain walls are formed across the RKKY interface.
+    In this case higher order approximations of the magnetization needs to be used near the interface in order to
+    accurately describe e.g. the equilibrium magnetization or critical switching fields.
+    (see Suess et al. "Accurate finite difference micromagnetic of magnetis including RKKY interaction -- analytical solution and comparision to standard micromagnetic codes")
+
     :param J_rkky: Interlayer-Exchange constant :math:`J_\text{rkky}`
     :type J_rkky: float
     :param dir: normal direction of the interface (currently "z" is hard-coded")
@@ -68,6 +73,8 @@ class RKKYField(object):
     """
     def __init__(self, J_rkky, dir, id1, id2, order = 0):
         self._J_rkky = J_rkky
+        if dir != "z":
+            raise ValueError("Currently only dir='z' is implemented!")
         self._dir = dir #TODO: dir is ignored
         self._id1 = min(id1,id2)
         self._id2 = max(id1,id2)
@@ -76,14 +83,15 @@ class RKKYField(object):
     @timedmethod
     def h(self, state):
         h = state._zeros(state.mesh.n + (3,))
-        m1 = state.m[:,:,(self._id1,),:]
-        m2 = state.m[:,:,(self._id2,),:]
-        if self._order == 1:
-            m1 += 0.5 * (m[:,:,(self._id1,),:] - m[:,:,(self._id1-1,),:])
-            m2 += 0.5 * (m[:,:,(self._id2,),:] - m[:,:,(self._id2+1,),:])
+        if self._order == 0:
+            m1 = state.m[:,:,(self._id1,),:]
+            m2 = state.m[:,:,(self._id2,),:]
+        elif self._order == 1:
+            m1 = 1.5 * state.m[:,:,(self._id1,),:] - 0.5 * state.m[:,:,(self._id1-1,),:]
+            m2 = 1.5 * state.m[:,:,(self._id2,),:] - 0.5 * state.m[:,:,(self._id2+1,),:]
         elif self._order == 2:
-            m1 += 0.25 * (3*m[:,:,(self._id1,),:] - 4*m[:,:,(self._id1-1,),:] + m[:,:,(self._id1-2,),:])
-            m2 += 0.25 * (3*m[:,:,(self._id2,),:] - 4*m[:,:,(self._id2+1,),:] + m[:,:,(self._id2+2,),:])
+            m1 = 15./8. * state.m[:,:,(self._id1,),:] - 5./4. * state.m[:,:,(self._id1-1,),:] + 3./8.* state.m[:,:,(self._id1-2,),:]
+            m2 = 15./8. * state.m[:,:,(self._id2,),:] - 5./4. * state.m[:,:,(self._id2+1,),:] + 3./8.* state.m[:,:,(self._id2+2,),:]
 
         h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
