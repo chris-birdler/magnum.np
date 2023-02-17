@@ -23,7 +23,7 @@ __all__ = ["RKF45"]
 
 #Runge-Kutta-Fehlberg method with stepsize control
 class RKF45(object):
-    def __init__(self, f, dt = 1e-15, atol = 1e-5):
+    def __init__(self, f, dt = 1e-15, atol = 1e-5, rtol = 1e-5):
         self._f = f
         self._dt = dt
         self._order = 4
@@ -34,33 +34,34 @@ class RKF45(object):
         self._minscale = 0.2
         self._maxscale = 10.
         self._atol = atol
+        self._rtol = rtol # currently rtol is ignored since m is normalized!
         logging.info_green("[LLGSolver] using RKF45 solver (atol = %g)" % atol)
 
-    def _f_wrapper(self, state, t, m, **kwargs):
+    def _f_wrapper(self, state, t, m, **llg_args):
         t0 = state.t
         m0 = state.m.detach()
         state.t = t
         state.m = m
-        f = self._f(state, **kwargs)
+        f = self._f(state, **llg_args)
         state.t = t0
         state.m = m0
         return f
 
-    def _try_step(self, state, **kwargs):
+    def _try_step(self, state, **llg_args):
         f, m, t, dt = self._f_wrapper, state.m, state.t, self._dt
-        k1 = dt * f(state, t,              m, **kwargs)
-        k2 = dt * f(state, t +  1./ 4.*dt, m +      1./ 4.*k1, **kwargs)
-        k3 = dt * f(state, t +  3./ 8.*dt, m +      3./32.*k1 +      9./32.*k2, **kwargs)
-        k4 = dt * f(state, t + 12./13.*dt, m + 1932./2197.*k1 - 7200./2197.*k2 + 7296./2197.*k3, **kwargs)
-        k5 = dt * f(state, t +      1.*dt, m +   439./216.*k1 -          8.*k2 + 3680./ 513.*k3 -  845./4104.*k4, **kwargs)
-        k6 = dt * f(state, t +  1./ 2.*dt, m -    8. / 27.*k1 +          2.*k2 - 3544./2565.*k3 + 1859./4104.*k4 - 11./40.*k5, **kwargs)
+        k1 = dt * f(state, t,              m, **llg_args)
+        k2 = dt * f(state, t +  1./ 4.*dt, m +      1./ 4.*k1, **llg_args)
+        k3 = dt * f(state, t +  3./ 8.*dt, m +      3./32.*k1 +      9./32.*k2, **llg_args)
+        k4 = dt * f(state, t + 12./13.*dt, m + 1932./2197.*k1 - 7200./2197.*k2 + 7296./2197.*k3, **llg_args)
+        k5 = dt * f(state, t +      1.*dt, m +   439./216.*k1 -          8.*k2 + 3680./ 513.*k3 -  845./4104.*k4, **llg_args)
+        k6 = dt * f(state, t +  1./ 2.*dt, m -    8. / 27.*k1 +          2.*k2 - 3544./2565.*k3 + 1859./4104.*k4 - 11./40.*k5, **llg_args)
 
         dm = 16./135.*k1 + 6656./12825.*k3 + 28561./56430.*k4 - 9./50.*k5 + 2./55.*k6
         rk_error = dm - (25./216.*k1 + 1408./2565.*k3 + 2197./4104.*k4 - 1./5.*k5)
         return m+dm, t+dt, rk_error
 
-    def _optimal_stepsize(self, rk_error):
-        norm = torch.linalg.norm(rk_error._base.flatten() / self._atol, torch.inf)
+    def _optimal_stepsize(self, rk_error, atol):
+        norm = torch.linalg.norm(rk_error._base.flatten() / atol, torch.inf)
         if torch.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
@@ -85,14 +86,14 @@ class RKF45(object):
             dt_opt = self._maxstep
         return dt_opt
 
-    def step(self, state, dt, **kwargs):
+    def step(self, state, dt, rtol = None, atol = None, **llg_args):
         t0, t1 = state.t, state.t + dt
         while state.t < t1:
-            _m1, _t1, err = self._try_step(state, **kwargs)
-            dt_opt = self._optimal_stepsize(err)
+            _m1, _t1, err = self._try_step(state, **llg_args)
+            dt_opt = state._tensor(self._optimal_stepsize(err, atol or self._atol))
             if self._dt > dt_opt or self._dt > t1 - state.t:
                 # step size was too large, retry with optimal stepsize
-                self._dt = min(dt_opt, t1 - state.t).detach()
+                self._dt = torch.min(dt_opt, t1 - state.t).detach()
                 logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
             else:
                 # accept step, adapt stepsize for next step

@@ -7,7 +7,7 @@ set xlabel "External Field {/Symbol m}_0 H^{ext}_x [T]"
 set ylabel "Reduced Magnetization m [1]"
 set key left top
 
-plot \
+plot [-0.1:0.1] \
     'ref/m_ref.dat' using (4*pi*1e-7*$2):5 title "magnum.af" w l lc 1, \
     'data/m.dat'    using (4*pi*1e-7*$2):5 title "magnum.np" w lp lc 2 
 
