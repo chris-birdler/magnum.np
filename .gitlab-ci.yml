@@ -28,10 +28,10 @@ pages:
     stage: deploy
     script:
         - apt update -yq
-        - apt install -y python3-opencv
+        - apt install -y python3-opencv pandoc
         - pip install setuptools pytest
-        - pip install .
-        - python -m pip install -U sphinx sphinx_rtd_theme
+        - pip install -e .
+        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
         - sphinx-build -b html docs public
     artifacts:
         paths:
