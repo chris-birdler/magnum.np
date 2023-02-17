@@ -31,15 +31,8 @@ Run remotely via Google Colab
 The same notebook can be executed remotely on resources provided by Google Colab. The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.      
 
 
-
-List of Demos
--------------
-
-[Standard Problem #4](sp4/run.ipynb)
-
-
 .. toctree::
    :maxdepth: 1
-   :caption: List of Demos2:
+   :caption: List of Demos:
 
    demos/sp4
