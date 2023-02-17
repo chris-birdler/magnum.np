@@ -19,6 +19,15 @@ Features
 * Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
 
 
+Documented Demos:
+-----------------
+Demo scripts for various applications are available in the [demo](demos/README.md) directory.
+
+The following demos are also stored on Google Colab, where they can directly be run without any local installation:
+
+   * [Standard Problem #4](demos/sp4/run.ipynb)
+
+
 Installation
 ------------
 
@@ -49,7 +58,7 @@ Note that a default version of [pytorch](http://www.pytorch.org) is included in 
 ---------------------------------
 Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](http://colab.research.google.com). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
-Some jupyter-notebook examples are included in the demo directory, which also include links to Colab, where they can directly be run without any local installation.
+Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
 
 
 Example

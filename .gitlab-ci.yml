@@ -31,7 +31,7 @@ pages:
         - apt install -y python3-opencv
         - pip install setuptools pytest
         - pip install .
-        - python -m pip install -U sphinx sphinx_rtd_theme
+        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx
         - sphinx-build -b html docs public
     artifacts:
         paths:
