@@ -26,7 +26,7 @@ Features
    installation
    getting_started
    field_terms
-
+   demos
 
 ********
 Citation
@@ -43,8 +43,11 @@ Contributions are gratefully accepted.
 The source code is hosted on [www.gitlab.com/magnum.np/magnum.np](www.gitlab.com/magnum.np/magnum.np).
 If you have any issues or question, just open an issue via gitlab.com.
 To contribute code, fork our repository on gitlab.com and create a corresponding merge request.
+
+
+******************
 Indices and tables
-==================
+******************
 
 * :ref:`genindex`
 * :ref:`modindex`
