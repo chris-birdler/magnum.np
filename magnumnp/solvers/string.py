@@ -17,7 +17,7 @@
 #
 
 from magnumnp.common import logging, timedmethod, constants
-from .rkf45 import RKF45
+from .ode_solvers import RKF45
 from .llg import LLGSolver
 import torch
 from xitorch.interpolate import Interp1D

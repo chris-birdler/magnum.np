@@ -1,5 +1,5 @@
-magnum.np
-=========
+magnum.np 1.0.5
+===============
 
 magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference method. It implements state-of-the-art algorithms and is based on [pytorch](http://www.pytorch.org/), which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in Python which leads to very readable yet flexible code. Due to [pytorch](http://www.pytorch.org/) integration, extensive postprocessing can be done directly in the simulations scripts. Furthermore [pytorch](http://www.paraview.org/)'s autograd feature makes it possible to solve inverse problems without significant modifications of the code. This manual is meant to give you both a quick start and a reference to magnum.np.
 
@@ -102,12 +102,11 @@ Timer.print_report()
 Documentation
 -------------
 The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
-For example the following commands build an HTML documentation of the actual source code.
+For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
 
-    cd doc
-    make html
+    sphinx-build -b html docs public
 
-Alternatively, the latest version of the documentation is always available on [https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/](https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/)
+Alternatively, the latest version of the documentation is always available on [https://magnum.np.gitlab.io/magnum.np/](https://magnum.np.gitlab.io/magnum.np/)
 
 
 Citation

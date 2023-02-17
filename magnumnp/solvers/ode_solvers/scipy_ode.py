@@ -33,22 +33,24 @@ class ScipyODE(object):
         self._initialized = False
         logging.info_green("[LLGSolver] using Scipy ODE solver '%s' (method = '%s', rtol = %g, atol = %g)" % (name, method, rtol, atol))
 
-    def _f_wrapper(self, t, m, state, kwargs):
+    def _f_wrapper(self, t, m, state, llg_args):
         state.t = t
         state.m = state.Tensor(m.reshape(state.mesh.n + (3,), order = "F"))
-        f = self._f(state, **kwargs)
+        f = self._f(state, **llg_args)
         return f.detach().cpu().numpy().flatten(order = "F")
 
-    def step(self, state, dt, **kwargs):
+    def step(self, state, dt, rtol = None, atol = None, **llg_args):
         if not self._initialized:
             m = state.m.numpy().reshape(-1, order = 'F')
             self._solver.set_initial_value(m, state.t.item())
             self._initialized = True
 
-        self._solver.set_f_params(state, kwargs)
+        self._solver.set_f_params(state, llg_args)
 
         t1 = self._solver.t + dt
         m1 = self._solver.integrate(t1)
+        if not self._solver.successful():
+            logging.warning("[LLGSolver] Scipy ODE solver: integration not successful!")
 
         state.m = state.Tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
-        state.t = t1
+        state.t = self._solver.t
