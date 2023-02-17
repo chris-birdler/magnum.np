@@ -102,12 +102,11 @@ Timer.print_report()
 Documentation
 -------------
 The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
-For example the following commands build an HTML documentation of the actual source code.
+For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
 
-    cd doc
-    make html
+    sphinx-build -b html docs public
 
-Alternatively, the latest version of the documentation is always available on [https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/](https://magnumnp-magnumnp.readthedocs-hosted.com/en/latest/)
+Alternatively, the latest version of the documentation is always available on [https://magnum.np.gitlab.io/magnum.np/](https://magnum.np.gitlab.io/magnum.np/)
 
 
 Citation
