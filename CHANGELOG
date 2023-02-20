@@ -1,3 +1,7 @@
+1.0.6 [2023-02-20]
+- use pytorch.compile if available
+- material setter converts arbitrary input to tensor-fields
+
 1.0.5 [2023-02-13]
 - move documentation to gitlab pages
 - refactor ODE solver interface
