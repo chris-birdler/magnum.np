@@ -52,28 +52,41 @@ class DMIField(LinearFieldTerm):
     @timedmethod
     def h(self, state):
         h = state._zeros(state.mesh.n + (3,))
-        D = state.material[self.D]
+        D = state.material[self.D].torch_tensor
+        Ms = state.material["Ms"].torch_tensor
+        m = state.m.torch_tensor
 
-        full = slice(None, None)
-        current = (slice(None, -1), full, full)
-        next = (slice(1, None), full, full)
-
-        for dim in range(3):
-            v = state.Tensor(self._dmi_vector[dim]).expand(state.m[next].shape)
-            D_avg = torch.where(D[next]*D[current] < 0,
-                                torch.sqrt(torch.sqrt(-D[next]*D[current])*torch.abs(D[next]+D[current]) / 2.), # TODO: is sign missing?
-                                2.*D[next]*D[current]/(D[next]+D[current]))
-            h[current] += D_avg * torch.linalg.cross(v, state.m[next]   ) / (2.*state.mesh.dx[dim])
-            h[next]    -= D_avg * torch.linalg.cross(v, state.m[current]) / (2.*state.mesh.dx[dim])
-
-            # rotate dimension
-            current = current[-1:] + current[:-1]
-            next = next[-1:] + next[:-1]
-
-        h *= 2. / (constants.mu_0 * state.material["Ms"])
-        h = torch.nan_to_num(h, posinf=0, neginf=0)
+        self._h(m, D, Ms, h, state)
         return state.Tensor(h)
 
+    @torch.compile
+    def _h(self, m, D, Ms, h, state):
+        # x
+        v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
+        D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0,
+                            torch.sqrt(torch.sqrt(-D[1:,:,:]*D[:-1,:,:])*torch.abs(D[1:,:,:]+D[:-1,:,:]) / 2.), # TODO: is sign missing?
+                            2.*D[1:,:,:]*D[:-1,:,:]/(D[1:,:,:]+D[:-1,:,:]))
+        h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / (2.*state.mesh.dx[0])
+        h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / (2.*state.mesh.dx[0])
+
+        # y
+        v = state._tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
+        D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
+                            torch.sqrt(torch.sqrt(-D[:,1:,:]*D[:,:-1,:])*torch.abs(D[:,1:,:]+D[:,:-1,:]) / 2.),
+                            2.*D[:,1:,:]*D[:,:-1,:]/(D[:,1:,:]+D[:,:-1,:]))
+        h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / (2.*state.mesh.dx[1])
+        h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / (2.*state.mesh.dx[1])
+
+        # z
+        v = state._tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
+        D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
+                            torch.sqrt(torch.sqrt(-D[:,:,1:]*D[:,:,:-1])*torch.abs(D[:,:,1:]+D[:,:,:-1]) / 2.),
+                            2.*D[:,:,1:]*D[:,:,:-1]/(D[:,:,1:]+D[:,:,:-1]))
+        h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / (2.*state.mesh.dx[2])
+        h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / (2.*state.mesh.dx[2])
+
+        h *= 2. / (constants.mu_0 * Ms)
+        h = torch.nan_to_num(h, posinf=0, neginf=0)
 
 class InterfaceDMIField(DMIField):
     r"""

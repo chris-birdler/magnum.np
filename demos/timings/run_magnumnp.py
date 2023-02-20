@@ -19,13 +19,13 @@ mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {
         "Ms": 8e5,
-        "A": 1.3e-11,
+        "A": state.Constant([1.3e-11]),
         "gamma": 2.211e5,
         "Ku": 0.4e6,
         "Ku_axis": (0,0,1),
-        "Di": 3e-3,
-        "Db": 3e-3,
-        "DD2d": 3e-3
+        "Di": state.Constant([3e-3]),
+        "Db": state.Constant([3e-3]),
+        "DD2d": state.Constant([3e-3])
         }
 
 
@@ -40,8 +40,8 @@ external = ExternalField((0,0,1))
 state.m = state.Constant((0,0,0))
 state.m[1:-1,:,:,0]   = 1.0
 state.m[(-1,0),:,:,1] = 1.0
-for i in range(1000):
-    state.m *= 1.01
+
+with Timer("first"):
     h1 = demag.h(state)
     h2 = exchange.h(state)
     h3 = aniso.h(state)
@@ -49,5 +49,27 @@ for i in range(1000):
     h5 = dmib.h(state)
     h6 = dmiD2d.h(state)
     h7 = external.h(state)
+
+with Timer("warmup"):
+    for i in range(1000):
+        state.m *= 1.01
+        h1 = demag.h(state)
+        h2 = exchange.h(state)
+        h3 = aniso.h(state)
+        h4 = dmii.h(state)
+        h5 = dmib.h(state)
+        h6 = dmiD2d.h(state)
+        h7 = external.h(state)
+
+with Timer("measure"):
+    for i in range(10000):
+        state.m *= 1.01
+        h1 = demag.h(state)
+        h2 = exchange.h(state)
+        h3 = aniso.h(state)
+        h4 = dmii.h(state)
+        h5 = dmib.h(state)
+        h6 = dmiD2d.h(state)
+        h7 = external.h(state)
 
 Timer.print_report()

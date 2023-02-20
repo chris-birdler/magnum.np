@@ -2,6 +2,17 @@
 
 __version__ = '1.0.5'
 
+import magnumnp.common.logging as logging
+import torch
+#torch.set_default_dtype(torch.float64)
+
+# monkey patch older torch version without compile
+if not hasattr(torch, "compile"):
+    def fake_compile(func):
+        return func
+    logging.warning("PyTorch version < 2.0 does not support 'torch.compile'! Switch to pytorch 2.0 in order get maximum performance!")
+    torch.compile = fake_compile
+
 try:
     import setproctitle
     setproctitle.setproctitle("magnumnp")
@@ -11,11 +22,6 @@ try:
     from magnumnp.solvers import *
     from magnumnp.loggers import *
     from magnumnp.utils import *
-
-    import magnumnp.common.logging as logging
-
-    import torch
-    #torch.set_default_dtype(torch.float64)
 
     logging.info_green("magnum.np %s" % __version__)
 
