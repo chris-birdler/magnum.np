@@ -50,7 +50,7 @@ class LLGSolver(object):
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
-    def relax(self, state, maxiter = 500, rtol = 1e-5, dt = 1e-11):
+    def relax(self, state, maxiter = 500, rtol = 1e-6, dt = 1e-11):
         t0 = state.t
         E0 = self.E(state)
 

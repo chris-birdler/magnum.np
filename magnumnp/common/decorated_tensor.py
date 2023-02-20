@@ -44,8 +44,7 @@ class DecoratedTensor(torch.Tensor):
     def __call__(self, t):
         return self
 
-    def __getitem__(self, key):
-        if self.dim() == 0 or (self.dim() == 1 and self.shape[0] == 1 and key != 0):
-            return self
-        else:
-            return super().__getitem__(key)
+    @property
+    def torch_tensor(self):
+        ''' return original tensor (in order to apply pytorch.compile) '''
+        return self.as_subclass(torch.Tensor)

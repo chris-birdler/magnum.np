@@ -12,7 +12,7 @@ state = State(mesh)
 
 state.material = {
     "Ms": 8e5,
-    "A": 1.3e-11,
+    "A": state.Constant([1.3e-11]),
     "alpha": 0.02
     }
 
