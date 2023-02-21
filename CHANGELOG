@@ -1,3 +1,6 @@
+1.0.7 [2023-02-21]
+- hot-fixed missing package in setup.py
+
 1.0.6 [2023-02-20]
 - use pytorch.compile if available
 - material setter converts arbitrary input to tensor-fields
