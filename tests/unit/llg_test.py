@@ -79,30 +79,27 @@ def test_relax(solver):
 
     torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]), atol=1e-3, rtol=1e-3)
 
-
-# TODO: move to fieldterm test
-def test_material_tensors():
-    n  = (10, 1, 1)
+def test_stochastic():
+    n  = (1, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
+
     state = State(mesh)
+    state.material = {
+        "Ms": 8e5,
+        "Ku": 1e5,
+        "Ku_axis": state.Tensor([0,0,1]),
+        "alpha": 0.01
+        }
+    state.m = state.Constant([0,0,1])
+    state.m.normalize()
+    state.T = 300
 
-    state.material["alpha"] = state.Constant([0.02])
-    state.material["Ms"] = state.Constant([8e5])
-    state.material["A"] = state.Constant([1.3e-11])
-    state.material["Ku"] = state.Constant([1e5])
-    state.material["Ku_axis"] = state.Constant([0,1,0])
+    aniso = UniaxialAnisotropyField()
 
-    demag    = DemagField()
-    exchange = ExchangeField()
-    aniso    = UniaxialAnisotropyField()
-    external = ExternalField([-24.6e-3/constants.mu_0,
-                              +4.3e-3/constants.mu_0,
-                              0.0])
+    llg = LLGSolver([aniso])
+    logger = Logger("data", ['t', 'm'])
+    while state.t < 1e-9:
+        llg.step(state, 1e-11)
+        logger << state
 
-    state.m = state.Constant([1,0,0])
-    state.m[5:,:,:,0] = -1.0
-
-    llg = LLGSolver([demag, exchange, aniso, external])
-    llg.step(state, 1e-11)
-    assert state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)

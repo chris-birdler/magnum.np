@@ -76,6 +76,13 @@ class State(object):
         dtype = dtype or self._dtype or torch.get_default_dtype()
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
+    def _normal(self, mean, std, dtype = None, **kwargs):
+        if not hasattr(self, "_rng"):
+            self._rng = torch.Generator(device=self._device)
+            self._rng.manual_seed(2147483647) # fixed seed
+        dtype = dtype or self._dtype or torch.get_default_dtype()
+        return torch.normal(mean, std, dtype=dtype, device=self._device, **kwargs)
+
     # _tensor for internal use only
     def _tensor(self, data, dtype = None):
         dtype = dtype or self._dtype or torch.get_default_dtype()

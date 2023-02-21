@@ -68,7 +68,7 @@ def test_material_tensor(field_term):
 
 
 @pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExchangeFieldPBC(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
-def test_material_tensor2(field_term):
+def test_material_tensor_nobracket(field_term):
     n  = (10, 5, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)

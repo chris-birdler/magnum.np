@@ -25,7 +25,7 @@ __all__ = ["LLGSolver"]
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, **kwargs):
         self._terms = terms
-        self._solver = solver(self.dm, **kwargs)
+        self._solver = solver(self.dm, self.update_thermal_field, self.get_thermal_field, **kwargs)
 
     def dm(self, state, alpha = None, no_precession = False):
         alpha = alpha or state.material["alpha"]
@@ -34,6 +34,7 @@ class LLGSolver(object):
         alpha_prime = alpha * gamma_prime
 
         h = sum([term.h(state) for term in self._terms])
+        h += self._thermal_field
 
         dm = -alpha_prime * torch.cross(state.m, torch.cross(state.m, h))
         if not no_precession:
@@ -43,6 +44,16 @@ class LLGSolver(object):
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
+
+    @timedmethod
+    def update_thermal_field(self, state):
+        self._sigma = state._normal(0., 1., size = state.m.shape)
+        return self._sigma
+
+    @timedmethod
+    def get_thermal_field(self, state, dt):
+        self._thermal_field = self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volume * dt))
+        return self._thermal_field
 
     @timedmethod
     def step(self, state, dt, **kwargs):
@@ -55,13 +66,14 @@ class LLGSolver(object):
         E0 = self.E(state)
 
         for i in range(maxiter):
-            self._solver.step(state, dt, alpha = 1.0, rtol = rtol, atol = rtol) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
+            self._solver.step(state, dt, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
             E = self.E(state)
-            dE = torch.abs((E - E0)/E)
+            dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
             logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
             if dE < rtol:
                 break
             E0 = E
 
         state.t = t0
+
