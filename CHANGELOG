@@ -1,3 +1,7 @@
+1.0.8 [2023-02-21]
+- fixed bug in exchange field 
+- improved imaging tools
+
 1.0.7 [2023-02-21]
 - hot-fixed missing package in setup.py
 

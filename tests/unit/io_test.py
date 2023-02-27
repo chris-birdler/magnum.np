@@ -6,7 +6,7 @@ import os
 #added comment
 def test_read_vti():
     this_dir = pathlib.Path(__file__).resolve().parent
-    filename = this_dir / "fields" / "fields.vti"
+    filename = this_dir / "ref" / "fields.vti"
 
     mesh, fields = read_vti(filename)
     assert len(fields) == 3

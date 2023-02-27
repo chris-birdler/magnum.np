@@ -42,17 +42,17 @@ class ExchangeField(LinearFieldTerm):
 
     @timedmethod
     def h(self, state):
-        h = state._zeros(state.mesh.n + (3,))
         A = state.material[self.A].torch_tensor
         Ms = state.material["Ms"].torch_tensor
         m = state.m.torch_tensor
         if self._domain != None:
             A = A * self._domain[:,:,:,None]
-        self._h(m, A, Ms, h, state)
+        h = self._h(m, A, Ms, state)
         return state.Tensor(h)
 
     @torch.compile
-    def _h(self, m, A, Ms, h, state):
+    def _h(self, m, A, Ms, state):
+        h = state._zeros(state.mesh.n + (3,))
         A_avg = 2.*A[1:,:,:]*A[:-1,:,:] / (A[1:,:,:]+A[:-1,:,:])
         h[:-1,:,:,:] += A_avg * m[ 1:,:,:,:] / state.mesh.dx[0]**2 # m_i-1 - m_i
         h[ 1:,:,:,:] += A_avg * m[:-1,:,:,:] / state.mesh.dx[0]**2 # m_i+1 - m_i
@@ -63,7 +63,8 @@ class ExchangeField(LinearFieldTerm):
 
         A_avg = 2.*A[:,:,1:]*A[:,:,:-1] / (A[:,:,1:]+A[:,:,:-1])
         h[:,:,:-1,:] += A_avg * m[:,:, 1:,:] / state.mesh.dx[2]**2 # m_i-1 - m_i
-        h[:,:, 1:,:] -= A_avg * m[:,:,:-1,:] / state.mesh.dx[2]**2 # m_i+1 - m_i
+        h[:,:, 1:,:] += A_avg * m[:,:,:-1,:] / state.mesh.dx[2]**2 # m_i+1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
         h = torch.nan_to_num(h, posinf=0, neginf=0)
+        return h
