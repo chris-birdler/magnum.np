@@ -1,5 +1,4 @@
 from magnumnp import *
-import torch
 
 Timer.enable(log_mem = True)
 
