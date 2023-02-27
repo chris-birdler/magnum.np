@@ -51,16 +51,15 @@ class DMIField(LinearFieldTerm):
 
     @timedmethod
     def h(self, state):
-        h = state._zeros(state.mesh.n + (3,))
         D = state.material[self.D].torch_tensor
         Ms = state.material["Ms"].torch_tensor
         m = state.m.torch_tensor
-
-        self._h(m, D, Ms, h, state)
+        h = self._h(m, D, Ms, state)
         return state.Tensor(h)
 
     @torch.compile
-    def _h(self, m, D, Ms, h, state):
+    def _h(self, m, D, Ms, state):
+        h = state._zeros(state.mesh.n + (3,))
         # x
         v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
         D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0,
@@ -87,6 +86,7 @@ class DMIField(LinearFieldTerm):
 
         h *= 2. / (constants.mu_0 * Ms)
         h = torch.nan_to_num(h, posinf=0, neginf=0)
+        return h
 
 class InterfaceDMIField(DMIField):
     r"""

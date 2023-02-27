@@ -17,6 +17,7 @@
 #
 
 import pytest
+import pathlib
 import torch
 import numpy as np
 from magnumnp import *
@@ -109,3 +110,70 @@ def test_material_float(field_term):
     state.m[5:,:,:,0] = -1.0
 
     h = field_term.h(state)
+
+def test_regression():
+    n  = (10, 20, 30)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"alpha":    state.Tensor(0.02),
+                      "Ms":       state.Tensor(8e5),
+                      "A":        state.Tensor(1.3e-11),
+                      "Ku":       state.Tensor(1e5),
+                      "Ku_axis":  state.Tensor([0,1,0]),
+                      "Kc1":      state.Tensor(1e3),
+                      "Kc2":      state.Tensor(1e4),
+                      "Kc_alpha": state.Tensor(0.1),
+                      "Kc_beta":  state.Tensor(0.2),
+                      "Kc_gamma": state.Tensor(0.3),
+                      "Di":       state.Tensor(1.),
+                      "Db":       state.Tensor(1.),
+                      "DD2d":     state.Tensor(1.)}
+
+    x, y, z = state.SpatialCoordinate()
+    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    demag        = DemagField()
+    demag_pbc    = DemagFieldPBC()
+    dmi_i        = InterfaceDMIField()
+    dmi_b        = BulkDMIField()
+    dmi_D2d      = D2dDMIField()
+    exchange     = ExchangeField()
+    exchange_pbc = ExchangeFieldPBC()
+    aniso        = UniaxialAnisotropyField()
+    aniso_cubic  = CubicAnisotropyField()
+
+    h = exchange.h(state)
+    h_demag        = demag.h(state)
+    h_demag_pbc    = demag_pbc.h(state)
+    h_dmi_i        = dmi_i.h(state)
+    h_dmi_b        = dmi_b.h(state)
+    h_dmi_D2d      = dmi_D2d.h(state)
+    h_exchange     = exchange.h(state)
+    h_exchange_pbc = exchange_pbc.h(state)
+    h_aniso        = aniso.h(state)
+    h_aniso_cubic  = aniso_cubic.h(state)
+
+    this_dir = pathlib.Path(__file__).resolve().parent
+    filename = this_dir / "ref" / "h_regression.vti"
+    ## Uncomment to updated reference data
+    #write_vti({"h_demag":h_demag,
+    #           "h_demag_pbc":h_demag_pbc,
+    #           "h_dmi_i":h_dmi_i,
+    #           "h_dmi_b":h_dmi_b,
+    #           "h_dmi_D2d":h_dmi_D2d,
+    #           "h_exchange":h_exchange,
+    #           "h_exchange_pbc":h_exchange_pbc,
+    #           "h_aniso":h_aniso,
+    #           "h_aniso_cubic":h_aniso_cubic},
+    #           filename)
+    mesh, ref = read_vti(filename)
+
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag),        torch.linalg.cross(state.m, ref["h_demag"]),         atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag_pbc),    torch.linalg.cross(state.m, ref["h_demag_pbc"]),     atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_i),        torch.linalg.cross(state.m, ref["h_dmi_i"]),         atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_b),        torch.linalg.cross(state.m, ref["h_dmi_b"]),         atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_D2d),      torch.linalg.cross(state.m, ref["h_dmi_D2d"]),       atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange),     torch.linalg.cross(state.m, ref["h_exchange"]),      atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange_pbc), torch.linalg.cross(state.m, ref["h_exchange_pbc"]),  atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso),        torch.linalg.cross(state.m, ref["h_aniso"]),         atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso_cubic),  torch.linalg.cross(state.m, ref["h_aniso_cubic"]),   atol=0, rtol=1e-10)
