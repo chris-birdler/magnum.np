@@ -34,6 +34,7 @@ class Material(dict):
             shape = value.shape
             value = value.reshape((1,1,1) + tuple(shape))
             value = value.expand(self._state.mesh.n + tuple(shape))
+            value = value.clone() # need to clone here, since otherwise inplace modification of a single item will affect the whole tensor
         elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
             value = value.unsqueeze(-1)
         else: # otherwise assume the dimention is correct!
@@ -48,3 +49,31 @@ class Material(dict):
             super().__setitem__(key, lambda t: self._convert(value(t)))
         else:
             super().__setitem__(key, self._convert(value))
+
+    def set(self, material, domain=None):
+        r"""
+        Setting several material parameters at once
+
+        :param materials: material that should be set
+        :type materials:  :class:`Material`
+
+        :param domains: domain where the materials should be set
+        :type domains:  :class:`torch.Tensor`, optional
+
+        :Example:
+
+            .. code::
+
+            # set material everywhere
+            state.material.set(material0)
+
+            # set material in certain domain
+            state.material.set(material1, domain1)
+        """
+        for key, value in material.items():
+            if domain == None:
+                self[key] = value
+            else:
+                if key not in self.keys():
+                    self[key] = 0.
+                self[key][domain] = value

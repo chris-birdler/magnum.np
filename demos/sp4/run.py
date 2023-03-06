@@ -1,5 +1,7 @@
+import torch
 from magnumnp import *
 
+torch.set_default_dtype(torch.float32)
 Timer.enable(log_mem = True)
 
 # initialize mesh

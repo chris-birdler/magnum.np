@@ -154,27 +154,30 @@ class DemagField(object):
         return torch.fft.rfftn(Nc, dim = [i for i in range(3) if state.mesh.n[i] > 1]).real.clone()
 
     def _init_N(self, state):
+        dtype = state._dtype
+        state._dtype = torch.float64 # always use double precision
         time_kernel = time()
-        Nxx = self._init_N_component(state, [0,1,2], newell_f, dipole_f)
-        Nxy = self._init_N_component(state, [0,1,2], newell_g, dipole_g)
-        Nxz = self._init_N_component(state, [0,2,1], newell_g, dipole_g)
-        Nyy = self._init_N_component(state, [1,2,0], newell_f, dipole_f)
-        Nyz = self._init_N_component(state, [1,2,0], newell_g, dipole_g)
-        Nzz = self._init_N_component(state, [2,0,1], newell_f, dipole_f)
+        Nxx = self._init_N_component(state, [0,1,2], newell_f, dipole_f).to(dtype=dtype)
+        Nxy = self._init_N_component(state, [0,1,2], newell_g, dipole_g).to(dtype=dtype)
+        Nxz = self._init_N_component(state, [0,2,1], newell_g, dipole_g).to(dtype=dtype)
+        Nyy = self._init_N_component(state, [1,2,0], newell_f, dipole_f).to(dtype=dtype)
+        Nyz = self._init_N_component(state, [1,2,0], newell_g, dipole_g).to(dtype=dtype)
+        Nzz = self._init_N_component(state, [2,0,1], newell_f, dipole_f).to(dtype=dtype)
 
         self._N = [[Nxx, Nxy, Nxz],
                    [Nxy, Nyy, Nyz],
                    [Nxz, Nyz, Nzz]]
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
+        state._dtype = dtype # restore dtype
 
     @timedmethod
     def h(self, state):
         if not hasattr(self, "_N"):
             self._init_N(state)
 
-        hx = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
-        hy = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
-        hz = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
+        hx = state._zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+        hy = state._zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+        hz = state._zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1)
 
