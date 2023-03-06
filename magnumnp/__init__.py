@@ -4,7 +4,7 @@ __version__ = '1.0.8'
 
 import magnumnp.common.logging as logging
 import torch
-#torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float64)
 
 # monkey patch older torch version without compile
 if not hasattr(torch, "compile"):

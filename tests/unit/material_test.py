@@ -97,3 +97,34 @@ def test_slice_on_constant():
     Ms = state.material["Ms"]
     x = Ms[1:,:,:]
     assert x.dim() == Ms.dim()
+
+
+def test_domain():
+    n  = (8,1,1)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
+    domain1 = x < 2e-9
+    domain2 = x > 6e-9
+    state.material["Ms"] = 1.
+    state.material["Ms"][domain1] = 0.
+    assert state.material["Ms"].avg().cpu() == pytest.approx(0.75)
+
+
+def test_set():
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
+    domain1 = x < 2e-9
+    domain2 = x > 6e-9
+    state.material.set({"Ms": 1.}, domain1)
+    assert state.material["Ms"].avg().cpu() == pytest.approx(0.25)
+
+    state.material.set({"Ms": 2.})
+    assert state.material["Ms"].avg().cpu() == pytest.approx(2.)
+
+    state.material.set({"Ms": 1.}, domain2)
+    assert state.material["Ms"].avg().cpu() == pytest.approx(1.75)
