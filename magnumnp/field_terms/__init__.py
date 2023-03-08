@@ -18,6 +18,7 @@
 
 from magnumnp.field_terms.anisotropy import *
 from magnumnp.field_terms.demag import *
+from magnumnp.field_terms.demag_nonequidistant import *
 from magnumnp.field_terms.demagPBC import *
 from magnumnp.field_terms.dmi import *
 from magnumnp.field_terms.exchange import *
@@ -30,6 +31,7 @@ from magnumnp.field_terms.spintorque import *
 
 __all__ = (anisotropy.__all__ +
            demag.__all__ +
+           demag_nonequidistant.__all__ +
            demagPBC.__all__ +
            dmi.__all__ +
            exchange.__all__ +

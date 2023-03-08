@@ -47,23 +47,27 @@ class ExchangeField(LinearFieldTerm):
         m = state.m.torch_tensor
         if self._domain != None:
             A = A * self._domain[:,:,:,None]
-        h = self._h(m, A, Ms, state)
+        dx = state.dx[0].reshape(-1,1,1,1).torch_tensor
+        dy = state.dx[1].reshape(1,-1,1,1).torch_tensor
+        dz = state.dx[2].reshape(1,1,-1,1).torch_tensor
+        h = self._h(m, A, Ms, dx, dy, dz, state)
         return state.Tensor(h)
 
     @torch.compile
-    def _h(self, m, A, Ms, state):
+    def _h(self, m, A, Ms, dx, dy, dz, state):
         h = state._zeros(state.mesh.n + (3,))
-        A_avg = 2.*A[1:,:,:]*A[:-1,:,:] / (A[1:,:,:]+A[:-1,:,:])
-        h[:-1,:,:,:] += A_avg * m[ 1:,:,:,:] / state.mesh.dx[0]**2 # m_i-1 - m_i
-        h[ 1:,:,:,:] += A_avg * m[:-1,:,:,:] / state.mesh.dx[0]**2 # m_i+1 - m_i
 
-        A_avg = 2.*A[:,1:,:]*A[:,:-1,:] / (A[:,1:,:]+A[:,:-1,:])
-        h[:,:-1,:,:] += A_avg * m[:, 1:,:,:] / state.mesh.dx[1]**2 # m_i-1 - m_i
-        h[:, 1:,:,:] += A_avg * m[:,:-1,:,:] / state.mesh.dx[1]**2 # m_i+1 - m_i
+        A_avg = 2.*A[1:,:,:]*A[:-1,:,:] / (A[1:,:,:]*dx[:-1,:,:,:] + A[:-1,:,:]*dx[1:,:,:,:])
+        h[:-1,:,:,:] += A_avg * (m[ 1:,:,:,:]-m[:-1,:,:,:]) / dx[:-1,:,:,:] # m_i-1 - m_i
+        h[ 1:,:,:,:] += A_avg * (m[:-1,:,:,:]-m[ 1:,:,:,:]) / dx[ 1:,:,:,:] # m_i+1 - m_i
 
-        A_avg = 2.*A[:,:,1:]*A[:,:,:-1] / (A[:,:,1:]+A[:,:,:-1])
-        h[:,:,:-1,:] += A_avg * m[:,:, 1:,:] / state.mesh.dx[2]**2 # m_i-1 - m_i
-        h[:,:, 1:,:] += A_avg * m[:,:,:-1,:] / state.mesh.dx[2]**2 # m_i+1 - m_i
+        A_avg = 2.*A[:,1:,:]*A[:,:-1,:] / (A[:,1:,:]*dy[:,:-1,:,:] + A[:,:-1,:]*dy[:,1:,:,:])
+        h[:,:-1,:,:] += A_avg * (m[:, 1:,:,:]-m[:,:-1,:,:]) / dy[:,:-1,:,:] # m_i-1 - m_i
+        h[:, 1:,:,:] += A_avg * (m[:,:-1,:,:]-m[:, 1:,:,:]) / dy[:, 1:,:,:] # m_i+1 - m_i
+
+        A_avg = 2.*A[:,:,1:]*A[:,:,:-1] / (A[:,:,1:]*dz[:,:,:-1,:] + A[:,:,:-1]*dz[:,:,1:,:])
+        h[:,:,:-1,:] += A_avg * (m[:,:, 1:,:]-m[:,:,:-1,:]) / dz[:,:,:-1,:] # m_i-1 - m_i
+        h[:,:, 1:,:] += A_avg * (m[:,:,:-1,:]-m[:,:, 1:,:]) / dz[:,:, 1:,:] # m_i+1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
         h = torch.nan_to_num(h, posinf=0, neginf=0)

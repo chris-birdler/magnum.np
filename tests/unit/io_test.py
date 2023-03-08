@@ -30,3 +30,4 @@ def test_write_vti(tmp_path):
         mesh, fields = read_vti(f)
         assert len(fields) == 1
         assert fields['m'].shape == (2, 2, 2, 3)
+

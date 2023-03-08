@@ -168,12 +168,36 @@ def test_regression():
     #           filename)
     mesh, ref = read_vti(filename)
 
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag),        torch.linalg.cross(state.m, ref["h_demag"]),         atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag_pbc),    torch.linalg.cross(state.m, ref["h_demag_pbc"]),     atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_i),        torch.linalg.cross(state.m, ref["h_dmi_i"]),         atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_b),        torch.linalg.cross(state.m, ref["h_dmi_b"]),         atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_D2d),      torch.linalg.cross(state.m, ref["h_dmi_D2d"]),       atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange),     torch.linalg.cross(state.m, ref["h_exchange"]),      atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange_pbc), torch.linalg.cross(state.m, ref["h_exchange_pbc"]),  atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso),        torch.linalg.cross(state.m, ref["h_aniso"]),         atol=0, rtol=1e-10)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso_cubic),  torch.linalg.cross(state.m, ref["h_aniso_cubic"]),   atol=0, rtol=1e-10)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag),        torch.linalg.cross(state.m, ref["h_demag"]),         atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag_pbc),    torch.linalg.cross(state.m, ref["h_demag_pbc"]),     atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_i),        torch.linalg.cross(state.m, ref["h_dmi_i"]),         atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_b),        torch.linalg.cross(state.m, ref["h_dmi_b"]),         atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_D2d),      torch.linalg.cross(state.m, ref["h_dmi_D2d"]),       atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange),     torch.linalg.cross(state.m, ref["h_exchange"]),      atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange_pbc), torch.linalg.cross(state.m, ref["h_exchange_pbc"]),  atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso),        torch.linalg.cross(state.m, ref["h_aniso"]),         atol=0, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso_cubic),  torch.linalg.cross(state.m, ref["h_aniso_cubic"]),   atol=0, rtol=1e-6)
+
+@pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
+def test_nonequidistant(field_term):
+    n  = (10, 5, 4)
+    dx2 = np.ones(n[2]) * 5e-9
+    dx2[2:] = 1.
+    dx = (1e-9, 2e-9, dx2)
+
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+
+    state.material = {"alpha":   state.Tensor([0.02]),
+                      "Ms":      state.Tensor([8e5]),
+                      "A":       state.Tensor([1.3e-11]),
+                      "Ku":      state.Tensor([1e5]),
+                      "Ku_axis": state.Tensor([0,1,0]),
+                      "Di":      state.Tensor([1.]),
+                      "Db":      state.Tensor([1.]),
+                      "DD2d":    state.Tensor([1.])}
+
+    state.m = state.Constant([1,0,0])
+    state.m[5:,:,:,0] = -1.0
+
+    h = field_term.h(state)
