@@ -23,22 +23,32 @@ from magnumnp.common import logging, DecoratedTensor, Material
 
 __all__ = ["State"]
 
+complex_dtype = {
+    torch.float: torch.complex,
+    torch.float32: torch.complex64,
+    torch.float64: torch.complex128
+    }
+
 class State(object):
     def __init__(self, mesh, t0 = 0., device = None, dtype = None):
-        self.mesh = mesh
         if device == None:
             CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
             self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
         else:
             self._device = device
+
+        #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
+
         self._dtype = dtype or torch.get_default_dtype()
-        dtype_str = str(self._dtype).split('.')[1]
+        self.mesh = mesh
+        self.dx = [self.Tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
 
         self._material = Material(self)
         self.t = t0
 
+        dtype_str = str(self._dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))
-        logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
+        logging.info_green("[Mesh] %s" % mesh)
 
     @property
     def t(self):
@@ -113,3 +123,27 @@ class State(object):
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return DecoratedTensor(XX), DecoratedTensor(YY), DecoratedTensor(ZZ)
+
+    def convert_tensorfield(self, value):
+        ''' convert arbitrary input to tensor-fields '''
+        value = self.Tensor(value)
+        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
+            value = value.reshape(1)
+        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
+            shape = value.shape
+            value = value.reshape((1,1,1) + tuple(shape))
+            value = value.expand(self.mesh.n + tuple(shape))
+            value = value.clone() # need to clone here, since otherwise inplace modification of a single item will affect the whole tensor
+        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
+            value = value.unsqueeze(-1)
+        else: # otherwise assume the dimention is correct!
+            pass
+        return value
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def complex_dtype(self):
+        return complex_dtype[self._dtype]

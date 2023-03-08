@@ -23,7 +23,46 @@ import pyvista as pv
 import os
 from . import Mesh, DecoratedTensor
 
-__all__ = ["write_vti", "read_vti", "read_image", "read_mesh"]
+__all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
+
+def write_vtr(fields, filename, state = None):
+    dirname = os.path.dirname(filename)
+    if dirname and not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
+    if not (isinstance(fields, list) or isinstance(fields, dict)):
+        fields = [fields]
+    if not isinstance(fields, dict):
+        fields = {"f%03d"%i:f for (i,f) in enumerate(fields)}
+
+    if state is None:
+        n = list(fields.values())[0].shape[:3]
+        dx = (1., 1., 1.)
+        origin = (0., 0., 0.)
+    else:
+        n = state.mesh.n
+        dx = state.mesh.dx
+        origin = state.mesh.origin
+
+    x = torch.hstack([state._tensor([0.]), state.dx[0].cumsum(0)]).cpu().numpy() + state.mesh.origin[0]
+    y = torch.hstack([state._tensor([0.]), state.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
+    z = torch.hstack([state._tensor([0.]), state.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
+
+    grid = pv.RectilinearGrid(x, y, z)
+
+    for name, f in fields.items():
+        if len(f.shape) == 0 or len(f.shape) == 1: # expand constant tensor to tensorfield
+            f = f.expand(n + f.shape)
+        if len(f.shape) == 4 and f.shape[-1] == 1: # remove dim for scalar field (nx,ny,nz,1) => (nx,ny,nz)
+            f = f[: ,:, :, 0]
+        if len(f.shape) == 3: # scalar data
+            grid.cell_data.set_array(f.detach().cpu().numpy().flatten('F'), name)
+        elif len(f.shape) == 4: # vector data
+            grid.cell_data.set_array(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
+        else:
+            raise ValueError("write_vti: unsupported data format (", name, f.shape, ")")
+    grid.save(filename)
+
 
 def write_vti(fields, filename, state = None):
     r"""
