@@ -35,4 +35,5 @@ class Mesh(object):
         return self.n[0] * self.n[1] * self.n[2] * self.cell_volume
 
     def __str__(self):
-        return "%dx%dx%d_%gx%gx%g" % (self.n + self.dx)
+        str_dx = ["%g" % dx if isinstance(dx, float) else "XX" for dx in self.dx]
+        return "%dx%dx%d (size= %s x %s x %s)" % (*self.n, *str_dx)

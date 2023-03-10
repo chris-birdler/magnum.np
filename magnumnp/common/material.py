@@ -25,30 +25,14 @@ class Material(dict):
     def __init__(self, state):
         self._state = state
 
-    def _convert(self, value):
-        ''' convert arbitrary input to tensor-fields '''
-        value = self._state.Tensor(value)
-        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
-            value = value.reshape(1)
-        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
-            shape = value.shape
-            value = value.reshape((1,1,1) + tuple(shape))
-            value = value.expand(self._state.mesh.n + tuple(shape))
-            value = value.clone() # need to clone here, since otherwise inplace modification of a single item will affect the whole tensor
-        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
-            value = value.unsqueeze(-1)
-        else: # otherwise assume the dimention is correct!
-            pass
-        return value
-
     def __getitem__(self, key):
         return super().__getitem__(key)(self._state.t)
 
     def __setitem__(self, key, value):
         if callable(value) and not isinstance(value, DecoratedTensor):
-            super().__setitem__(key, lambda t: self._convert(value(t)))
+            super().__setitem__(key, lambda t: self._state.convert_tensorfield(value(t)))
         else:
-            super().__setitem__(key, self._convert(value))
+            super().__setitem__(key, self._state.convert_tensorfield(value))
 
     def set(self, material, domain=None):
         r"""
