@@ -18,8 +18,10 @@
 
 from magnumnp.solvers.llg import *
 from magnumnp.solvers.ode_solvers import *
+from magnumnp.solvers.ohm_solvers import *
 from magnumnp.solvers.string import *
 
 __all__ = (llg.__all__ +
            ode_solvers.__all__ +
+           ohm_solvers.__all__ +
            string.__all__)
