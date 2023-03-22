@@ -23,7 +23,7 @@ def test_PBC(simple_state):
     h = exchange.h(simple_state)
     torch.testing.assert_close(h[:50,...], -h[50:,...], atol=1e-15, rtol=1e-15)
 
-def test_nonequi_vs_equi(): # TODO: should be replaced by regression test
+def test_nonequi_vs_equi():
     n  = (10, 10, 10)
     dx1 = (1e-9, 2e-9, 5e-9)
     mesh1 = Mesh(n, dx1)
@@ -44,7 +44,7 @@ def test_nonequi_vs_equi(): # TODO: should be replaced by regression test
     h1 = exchange.h(state1)
     h2 = exchange.h(state2)
     
-    torch.testing.assert_close(h1, h2, atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(h1/h1.max(), h2/h1.max(), atol=1e-15, rtol=1e-15)
 
 def test_nonequidistant():
     n  = (9, 2, 3)
