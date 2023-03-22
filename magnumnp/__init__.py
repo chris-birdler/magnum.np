@@ -12,8 +12,8 @@ try:
        return func
 
    @torch.compile
-   def dummy_function(x):
-      return x
+   def dummy_function():
+      return
    dummy_function()
 except Exception as e:
     torch.compile = fake_compile
