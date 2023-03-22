@@ -6,12 +6,19 @@ import magnumnp.common.logging as logging
 import torch
 torch.set_default_dtype(torch.float64)
 
-# monkey patch older torch version without compile
-if not hasattr(torch, "compile"):
-    def fake_compile(func):
-        return func
-    logging.warning("PyTorch version < 2.0 does not support 'torch.compile'! Switch to pytorch 2.0 in order get maximum performance!")
+# monkey patch torch versions < 2.0 or on Windows
+try:
+   def fake_compile(func):
+       return func
+
+   @torch.compile
+   def dummy_function(x):
+      return x
+   dummy_function()
+except Exception as e:
     torch.compile = fake_compile
+    logging.warning(e)
+
 
 try:
     import setproctitle
