@@ -1,7 +1,6 @@
 import pytest
 import pathlib
 import torch
-import numpy as np
 from magnumnp import *
 
 
@@ -83,7 +82,7 @@ def test_nonequidistant():
     h1 = demag1.h(state1)
 
     n  = (20, 4, 4)
-    dx2 = np.ones(n[2]) * 2.
+    dx2 = torch.ones(n[2]) * 2.
     dx2[2:] = 1.
     dx = (5., 3., dx2)
     mesh2 = Mesh(n, dx)
