@@ -1,6 +1,5 @@
 import pytest
 import torch
-import numpy as np
 from magnumnp import *
 from helpers import *
 
@@ -31,7 +30,7 @@ def test_nonequi_vs_equi():
     state1.material = {"A": 1., #1.3e-11,
                       "Ms": 1.} #800e3}
 
-    dx2 = (np.ones(n[0]) * 1e-9, 2e-9, 5e-9)
+    dx2 = (torch.ones(n[0]) * 1e-9, 2e-9, 5e-9)
     mesh2 = Mesh(n, dx2)
     state2 = State(mesh2)
     state2.material = {"A": 1., #1.3e-11,
@@ -48,7 +47,7 @@ def test_nonequi_vs_equi():
 
 def test_nonequidistant():
     n  = (9, 2, 3)
-    dx0 = np.ones(n[0]) * 1e-9
+    dx0 = torch.ones(n[0]) * 1e-9
     dx0[4:] = 2e-9
    
     dx = (dx0, 2e-9, 5e-9)

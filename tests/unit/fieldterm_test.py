@@ -19,7 +19,6 @@
 import pytest
 import pathlib
 import torch
-import numpy as np
 from magnumnp import *
 from helpers import *
 
@@ -143,15 +142,17 @@ def test_regression():
     aniso_cubic  = CubicAnisotropyField()
 
     h = exchange.h(state)
-    h_demag        = demag.h(state)
-    h_demag_pbc    = demag_pbc.h(state)
-    h_dmi_i        = dmi_i.h(state)
-    h_dmi_b        = dmi_b.h(state)
-    h_dmi_D2d      = dmi_D2d.h(state)
-    h_exchange     = exchange.h(state)
-    h_exchange_pbc = exchange_pbc.h(state)
-    h_aniso        = aniso.h(state)
-    h_aniso_cubic  = aniso_cubic.h(state)
+    h_demag        = demag.h(state).cpu()
+    h_demag_pbc    = demag_pbc.h(state).cpu()
+    h_dmi_i        = dmi_i.h(state).cpu()
+    h_dmi_b        = dmi_b.h(state).cpu()
+    h_dmi_D2d      = dmi_D2d.h(state).cpu()
+    h_exchange     = exchange.h(state).cpu()
+    h_exchange_pbc = exchange_pbc.h(state).cpu()
+    h_aniso        = aniso.h(state).cpu()
+    h_aniso_cubic  = aniso_cubic.h(state).cpu()
+
+    m = state.m.cpu()
 
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "h_regression.vti"
@@ -168,20 +169,20 @@ def test_regression():
     #           filename)
     mesh, ref = read_vti(filename)
 
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag        / ref["h_demag"].max()),        torch.linalg.cross(state.m, ref["h_demag"]        / ref["h_demag"].max()),         atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_demag_pbc    / ref["h_demag_pbc"].max()),    torch.linalg.cross(state.m, ref["h_demag_pbc"]    / ref["h_demag_pbc"].max()),     atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_i        / ref["h_dmi_i"].max()),        torch.linalg.cross(state.m, ref["h_dmi_i"]        / ref["h_dmi_i"].max()),         atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_b        / ref["h_dmi_b"].max()),        torch.linalg.cross(state.m, ref["h_dmi_b"]        / ref["h_dmi_b"].max()),         atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_dmi_D2d      / ref["h_dmi_D2d"].max()),      torch.linalg.cross(state.m, ref["h_dmi_D2d"]      / ref["h_dmi_D2d"].max()),       atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange     / ref["h_exchange"].max()),     torch.linalg.cross(state.m, ref["h_exchange"]     / ref["h_exchange"].max()),      atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_exchange_pbc / ref["h_exchange_pbc"].max()), torch.linalg.cross(state.m, ref["h_exchange_pbc"] / ref["h_exchange_pbc"].max()),  atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso        / ref["h_aniso"].max()),        torch.linalg.cross(state.m, ref["h_aniso"]        / ref["h_aniso"].max()),         atol=1e-15, rtol=1e-6)
-    torch.testing.assert_close(torch.linalg.cross(state.m, h_aniso_cubic  / ref["h_aniso_cubic"].max()),  torch.linalg.cross(state.m, ref["h_aniso_cubic"]  / ref["h_aniso_cubic"].max()),   atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_demag        / ref["h_demag"].max()),        torch.linalg.cross(m, ref["h_demag"]        / ref["h_demag"].max()),         atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_demag_pbc    / ref["h_demag_pbc"].max()),    torch.linalg.cross(m, ref["h_demag_pbc"]    / ref["h_demag_pbc"].max()),     atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_dmi_i        / ref["h_dmi_i"].max()),        torch.linalg.cross(m, ref["h_dmi_i"]        / ref["h_dmi_i"].max()),         atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_dmi_b        / ref["h_dmi_b"].max()),        torch.linalg.cross(m, ref["h_dmi_b"]        / ref["h_dmi_b"].max()),         atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_dmi_D2d      / ref["h_dmi_D2d"].max()),      torch.linalg.cross(m, ref["h_dmi_D2d"]      / ref["h_dmi_D2d"].max()),       atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_exchange     / ref["h_exchange"].max()),     torch.linalg.cross(m, ref["h_exchange"]     / ref["h_exchange"].max()),      atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_exchange_pbc / ref["h_exchange_pbc"].max()), torch.linalg.cross(m, ref["h_exchange_pbc"] / ref["h_exchange_pbc"].max()),  atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_aniso        / ref["h_aniso"].max()),        torch.linalg.cross(m, ref["h_aniso"]        / ref["h_aniso"].max()),         atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_aniso_cubic  / ref["h_aniso_cubic"].max()),  torch.linalg.cross(m, ref["h_aniso_cubic"]  / ref["h_aniso_cubic"].max()),   atol=1e-15, rtol=1e-6)
 
 @pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
 def test_nonequidistant(field_term):
     n  = (10, 5, 4)
-    dx2 = np.ones(n[2]) * 5e-9
+    dx2 = torch.ones(n[2]) * 5e-9
     dx2[2:] = 1.
     dx = (1e-9, 2e-9, dx2)
 
