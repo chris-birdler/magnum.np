@@ -19,14 +19,32 @@ Features
 * Seemingless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
+
+*************
+List of Demos
+*************
+* `RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HZyMxhG1HZCMsbdOohNqfmR0WUnoQ-ux>`__)
+* `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/11dP3VrckM_hc24jP0sHIM_0_MlkNioRV#scrollTo=54df1504>`__)
+* `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1vfLhEUMGFCfJ-CB1QNKgZtLP6vkjf3hw#scrollTo=54df1504>`__)
+* `Standard Problem #4 <demos/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1UNdTe5y41k_6HrZ7WsNASQSs5viUMzss>`__)
+* `Standard Problem #5 <demos/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1AR7ksZUbThvJAn3mTgFKh6ka7dgXbUOb>`__)
+* `Standard Problem Domainwall Pinning <demos/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1tMKEFtOfg7NSCGYUONeHLa0nC0AXVGRP#scrollTo=755d81e8>`__)
+* `Standard Problem FMR <demos/sp_FMR.ipynb>`__ (`Colab <https://colab.research.google.com/drive/160QXXUkDEpd-GvZyI2PhLIdnSIDRVyG0>`__)
+
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    installation
    getting_started
    field_terms
    demos
+   state_and_materials
+   logging
+
+
+
 
 ********
 Citation
@@ -40,7 +58,7 @@ If you use magnum.np in your work or publication, please cite the following refe
 Contributing
 ************
 Contributions are gratefully accepted.
-The source code is hosted on [www.gitlab.com/magnum.np/magnum.np](www.gitlab.com/magnum.np/magnum.np).
+The source code is hosted on `www.gitlab.com/magnum.np/magnum.np <http://www.gitlab.com/magnum.np/magnum.np>`__.
 If you have any issues or question, just open an issue via gitlab.com.
 To contribute code, fork our repository on gitlab.com and create a corresponding merge request.
 
