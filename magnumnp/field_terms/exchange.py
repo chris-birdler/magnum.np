@@ -47,9 +47,9 @@ class ExchangeField(LinearFieldTerm):
         m = state.m.torch_tensor
         if self._domain != None:
             A = A * self._domain[:,:,:,None]
-        dx = state.dx[0].reshape(-1,1,1,1).torch_tensor
-        dy = state.dx[1].reshape(1,-1,1,1).torch_tensor
-        dz = state.dx[2].reshape(1,1,-1,1).torch_tensor
+        dx = state.dx[0].reshape(-1,1,1,1)
+        dy = state.dx[1].reshape(1,-1,1,1)
+        dz = state.dx[2].reshape(1,1,-1,1)
         h = self._h(m, A, Ms, dx, dy, dz, state)
         return state.Tensor(h)
 

@@ -51,8 +51,8 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         # TODO: add scale to state and rescale like in DemagField
         dx = state.mesh.dx
         z = (torch.cumsum(state.dx[2], dim=0) - state.dx[2][0])
-        dx_dst = [[dx[0], dx[1], state.dx[2][i_dst]][ind] for ind in perm]
-        dx_src = [[dx[0], dx[1], state.dx[2][i_src]][ind] for ind in perm]
+        dx_dst = state._tensor([[dx[0], dx[1], state.dx[2][i_dst]][ind] for ind in perm])
+        dx_src = state._tensor([[dx[0], dx[1], state.dx[2][i_src]][ind] for ind in perm])
 
         # dipole far-field
         shape = [1 if n==1 else 2*n for n in state.mesh.n[:2] + (1,)]
@@ -61,7 +61,7 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         ij = torch.meshgrid(*ij,indexing='ij')
 
         xyz = [[ij[0]*dx[0], ij[1]*dx[1], ij[2]*0. + z[i_dst]+state.dx[2][i_dst]/2. - (z[i_src]+state.dx[2][i_src]/2.)][ind] for ind in perm] # diff of cell centers
-        Nc = func_far(*xyz) * np.prod(dx_src) / (4.*np.pi)
+        Nc = func_far(*xyz) * torch.prod(dx_src) / (4.*torch.pi)
 
         # newell near-field
         n_near = np.minimum(state.mesh.n, self._p)
@@ -73,7 +73,7 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
 
         xyz = [[ij[0]*dx[0], ij[1]*dx[1], z[i_dst] - z[i_src]][ind] for ind in perm] # diff of cell centers origins
 
-        N_near = -newell_N(func_near, *xyz, *dx_dst, *dx_src) / (4.*np.pi*np.prod(dx_dst))
+        N_near = -newell_N(func_near, *xyz, *dx_dst, *dx_src) / (4.*torch.pi*torch.prod(dx_dst))
 
         Nc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
         Nc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]

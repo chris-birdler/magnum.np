@@ -22,16 +22,19 @@ __all__ = ["DecoratedTensor"]
 
 class DecoratedTensor(torch.Tensor):
     @staticmethod
-    def __new__(cls, x, *args, **kwargs): # TODO: is this needed?
-        return super().__new__(cls, x, *args, **kwargs)
+    def __new__(self, x, cell_volumes, *args, **kwargs): # TODO: is this needed?
+        self._cell_volumes = cell_volumes
+        return super().__new__(self, x, *args, **kwargs)
 
     def avg(self, dim=(0,1,2)):
         if self.dim() <= 1: # e.g. [0,0,1]
             return self
         elif self.dim() == 2: # state.m[domain]
-            return self.mean(dim=0)
-        else:
-            return self.mean(dim=dim)
+            return (self * self._cell_volumes.unsqueeze(-1)).sum(dim=0) / self._cell_volumes.sum(dim=0)
+        elif self.dim() == 3: # [nx,ny,nz]
+            return (self * self._cell_volumes).sum(dim=dim) / self._cell_volumes.sum()
+        else:                 # [nx,ny,nz,...]
+            return (self * self._cell_volumes.unsqueeze(-1)).sum(dim=dim) / self._cell_volumes.sum()
 
     def average(self, dim=(0,1,2)):
         return self.avg(dim)
@@ -43,6 +46,22 @@ class DecoratedTensor(torch.Tensor):
 
     def __call__(self, t):
         return self
+
+    def __getitem__(self, idx):
+        item = super().__getitem__(idx)
+
+        # update cell_volumes
+        if isinstance(idx, tuple): # apply slicing
+            if idx[0] == Ellipsis:
+                item._cell_volumes = self._cell_volumes
+            else:
+                item._cell_volumes = self._cell_volumes[idx[:3]]
+        elif isinstance(idx, int):
+            return item
+        else: # apply fancy indexing
+            item._cell_volumes = self._cell_volumes.__getitem__(idx)
+
+        return item
 
     @property
     def torch_tensor(self):

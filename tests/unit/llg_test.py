@@ -1,6 +1,5 @@
 import pytest
 import torch
-import numpy as np
 from magnumnp import *
 from helpers import *
 
@@ -45,7 +44,7 @@ def test_precession(solver):
     hz = 0.1/constants.mu_0
     external = ExternalField([0.0, 0.0, hz])
 
-    f0 = constants.gamma * hz  / (2. * np.pi) # lamour frequency
+    f0 = constants.gamma * hz  / (2. * torch.pi) # lamour frequency
 
     llg = LLGSolver([external], solver = solver, rtol = 1e-5, atol = 1e-5)
     llg.step(state, 1/f0)
