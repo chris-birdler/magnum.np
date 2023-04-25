@@ -39,8 +39,7 @@ state.material["alpha"] = 0.008
 bias = ExternalField(80e3*state.Tensor([1., 0.7, 0]).normalize())
 
 llg = LLGSolver([demag, exchange, bias])
-#logger = ScalarLogger("data/m.dat", ['t', 'm'])
-logger = Logger("data", ['t', 'm'], ["m"])
+logger = ScalarLogger("data/m.dat", ['t', 'm'])
 while state.t < 10e-9-eps:
     llg.step(state, 5e-12)
     logger << state

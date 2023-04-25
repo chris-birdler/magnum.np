@@ -25,7 +25,14 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [Standard Problem #4](demos/sp4/run.ipynb)
+   * [RKKY](demos/rkky.ipynb) ([Colab] (https://colab.research.google.com/drive/1HZyMxhG1HZCMsbdOohNqfmR0WUnoQ-ux))
+   * [Softmagnetic Composite](demos/softmagnetic_composite.ipynb) ([Colab](https://colab.research.google.com/drive/11dP3VrckM_hc24jP0sHIM_0_MlkNioRV))
+   * [Spin Orbit Torque](demos/sot.ipynb) ([Colab](https://colab.research.google.com/drive/1vfLhEUMGFCfJ-CB1QNKgZtLP6vkjf3hw))
+   * [Standard Problem #4](demos/sp4.ipynb) ([Colab](https://colab.research.google.com/drive/1UNdTe5y41k_6HrZ7WsNASQSs5viUMzss))
+   * [Standard Problem #5](demos/sp5.ipynb) ([Colab](https://colab.research.google.com/drive/1AR7ksZUbThvJAn3mTgFKh6ka7dgXbUOb))
+   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning.ipynb) ([Colab](https://colab.research.google.com/drive/1tMKEFtOfg7NSCGYUONeHLa0nC0AXVGRP))
+   * [Standard Problem FMR](demos/sp_FMR.ipynb) ([Colab](https://colab.research.google.com/drive/160QXXUkDEpd-GvZyI2PhLIdnSIDRVyG0))
+
 
 
 Installation
