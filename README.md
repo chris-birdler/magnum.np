@@ -63,7 +63,7 @@ Note that a default version of [pytorch](http://www.pytorch.org) is included in 
 
 ### run remotely via Google Colab
 ---------------------------------
-Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](http://colab.research.google.com). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
+Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](https://drive.google.com/drive/folders/1Ymvx9bi0qQqW-zlOws0ahFJqoE3JCFd9?usp=share_link). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
 Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
 
