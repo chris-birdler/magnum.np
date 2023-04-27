@@ -1,40 +1,46 @@
 image: python:3.10
 
-test:
-    script:
-        - apt update -yq
-        - apt install -y python3-opencv
-        - pip install setuptools pytest
-        - pip install .
-        - python -m pytest tests/
+#test:
+#    script:
+#        - apt update -yq
+#        - apt install -y python3-opencv
+#        - pip install setuptools pytest
+#        - pip install .
+#        - python -m pytest tests/
 
-build-package:
-    stage: deploy
-    before_script:
-        - python -m pip install --upgrade twine
-        - python -m pip install --upgrade build
-        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
-        - cat setup.py
-    variables:
-        TWINE_USERNAME: $PYPI_USERNAME
-        TWINE_PASSWORD: $PYPI_PASSWORD
+test_gpu:
     script:
-        - python -m build
-        - python -m twine upload dist/*
-    rules:
-        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
+        - nvidia-smi
+    tags:
+        - gpu
 
-pages:
-    stage: deploy
-    script:
-        - apt update -yq
-        - apt install -y python3-opencv pandoc
-        - pip install setuptools pytest
-        - pip install -e .
-        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
-        - sphinx-build -b html docs public
-    artifacts:
-        paths:
-            - public
-    rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#build-package:
+#    stage: deploy
+#    before_script:
+#        - python -m pip install --upgrade twine
+#        - python -m pip install --upgrade build
+#        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
+#        - cat setup.py
+#    variables:
+#        TWINE_USERNAME: $PYPI_USERNAME
+#        TWINE_PASSWORD: $PYPI_PASSWORD
+#    script:
+#        - python -m build
+#        - python -m twine upload dist/*
+#    rules:
+#        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
+#
+#pages:
+#    stage: deploy
+#    script:
+#        - apt update -yq
+#        - apt install -y python3-opencv pandoc
+#        - pip install setuptools pytest
+#        - pip install -e .
+#        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
+#        - sphinx-build -b html docs public
+#    artifacts:
+#        paths:
+#            - public
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
