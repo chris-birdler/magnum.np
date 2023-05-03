@@ -38,18 +38,18 @@ def test_nonequi_vs_equi():
     x, y, z = state1.SpatialCoordinate()
     state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
     state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
-    
+
     exchange = ExchangeField()
     h1 = exchange.h(state1)
     h2 = exchange.h(state2)
-    
+
     torch.testing.assert_close(h1/h1.max(), h2/h1.max(), atol=1e-15, rtol=1e-15)
 
 def test_nonequidistant():
     n  = (9, 2, 3)
     dx0 = torch.ones(n[0]) * 1e-9
     dx0[4:] = 2e-9
-   
+
     dx = (dx0, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
@@ -57,9 +57,9 @@ def test_nonequidistant():
                       "Ms": 800e3}
     state.m = state.Constant([1,0,0])
     state.m[3:6,:,:,2] = -1
-    
+
     exchange = ExchangeField()
     h = exchange.h(state)
-    
+
     write_vtr({"h": h, "m": state.m}, "data/h.vtr", state)
     torch.testing.assert_close(h[2,...], 4*h[6,...], atol=1e-15, rtol=1e-15)
