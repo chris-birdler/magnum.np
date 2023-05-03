@@ -95,8 +95,13 @@ class FieldLogger(object):
                 raise RuntimeError('Column type not supported.')
             values[name] = value
 
-        filename = "%s_%04d.vti" % (self._filename, self._i // self._every)
-        write_vti(values, filename, state = state)
+        filename = "%s_%04d" % (self._filename, self._i // self._every)
+        state.write_vtk(values, filename)
+
+        if state._is_equidistant:
+            filename += ".vti"
+        else:
+            filename += ".vtr"
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
