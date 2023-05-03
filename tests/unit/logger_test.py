@@ -42,3 +42,14 @@ def test_resume(simple_state, tmpdir):
         simple_state.t = t
         simple_state.m = simple_state.Constant([t, 0, 0])
         rlogger << simple_state
+
+def test_nonequi(tmpdir):
+    n  = (20, 4, 4)
+    dx = (5., 3., torch.arange(n[2]) + 1.)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.m = state.Constant([1,0,0])
+
+    p = str(tmpdir)
+    logger = Logger(p, scalars = ["t", "m"], fields = ["m"])
+    logger << state

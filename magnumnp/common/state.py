@@ -20,6 +20,7 @@ import torch
 import os
 import numpy as np
 from magnumnp.common import logging, DecoratedTensor, Material
+from magnumnp.common.io import write_vti, write_vtr
 
 __all__ = ["State"]
 
@@ -42,6 +43,7 @@ class State(object):
         self._dtype = dtype or torch.get_default_dtype()
         self.mesh = mesh
 
+        self._is_equidistant = all([isinstance(dx, (float, int)) for dx in mesh.dx])
         self.dx = [self._tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
 
         # compute cell_volumes (use expand for equidistant dimentions)
@@ -145,6 +147,12 @@ class State(object):
         else: # otherwise assume the dimention is correct!
             pass
         return value
+
+    def write_vtk(self, fields, filename):
+        if self._is_equidistant:
+            write_vti(fields, filename + ".vti", self)
+        else:
+            write_vtr(fields, filename + ".vtr", self)
 
     @property
     def dtype(self):
