@@ -1,3 +1,9 @@
+1.0.9 [2023-05-03]
+- added nonequidistant mesh support
+- refactor demag field
+- added TorchDiffEqAdjoint solver
+- improved documentation
+
 1.0.8 [2023-02-21]
 - fixed bug in exchange field 
 - improved imaging tools

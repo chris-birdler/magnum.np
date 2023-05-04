@@ -19,7 +19,7 @@
 import torch
 from magnumnp.common import logging, DecoratedTensor
 from torchdiffeq import odeint, odeint_adjoint
-    
+
 __all__ = ["TorchDiffEq", "TorchDiffEqAdjoint"]
 
 class TorchDiffEq(object):
@@ -47,7 +47,7 @@ class TorchDiffEq(object):
                      options = self._options) # TODO: reuse solver object?
         state.m = state.Tensor(res[1])
         state.t = t1
-        
+
 class TorchDiffEqAdjoint(object):
     def __init__(self, f, adjoint_parameters, method = "dopri5", rtol = 1e-5, atol = 1e-5, options = {}):
         self._f = f
