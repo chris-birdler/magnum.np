@@ -227,3 +227,27 @@ def test_energy_nonequidistant():
     E2 = aniso.E(state)
 
     torch.testing.assert_close(E1, 5*E2, atol=0, rtol=1e-15)
+
+def test_energy_domain():
+    n  = (10, 5, 4)
+    dx2 = torch.ones(n[2]) * 5e-9
+    dx2[2:] = 1e-9
+    dx = (1e-9, 2e-9, dx2)
+
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+
+    state.material = {"Ms":      state.Tensor([1.]),
+                      "Ku":      state.Tensor([1.]),
+                      "Ku_axis": state.Tensor([0,1,0])}
+
+    aniso = UniaxialAnisotropyField()
+
+    state.m = state.Constant([1,1,0])
+    domain1 = state.Constant(True, dtype=torch.bool)
+    domain1[:,:,2:] = False
+
+    E1 = aniso.E(state, domain1)
+    E2 = aniso.E(state, ~domain1)
+
+    torch.testing.assert_close(E1, 5*E2, atol=0, rtol=1e-15)
