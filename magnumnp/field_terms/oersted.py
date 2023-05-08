@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common import logging, timedmethod, constants
+from .field_terms import FieldTerm
 import numpy as np
 import torch
 import torch.fft
@@ -65,7 +66,7 @@ def dipole_g(points):
     return res
 
 
-class OerstedField(object):
+class OerstedField(FieldTerm):
     r"""
     The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law
 

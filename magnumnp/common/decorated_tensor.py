@@ -30,11 +30,11 @@ class DecoratedTensor(torch.Tensor):
         if self.dim() <= 1: # e.g. [0,0,1]
             return self
         elif self.dim() == 2: # state.m[domain]
-            return (self * self._cell_volumes.unsqueeze(-1)).sum(dim=0) / self._cell_volumes.sum(dim=0)
+            return (self * self._cell_volumes).sum(dim=0) / self._cell_volumes.sum(dim=0)
         elif self.dim() == 3: # [nx,ny,nz]
-            return (self * self._cell_volumes).sum(dim=dim) / self._cell_volumes.sum()
+            return (self * self._cell_volumes.squeeze(-1)).sum(dim=dim) / self._cell_volumes.sum()
         else:                 # [nx,ny,nz,...]
-            return (self * self._cell_volumes.unsqueeze(-1)).sum(dim=dim) / self._cell_volumes.sum()
+            return (self * self._cell_volumes).sum(dim=dim) / self._cell_volumes.sum()
 
     def average(self, dim=(0,1,2)):
         return self.avg(dim)

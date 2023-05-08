@@ -6,6 +6,7 @@ from magnumnp import *
 def test_cubic_energy():
     n  = (1, 1, 1)
     dx = (1, 2, 5)
+    cell_volume = dx[0] * dx[1] * dx[2]
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {"Kc_alpha": state.Constant([0.]),
@@ -25,7 +26,7 @@ def test_cubic_energy():
         E_sim = aniso.E(state)
 
         hx_analytic = -2. / constants.mu_0 / state.material["Ms"] * state.material["Kc1"] * mx * (my**2 + mz**2)
-        E_analytic = state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * mesh.cell_volume
+        E_analytic = (state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * cell_volume).sum()
 
         torch.testing.assert_close(h_sim[0,0,0,0], hx_analytic[0,0,0,0], atol=1e-4, rtol=1e-4)
         torch.testing.assert_close(E_sim, E_analytic, atol=1e-4, rtol=1e-4)
@@ -33,6 +34,7 @@ def test_cubic_energy():
 def test_cubic_energy_rotated():
     n  = (1, 1, 1)
     dx = (1, 2, 5)
+    cell_volume = dx[0] * dx[1] * dx[2]
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {"Kc_alpha": state.Constant([pi/4.]),
@@ -53,7 +55,7 @@ def test_cubic_energy_rotated():
         mx = cos(phi)
         my = sin(phi)
         mz = 0.
-        E_analytic = state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * mesh.cell_volume
+        E_analytic = (state.material["Kc1"] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) * cell_volume).sum()
 
         torch.testing.assert_close(E_sim, E_analytic, atol=1e-4, rtol=1e-4)
 
