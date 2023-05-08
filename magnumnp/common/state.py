@@ -39,7 +39,6 @@ class State(object):
             self._device = device
 
         #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
-
         self._dtype = dtype or torch.get_default_dtype()
         self.mesh = mesh
 
@@ -48,7 +47,7 @@ class State(object):
 
         # compute cell_volumes (use expand for equidistant dimentions)
         dx, dy, dz = torch.meshgrid([self._tensor(dx) for dx in mesh.dx], indexing = "ij")
-        self._cell_volumes = (dx*dy*dz).expand(mesh.n)
+        self._cell_volumes = (dx*dy*dz).expand(mesh.n).unsqueeze(-1)
 
         self._material = Material(self)
         self.t = t0

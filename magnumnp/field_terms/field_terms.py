@@ -35,4 +35,4 @@ class FieldTerm(object):
 
 class LinearFieldTerm(FieldTerm):
     def E(self, state):
-        return -0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))
+        return -0.5 * constants.mu_0 * torch.sum(state.material["Ms"] * state.m * self.h(state) * state.cell_volumes)
