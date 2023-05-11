@@ -17,7 +17,7 @@ Finally install a release versions of magnum.np by means of pip:
 
 .. code-block:: bash
 
-  pip install magnum.np
+  pip install magnumnp
 
 
 *****************************
