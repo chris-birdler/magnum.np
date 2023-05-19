@@ -41,12 +41,12 @@ class ScipyOdeint(object):
         return f.detach().cpu().numpy().flatten(order = "F")
 
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        m0 = state.m.numpy().reshape(-1, order = 'F')
+        m0 = state.m.detach().cpu().numpy().reshape(-1, order = 'F')
 
         t1 = state.t + dt
         m1 = odeint(self._f_wrapper,
                     m0,
-                    [state.t*1e9, t1*1e9],
+                    [(state.t*1e9).detach().cpu().numpy(), (t1*1e9).detach().cpu().numpy()],
                     args = (state, llg_args),
                     rtol = rtol or self._rtol,
                     atol = atol or self._atol,
