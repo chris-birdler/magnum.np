@@ -17,12 +17,13 @@
 #
 
 from magnumnp.common import timedmethod, constants
+from .field_terms import LinearFieldTerm
 from math import pi
 import torch
 
 __all__ = ["DemagFieldPBC"]
 
-class DemagFieldPBC(object):
+class DemagFieldPBC(LinearFieldTerm):
     @timedmethod
     def h(self, state):
         m_fft = torch.fft.fftn(state.material["Ms"] * state.m, dim = [i for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1) #TODO: use rfftn -> kz should be size N//2+1
@@ -48,6 +49,3 @@ class DemagFieldPBC(object):
 
         h = torch.fft.ifftn(h_fft, dim = [i for i in range(3) if state.mesh.n[i] > 1])
         return h.real
-
-    def E(self, state):
-        return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))

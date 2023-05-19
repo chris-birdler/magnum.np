@@ -20,6 +20,7 @@ import torch
 import os
 import numpy as np
 from magnumnp.common import logging, DecoratedTensor, Material
+from magnumnp.common.io import write_vti, write_vtr
 
 __all__ = ["State"]
 
@@ -38,10 +39,15 @@ class State(object):
             self._device = device
 
         #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
-
         self._dtype = dtype or torch.get_default_dtype()
         self.mesh = mesh
-        self.dx = [self.Tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
+
+        self._is_equidistant = all([isinstance(dx, (float, int)) for dx in mesh.dx])
+        self.dx = [self._tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
+
+        # compute cell_volumes (use expand for equidistant dimentions)
+        dx, dy, dz = torch.meshgrid([self._tensor(dx) for dx in mesh.dx], indexing = "ij")
+        self._cell_volumes = (dx*dy*dz).expand(mesh.n).unsqueeze(-1)
 
         self._material = Material(self)
         self.t = t0
@@ -90,19 +96,20 @@ class State(object):
     def _tensor(self, data, dtype = None):
         dtype = dtype or self._dtype
         if isinstance(data, torch.Tensor):
-            return data
+            return data.to(dtype=dtype, device=self._device)
         else:
             return torch.tensor(data, dtype=dtype, device=self._device)
 
+    # TODO: avoid unneeded DecoratedTensors (e.g. state.Tensor(0.))
     def Tensor(self, data, dtype = None, requires_grad = False):
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
             dtype = dtype or self._dtype
-            t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
+            t = DecoratedTensor(torch.tensor(data, dtype=dtype, device=self._device), self.cell_volumes)
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
             requires_grad = requires_grad or data.requires_grad
-            return data.requires_grad_(requires_grad).as_subclass(DecoratedTensor)
+            return DecoratedTensor(data.requires_grad_(requires_grad), self.cell_volumes)
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
@@ -111,18 +118,18 @@ class State(object):
     def Constant(self, c, dtype = None, requires_grad = False):
         dtype = dtype or self._dtype
         c = self.Tensor(c, dtype=dtype)
-        x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
+        x = DecoratedTensor(self._zeros(self.mesh.n + c.shape, dtype=dtype), self.cell_volumes)
         x[...] = c
         x.requires_grad = requires_grad
         return x
 
     def SpatialCoordinate(self):
-        x = self._arange(self.mesh.n[0]) * self.mesh.dx[0] + self.mesh.dx[0]/2. + self.mesh.origin[0]
-        y = self._arange(self.mesh.n[1]) * self.mesh.dx[1] + self.mesh.dx[1]/2. + self.mesh.origin[1]
-        z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]
+        x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.mesh.origin[0]
+        y = self.dx[1].cumsum(0) - self.dx[1]/2. + self.mesh.origin[1]
+        z = self.dx[2].cumsum(0) - self.dx[2]/2. + self.mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
-        return DecoratedTensor(XX), DecoratedTensor(YY), DecoratedTensor(ZZ)
+        return DecoratedTensor(XX, self.cell_volumes), DecoratedTensor(YY, self.cell_volumes), DecoratedTensor(ZZ, self.cell_volumes)
 
     def convert_tensorfield(self, value):
         ''' convert arbitrary input to tensor-fields '''
@@ -140,6 +147,12 @@ class State(object):
             pass
         return value
 
+    def write_vtk(self, fields, filename):
+        if self._is_equidistant:
+            write_vti(fields, filename + ".vti", self)
+        else:
+            write_vtr(fields, filename + ".vtr", self)
+
     @property
     def dtype(self):
         return self._dtype
@@ -147,3 +160,7 @@ class State(object):
     @property
     def complex_dtype(self):
         return complex_dtype[self._dtype]
+
+    @property
+    def cell_volumes(self):
+        return self._cell_volumes

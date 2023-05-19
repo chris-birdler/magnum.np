@@ -2,7 +2,6 @@ import pytest
 import pathlib
 import torch
 from magnumnp import *
-import numpy as np
 
 # move to fieldterms test
 def test_call():

@@ -60,5 +60,4 @@ class ExternalField(object):
             super().__setattr__(name, value)
 
     def E(self, state):
-        return - constants.mu_0 * state.mesh.cell_volume \
-               * torch.sum(state.material["Ms"] * state.m * self.h(state))
+        return - constants.mu_0 * torch.sum(state.material["Ms"] * state.m * self.h(state) * state.cell_volumes)

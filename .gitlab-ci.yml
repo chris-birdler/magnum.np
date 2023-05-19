@@ -8,6 +8,18 @@ test:
         - pip install .
         - python -m pytest tests/
 
+test_gpu:
+    script:
+        - apt update -yq
+        - apt install -y python3-opencv
+        - pip install setuptools pytest
+        - pip install .
+        - python -m pytest tests/
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    tags:
+        - gpu
+
 build-package:
     stage: deploy
     before_script:

@@ -21,9 +21,6 @@ state.material = {
     }
 state.m = state.Constant([0, 0, 1])
 
-x = state.Tensor([1., 0.7, 0])
-print("x:", 80e3*x.normalize())
-
 #relax state
 demag    = DemagField()
 exchange = ExchangeField()
@@ -40,8 +37,8 @@ bias = ExternalField(80e3*state.Tensor([1., 0.7, 0]).normalize())
 
 llg = LLGSolver([demag, exchange, bias])
 logger = ScalarLogger("data/m.dat", ['t', 'm'])
-
 while state.t < 10e-9-eps:
     llg.step(state, 5e-12)
+    logger << state
 
 Timer.print_report()

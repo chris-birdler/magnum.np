@@ -34,3 +34,57 @@ def test_Constant(requires_grad):
     state.m = state.Constant([0,0,1], requires_grad = requires_grad)
     torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]))
     assert state.m.requires_grad == requires_grad
+
+
+def test_spatial_coordinate():
+    n = (100, 20, 10)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.))
+    state = State(mesh)
+    x, y, z = state.SpatialCoordinate()
+    torch.testing.assert_close(x.min(), state.Tensor(-n[0]*dx[0]/2.+dx[0]/2.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(x.max(), state.Tensor( n[0]*dx[0]/2.-dx[0]/2.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(y.min(), state.Tensor(-n[1]*dx[1]/2.+dx[1]/2.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(y.max(), state.Tensor( n[1]*dx[1]/2.-dx[1]/2.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(z.min(), state.Tensor(-n[2]*dx[2]/2.+dx[2]/2.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(z.max(), state.Tensor( n[2]*dx[2]/2.-dx[2]/2.), atol=1e-15, rtol=1e-15)
+
+
+def test_spatial_coordinate_nonequi():
+    n = (1, 1, 4)
+    dx = (5e-9, 5e-9, (torch.arange(n[2])+1.)*1e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0) )
+    state = State(mesh)
+    x, y, z = state.SpatialCoordinate()
+
+    torch.testing.assert_close(z.reshape(-1), state.Tensor([0.5e-9, 2.0e-9, 4.5e-9, 8.0e-9]), atol=1e-15, rtol=1e-15)
+
+
+def test_average():
+    n = (2, 3, 5)
+    dx = (5e-9, 5e-9, 5e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.) )
+    state = State(mesh)
+    state.m = state.Constant([1.,0.,0.])
+    state.material["A"] = 1.
+    x, y, z = state.SpatialCoordinate()
+
+    torch.testing.assert_close(state.m.avg(), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.material["A"].avg(), state.Tensor([1.]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(z.avg(), state.Tensor(0.), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.m[:,:,:2,:].avg(), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
+
+
+def test_average_nonequi():
+    n = (1, 1, 4)
+    dx = (5e-9, 5e-9, (torch.arange(n[2])+1.)*1e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0))
+    state = State(mesh)
+    state.m = state.Constant([1.,0.,0.])
+    state.material["A"] = 1.
+    x, y, z = state.SpatialCoordinate()
+
+    torch.testing.assert_close(state.m.avg(), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.material["A"].avg(), state.Tensor([1.]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(z.avg(), state.Tensor(5e-9), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.m[:,:,:2,:].avg(), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)

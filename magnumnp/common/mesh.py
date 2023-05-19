@@ -26,14 +26,6 @@ class Mesh(object):
         self.dx = tuple(dx)
         self.origin = tuple(origin)
 
-    @property
-    def cell_volume(self):
-        return self.dx[0] * self.dx[1] * self.dx[2]
-
-    @property
-    def volume(self):
-        return self.n[0] * self.n[1] * self.n[2] * self.cell_volume
-
     def __str__(self):
-        str_dx = ["%g" % dx if isinstance(dx, float) else "XX" for dx in self.dx]
+        str_dx = ["%g" % dx if isinstance(dx, (float, int)) else "XX" for dx in self.dx]
         return "%dx%dx%d (size= %s x %s x %s)" % (*self.n, *str_dx)

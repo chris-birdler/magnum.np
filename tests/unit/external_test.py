@@ -6,6 +6,7 @@ from magnumnp import *
 def test_different_tensors():
     n  = (8,10,12)
     dx = (1e-9, 2e-9, 5e-9)
+    mesh_volume = n[0] * n[1] * n[2] * dx[0] * dx[1] * dx[2]
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
@@ -15,12 +16,12 @@ def test_different_tensors():
     # test vector [3]
     external = ExternalField([1,0,0])
     torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]))
-    assert external.E(state).cpu() / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
+    assert external.E(state).cpu() / (-mesh_volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
 
     # test vector [nx,ny,nz,3]
     external = ExternalField(state.Constant([1,0,0]))
     torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]))
-    assert external.E(state).cpu() / (-mesh.volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
+    assert external.E(state).cpu() / (-mesh_volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
 
     # test lambda [3]
     h_func = lambda t: state.Tensor([t,0,0])

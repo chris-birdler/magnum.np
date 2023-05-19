@@ -1,7 +1,6 @@
 import pytest
 import pathlib
 import torch
-import numpy as np
 from magnumnp import *
 
 
@@ -9,6 +8,7 @@ from magnumnp import *
 def test_energy_cube(dtype):
     n  = (20, 20, 20)
     dx = (1e-9, 1e-9, 1e-9)
+    mesh_volume = n[0] * n[1] * n[2] * dx[0] * dx[1] * dx[2]
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh, dtype=dtype)
@@ -21,11 +21,12 @@ def test_energy_cube(dtype):
     torch.testing.assert_close(constants.mu_0*h[10,10,10], state.Tensor([-1./3., 0.0, 0.0]), atol=1e-3, rtol=1e-3)
 
     E = demag.E(state)
-    assert E.cpu() == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
+    assert E.cpu() == pytest.approx(1./6.*mesh_volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
 
 def test_Ms_domain():
     n  = (4, 4, 4)
     dx = (1e-9, 1e-9, 1e-9)
+    mesh_volume = n[0] * n[1] * n[2] * dx[0] * dx[1] * dx[2]
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
@@ -34,7 +35,7 @@ def test_Ms_domain():
     demag = DemagField()
     h = demag.h(state)
     E = demag.E(state)
-    assert E.cpu() == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
+    assert E.cpu() == pytest.approx(1./6.*mesh_volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
 
 def test_PBC():
     n  = (4, 4, 4)
@@ -83,7 +84,7 @@ def test_nonequidistant():
     h1 = demag1.h(state1)
 
     n  = (20, 4, 4)
-    dx2 = np.ones(n[2]) * 2.
+    dx2 = torch.ones(n[2]) * 2.
     dx2[2:] = 1.
     dx = (5., 3., dx2)
     mesh2 = Mesh(n, dx)
