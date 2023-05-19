@@ -25,7 +25,7 @@ class OhmSolver(object):
     def __init__(self, dirichlet_bc_nodes):
         self._dirichlet_bc_nodes = dirichlet_bc_nodes
 
-    def u(self, state):
+    def u(self, state, **kwargs):
         sigma = state.material["sigma"].squeeze(-1)
         rhs = state._zeros(state.mesh.n)
         u0 = state.u.clone()
@@ -34,12 +34,15 @@ class OhmSolver(object):
             res = torch.zeros_like(u)
 
             # homogeneous Neumann conditions for now
-            u[ 0,:,:] = u[ 1,:,:]
-            u[-1,:,:] = u[-2,:,:]
-            u[:, 0,:] = u[:, 1,:]
-            u[:,-1,:] = u[:,-2,:]
-            u[:,:, 0] = u[:,:, 1]
-            u[:,:,-1] = u[:,:,-2]
+            if u.shape[0] > 2:
+                u[ 0,:,:] = u[ 1,:,:]
+                u[-1,:,:] = u[-2,:,:]
+            if u.shape[1] > 2:
+                u[:, 0,:] = u[:, 1,:]
+                u[:,-1,:] = u[:,-2,:]
+            if u.shape[2] > 2:
+                u[:,:, 0] = u[:,:, 1]
+                u[:,:,-1] = u[:,:,-2]
 
             # set Dirichlet conditions
             u[self._dirichlet_bc_nodes] = u0[self._dirichlet_bc_nodes]
@@ -68,12 +71,13 @@ class OhmSolver(object):
 
             return res
 
-        state.u = conjugate_gradient(_M, state.u, rhs)
+        state.u = conjugate_gradient(_M, state.u, rhs, **kwargs)
         return state.u
 
-    def j(self, state):
+    def j(self, state, **kwargs):
         sigma = state.material["sigma"]
-        return -sigma * torch.stack(torch.gradient(self.u(state)), dim=-1)
+        grad = [torch.gradient(self.u(state, **kwargs), dim=i)[0] if state.mesh.n[i] > 2 else torch.zeros_like(sigma[:,:,:,0]) for i in range(3)]
+        return -sigma * torch.stack(grad, dim=-1)
 
 def conjugate_gradient(A, x, b, tol=1e-6, max_iter=1000):
     r = b - A(x)
