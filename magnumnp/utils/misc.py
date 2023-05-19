@@ -18,7 +18,7 @@
 
 import torch
 
-__all__ = ["add_noise", "nsk"]
+__all__ = ["add_noise", "nsk", "hsl_to_rgb"]
 
 def add_noise(x, dev = 1.0, mean = 0.0):
    if torch.is_tensor(x):
