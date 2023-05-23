@@ -5,10 +5,6 @@ from helpers import *
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_step(simple_state, solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     demag    = DemagField()
     exchange = ExchangeField()
     external = ExternalField([-24.6e-3/constants.mu_0,
@@ -25,10 +21,6 @@ def test_step(simple_state, solver):
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_precession(solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     n  = (1, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
@@ -53,10 +45,6 @@ def test_precession(solver):
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_relax(solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     n  = (1, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
