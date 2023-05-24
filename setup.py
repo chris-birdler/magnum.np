@@ -37,12 +37,13 @@ setup(name='magnumnp',
       },
       packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
       install_requires = [
-            'torch',
             'numpy',
+            'pynvml',
+            'pyvista',
             'scipy',
             'setproctitle',
-            'pyvista',
+            'torch',
+            'torchdiffeq',
             'xitorch',
-            'torchdiffeq'
             ]
      )

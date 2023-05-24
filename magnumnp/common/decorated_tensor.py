@@ -47,6 +47,11 @@ class DecoratedTensor(torch.Tensor):
     def __call__(self, t):
         return self
 
+    def __setitem__(self, key, value):
+        if hasattr(self, "_expanded"):
+            self.set_(self.clone())
+        super().__setitem__(key, value)
+
     def __getitem__(self, idx):
         item = super().__getitem__(idx)
 

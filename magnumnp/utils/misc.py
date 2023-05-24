@@ -29,7 +29,7 @@ def nsk(state): # TODO: document and improve interface
     m = state.m.mean(axis=2)
     dxm = torch.stack(torch.gradient(m, spacing = state.mesh.dx[0], dim = 0), dim = -1).squeeze(-1)
     dym = torch.stack(torch.gradient(m, spacing = state.mesh.dx[1], dim = 1), dim = -1).squeeze(-1)
-    return 1./(4.*pi) * (m * torch.linalg.cross(dxm, dym)).sum() * state.mesh.dx[0] * state.mesh.dx[1]
+    return 1./(4.*torch.pi) * (m * torch.linalg.cross(dxm, dym)).sum() * state.mesh.dx[0] * state.mesh.dx[1]
 
 
 def hsl_to_rgb(h, s, l): # TODO: document and improve interface

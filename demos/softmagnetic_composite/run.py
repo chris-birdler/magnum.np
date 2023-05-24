@@ -15,7 +15,7 @@ Nx, Ny, Nz = 3, 3, 3
 nx, ny, nz = N, N, N
 dx, dy, dz = 900e-9 / (N-1), 900e-9 / (N-1), 900e-9 / (N-1)
 
-mesh = Mesh((nx,ny,nz), (dx,dy,dz))
+mesh = Mesh((nx,ny,nz), (dx,dy,dz), pbc = (1,1,1))
 state = State(mesh)
 state.m = state.Constant((0,0,1))
 state.material = {"alpha": 1.0}
@@ -65,7 +65,7 @@ write_vti(state.material, "data/material.vti", state)
 
 # initialize field terms
 demag    = DemagFieldPBC()
-exchange = ExchangeFieldPBC()
+exchange = ExchangeField()
 aniso    = UniaxialAnisotropyField()
 external = ExternalField(TimeInterpolator(state, {0.0e-9: [0.0, 0.0, 0.0],
                                                   1.0e-9: [0.0, 0.0, 0.0],
