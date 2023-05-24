@@ -82,7 +82,7 @@ class RKKYField(object):
 
     @timedmethod
     def h(self, state):
-        h = state._zeros(state.mesh.n + (3,))
+        h = state.zeros(state.mesh.n + (3,))
         if self._order == 0:
             m1 = state.m[:,:,(self._id1,),:]
             m2 = state.m[:,:,(self._id2,),:]

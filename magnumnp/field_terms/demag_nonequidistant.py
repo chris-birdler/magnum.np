@@ -66,7 +66,7 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         dx_src = state._tensor([[dx[0], dx[1], state.dx[2][i_src]][ind] for ind in perm])
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
+        ij = [torch.fft.fftfreq(n,1/n).to(device=state._device) for n in shape] # local indices
         ij[2] = ij[2]*0. + z[i_dst] - z[i_src] # use fixed distance for z-direction
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [[ij[0]*dx[0], ij[1]*dx[1], ij[2].clone()][ind] for ind in perm]
@@ -74,10 +74,10 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], torch.cumsum(state.dx[2], dim=0)[-1]]
         Lx = [Lx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = [state.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = state._zeros(shape)
+        Nc = state.zeros(shape)
         for offset in offsets:
             Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx_dst, *dx_src, self._p)
 
@@ -125,9 +125,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         s = [shape[i] for i in dim]
 
         m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
-        hx = state._zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
-        hy = state._zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
-        hz = state._zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
+        hx = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
+        hy = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
+        hz = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
 
         for i_dst in range(state.mesh.n[2]):
             for i_src in range(state.mesh.n[2]):

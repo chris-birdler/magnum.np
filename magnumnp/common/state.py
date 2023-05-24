@@ -80,18 +80,18 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
-    def _zeros(self, size, dtype = None, **kwargs):
+    def zeros(self, size, dtype = None, **kwargs):
         dtype = dtype or self._dtype
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
-    def _arange(self, start, end = None, step=1, dtype = None, **kwargs):
+    def arange(self, start, end = None, step=1, dtype = None, **kwargs):
         dtype = dtype or self._dtype
         if end == None:
            end = start
            start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
-    def _linspace(self, start, end, steps, dtype = None, **kwargs):
+    def linspace(self, start, end, steps, dtype = None, **kwargs):
         dtype = dtype or self._dtype
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
@@ -124,7 +124,7 @@ class State(object):
     def Constant(self, c, dtype = None, requires_grad = False):
         dtype = dtype or self._dtype
         c = self.Tensor(c, dtype=dtype)
-        x = DecoratedTensor(self._zeros(self.mesh.n + c.shape, dtype=dtype), self.cell_volumes)
+        x = DecoratedTensor(self.zeros(self.mesh.n + c.shape, dtype=dtype), self.cell_volumes)
         x[...] = c
         x.requires_grad = requires_grad
         return x
