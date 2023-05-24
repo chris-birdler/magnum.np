@@ -60,7 +60,7 @@ class DMIField(LinearFieldTerm):
 
     @torch.compile
     def _h(self, m, D, Ms, state):
-        h = state._zeros(state.mesh.n + (3,))
+        h = state.zeros(state.mesh.n + (3,))
         # x
         if state.mesh.pbc[0] == 0:
             v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)

@@ -85,7 +85,7 @@ class OerstedField(FieldTerm):
     def _init_K_component(self, state, perm, func_near, func_far):
         # dipole far-field
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in shape]
+        ij = [torch.fft.fftshift(state.arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         r = torch.stack([ij[ind]*state.mesh.dx[ind] for ind in perm], dim=-1)
@@ -93,8 +93,8 @@ class OerstedField(FieldTerm):
 
         # newell near-field
         n_near = np.minimum(state.mesh.n, self._p)
-        K_near = state._zeros([1 if i==1 else 2*i for i in n_near])
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in K_near.shape[:3]]
+        K_near = state.zeros([1 if i==1 else 2*i for i in n_near])
+        ij = [torch.fft.fftshift(state.arange(n)) - n//2 for n in K_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
@@ -132,9 +132,9 @@ class OerstedField(FieldTerm):
         if not hasattr(self, "_K"):
             self._init_K(state)
 
-        hx = state._zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
-        hy = state._zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
-        hz = state._zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hx = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hy = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hz = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
 
         for ax in range(3):
             j_pad_fft1D = torch.fft.rfftn(state.j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])
