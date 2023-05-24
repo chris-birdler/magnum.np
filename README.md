@@ -9,8 +9,11 @@ Features
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
+* Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
+* Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters variing in space and time
-* Spin-torque model by Zhang and Li, Slonczewski
+* Spin-torque model by Zhang and Li
+* Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
