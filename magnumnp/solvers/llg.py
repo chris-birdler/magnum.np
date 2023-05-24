@@ -57,6 +57,8 @@ class LLGSolver(object):
         for i in range(maxiter):
             self._solver.step(state, dt, alpha = 1.0, rtol = rtol, atol = rtol) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
+            # dm = f(state, t, m, alpha = 1.0)
+            # |dm|.max()
             E = self.E(state)
             dE = torch.abs((E - E0)/E)
             logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))

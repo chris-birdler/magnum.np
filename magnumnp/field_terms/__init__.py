@@ -22,7 +22,6 @@ from magnumnp.field_terms.demag_nonequidistant import *
 from magnumnp.field_terms.demagPBC import *
 from magnumnp.field_terms.dmi import *
 from magnumnp.field_terms.exchange import *
-from magnumnp.field_terms.exchangePBC import *
 from magnumnp.field_terms.external import *
 from magnumnp.field_terms.field_terms import *
 from magnumnp.field_terms.oersted import *
@@ -35,7 +34,6 @@ __all__ = (anisotropy.__all__ +
            demagPBC.__all__ +
            dmi.__all__ +
            exchange.__all__ +
-           exchangePBC.__all__ +
            external.__all__ +
            field_terms.__all__ +
            oersted.__all__ +
