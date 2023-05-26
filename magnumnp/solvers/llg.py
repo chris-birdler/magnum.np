@@ -36,9 +36,9 @@ class LLGSolver(object):
         h = sum([term.h(state) for term in self._terms])
         h += self._thermal_field
 
-        dm = -alpha_prime * torch.cross(state.m, torch.cross(state.m, h))
+        dm = -alpha_prime * torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
         if not no_precession:
-            dm -= gamma_prime * torch.cross(state.m, h)
+            dm -= gamma_prime * torch.linalg.cross(state.m, h)
 
         return dm
 
@@ -68,6 +68,8 @@ class LLGSolver(object):
         for i in range(maxiter):
             self._solver.step(state, dt, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
+            # dm = f(state, t, m, alpha = 1.0)
+            # |dm|.max()
             E = self.E(state)
             dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
             logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))

@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common import logging, timedmethod, constants, Timer
+from .field_terms import LinearFieldTerm
 import numpy as np
 import torch
 import torch.fft
@@ -24,81 +25,76 @@ from torch import asinh, atan, sqrt, log, abs
 from time import time
 import os
 
-__all__ = ["DemagField", "newell_f", "newell_g", "dipole_f", "dipole_g"]
+__all__ = ["DemagField", "demag_f", "demag_g", "newell", "f", "g"]
 
-def newell_f(points):
-    x = abs(points[:,:,:,0])
-    y = abs(points[:,:,:,1])
-    z = abs(points[:,:,:,2])
-
-    result = 1.0 / 6.0 * (2*x**2 - y**2 - z**2) * sqrt(x**2 + y**2 + z**2)
-
-    mask = (x**2 + z**2).gt(0)
-    result[mask] += (y / 2.0 * (z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
-
-    mask = (x**2 + y**2).gt(0)
-    result[mask] += (z / 2.0 * (y**2 - x**2) * asinh(z / sqrt(x**2 + y**2)))[mask]
-
-    mask = (x * (x**2 + y**2 + z**2)).gt(0)
-    result[mask] -= (x * y * z * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
-
+def f(x, y, z):
+    x, y, z = abs(x), abs(y), abs(z)
+    x2, y2, z2 = x**2, y**2, z**2
+    r = sqrt(x2 + y2 + z2)
+    result = 1.0 / 6.0 * (2*x2 - y2 - z2) * r
+    result += (y / 2.0 * (z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
+    result += (z / 2.0 * (y2 - x2) * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
+    result -= (x * y * z * atan(y*z / (x * r))).nan_to_num(posinf=0, neginf=0)
     return result
 
-def newell_g(points):
-    x = points[:,:,:,0]
-    y = points[:,:,:,1]
-    z = abs(points[:,:,:,2])
-
-    result = - x*y * sqrt(x**2 + y**2 + z**2) / 3.0
-
-    mask = (x**2 + y**2).gt(0) # x**2 + y**2 > 0
-    result[mask] += (x*y*z * asinh(z / sqrt(x**2 + y**2)))[mask]
-
-    mask = (y**2 + z**2).gt(0)
-    result[mask] += (y / 6.0 * (3.0 * z**2 - y**2) * asinh(x / sqrt(y**2 + z**2)))[mask]
-
-    mask = (x**2 + z**2).gt(0)
-    result[mask] += (x / 6.0 * (3.0 * z**2 - x**2) * asinh(y / sqrt(x**2 + z**2)))[mask]
-
-    mask = (z * (x**2 + y**2 + z**2)).ne(0)
-    result[mask] -= ( z**3 / 6.0 * atan(x*y / (z * sqrt(x**2 + y**2 + z**2))))[mask]
-
-    mask = (y * (x**2 + y**2 + z**2)).ne(0)
-    result[mask] -= (z * y**2 / 2.0 * atan(x*z / (y * sqrt(x**2 + y**2 + z**2))))[mask]
-
-    mask = (x * (x**2 + y**2 + z**2)).ne(0)
-    result[mask] -= (z * x**2 / 2.0 * atan(y*z / (x * sqrt(x**2 + y**2 + z**2))))[mask]
-
+def g(x, y, z):
+    z = abs(z)
+    x2, y2, z2 = x**2, y**2, z**2
+    r = sqrt(x2 + y2 + z2)
+    result = -x * y * r / 3.0
+    result += (x * y * z * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
+    result += (y / 6.0 * (3.0 * z2 - y2) * asinh(x / sqrt(y2 + z2))).nan_to_num(posinf=0, neginf=0)
+    result += (x / 6.0 * (3.0 * z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
+    result -= (z**3 / 6.0 * atan(x * y / (z * r))).nan_to_num(posinf=0, neginf=0)
+    result -= (z * y2 / 2.0 * atan(x * z / (y * r))).nan_to_num(posinf=0, neginf=0)
+    result -= (z * x2 / 2.0 * atan(y * z / (x * r))).nan_to_num(posinf=0, neginf=0)
     return result
 
+def F1(func, x, y, z, dz, dZ):
+    return func(x, y, z      + dZ) \
+         - func(x, y, z          ) \
+         - func(x, y, z - dz + dZ) \
+         + func(x, y, z - dz     )
 
-def dipole_f(points):
-    x = points[:,:,:,0]
-    y = points[:,:,:,1]
-    z = points[:,:,:,2]
+def F0(func, x, y, z, dy, dY, dz, dZ):
+    return F1(func, x, y      + dY, z, dz, dZ) \
+         - F1(func, x, y,           z, dz, dZ) \
+         - F1(func, x, y - dy + dY, z, dz, dZ) \
+         + F1(func, x, y - dy,      z, dz, dZ)
 
+def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
+    ret = F0(func, x,           y, z, dy, dY, dz, dZ) \
+        - F0(func, x - dx,      y, z, dy, dY, dz, dZ) \
+        - F0(func, x + dX,      y, z, dy, dY, dz, dZ) \
+        + F0(func, x - dx + dX, y, z, dy, dY, dz, dZ)
+    return -ret / (4.*np.pi*dx*dy*dz)
+
+def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
+    z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     result = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
     result[0,0,0] = 0.
-    return result
+    return result * dx*dy*dz / (4.*np.pi)
 
-def dipole_g(points):
-    x = points[:,:,:,0]
-    y = points[:,:,:,1]
-    z = points[:,:,:,2]
-
+def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
+    z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     result = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
     result[0,0,0] = 0.
-    return result
+    return result * dx*dy*dz / (4.*np.pi)
+
+def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
+    res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)
+    near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
+    res[near] = newell(f, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
+    return res
+
+def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p):
+    res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ)
+    near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
+    res[near] = newell(g, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
+    return res
 
 
-complex_dtype = {
-    torch.float: torch.complex,
-    torch.float32: torch.complex64,
-    torch.float64: torch.complex128
-    }
-
-
-class DemagField(object):
+class DemagField(LinearFieldTerm):
     r"""
     Demagnetization Field:
 
@@ -118,77 +114,87 @@ class DemagField(object):
     def __init__(self, p = 20):
         self._p = p
 
-    def _init_N_component(self, state, perm, func_near, func_far):
-        # rescale dx to avoid NaNs when using single precision
+    def _shape(self, state): # TODO: try padding to 2N-1 for small N like mumax does
+        s = [1,1,1]
+        for i in range(3):
+            if state.mesh.n[i] == 1:
+                continue
+            if state.mesh.pbc[i] == 0:
+                s[i] = 2*state.mesh.n[i]
+            else:
+                s[i] = state.mesh.n[i] # no need to pad if nonzero pbc
+        return s
+
+    def _init_N_component(self, state, perm, func):
         dx = np.array(state.mesh.dx)
-        dx /= dx.min()
+        dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
-        # dipole far-field
-        shape = [1 if n==1 else 2*n for n in state.mesh.n]
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in shape]
+        shape = self._shape(state)
+        ij = [torch.fft.fftfreq(n,1/n).to(device=state._device) for n in shape] # local indices
         ij = torch.meshgrid(*ij,indexing='ij')
+        x, y, z = [ij[ind]*dx[ind] for ind in perm]
+        Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
+        dx = [dx[ind] for ind in perm]
 
-        r = torch.stack([ij[ind]*dx[ind] for ind in perm], dim=-1)
-        Nc = func_far(r) * np.prod(dx) / (4.*np.pi)
+        offsets = [state.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        # newell near-field
-        n_near = np.minimum(state.mesh.n, self._p)
-        N_near = state._zeros([1 if n==1 else 2*n for n in n_near])
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in N_near.shape[:3]]
-        ij = torch.meshgrid(*ij,indexing='ij')
+        Nc = state.zeros(shape)
+        for offset in offsets:
+            Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx, *dx, self._p)
 
-        for kl in np.rollaxis(np.indices((2,)*6), 0, 7).reshape(64, 6):
-            k, l = kl[:3], kl[3:]
-            r = torch.stack([(ij[ind] + k[ind] - l[ind])*dx[ind] for ind in perm], dim=-1)
-            N_near[:,:,:] -= (-1)**np.sum(kl) * func_near(r) / (4.*np.pi*np.prod(dx))
-
-        Nc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = N_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
-        Nc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = N_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]
-        Nc[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ] = N_near[:n_near[0]   ,-n_near[1]+1:,:n_near[2]   ]
-        Nc[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:] = N_near[:n_near[0]   ,-n_near[1]+1:,-n_near[2]+1:]
-        Nc[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ] = N_near[-n_near[0]+1:,:n_near[1]   ,:n_near[2]   ]
-        Nc[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:] = N_near[-n_near[0]+1:,:n_near[1]   ,-n_near[2]+1:]
-        Nc[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ] = N_near[-n_near[0]+1:,-n_near[1]+1:,:n_near[2]   ]
-        Nc[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:] = N_near[-n_near[0]+1:,-n_near[1]+1:,-n_near[2]+1:]
-
-        return torch.fft.rfftn(Nc, dim = [i for i in range(3) if state.mesh.n[i] > 1]).real.clone()
+        dim = [i for i in range(3) if state.mesh.n[i] > 1]
+        if len(dim) > 0:
+            Nc = torch.fft.rfftn(Nc, dim = dim)
+        return Nc.real.clone()
 
     def _init_N(self, state):
+        dtype = state._dtype
+        state._dtype = torch.float64 # always use double precision
         time_kernel = time()
-        Nxx = self._init_N_component(state, [0,1,2], newell_f, dipole_f)
-        Nxy = self._init_N_component(state, [0,1,2], newell_g, dipole_g)
-        Nxz = self._init_N_component(state, [0,2,1], newell_g, dipole_g)
-        Nyy = self._init_N_component(state, [1,2,0], newell_f, dipole_f)
-        Nyz = self._init_N_component(state, [1,2,0], newell_g, dipole_g)
-        Nzz = self._init_N_component(state, [2,0,1], newell_f, dipole_f)
+
+        Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
+        Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype)
+        Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype)
+        Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype)
+        Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype)
+        Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype)
 
         self._N = [[Nxx, Nxy, Nxz],
                    [Nxy, Nyy, Nyz],
                    [Nxz, Nyz, Nzz]]
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
+        state._dtype = dtype # restore dtype
 
     @timedmethod
     def h(self, state):
         if not hasattr(self, "_N"):
             self._init_N(state)
 
-        hx = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
-        hy = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
-        hz = state._zeros(list(self._N[0][0].shape), dtype=complex_dtype[self._N[0][0].dtype])
+        dim = [i for i in range(3) if state.mesh.n[i] > 1]
+        shape = self._shape(state)
+        s = [shape[i] for i in dim]
+
+        if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
+            N = torch.stack([torch.stack(self._N[0], dim=-1),
+                             torch.stack(self._N[1], dim=-1),
+                             torch.stack(self._N[2], dim=-1)], dim=-1)
+            return (N * state.m).sum(dim=-1)
+
+        hx = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
+        hy = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
+        hz = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
         for ax in range(3):
-            m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1)
+            m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = dim, s = s).squeeze(-1)
 
             hx += self._N[0][ax] * m_pad_fft1D
             hy += self._N[1][ax] * m_pad_fft1D
             hz += self._N[2][ax] * m_pad_fft1D
 
-        hx = torch.fft.irfftn(hx, dim = [i for i in range(3) if state.mesh.n[i] > 1])
-        hy = torch.fft.irfftn(hy, dim = [i for i in range(3) if state.mesh.n[i] > 1])
-        hz = torch.fft.irfftn(hz, dim = [i for i in range(3) if state.mesh.n[i] > 1])
+        hx = torch.fft.irfftn(hx, dim = dim)
+        hy = torch.fft.irfftn(hy, dim = dim)
+        hz = torch.fft.irfftn(hz, dim = dim)
 
         return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                             hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                             hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
-
-    def E(self, state):
-        return - 0.5 * constants.mu_0 * state.mesh.cell_volume * torch.sum(state.material["Ms"] * state.m * self.h(state))

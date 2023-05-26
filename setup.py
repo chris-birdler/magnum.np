@@ -25,7 +25,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='magnumnp',
-      version='1.0.6',
+      version='1.1.0',
       description='magnum.np finite-difference package for the solution of micromagnetic problems',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -35,14 +35,15 @@ setup(name='magnumnp',
       project_urls = {'Documentation': 'https://magnum.np.gitlab.io/magnum.np/',
                       'Changelog': 'https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG'
       },
-      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.utils'],
+      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
       install_requires = [
-            'torch',
             'numpy',
+            'pynvml',
+            'pyvista',
             'scipy',
             'setproctitle',
-            'pyvista',
+            'torch',
+            'torchdiffeq',
             'xitorch',
-            'torchdiffeq'
             ]
      )

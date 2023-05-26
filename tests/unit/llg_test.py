@@ -1,15 +1,10 @@
 import pytest
 import torch
-import numpy as np
 from magnumnp import *
 from helpers import *
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_step(simple_state, solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     demag    = DemagField()
     exchange = ExchangeField()
     external = ExternalField([-24.6e-3/constants.mu_0,
@@ -26,10 +21,6 @@ def test_step(simple_state, solver):
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_precession(solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     n  = (1, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
@@ -45,7 +36,7 @@ def test_precession(solver):
     hz = 0.1/constants.mu_0
     external = ExternalField([0.0, 0.0, hz])
 
-    f0 = constants.gamma * hz  / (2. * np.pi) # lamour frequency
+    f0 = constants.gamma * hz  / (2. * torch.pi) # lamour frequency
 
     llg = LLGSolver([external], solver = solver, rtol = 1e-5, atol = 1e-5)
     llg.step(state, 1/f0)
@@ -54,10 +45,6 @@ def test_precession(solver):
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_relax(solver):
-    if torch.cuda.is_available():
-        if solver == ScipyODE or solver == ScipyOdeint:
-           pytest.skip()
-
     n  = (1, 1, 1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)

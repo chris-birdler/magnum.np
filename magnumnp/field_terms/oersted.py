@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common import logging, timedmethod, constants
+from .field_terms import FieldTerm
 import numpy as np
 import torch
 import torch.fft
@@ -65,7 +66,7 @@ def dipole_g(points):
     return res
 
 
-class OerstedField(object):
+class OerstedField(FieldTerm):
     r"""
     The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law
 
@@ -84,7 +85,7 @@ class OerstedField(object):
     def _init_K_component(self, state, perm, func_near, func_far):
         # dipole far-field
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in shape]
+        ij = [torch.fft.fftshift(state.arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         r = torch.stack([ij[ind]*state.mesh.dx[ind] for ind in perm], dim=-1)
@@ -92,8 +93,8 @@ class OerstedField(object):
 
         # newell near-field
         n_near = np.minimum(state.mesh.n, self._p)
-        K_near = state._zeros([1 if i==1 else 2*i for i in n_near])
-        ij = [torch.fft.fftshift(state._arange(n)) - n//2 for n in K_near.shape[:3]]
+        K_near = state.zeros([1 if i==1 else 2*i for i in n_near])
+        ij = [torch.fft.fftshift(state.arange(n)) - n//2 for n in K_near.shape[:3]]
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
@@ -112,25 +113,28 @@ class OerstedField(object):
         return torch.fft.rfftn(Kc, dim = [i for i in range(3) if state.mesh.n[i] > 1])#.real.clone()
 
     def _init_K(self, state):
+        dtype = state._dtype
+        state._dtype = torch.float64 # always use double precision
         time_kernel = time()
-        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g)
-        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g)
-        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g)
+        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=dtype)
+        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=dtype)
+        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=dtype)
 
         self._K = [[  0., -Kxy, +Kxz],
                    [+Kxy,   0., -Kyz],
                    [-Kxz, +Kyz,   0.]]
 
         logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
+        state._dtype = dtype # restore dtype
 
     @timedmethod
     def h(self, state):
         if not hasattr(self, "_K"):
             self._init_K(state)
 
-        hx = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
-        hy = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
-        hz = state._zeros(list(self._K[0][1].shape), dtype=torch.complex128)
+        hx = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hy = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hz = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
 
         for ax in range(3):
             j_pad_fft1D = torch.fft.rfftn(state.j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])

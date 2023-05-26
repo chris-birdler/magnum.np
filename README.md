@@ -1,6 +1,7 @@
-magnum.np 1.0.6
-===============
+![magnum.np](logo.png)
 
+magnum.np 1.1.0
+===============
 magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference method. It implements state-of-the-art algorithms and is based on [pytorch](http://www.pytorch.org/), which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in Python which leads to very readable yet flexible code. Due to [pytorch](http://www.pytorch.org/) integration, extensive postprocessing can be done directly in the simulations scripts. Furthermore [pytorch](http://www.paraview.org/)'s autograd feature makes it possible to solve inverse problems without significant modifications of the code. This manual is meant to give you both a quick start and a reference to magnum.np.
 
 
@@ -9,8 +10,11 @@ Features
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
+* Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
+* Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters variing in space and time
-* Spin-torque model by Zhang and Li, Slonczewski
+* Spin-torque model by Zhang and Li
+* Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
@@ -25,7 +29,14 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [Standard Problem #4](demos/sp4/run.ipynb)
+   * [RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HZyMxhG1HZCMsbdOohNqfmR0WUnoQ-ux))
+   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/11dP3VrckM_hc24jP0sHIM_0_MlkNioRV))
+   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1vfLhEUMGFCfJ-CB1QNKgZtLP6vkjf3hw))
+   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1UNdTe5y41k_6HrZ7WsNASQSs5viUMzss))
+   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1AR7ksZUbThvJAn3mTgFKh6ka7dgXbUOb))
+   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1tMKEFtOfg7NSCGYUONeHLa0nC0AXVGRP))
+   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/160QXXUkDEpd-GvZyI2PhLIdnSIDRVyG0))
+
 
 
 Installation
@@ -56,7 +67,7 @@ Note that a default version of [pytorch](http://www.pytorch.org) is included in 
 
 ### run remotely via Google Colab
 ---------------------------------
-Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](http://colab.research.google.com). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
+Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](https://drive.google.com/drive/folders/1Ymvx9bi0qQqW-zlOws0ahFJqoE3JCFd9?usp=share_link). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
 Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
 

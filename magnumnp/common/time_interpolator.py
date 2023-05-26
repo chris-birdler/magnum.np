@@ -24,7 +24,7 @@ __all__ = ["TimeInterpolator"]
 
 class TimeInterpolator(object):
     def __init__(self, state, points):
-        self._tp = state.Tensor(list(points.keys()))
+        self._tp = state._tensor(list(points.keys()))
         self._fp = state._tensor(list(points.values()))
         self._state = state
 

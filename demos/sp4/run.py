@@ -1,6 +1,7 @@
-from magnumnp import *
 import torch
+from magnumnp import *
 
+torch.set_default_dtype(torch.float32)
 Timer.enable(log_mem = True)
 
 # initialize mesh
@@ -34,7 +35,7 @@ llg.relax(state)
 write_vti(state.m, "data/m0.vti", state)
 
 # perform integration with external field
-llg = LLGSolver([demag, exchange, external], solver = ScipyODE)
+llg = LLGSolver([demag, exchange, external])
 logger = Logger("data", ['t', 'm'])
 while state.t < 1e-9-eps:
     llg.step(state, 1e-11)

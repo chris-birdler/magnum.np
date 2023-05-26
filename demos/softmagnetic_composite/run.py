@@ -15,7 +15,7 @@ Nx, Ny, Nz = 3, 3, 3
 nx, ny, nz = N, N, N
 dx, dy, dz = 900e-9 / (N-1), 900e-9 / (N-1), 900e-9 / (N-1)
 
-mesh = Mesh((nx,ny,nz), (dx,dy,dz))
+mesh = Mesh((nx,ny,nz), (dx,dy,dz), pbc = (1,1,1))
 state = State(mesh)
 state.m = state.Constant((0,0,1))
 state.material = {"alpha": 1.0}
@@ -65,7 +65,7 @@ write_vti(state.material, "data/material.vti", state)
 
 # initialize field terms
 demag    = DemagFieldPBC()
-exchange = ExchangeFieldPBC()
+exchange = ExchangeField()
 aniso    = UniaxialAnisotropyField()
 external = ExternalField(TimeInterpolator(state, {0.0e-9: [0.0, 0.0, 0.0],
                                                   1.0e-9: [0.0, 0.0, 0.0],
@@ -82,3 +82,26 @@ while state.t < 13.5e-9-eps:
     logger << state
 
 Timer.print_report()
+
+#plot the results
+import matplotlib.pyplot as plt
+import numpy as np
+
+data = np.loadtxt("data/m.dat")
+ref = np.loadtxt("ref/m_ref.dat")
+
+fig, ax = plt.subplots(figsize=(7,5))
+cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+ax.plot(data[:,1]*4*np.pi*1e-7, data[:,4], '-', color = cycle[2], label = "magnum.np")
+ax.plot(ref[:,1]*4*np.pi*1e-7, ref[:,4], '-', color = cycle[2], linewidth = 6, alpha = 0.4, label = "magnum.af")
+
+ax.set_xlim([-0.1,0.1])
+ax.set_ylim([-1,1])
+ax.set_title("SMC Demo")
+ax.set_xlabel("External Field $\mu$$_0$ H$^{ext}$$_x$ [T]")
+ax.set_ylabel("Reduced Magnetization m [1]")
+ax.legend(ncol=3)
+ax.grid()
+fig.savefig("data/results.png")
+

@@ -18,27 +18,46 @@
 
 import torch
 import os
+import subprocess
 import numpy as np
 from magnumnp.common import logging, DecoratedTensor, Material
+from magnumnp.common.io import write_vti, write_vtr
 
 __all__ = ["State"]
 
+complex_dtype = {
+    torch.float: torch.complex,
+    torch.float32: torch.complex64,
+    torch.float64: torch.complex128
+    }
+
 class State(object):
     def __init__(self, mesh, t0 = 0., device = None, dtype = None):
-        self.mesh = mesh
         if device == None:
-            CUDA_DEVICE = os.environ.get('CUDA_DEVICE', '0')
-            self._device = torch.device(f"cuda:{CUDA_DEVICE}" if torch.cuda.is_available() else "cpu")
+            device_id = os.environ.get('CUDA_DEVICE')
+            if device_id == None:
+                device_id = get_gpu_with_least_memory()
+            self._device = torch.device(f"cuda:{device_id}" if int(device_id) >= 0 else "cpu")
         else:
             self._device = device
+
+        #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
+        self._dtype = dtype or torch.get_default_dtype()
+        self.mesh = mesh
+
+        self._is_equidistant = all([isinstance(dx, (float, int)) for dx in mesh.dx])
+        self.dx = [self._tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
+
+        # compute cell_volumes (use expand for equidistant dimentions)
+        dx, dy, dz = torch.meshgrid([self._tensor(dx) for dx in mesh.dx], indexing = "ij")
+        self._cell_volumes = (dx*dy*dz).expand(mesh.n).unsqueeze(-1)
+
         self._material = Material(self)
-        self._dtype = dtype
         self.t = t0
 
-        dtype = dtype or torch.get_default_dtype()
-        dtype_str = str(dtype).split('.')[1]
+        dtype_str = str(self._dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))
-        logging.info_green("[Mesh] %dx%dx%d (size= %g x %g x %g)" % (mesh.n + mesh.dx))
+        logging.info_green("[Mesh] %s" % mesh)
 
     @property
     def t(self):
@@ -61,19 +80,19 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
-    def _zeros(self, size, dtype = None, **kwargs):
-        dtype = dtype or self._dtype or torch.get_default_dtype()
+    def zeros(self, size, dtype = None, **kwargs):
+        dtype = dtype or self._dtype
         return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
 
-    def _arange(self, start, end = None, step=1, dtype = None, **kwargs):
-        dtype = dtype or self._dtype or torch.get_default_dtype()
+    def arange(self, start, end = None, step=1, dtype = None, **kwargs):
+        dtype = dtype or self._dtype
         if end == None:
            end = start
            start = 0
         return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
 
-    def _linspace(self, start, end, steps, dtype = None, **kwargs):
-        dtype = dtype or self._dtype or torch.get_default_dtype()
+    def linspace(self, start, end, steps, dtype = None, **kwargs):
+        dtype = dtype or self._dtype
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
 
     def _normal(self, mean, std, dtype = None, **kwargs):
@@ -85,38 +104,95 @@ class State(object):
 
     # _tensor for internal use only
     def _tensor(self, data, dtype = None):
-        dtype = dtype or self._dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype
         if isinstance(data, torch.Tensor):
-            return data
+            return data.to(dtype=dtype, device=self._device)
         else:
             return torch.tensor(data, dtype=dtype, device=self._device)
 
+    # TODO: avoid unneeded DecoratedTensors (e.g. state.Tensor(0.))
     def Tensor(self, data, dtype = None, requires_grad = False):
+        dtype = dtype or self._dtype
+        if isinstance(data, DecoratedTensor) and data.dtype == dtype:
+            return data
+
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
-            dtype = dtype or self._dtype or torch.get_default_dtype()
-            t = torch.tensor(data, dtype=dtype, device=self._device).as_subclass(DecoratedTensor)
+            t = DecoratedTensor(torch.tensor(data, dtype=dtype, device=self._device), self.cell_volumes)
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
             requires_grad = requires_grad or data.requires_grad
-            return data.requires_grad_(requires_grad).as_subclass(DecoratedTensor)
+            return DecoratedTensor(data.requires_grad_(requires_grad), self.cell_volumes)
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
             raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
     def Constant(self, c, dtype = None, requires_grad = False):
-        dtype = dtype or self._dtype or torch.get_default_dtype()
+        dtype = dtype or self._dtype
         c = self.Tensor(c, dtype=dtype)
-        x = self._zeros(self.mesh.n + c.shape, dtype=dtype).as_subclass(DecoratedTensor)
+        x = DecoratedTensor(self.zeros(self.mesh.n + c.shape, dtype=dtype), self.cell_volumes)
         x[...] = c
         x.requires_grad = requires_grad
         return x
 
     def SpatialCoordinate(self):
-        x = self._arange(self.mesh.n[0]) * self.mesh.dx[0] + self.mesh.dx[0]/2. + self.mesh.origin[0]
-        y = self._arange(self.mesh.n[1]) * self.mesh.dx[1] + self.mesh.dx[1]/2. + self.mesh.origin[1]
-        z = self._arange(self.mesh.n[2]) * self.mesh.dx[2] + self.mesh.dx[2]/2. + self.mesh.origin[2]
+        x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.mesh.origin[0]
+        y = self.dx[1].cumsum(0) - self.dx[1]/2. + self.mesh.origin[1]
+        z = self.dx[2].cumsum(0) - self.dx[2]/2. + self.mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
-        return DecoratedTensor(XX), DecoratedTensor(YY), DecoratedTensor(ZZ)
+        return DecoratedTensor(XX, self.cell_volumes), DecoratedTensor(YY, self.cell_volumes), DecoratedTensor(ZZ, self.cell_volumes)
+
+    def convert_tensorfield(self, value):
+        ''' convert arbitrary input to tensor-fields '''
+        value = self.Tensor(value)
+        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
+            value = value.reshape(1)
+        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
+            shape = value.shape
+            value = value.reshape((1,1,1) + tuple(shape))
+            value = value.expand(self.mesh.n + tuple(shape))
+            value._expanded = True # annotate expanded tensor (clone will be before individual items are modified)
+        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
+            value = value.unsqueeze(-1)
+        else: # otherwise assume the dimention is correct!
+            pass
+        return value
+
+    def write_vtk(self, fields, filename):
+        if self._is_equidistant:
+            write_vti(fields, filename + ".vti", self)
+        else:
+            write_vtr(fields, filename + ".vtr", self)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def complex_dtype(self):
+        return complex_dtype[self._dtype]
+
+    @property
+    def cell_volumes(self):
+        return self._cell_volumes
+
+
+
+def get_gpu_with_least_memory():
+    if not torch.cuda.is_available():
+        return -1
+
+    import pynvml
+    pynvml.nvmlInit()
+    num_gpus = pynvml.nvmlDeviceGetCount()
+
+    gpu_memory = []
+    for i in range(num_gpus):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        gpu_memory.append(mem_info.used)
+
+    pynvml.nvmlShutdown()
+    return gpu_memory.index(min(gpu_memory))

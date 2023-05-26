@@ -6,7 +6,7 @@ import os
 #added comment
 def test_read_vti():
     this_dir = pathlib.Path(__file__).resolve().parent
-    filename = this_dir / "fields" / "fields.vti"
+    filename = this_dir / "ref" / "fields.vti"
 
     mesh, fields = read_vti(filename)
     assert len(fields) == 3
@@ -30,3 +30,4 @@ def test_write_vti(tmp_path):
         mesh, fields = read_vti(f)
         assert len(fields) == 1
         assert fields['m'].shape == (2, 2, 2, 3)
+
