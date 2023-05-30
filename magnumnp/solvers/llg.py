@@ -52,7 +52,7 @@ class LLGSolver(object):
 
     @timedmethod
     def get_thermal_field(self, state, dt):
-        self._thermal_field = self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volume * dt))
+        self._thermal_field = self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.cell_volumes * dt))
         return self._thermal_field
 
     @timedmethod

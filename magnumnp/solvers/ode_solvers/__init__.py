@@ -16,12 +16,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from magnumnp.solvers.ode_solvers.heun import *
 from magnumnp.solvers.ode_solvers.rkf45 import *
 from magnumnp.solvers.ode_solvers.scipy_ode import *
 from magnumnp.solvers.ode_solvers.scipy_odeint import *
 from magnumnp.solvers.ode_solvers.torchdiffeq import *
 
-__all__ = (rkf45.__all__ +
+__all__ = (heun.__all__ +
+           rkf45.__all__ +
            scipy_ode.__all__ +
            scipy_odeint.__all__ +
            torchdiffeq.__all__)

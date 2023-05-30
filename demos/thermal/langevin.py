@@ -18,22 +18,24 @@ state.material = {
     }
 state.m = state.Constant([0,0,1])
 state.m.normalize()
-state.T = Js * mesh.cell_volume * np.prod(mesh.n) / (constants.kb * eta)
-print("T:", state.T)
-print("cell_volume:", state.mesh.cell_volume)
+state.T = Js * state.cell_volumes.max() * np.prod(mesh.n) / (constants.kb * eta)
+print("T:", state.T.numpy())
+#print("cell_volume:", state.cell_volumes)
 
 aniso = UniaxialAnisotropyField()
 external = ExternalField([0,0,0])
 
-llg = LLGSolver([external])
+llg = LLGSolver([external], solver=Heun)
 logger = Logger("data", ['t', external.h, 'm'])
 
 # relax
-llg.step(state, 2e-9)
+for i in range(10000):
+    llg.step(state, 1e-13)
 
 for h in np.linspace(0,0.1, num=11):
     external.h = [h / constants.mu_0, 0, 0]
-    llg.step(state, 2e-9)
+    for i in range(10000):
+        llg.step(state, 1e-13)
     logger << state
         
 Timer.print_report()
