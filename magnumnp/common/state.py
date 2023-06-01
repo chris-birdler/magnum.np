@@ -23,7 +23,7 @@ import numpy as np
 from magnumnp.common import logging, DecoratedTensor, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["State"]
+__all__ = ["State", "complex_dtype"]
 
 complex_dtype = {
     torch.float: torch.complex,
@@ -162,10 +162,6 @@ class State(object):
     @property
     def dtype(self):
         return self._dtype
-
-    @property
-    def complex_dtype(self):
-        return complex_dtype[self._dtype]
 
     @property
     def cell_volumes(self):

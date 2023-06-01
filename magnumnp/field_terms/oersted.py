@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, complex_dtype
 from .field_terms import FieldTerm
 import numpy as np
 import torch
@@ -53,7 +53,6 @@ def krueger_g(points):
     res[mask] += (z/6. * y * (z**2 - 3.*x**2) * log(y+R))[mask]
 
     return res
-
 
 def dipole_g(points):
     x = points[:,:,:,0]
@@ -116,9 +115,9 @@ class OerstedField(FieldTerm):
         dtype = state._dtype
         state._dtype = torch.float64 # always use double precision
         time_kernel = time()
-        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=dtype)
-        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=dtype)
-        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=dtype)
+        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
 
         self._K = [[  0., -Kxy, +Kxz],
                    [+Kxy,   0., -Kyz],
@@ -132,9 +131,9 @@ class OerstedField(FieldTerm):
         if not hasattr(self, "_K"):
             self._init_K(state)
 
-        hx = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
-        hy = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
-        hz = state.zeros(list(self._K[0][1].shape), dtype=state.complex_dtype)
+        hx = state.zeros(list(self._K[0][1].shape), dtype=complex_dtype[state.dtype])
+        hy = state.zeros(list(self._K[0][1].shape), dtype=complex_dtype[state.dtype])
+        hz = state.zeros(list(self._K[0][1].shape), dtype=complex_dtype[state.dtype])
 
         for ax in range(3):
             j_pad_fft1D = torch.fft.rfftn(state.j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])
