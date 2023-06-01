@@ -32,7 +32,7 @@ class AtomisticRuXExchangeField(LinearFieldTerm):
 
     @timedmethod
     def h(self, state):
-        h = state._zeros(state.mesh.n + (3,))
+        h = state.zeros(state.mesh.n + (3,))
         J = self._Jij
         mu = (state.material["Ms"].torch_tensor)*(state.cell_volumes)
         mat = state.Tensor(state.material["RuxDistribution"].repeat_interleave(3).reshape(state.mesh.n + (3,)))
