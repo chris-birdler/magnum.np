@@ -69,18 +69,18 @@ class EigenSolver(object):
 
         return vv.reshape(-1).detach().cpu().numpy()
 
-    def solve(self, k=10, tol=0, method="eigs"):
+    def solve(self, k=10, tol=0):
         N = np.prod(self._m0.shape[:3])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
 
-#        evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
-#        evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
-#        evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
+        evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
+        evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
+        evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
 
-        omega = evals.imag
+        omega = self._state.Tensor(evals.imag)
         evecs2D = self._state.Tensor(torch.from_numpy(evecs2D)).reshape(self._m0.shape[:3] + (2,-1))
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
