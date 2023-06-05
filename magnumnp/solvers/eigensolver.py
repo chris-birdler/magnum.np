@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, constants, write_vti
+from magnumnp.common import logging, constants, write_vti, complex_dtype
 import torch
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs
@@ -48,7 +48,7 @@ class EigenSolver(object):
         if self._it % 500 == 0:
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
-        vv = self._state.Tensor(torch.from_numpy(vv))
+        vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
         vv = vv.reshape(self._m0.shape[:3] + (2,))
 
         # apply R

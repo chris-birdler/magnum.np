@@ -15,7 +15,7 @@ def test_singlespin_hext():
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
 
     eigen = EigenSolver(state, [], [external])
-    res = eigen.solve(k=20, method="eigs")
+    res = eigen.solve(k=20)
     torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*hext), atol=1e-10, rtol=1e-10)
 
 def test_singlespin_exchange():
@@ -31,7 +31,7 @@ def test_singlespin_exchange():
     exchange = ExchangeField()
 
     eigen = EigenSolver(state, [exchange], [external])
-    res = eigen.solve(k=20, method="eigs")
+    res = eigen.solve(k=20)
 
     torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=1e-10, rtol=1e-10)
 
