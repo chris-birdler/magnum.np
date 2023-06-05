@@ -50,7 +50,11 @@ For a clean and independent system, we start with a clean virtual python environ
 
 Finally install a release versions of magnum.np by means of pip:
 
-    pip install magnum.np
+    pip install magnumnp
+
+You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+    pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
 ### from source code (gitlab.com)
