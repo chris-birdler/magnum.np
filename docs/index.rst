@@ -14,13 +14,16 @@ Features
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
-* Arbitrary Material Parameters variing in space and time
-* Spin-torque model by Zhang and Li, Slonczewski
+* Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
+* Non-Equidistant Mesh for Multilayer Structures
+* Arbitrary Material Parameters varying in space and time
+* Spin-torque model by Zhang and Li
+* Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* Seemingless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
+* Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
 

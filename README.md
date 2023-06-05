@@ -12,14 +12,14 @@ Features
 * Fast FFT Oersted-field optimized for small memory footprint
 * Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
 * Non-Equidistant Mesh for Multilayer Structures
-* Arbitrary Material Parameters variing in space and time
+* Arbitrary Material Parameters varying in space and time
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* Seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
+* Seamless VTK import / export via [pyvista](https://docs.pyvista.org/)
 * Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
 
 
@@ -38,7 +38,6 @@ The following demos are also stored on Google Colab, where they can directly be 
    * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/160QXXUkDEpd-GvZyI2PhLIdnSIDRVyG0))
 
 
-
 Installation
 ------------
 
@@ -51,7 +50,11 @@ For a clean and independent system, we start with a clean virtual python environ
 
 Finally install a release versions of magnum.np by means of pip:
 
-    pip install magnum.np
+    pip install magnumnp
+
+You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+    pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
 ### from source code (gitlab.com)

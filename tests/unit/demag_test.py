@@ -222,9 +222,8 @@ def test_regression():
     state.material = {"Ms": 1.}
     state.m = state.Constant([0,0,0])
     state.m[50,50,50] = 1.
-    demag = DemagField()
 
-    m = state.m.cpu()
+    demag = DemagField()
     h_demag = demag.h(state).cpu()
 
     this_dir = pathlib.Path(__file__).resolve().parent
