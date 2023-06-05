@@ -22,7 +22,7 @@ def test_regression():
     state.j = state.Constant([1,0,0])
 
     oersted = OerstedField()
-    h_oersted = oersted.h(state)
+    h_oersted = oersted.h(state).cpu()
 
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "h_oersted_regression.vti"
