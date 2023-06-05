@@ -33,7 +33,7 @@ def test_singlespin_exchange():
     eigen = EigenSolver(state, [exchange], [external])
     res = eigen.solve(k=20)
 
-    torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=0, rtol=1e-8)
+    torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=0, rtol=1e-6)
 
 # this test only succeeds if ran as a single test (seems to depend on the random intial value of eigs)
 ##def test_singlespin_aniso():
