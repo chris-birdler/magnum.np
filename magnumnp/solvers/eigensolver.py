@@ -26,7 +26,7 @@ __all__ = ["EigenSolver", "EigenResult"]
 
 class EigenSolver(object):
     def __init__(self, state, linear_terms, constant_terms):
-        self._linear_terms = linear_terms 
+        self._linear_terms = linear_terms
         self._state = state
         self._m0 = state.m
         self._h0 = torch.sum(sum([term.h(state) for term in self._linear_terms + constant_terms])*self._m0, dim=-1, keepdim=True)
@@ -42,7 +42,7 @@ class EigenSolver(object):
     def _C(self, m):
         self._state.m = m
         return sum([term.h(self._state) for term in self._linear_terms])
-        
+
     def _D0(self, vv):
         self._it += 1
         if self._it % 500 == 0:
@@ -81,7 +81,8 @@ class EigenSolver(object):
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
 
         omega = self._state.Tensor(evals.imag)
-        evecs2D = self._state.Tensor(torch.from_numpy(evecs2D)).reshape(self._m0.shape[:3] + (2,-1))
+        evecs2D = torch.from_numpy(evecs2D).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
+        evecs2D = self._state.Tensor(evecs2D).reshape(self._m0.shape[:3] + (2,-1))
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
 
