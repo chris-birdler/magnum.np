@@ -25,7 +25,8 @@ from scipy.linalg import eig
 __all__ = ["EigenSolver", "EigenResult"]
 
 class EigenSolver(object):
-    def __init__(self, state, linear_terms, constant_terms):
+    def __init__(self, state, linear_terms, constant_terms, domain):
+        self._domain = domain
         self._linear_terms = linear_terms
         self._state = state
         self._m0 = state.m
@@ -36,6 +37,7 @@ class EigenSolver(object):
         self._e1 = self._e1 / torch.linalg.norm(self._e1, axis=3, keepdim=True)
         self._e0 = -torch.linalg.cross(self._e1, self._m0)
         self._e0 = self._e0 / torch.linalg.norm(self._e0, axis=3, keepdim=True)
+        self._vv = state.Constant([1e-15,0.], dtype=torch.complex128)
 
         self._it = 0
 
@@ -49,7 +51,9 @@ class EigenSolver(object):
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
         vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
-        vv = vv.reshape(self._m0.shape[:3] + (2,))
+        vv = vv.reshape(-1,2)
+        self._vv[self._domain] = vv
+        vv = self._vv
 
         # apply R
         vvv = vv[:,:,:,(0,)]*self._e0 + vv[:,:,:,(1,)]*self._e1
@@ -67,22 +71,30 @@ class EigenSolver(object):
         vv[:,:,:,0] = (rrr*self._e0).sum(dim=-1)
         vv[:,:,:,1] = (rrr*self._e1).sum(dim=-1)
 
-        return vv.reshape(-1).detach().cpu().numpy()
+        return vv[self._domain].reshape(-1).detach().cpu().numpy()
 
     def solve(self, k=10, tol=0):
-        N = np.prod(self._m0.shape[:3])
+        N = np.prod(self._m0[self._domain].shape[0])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
 
+        print("evals:", evals)
+        print("evevs:", evecs2D.shape)
+     
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
+        evecs2D = torch.from_numpy(evecs2D).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
+        evecs2D = self._state.Tensor(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
         omega = self._state.Tensor(evals.imag)
-        evecs2D = torch.from_numpy(evecs2D).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
-        evecs2D = self._state.Tensor(evecs2D).reshape(self._m0.shape[:3] + (2,-1))
+        
+        res = self._state.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
+        res[self._domain] = evecs2D
+        evecs2D = res
+        
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
 

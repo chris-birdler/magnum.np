@@ -42,6 +42,8 @@ exchange = ExchangeField()
 aniso = UniaxialAnisotropyField()
 
 external = ExternalField(lambda t: state.Constant([0, (Hextmax-Hextmin)*t/tfinal+Hextmin, 0]))
+           ExternalField(lambda t: torch.stack([torch.sin(t)*x,y,z]])
+        
 
 llg = LLGSolver([exchange, aniso, external])
 logger = ScalarLogger("data/m.dat", ['t', external.h, 'm'])
