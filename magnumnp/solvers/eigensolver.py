@@ -53,6 +53,7 @@ class EigenSolver(object):
         vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
         vv = vv.reshape(-1,2)
         self._vv[self._domain] = vv
+        self._vv[~self._domain] =0.0 
         vv = self._vv
 
         # apply R
