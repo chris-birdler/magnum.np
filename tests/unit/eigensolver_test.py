@@ -25,13 +25,15 @@ def test_singlespin_exchange():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
     state.material = {"Ms": 1., "A": 1.3e-11}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
+    magnetic = (x**2.> 0) 
 
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
     exchange = ExchangeField()
 
-    eigen = EigenSolver(state, [exchange], [external])
+    eigen = EigenSolver(state, [exchange], [external], domain = magnetic)
     res = eigen.solve(k=20)
 
     torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=0, rtol=1e-6)
@@ -66,16 +68,18 @@ def test_saturated_thinfilm():
 
     mesh = Mesh(n, dx)
     state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
     state.material = {
             "A":lex**2*Js**2/(2.*constants.mu_0),
             "Ms":1./constants.mu_0,
             }
+    magnetic = (x**2.> 0) 
     demag    = DemagField()
     exchange = ExchangeField()
     external = ExternalField([0.,0.,1.2/constants.mu_0])
 
     state.m = state.Constant([0.,0.,1.])
-    eigen = EigenSolver(state, [demag, exchange], [external])
+    eigen = EigenSolver(state, [demag, exchange], [external], domain = magnetic)
     res = eigen.solve(k=20, tol=1e-6)
     #print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
     #res.save_evecs3D("data/evecs.vti")
