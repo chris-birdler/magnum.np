@@ -17,10 +17,13 @@
 #
 
 from magnumnp.common import logging, constants, write_vti, complex_dtype, timedmethod
+import os
 import torch
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs
 from scipy.linalg import eig
+from xml.etree import cElementTree
+from xml.dom import minidom
 
 __all__ = ["EigenSolver", "EigenResult"]
 
@@ -98,7 +101,7 @@ class EigenSolver(object):
 
 class EigenResult(object):
     def __init__(self, omega, evecs2D, state, **kwargs):
-        self.omega = omega
+        self._omega = omega
         self._evecs2D = evecs2D
         self._state = state
         self.__dict__.update(kwargs)
@@ -119,6 +122,13 @@ class EigenResult(object):
 #        solver = EigenSolverBase(state)
 #        logging.info_green("%s: Loaded %d eigenvalues from '%s'" % (__class__.__name__, len(omega), filename))
 #        return EigenResult(omega, evecs2D, state, m0 = m0, R = PETSc2CSR(solver.R), A0 = PETSc2Scipy(solver.A0), B0 = 1j*PETSc2Scipy(solver.B0))
+    @property
+    def omega(self):
+        return self._omega
+
+    @property
+    def freq(self):
+        return self._omega/2./torch.pi
 
     def evecs(self, N = slice(None)):
         vvv = self._evecs2D[:,:,:,(0,),:]*self.e0[:,:,:,:,None] + self._evecs2D[:,:,:,(1,),:]*self.e1[:,:,:,:,None]
@@ -134,5 +144,15 @@ class EigenResult(object):
         else:
             op = which
 
-        evecs_list = [op(v.squeeze(-1)) for v in self.evecs(N = N).split(1,dim=-1)]
-        write_vti(evecs_list, filename, self._state) # TODO: write pvd instead of vti
+        freq = self.freq
+        evecs = [op(v.squeeze(-1)) for v in self.evecs(N = N).split(1,dim=-1)]
+        xmlroot = cElementTree.Element("VTKFile", type="Collection", version="0.1", byte_order="LittleEndian")
+        cElementTree.SubElement(xmlroot, "Collection")
+        for i, vvv in enumerate(evecs):
+            filename_vti = "%s_%04d.vti" % (os.path.splitext(filename)[0], i)
+            write_vti(vvv, filename_vti, self._state)
+            cElementTree.SubElement(xmlroot[0], "DataSet", timestep=str(self.freq[i].numpy()), file=os.path.basename(filename_vti))
+
+        with open(filename, 'w') as fd:
+            fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
+
