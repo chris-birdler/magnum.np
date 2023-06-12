@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 ###################
 State and Materials
 ###################
@@ -130,6 +132,8 @@ The result will look as follows:
 
 .. image:: _static/material2.png
   :width: 700
+
+.. _Sphinx Domains:
 
 Domains
 =======

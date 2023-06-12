@@ -49,6 +49,9 @@ List of Demos
    demos
    state_and_materials
    logging
+   inverse_cube
+
+
 
 
 

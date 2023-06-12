@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 ###############
 Getting Started
 ###############
@@ -20,7 +22,7 @@ Timer.enable() is used to measure the duration of the simulation.
 
   Timer.enable()
 
-Next the state is initialized. To do so a mesh is created where n defines a rectangular cuboid that represents the magnetic material and dx denotes the discretization. For this problem the material is defined as constant and homogeneous.
+Next the state is initialized. To do so a mesh is created where *n* defines a rectangular cuboid that represents the magnetic material and *dx* denotes the discretization. For this problem the material is defined as constant and homogeneous.
 
 .. code-block:: python
 
@@ -38,7 +40,7 @@ Next the state is initialized. To do so a mesh is created where n defines a rect
       "b": 72.17e-12
       }
 
-The initial magnetization m is defined using torch.Tensor. The elements of the tensor can be accessed using Python's slicing. j is the in-plain current in x direction which will be applied to the initial magnetization vortex pattern.
+The initial magnetization *m* is defined using torch.Tensor. The elements of the tensor can be accessed using Python's slicing. *j* is the in-plain current in x-direction which will be applied to the initial magnetization vortex pattern.
 
 .. code-block:: python
 
@@ -122,7 +124,13 @@ To run the simulation save the script to a file called *run.py* and enter the fo
 See the Results
 ***************
 
-After running run.py a plot of the results is saved as *results.png*\ . The plot will look as below:
+After running run.py you can save the code for the plot in a file called plot.py. A plot of the results will be saved as *results.png*\ by entering the following in the command line:
+
+.. code-block:: python
+
+  python plot.py
+
+The plot will look as below:
 
 .. image:: _static/results.png
   :width: 620
