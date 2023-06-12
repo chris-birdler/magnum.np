@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, constants, write_vti, complex_dtype
+from magnumnp.common import logging, constants, write_vti, complex_dtype, timedmethod
 import torch
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs
@@ -25,7 +25,7 @@ from scipy.linalg import eig
 __all__ = ["EigenSolver", "EigenResult"]
 
 class EigenSolver(object):
-    def __init__(self, state, linear_terms, constant_terms, domain):
+    def __init__(self, state, linear_terms, constant_terms, domain=Ellipsis):
         self._domain = domain
         self._linear_terms = linear_terms
         self._state = state
@@ -37,7 +37,7 @@ class EigenSolver(object):
         self._e1 = self._e1 / torch.linalg.norm(self._e1, axis=3, keepdim=True)
         self._e0 = -torch.linalg.cross(self._e1, self._m0)
         self._e0 = self._e0 / torch.linalg.norm(self._e0, axis=3, keepdim=True)
-        self._vv = state.Constant([1e-15,0.], dtype=torch.complex128)
+        self._vv = state.Constant([0.,0.], dtype=torch.complex128)
 
         self._it = 0
 
@@ -51,13 +51,12 @@ class EigenSolver(object):
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
         vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
-        vv = vv.reshape(-1,2)
+        vv = vv.reshape(self._vv[self._domain].shape)
+        self._vv[...] = 0.
         self._vv[self._domain] = vv
-        self._vv[~self._domain] =0.0 
-        vv = self._vv
 
         # apply R
-        vvv = vv[:,:,:,(0,)]*self._e0 + vv[:,:,:,(1,)]*self._e1
+        vvv = self._vv[:,:,:,(0,)]*self._e0 + self._vv[:,:,:,(1,)]*self._e1
 
         # calculate A0 v = (C+I H0)*v
         hr = self._C(vvv.real)
@@ -69,20 +68,18 @@ class EigenSolver(object):
         rrr = -constants.gamma * torch.linalg.cross(self._m0.to(dtype = h.dtype), h)
 
         # apply R^T (reuse vv tensor)
-        vv[:,:,:,0] = (rrr*self._e0).sum(dim=-1)
-        vv[:,:,:,1] = (rrr*self._e1).sum(dim=-1)
+        self._vv[:,:,:,0] = (rrr*self._e0).sum(dim=-1)
+        self._vv[:,:,:,1] = (rrr*self._e1).sum(dim=-1)
 
-        return vv[self._domain].reshape(-1).detach().cpu().numpy()
+        return self._vv[self._domain].reshape(-1).detach().cpu().numpy()
 
+    @timedmethod
     def solve(self, k=10, tol=0):
-        N = np.prod(self._m0[self._domain].shape[0])
+        N = np.prod(self._m0[self._domain].shape[:-1])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
-
-        print("evals:", evals)
-        print("evevs:", evecs2D.shape)
      
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
@@ -93,7 +90,7 @@ class EigenSolver(object):
         omega = self._state.Tensor(evals.imag)
         
         res = self._state.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
-        res[self._domain] = evecs2D
+        res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
         
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)

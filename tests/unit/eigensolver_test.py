@@ -33,7 +33,7 @@ def test_singlespin_exchange():
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
     exchange = ExchangeField()
 
-    eigen = EigenSolver(state, [exchange], [external], domain = magnetic)
+    eigen = EigenSolver(state, [exchange], [external])
     res = eigen.solve(k=20)
 
     torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=0, rtol=1e-6)
@@ -79,7 +79,7 @@ def test_saturated_thinfilm():
     external = ExternalField([0.,0.,1.2/constants.mu_0])
 
     state.m = state.Constant([0.,0.,1.])
-    eigen = EigenSolver(state, [demag, exchange], [external], domain = magnetic)
+    eigen = EigenSolver(state, [demag, exchange], [external])
     res = eigen.solve(k=20, tol=1e-6)
     #print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
     #res.save_evecs3D("data/evecs.vti")
