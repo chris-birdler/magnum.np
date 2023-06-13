@@ -133,7 +133,6 @@ class DemagField(LinearFieldTerm):
         ij = [torch.fft.fftfreq(n,1/n).to(dtype=state._dtype,device=state._device) for n in shape] # local indices
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [ij[ind]*dx[ind] for ind in perm]
-        print("x:", x.dtype)
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 

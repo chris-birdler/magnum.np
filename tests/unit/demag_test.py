@@ -239,6 +239,7 @@ def test_precision():
     n = (100,1,1)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
+    dtype = torch.get_default_dtype()
     torch.set_default_dtype(torch.float32)
     state = State(mesh)
     state.material = {"Ms": 1.}
@@ -251,4 +252,5 @@ def test_precision():
     ref = state.arange(n[0])
     ref = torch.log(1/4./torch.pi/ref**3)
 
+    torch.set_default_dtype(dtype)
     torch.testing.assert_close(h_demag[20:], ref[20:], atol=1e-2, rtol=1e-2)
