@@ -35,36 +35,44 @@ try:
     mesh0, fields0 = read_vti("data/m0_vortex_cylindric.vti")
     state.m[...] = fields0["m0"]
 except:
-    llg = LLGSolver([demag, exchange])
-    logger = ScalarLogger("data/m0_vortex_cylindric.dat", ['t', 'm'])
-    while state.t < 5e-9:
-        llg.step(state, 1e-11, alpha=1.)
-        logger << state
-    write_vti({"m0":state.m}, "data/m0_vortex_cylindric.vti", state)
+    with Timer("Calculate Groundstate"):
+        llg = LLGSolver([demag, exchange])
+        logger = ScalarLogger("data/m0_vortex_cylindric.dat", ['t', 'm'])
+        while state.t < 5e-9:
+            llg.step(state, 1e-11, alpha=1.)
+            logger << state
+        write_vti({"m0":state.m}, "data/m0_vortex_cylindric.vti", state)
 
-eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
-res = eigen.solve(k=20, tol=1e-6)
-print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
-res.save_evecs3D("data/evecs.vti")
+with Timer("Calculate Eigenvectors"):
+    try:
+        res = EigenResult.load(state, "data/eigen.pt")
+    except:
+        eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
+        res = eigen.solve(k=20, tol=1e-6)
+        res.store("data/eigen.pt")
 
-# plot the results
-ref_magnumpi = np.loadtxt("ref/vortex_cylindric_magnumpi.dat")
-ref_daquino = np.loadtxt("ref/vortex_cylindric_daquino.dat")
+with Timer("Store evecs"):
+    print("evals[GHz]:", res.freq.numpy()*1e-9)
+    res.save_evecs3D("data/evecs.pvd")
 
-fig, ax = plt.subplots()
-cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+with Timer("Plot Results"):
+    ref_magnumpi = np.loadtxt("ref/vortex_cylindric_magnumpi.dat")
+    ref_daquino = np.loadtxt("ref/vortex_cylindric_daquino.dat")
 
-ax.plot(ref_daquino[1], '^', fillstyle = "none", color = "black", alpha = 0.7, linewidth=0.8, label = "d'Aquino (FD)")
-ax.plot(ref_magnumpi[2,1:].T, 'o', mfc = 'none', color = cycle[1], label = "magnum.pi (FEM)")
-ax.plot(res.freq.numpy()*1e-9, '+-', color = cycle[0], label = "magnum.np (FD)")
+    fig, ax = plt.subplots()
+    cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-ax.set_xlim([-0.1,5.1])
-#ax.set_ylim([7.5,15])
-ax.set_title("Vortex")
-ax.set_xlabel("Eigenmode Index [1]")
-ax.set_ylabel("Frequency f [GHz]")
-ax.legend(loc=2)
-ax.grid()
-fig.savefig("data/results_vortex_cylindric.png")
+    ax.plot(ref_daquino[1], '^', fillstyle = "none", color = "black", alpha = 0.7, linewidth=0.8, label = "d'Aquino (FD)")
+    ax.plot(ref_magnumpi[2,1:].T, 'o', mfc = 'none', color = cycle[1], label = "magnum.pi (FEM)")
+    ax.plot(res.freq.numpy()*1e-9, '+-', color = cycle[0], label = "magnum.np (FD)")
+
+    ax.set_xlim([-0.1,5.1])
+    #ax.set_ylim([7.5,15])
+    ax.set_title("Vortex")
+    ax.set_xlabel("Eigenmode Index [1]")
+    ax.set_ylabel("Frequency f [GHz]")
+    ax.legend(loc=2)
+    ax.grid()
+    fig.savefig("data/results_vortex_cylindric.png")
 
 Timer.print_report()

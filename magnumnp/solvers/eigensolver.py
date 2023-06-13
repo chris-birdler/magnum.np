@@ -77,7 +77,7 @@ class EigenSolver(object):
         return self._vv[self._domain].reshape(-1).detach().cpu().numpy()
 
     @timedmethod
-    def solve(self, k=10, tol=0):
+    def solve(self, k=10, tol=1e-6):
         N = np.prod(self._m0[self._domain].shape[:-1])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
@@ -107,21 +107,24 @@ class EigenResult(object):
         self.__dict__.update(kwargs)
 
     def store(self, filename):
-        torch.save({"m0":self.m0, "omega":self.omega, "evecs2D":self._evecs2D}, filename)
-        logging.info_green("[Eigensolver] Stored %d eigenvalues to '%s'it= %d" % (len(self.omega), filename))
+        torch.save({"m0":self.m0, "omega":self._omega, "evecs2D":self._evecs2D}, filename)
+        logging.info_green("[Eigensolver] Stored %d eigenvalues to '%s'" % (len(self._omega), filename))
 
-#    @staticmethod
-#    def load(state, filename):
-#        stored = np.load(filename)
-#        omega, evecs2D = stored['omega'], stored['evecs2D']
-#
-#        m0 = fd.Function(state.m.function_space())
-#        m0.vector()[:] = stored['m0']
-#        state.m = m0
-#
-#        solver = EigenSolverBase(state)
-#        logging.info_green("%s: Loaded %d eigenvalues from '%s'" % (__class__.__name__, len(omega), filename))
-#        return EigenResult(omega, evecs2D, state, m0 = m0, R = PETSc2CSR(solver.R), A0 = PETSc2Scipy(solver.A0), B0 = 1j*PETSc2Scipy(solver.B0))
+    @staticmethod
+    def load(state, filename):
+        stored = torch.load(filename)
+        m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
+        state.m = state.Tensor(m0)
+
+        ez = state.Constant([1e-15,0.,1.])
+        e1 = torch.linalg.cross(ez, m0)
+        e1 = e1 / torch.linalg.norm(e1, axis=3, keepdim=True)
+        e0 = -torch.linalg.cross(e1, m0)
+        e0 = e0 / torch.linalg.norm(e0, axis=3, keepdim=True)
+
+        logging.info_green("[Eigensolver] Loaded %d eigenvalues from '%s'" % (len(omega), filename))
+        return EigenResult(omega, evecs2D, state, m0 = m0, e0 = e0, e1 = e1)
+
     @property
     def omega(self):
         return self._omega
