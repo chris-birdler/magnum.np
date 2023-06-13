@@ -83,7 +83,7 @@ class EigenSolver(object):
 
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
-     
+
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
@@ -91,11 +91,11 @@ class EigenSolver(object):
         evecs2D = self._state.Tensor(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
         omega = self._state.Tensor(evals.imag)
-        
+
         res = self._state.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
-        
+
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
 
