@@ -33,7 +33,7 @@ ref_daquino = np.loadtxt("ref/thinfilm_daquino.dat")
 fig, ax = plt.subplots()
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-ax.plot(ref_daquino, 'x--', color = "black", alpha = 0.7, linewidth=0.8, label = "d'Aquino (FD)")
+ax.plot(ref_daquino, '^--', fillstyle = "none", color = "black", alpha = 0.7, linewidth=0.8, label = "d'Aquino (FD)")
 ax.plot(ref_magnumpi, 'o', mfc = 'none', color = cycle[1], label = "magnum.pi (FE)")
 ax.plot(res.omega.numpy()/2./torch.pi*1e-9, '+', color = cycle[0], label = "magnum.np (FD)")
 
