@@ -1,9 +1,9 @@
 from magnumnp.common import logging, timedmethod
 import torch
 
-__all__ = ["Minimizer_BB"]
+__all__ = ["MinimizerBB"]
 
-class Minimizer_BB(object):
+class MinimizerBB(object):
     def __init__(self, terms, tau_min = 1e-13, tau_max = 1e-5, dm_max = 1e4, samples = 10):
         """
         This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
@@ -37,9 +37,12 @@ class Minimizer_BB(object):
         self._dm_max = dm_max
         self._samples = samples
 
-    def _dm(self, state):
-        h = sum([term.h(state) for term in self._terms])
-        return torch.cross(state.m, torch.cross(state.m, h))
+    #def dm(self, state):
+    #    h = sum([term.h(state) for term in self._terms])
+    #    return torch.cross(state.m, torch.cross(state.m, h))
+
+    def E(self, state):
+        return sum([term.E(state) for term in self._terms])
 
     def _midpoint(self, m, h, tau):
         """
@@ -57,33 +60,10 @@ class Minimizer_BB(object):
         return torch.stack([(4*mx + 4*tau * (mxh_y*mz - mxh_z*my) + tau*tau*mx * (+ mxh_x*mxh_x - mxh_y*mxh_y - mxh_z*mxh_z) + 2*tau*tau*mxh_x * (mxh_y*my + mxh_z*mz)) / N,
                             (4*my + 4*tau * (mxh_z*mx - mxh_x*mz) + tau*tau*my * (- mxh_x*mxh_x + mxh_y*mxh_y - mxh_z*mxh_z) + 2*tau*tau*mxh_y * (mxh_z*mz + mxh_x*mx)) / N,
                             (4*mz + 4*tau * (mxh_x*my - mxh_y*mx) + tau*tau*mz * (- mxh_x*mxh_x - mxh_y*mxh_y + mxh_z*mxh_z) + 2*tau*tau*mxh_z * (mxh_x*mx + mxh_y*my)) / N], dim=-1)
-    
-    def _linesearch(self, state, dm):
-        alpha = 1.0 #initial step size
-        tau = 0.5  # Reduction factor
-        c = 0.1  # Sufficient decrease parameter   
-        h = sum([term.h(state) for term in self._terms])
-        dm = torch.cross(state.m, torch.cross(state.m, h))
-        E = sum([term.E(state) for term in self._terms])
-        m = (dm*dm).sum()
-        t = -c*m
-        j = 0
-        maxIter = 1000
-        
-        while j < maxIter:
-            h = sum([term.h(state) for term in self._terms])
-            m_new = self._midpoint(state.m, h, alpha)
-            state.m = m_new
-            E_new = sum([term.E(state) for term in self._terms])
-            sufficient_decrease = E - E_new - alpha * t
-            
-            if sufficient_decrease >= 0:
-                break
-            
-            alpha *= tau
-            j += 1
-    
-        return alpha
+
+
+    def step(self, state):
+        pass
 
     def minimize(self, state):
         tau = self._tau_min
@@ -91,48 +71,49 @@ class Minimizer_BB(object):
         dm_max = 1e18
         last_dm_max = []
         E = sum([term.E(state) for term in self._terms])
-        energy = []
-        #energy.append(E)
+        energy = [E]
         steps = []
         h = sum([term.h(state) for term in self._terms])
-
+        logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
 
         while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
+#        for i in range(1000):
             m_next = self._midpoint(state.m, h, tau)
-            
+
             #m_next = state.m - tau*dm
             #m_next = m_next.normalize()
 
             # compute s^n-1 for step-size control
             m_diff = m_next - state.m
-            
-            m0 =torch.clone(state.m)
-            
+
+            m0 = torch.clone(state.m)
             dm = torch.cross(state.m, torch.cross(state.m, h))
-            
+
             # update state
             state.m = torch.clone(m_next)
-            
+            E = sum([term.E(state) for term in self._terms])
+
+#            if E > energy[-1]:
+#                print("dE > 0: E= ", E.numpy())
+#            #    tau = self._linesearch(state, dm_next)
+#            #    #energy[-1] = E
+#            #    print(f'E={E}')
+#            #    print(f'tau={tau}')
+#            #    continue
+#
+#                for dt in state.linspace(0, tau, 1000):
+#                    #state.m = m0 - dt*dm
+#                    state.m = self._midpoint(m0, h, dt)
+#                    E = sum([term.E(state) for term in self._terms]).numpy()
+#                    print(f'TEST E = {E}, dt/tau = {(dt/tau).numpy()}')
+#                state.m = self._midpoint(m0, h, tau)
+#                E = sum([term.E(state) for term in self._terms]).numpy()
+#                exit(0)
+
             # compute y^n-1 for step-size control
             h = sum([term.h(state) for term in self._terms]) # TODO: calculate only once
             dm_next = torch.cross(state.m, torch.cross(state.m, h))
             dm_diff = dm_next - dm
-                        
-            E = sum([term.E(state) for term in self._terms])
-            #if E > energy[-1]:
-            #    tau = self._linesearch(state, dm_next)
-            #    #energy[-1] = E
-            #    print(f'E={E}')
-            #    print(f'tau={tau}')
-            #    continue
-            energy.append(E)
-            
-                #for dt in state._linspace(0, tau, 1000):
-                #    state.m = m0 - dt*dm
-                #    #state.m = self._midpoint(m0, h, dt)
-                #    E = sum([term.E(state) for term in self._terms]).numpy()
-                #    print(f'E = {E}, dt = {-dt}')
-                #exit(0)
 
             # compute dm_max as convergence indicator
             dm_max = dm_next.max()
@@ -150,15 +131,41 @@ class Minimizer_BB(object):
 
             tau_sign = torch.sign(tau) #TODO: check tau_sign
             tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
-            
+
             # increase step count
             step += 1
             steps.append(step)
-            
-            logging.info_blue("Tau: %.5g, dm_max: %.5g, E=%g" % (tau, dm_max, E))
-            
+
+            logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
+
         return state, energy, steps
 
+    def _linesearch(self, state, dm):
+        alpha = 1.0 #initial step size
+        tau = 0.5  # Reduction factor
+        c = 0.1  # Sufficient decrease parameter
+        h = sum([term.h(state) for term in self._terms])
+        dm = torch.cross(state.m, torch.cross(state.m, h))
+        E = sum([term.E(state) for term in self._terms])
+        m = (dm*dm).sum()
+        t = -c*m
+        j = 0
+        maxIter = 1000
+
+        while j < maxIter:
+            h = sum([term.h(state) for term in self._terms])
+            m_new = self._midpoint(state.m, h, alpha)
+            state.m = m_new
+            E_new = sum([term.E(state) for term in self._terms])
+            sufficient_decrease = E - E_new - alpha * t
+
+            if sufficient_decrease >= 0:
+                break
+
+            alpha *= tau
+            j += 1
+
+        return alpha
 
 
 #### magnum.fd
