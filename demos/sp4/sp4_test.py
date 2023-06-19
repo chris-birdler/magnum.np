@@ -1,7 +1,7 @@
 import pytest
 import torch
 from magnumnp import *
-from run import run_sp4
+from sp4_run import run_sp4
 import numpy as np
 import pathlib
 
