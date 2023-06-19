@@ -130,7 +130,7 @@ class DemagField(LinearFieldTerm):
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n).to(device=state._device) for n in shape] # local indices
+        ij = [torch.fft.fftfreq(n,1/n).to(dtype=state._dtype,device=state._device) for n in shape] # local indices
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [ij[ind]*dx[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
