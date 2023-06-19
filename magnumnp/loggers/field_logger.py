@@ -18,7 +18,6 @@
 
 import os
 from magnumnp.common import logging, read_vti
-import xml.etree.cElementTree as ET
 from xml.etree import cElementTree
 from xml.dom import minidom
 from magnumnp.common.io import write_vti

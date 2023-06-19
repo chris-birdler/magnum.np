@@ -25,8 +25,10 @@ def test_singlespin_exchange():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
     state.material = {"Ms": 1., "A": 1.3e-11}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
+    magnetic = (x**2.> 0) 
 
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
     exchange = ExchangeField()
@@ -66,10 +68,12 @@ def test_saturated_thinfilm():
 
     mesh = Mesh(n, dx)
     state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
     state.material = {
             "A":lex**2*Js**2/(2.*constants.mu_0),
             "Ms":1./constants.mu_0,
             }
+    magnetic = (x**2.> 0) 
     demag    = DemagField()
     exchange = ExchangeField()
     external = ExternalField([0.,0.,1.2/constants.mu_0])
