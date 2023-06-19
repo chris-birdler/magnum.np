@@ -148,6 +148,19 @@ Now the material will look like this:
   
 .. image:: _static/material3.png
   :width: 700
+  
+Furthermore, the magnetization *m* can also be defined in such a domain. In this example, a vortex is initialized and the magnetization outside of the disk is set to zero.
+
+.. code-block:: python
+
+  state.m = torch.stack([-y,x,0*z], dim=-1)
+  state.m[~disk] = 0
+  state.m.normalize()
+  
+The magnetization of the material will look as follows:
+  
+.. image:: _static/vortex.png
+  :width: 700
 
 Set multiple material parameters at once
 ========================================
