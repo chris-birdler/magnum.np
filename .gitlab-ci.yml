@@ -14,10 +14,7 @@ test_demos:
        - apt install -y python3-opencv
        - pip install setuptools pytest
        - pip install .
-       - echo $PWD
-       - cd demos
-       - echo $PWD
-       - python -m pytest tests/
+       - python -m pytest demos
 
 #test_gpu:
 #    script:
