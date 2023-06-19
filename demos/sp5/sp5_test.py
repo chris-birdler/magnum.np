@@ -1,27 +1,11 @@
 import pytest
 import torch
 from magnumnp import *
-import sys
-import os
+#from run import run_sp5
 import numpy as np
 import pathlib
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-
-sys.path.insert(0, parent_dir)
-
-subdirectory = os.path.basename(current_dir)
-
-module_name = "{}.run".format(subdirectory)
-
-run_module = __import__(module_name, fromlist=['run'])
-
-run_sp5 = run_module.run_sp5
-    
 def test_sp5():    
-    
     run_sp5()
     
     this_dir = pathlib.Path(__file__).resolve().parent

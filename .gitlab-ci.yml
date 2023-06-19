@@ -8,6 +8,15 @@ image: python:3.10
 #       - pip install .
 #       - python -m pytest tests/
 
+test_demos:
+    script:
+       - apt update -yq
+       - apt install -y python3-opencv
+       - pip install setuptools pytest
+       - pip install .
+       - echo $PWD
+       - python -m pytest tests/
+
 #test_gpu:
 #    script:
 #        - apt update -yq
