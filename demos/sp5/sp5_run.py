@@ -1,11 +1,13 @@
 from magnumnp import *
+import pathlib
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
 def run_sp5():
     Timer.enable()
-    
+    this_dir = pathlib.Path(__file__).resolve().parent
+
     # initialize state
     n  = (40, 40, 1)
     dx = (2.5e-9, 2.5e-9, 10e-9)
@@ -41,8 +43,7 @@ def run_sp5():
     
     # perform integration with spin torque
     llg = LLGSolver([demag, exchange, torque])
-    #logger = ScalarLogger("data/m.dat", ['t', 'm'])
-    logger = Logger("data", ['t', 'm'], ["m"])
+    logger = Logger(this_dir / "data", ['t', 'm'])
     while state.t < 5e-9:
         llg.step(state, 1e-11)
         logger << state

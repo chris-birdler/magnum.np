@@ -9,8 +9,8 @@ def test_sp5():
     run_sp5()
     
     this_dir = pathlib.Path(__file__).resolve().parent
-    data_path = this_dir /"data"/"log.dat"
-    ref_path = this_dir /"ref"/"m_test.dat"
+    data_path = this_dir / "data" / "log.dat"
+    ref_path = this_dir / "ref" / "m_test.dat"
     
     data = np.loadtxt(data_path)
     ref = np.loadtxt(ref_path)
