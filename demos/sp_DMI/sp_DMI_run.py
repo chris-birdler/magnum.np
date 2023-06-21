@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import pathlib
 
-def run_DMI():
+def run_sp_DMI():
     Timer.enable()
     this_dir = pathlib.Path(__file__).resolve().parent
 
@@ -42,4 +42,4 @@ def run_DMI():
     Timer.print_report()
 
 if __name__=="__main__":
-    run_DMI()
+    run_sp_DMI()
