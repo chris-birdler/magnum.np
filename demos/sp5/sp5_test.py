@@ -14,6 +14,8 @@ def test_sp5():
     
     data = np.loadtxt(data_path)
     ref = np.loadtxt(ref_path)
+    print("data", data.shape)
+    print("ref", ref.shape)
     
     data_x = torch.from_numpy(data[:, 1])
     data_y = torch.from_numpy(data[:, 2])
