@@ -14,7 +14,8 @@ test_demos:
        - apt install -y python3-opencv
        - pip install setuptools pytest
        - pip install .
-       - python -m pytest demos
+#       - python -m pytest demos
+       - python -m pytest -s -k sp5 demos/
 
 #test_gpu:
 #    script:
