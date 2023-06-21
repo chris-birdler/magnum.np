@@ -7,10 +7,12 @@
 
 from magnumnp import *
 import torch
-import numpy as np
+import pathlib
 
 def run_rkky():
     Timer.enable()
+    this_dir = pathlib.Path(__file__).resolve().parent
+
     A = 1e-11
     Js = 1.0
     Ms = Js/constants.mu_0
@@ -55,7 +57,7 @@ def run_rkky():
     
     # integrate
     llg = LLGSolver([aniso, exchange1, exchange2, rkky, zeeman], atol = 1e-6)
-    logger = Logger("data", ['t', 'm', zeeman.h], ['m'], fields_every = 100)
+    logger = Logger(this_dir / "data", ['t', 'm', zeeman.h], ['m'], fields_every = 100)
     while state.t < tfinal:
         logger << state
         llg.step(state, 1e-9)

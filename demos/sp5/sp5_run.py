@@ -1,8 +1,6 @@
 from magnumnp import *
-import pathlib
 import torch
-import matplotlib.pyplot as plt
-import numpy as np
+import pathlib
 
 def run_sp5():
     Timer.enable()

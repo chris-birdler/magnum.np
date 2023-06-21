@@ -1,8 +1,10 @@
 from magnumnp import *
 import torch
+import pathlib
 
 def run_sot():
     Timer.enable()
+    this_dir = pathlib.Path(__file__).resolve().parent
     
     # initialize mesh
     eps = 1e-15
@@ -48,12 +50,10 @@ def run_sot():
     # perform integration with external field
     state.t = 0.
     llg = LLGSolver([exchange, torque, aniso])
-    slogger = ScalarLogger("data/log.dat", ['t', 'm', torque.h])
-    flogger = FieldLogger("data/fields.pvd", ['m'])
+    logger = Logger(this_dir / "data", ['t', 'm', torque.h])
     
     while state.t < 1e-9-eps:
-        slogger << state
-        flogger << state
+        logger << state
         llg.step(state, 1e-12)
     
     Timer.print_report()

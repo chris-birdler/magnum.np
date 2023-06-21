@@ -1,9 +1,10 @@
-import torch
 from magnumnp import *
+import torch
+import pathlib
 
 def run_sp4():
-    torch.set_default_dtype(torch.float32)
-    Timer.enable(log_mem = True)
+    Timer.enable()
+    this_dir = pathlib.Path(__file__).resolve().parent
     
     # initialize mesh
     eps = 1e-15
@@ -37,7 +38,7 @@ def run_sp4():
     
     # perform integration with external field
     llg = LLGSolver([demag, exchange, external])
-    logger = Logger("data", ['t', 'm'])
+    logger = Logger(this_dir / "data", ['t', 'm'])
     while state.t < 1e-9-eps:
         llg.step(state, 1e-11)
         logger << state
