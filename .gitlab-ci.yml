@@ -15,7 +15,7 @@ test_demos:
        - pip install setuptools pytest
        - pip install .
 #       - python -m pytest demos
-       - python -m pytest -s -k sp5 demos/
+       - python -m pytest -s -k sp demos/
 
 #test_gpu:
 #    script:
