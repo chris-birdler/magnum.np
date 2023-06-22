@@ -29,13 +29,13 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo)
-   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir)
-   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8)
-   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu)
-   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk)
-   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB)
-   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS)
+   * [RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo))
+   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir))
+   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8))
+   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu))
+   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk))
+   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB))
+   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS))
 
 
 Installation
