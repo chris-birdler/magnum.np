@@ -47,10 +47,9 @@ List of Demos
    getting_started
    field_terms
    demos
+   inverse_cube
    state_and_materials
    logging
-
-
 
 
 ********
