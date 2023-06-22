@@ -33,10 +33,10 @@ state.material = {
         "alpha": 1.0
         }
 
-domain1 = state._zeros(n, dtype=torch.bool)
+domain1 = state.zeros(n, dtype=torch.bool)
 domain1[:,:,n[2]//2:] = True
 
-domain2 = state._zeros(n, dtype=torch.bool)
+domain2 = state.zeros(n, dtype=torch.bool)
 domain2[:,:,:-n[2]//2] = True
 
 # Set initial magnetization
