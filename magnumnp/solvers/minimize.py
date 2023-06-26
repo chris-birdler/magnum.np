@@ -72,67 +72,6 @@ class MinimizerBB(object):
         #// m = 1 / (4 + τ²(m x H)²) [{4 - τ²(m x H)²} m - 4τ(m x m x H)]
         #// note: torque from LLNoPrecess has negative sign
 
-    # step:
-    #    calc h 
-    #    calc m1 = midpoint(m0, h0, tau0)
-    #
-    #    determine tau1:
-    #       m_diff = m1 - m0
-    #       dm_diff = dm1 - dm0
-    # 
-    #    prepare next iteration:
-    #       m0 = m1
-    #       dm0 = dm1 
-    #       E0 = E1
-
-    def _step(self, state):
-        h = self._h(state)
-        self._m0 = state.m.clone()
-        state.m = self._midpoint(state.m, h, self._tau)   # update m according to midpoint rule
-
-        m_diff = state.m - self._m0                      # compute s^n-1 for step-size control
-        E = sum([term.E(state) for term in self._terms])
-
-        # compute y^n-1 for step-size control
-        dm = self._dm(state, h)
-        dm_diff = dm - self._dm0
-
-        # compute dm_max as convergence indicator
-        dm_max = dm.max()
-        self._last_dm_max.append(dm_max)
-        if len(self._last_dm_max) > self._samples: self._last_dm_max.pop(0)
-
-        # next stepsize (alternate tau1 and tau2)
-        try:
-            if (self._steps % 2 == 0):
-                tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
-            else:
-                tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
-        except ZeroDivisionError:
-            tau = self._tau_max
-
-        tau_sign = torch.sign(tau) #TODO: check tau_sign
-        tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
-
-        # increase step count
-        self._steps += 1
-
-        logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
-
-    def minimize2(self, state):
-        # initialize solver
-        h = self._h(state)
-        self._last_dm_max = []
-        self._tau = self._tau_min
-        self._steps = 0
-        self._E0 = self.E(state)
-        self._dm0 = self._dm(state, self._h(state))
-        self._dm_max = float('inf')
-
-        for i in range(1000):
-#        while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
-            self._step(state)
-
     def minimize(self, state):
         tau = self._tau_min
         step = 0
@@ -208,33 +147,71 @@ class MinimizerBB(object):
 
         return state, energy, steps
 
-    def _linesearch(self, state, dm):
-        alpha = 1.0 #initial step size
-        tau = 0.5  # Reduction factor
-        c = 0.1  # Sufficient decrease parameter
-        h = sum([term.h(state) for term in self._terms])
-        dm = torch.cross(state.m, torch.cross(state.m, h))
+
+    def minimize2(self, state):
+        tau = self._tau_min
+        step = 0
+        dm_max = 1e18
+        last_dm_max = []
         E = sum([term.E(state) for term in self._terms])
-        m = (dm*dm).sum()
-        t = -c*m
-        j = 0
-        maxIter = 1000
+        energy = [E]
+        steps = []
+        h = sum([term.h(state) for term in self._terms])
+        logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
 
-        while j < maxIter:
-            h = sum([term.h(state) for term in self._terms])
-            m_new = self._midpoint(state.m, h, alpha)
-            state.m = m_new
-            E_new = sum([term.E(state) for term in self._terms])
-            sufficient_decrease = E - E_new - alpha * t
+        while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
+            dm = torch.cross(state.m, torch.cross(state.m, h))
+            m_next, E = self._linesearch(state, tau, dm)
 
-            if sufficient_decrease >= 0:
-                break
+            # compute s^n-1 for step-size control
+            m_diff = m_next - state.m
 
-            alpha *= tau
-            j += 1
+            # update state
+            state.m = torch.clone(m_next)
 
-        return alpha
+            # compute y^n-1 for step-size control
+            h = sum([term.h(state) for term in self._terms]) # TODO: calculate only once
+            dm_next = torch.cross(state.m, torch.cross(state.m, h))
+            dm_diff = dm_next - dm
 
+            # compute dm_max as convergence indicator
+            dm_max = dm_next.max()
+            last_dm_max.append(dm_max)
+            if len(last_dm_max) > self._samples: last_dm_max.pop(0)
+
+            # next stepsize (alternate tau1 and tau2)
+            try:
+                if (step % 2 == 0):
+                    tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
+                else:
+                    tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
+            except ZeroDivisionError:
+                tau = self._tau_max
+
+            tau_sign = torch.sign(tau) #TODO: check tau_sign
+            tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
+
+            # increase step count
+            step += 1
+            steps.append(step)
+
+            logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
+
+        return state, energy, steps
+
+
+    def _linesearch(self, state, tau, dm):
+        # while j < 1000:
+        h = sum([term.h(state) for term in self._terms])
+        m_new = self._midpoint(state.m, h, tau)
+        state.m = torch.clone(m_new)
+        E_new = sum([term.E(state) for term in self._terms])
+        #     if E - E_new >= tau * t:
+        #         break
+        #     tau *= r
+        #     j += 1
+        return state.m, E_new
+        
 
 #### magnum.fd
 #   def minimize(self, max_dpns = 0.01, samples = 10, h_max = 1e-5, h_min = 1e-16):
