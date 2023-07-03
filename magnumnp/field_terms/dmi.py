@@ -55,30 +55,34 @@ class DMIField(LinearFieldTerm):
         D = state.material[self.D].torch_tensor
         Ms = state.material["Ms"].torch_tensor
         m = state.m.torch_tensor
-        h = self._h(m, D, Ms, state)
+        dx = state.dx[0].reshape(-1,1,1,1)
+        dy = state.dx[1].reshape(1,-1,1,1)
+        dz = state.dx[2].reshape(1,1,-1,1)
+        h = self._h(m, D, Ms, dx, dy, dz, state)
         return state.Tensor(h)
 
     @torch.compile
-    def _h(self, m, D, Ms, state):
+    def _h(self, m, D, Ms, dx, dy, dz, state):
         h = state.zeros(state.mesh.n + (3,))
+
         # x
         if state.mesh.pbc[0] == 0:
             v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
             D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0,
                                 torch.sqrt(torch.sqrt(-D[1:,:,:]*D[:-1,:,:])*torch.abs(D[1:,:,:]+D[:-1,:,:]) / 2.), # TODO: is sign missing?
                                 2.*D[1:,:,:]*D[:-1,:,:] / (D[1:,:,:]+D[:-1,:,:]))
-            h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / (2.*state.mesh.dx[0])
-            h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / (2.*state.mesh.dx[0])
+            h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / (2.*dx[:-1,:,:,:])
+            h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / (2.*dx[ 1:,:,:,:])
         else:
             v = state._tensor(self._dmi_vector[0]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=0)
             D_avg = torch.where(D_next*D < 0,
                                 torch.sqrt(torch.sqrt(-D_next*D)*torch.abs(D_next+D) / 2.), # TODO: is sign missing?
                                 2.*D_next*D / (D_next+D))
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=0)) / (2.*state.mesh.dx[0])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=0)) / (2.*dx)
 
             D_avg = torch.roll(D_avg, -1, dims=0)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=0)) / (2.*state.mesh.dx[0])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=0)) / (2.*dx)
 
         # y
         if state.mesh.pbc[1] == 0:
@@ -86,18 +90,18 @@ class DMIField(LinearFieldTerm):
             D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
                                 torch.sqrt(torch.sqrt(-D[:,1:,:]*D[:,:-1,:])*torch.abs(D[:,1:,:]+D[:,:-1,:]) / 2.),
                                 2.*D[:,1:,:]*D[:,:-1,:] / (D[:,1:,:]+D[:,:-1,:]))
-            h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / (2.*state.mesh.dx[1])
-            h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / (2.*state.mesh.dx[1])
+            h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / (2.*dy[:,:-1,:,:])
+            h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / (2.*dy[:, 1:,:,:])
         else:
             v = state._tensor(self._dmi_vector[1]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=1)
             D_avg = torch.where(D_next*D < 0,
                                 torch.sqrt(torch.sqrt(-D_next*D)*torch.abs(D_next+D) / 2.), # TODO: is sign missing?
                                 2.*D_next*D / (D_next+D))
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=1)) / (2.*state.mesh.dx[1])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=1)) / (2.*dy)
 
             D_avg = torch.roll(D_avg, -1, dims=1)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=1)) / (2.*state.mesh.dx[1])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=1)) / (2.*dy)
 
         # z
         if state.mesh.pbc[2] == 0:
@@ -105,18 +109,18 @@ class DMIField(LinearFieldTerm):
             D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
                                 torch.sqrt(torch.sqrt(-D[:,:,1:]*D[:,:,:-1])*torch.abs(D[:,:,1:]+D[:,:,:-1]) / 2.),
                                 2.*D[:,:,1:]*D[:,:,:-1] / (D[:,:,1:]+D[:,:,:-1]))
-            h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / (2.*state.mesh.dx[2])
-            h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / (2.*state.mesh.dx[2])
+            h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / (2.*dz[:,:,:-1,:])
+            h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / (2.*dz[:,:, 1:,:])
         else:
             v = state._tensor(self._dmi_vector[2]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=2)
             D_avg = torch.where(D_next*D < 0,
                                 torch.sqrt(torch.sqrt(-D_next*D)*torch.abs(D_next+D) / 2.), # TODO: is sign missing?
                                 2.*D_next*D / (D_next+D))
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=2)) / (2.*state.mesh.dx[2])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=2)) / (2.*dz)
 
             D_avg = torch.roll(D_avg, -1, dims=2)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / (2.*state.mesh.dx[2])
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / (2.*dz)
 
         h *= 2. / (constants.mu_0 * Ms)
         return h.nan_to_num(posinf=0, neginf=0)
