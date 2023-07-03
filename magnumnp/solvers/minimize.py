@@ -1,4 +1,4 @@
-from magnumnp.common import logging, timedmethod
+from magnumnp.common import logging, timedmethod, constants
 import torch
 
 __all__ = ["MinimizerBB"]
@@ -36,12 +36,7 @@ class MinimizerBB(object):
         self._tau_max = tau_max
         self._dm_max = dm_max
         self._samples = samples
-
         self._tau = tau_min
-
-    #def dm(self, state):
-    #    h = sum([term.h(state) for term in self._terms])
-    #    return torch.cross(state.m, torch.cross(state.m, h))
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
@@ -148,26 +143,69 @@ class MinimizerBB(object):
         return state, energy, steps
 
 
+    def _linesearch(self, state, tau, dm):
+        r = 0.5  # Reduction factor
+        c = 0.5  # Sufficient decrease parameter
+        h = sum([term.h(state) for term in self._terms])
+        E = sum([term.E(state) for term in self._terms])
+        m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm*dm).sum()
+        t = -c*m
+        j = 0
+        m0 =torch.clone(state.m)
+
+        while j < 100:
+            #print(f'j = {j}')
+            #print(f'tau = {tau}')
+            h = sum([term.h(state) for term in self._terms])
+            m_new = self._midpoint(m0, h, tau)
+            state.m = torch.clone(m_new)
+            E_new = sum([term.E(state) for term in self._terms])
+            #print(f'E_new = {E_new}')
+            #print(f'(del_E = {E - E_new}')
+            #print(f'tau * t = {tau * t}')
+            if E - E_new >= tau * t:
+                break
+            tau *= r
+            j += 1
+
+        return state.m, E_new
+
     def minimize2(self, state):
         tau = self._tau_min
         step = 0
         dm_max = 1e18
         last_dm_max = []
         E = sum([term.E(state) for term in self._terms])
-        energy = [E]
-        steps = []
+        energy = []
+        energy.append(E)
+        steps = [0]
         h = sum([term.h(state) for term in self._terms])
-        logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
 
         while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
+            m0 =torch.clone(state.m)
             dm = torch.cross(state.m, torch.cross(state.m, h))
             m_next, E = self._linesearch(state, tau, dm)
-
-            # compute s^n-1 for step-size control
-            m_diff = m_next - state.m
+            #m_next = self._midpoint(m0, h, tau)
 
             # update state
             state.m = torch.clone(m_next)
+
+            #E = sum([term.E(state) for term in self._terms])
+            energy.append(E)
+
+            #if energy[-1] > energy[-2]:
+            #    for dt in state._linspace(0, 1e-5, 1000):
+            #        #state.m = m0 - dt*dm
+            #        state.m = self._midpoint(m0, h, dt)
+            #        E = sum([term.E(state) for term in self._terms]).numpy()
+            #        print(f'{E} {dt}')
+            #    exit(0)
+
+
+            logging.info_blue("Step: %g, Tau: %.5g, dm_max: %.5g, E=%g" % (step, tau, dm_max, E))
+
+            # compute s^n-1 for step-size control
+            m_diff = m_next - m0
 
             # compute y^n-1 for step-size control
             h = sum([term.h(state) for term in self._terms]) # TODO: calculate only once
@@ -195,68 +233,6 @@ class MinimizerBB(object):
             step += 1
             steps.append(step)
 
-            logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
+
 
         return state, energy, steps
-
-
-    def _linesearch(self, state, tau, dm):
-        # while j < 1000:
-        h = sum([term.h(state) for term in self._terms])
-        m_new = self._midpoint(state.m, h, tau)
-        state.m = torch.clone(m_new)
-        E_new = sum([term.E(state) for term in self._terms])
-        #     if E - E_new >= tau * t:
-        #         break
-        #     tau *= r
-        #     j += 1
-        return state.m, E_new
-        
-
-#### magnum.fd
-#   def minimize(self, max_dpns = 0.01, samples = 10, h_max = 1e-5, h_min = 1e-16):
-#        # TODO make use of stephandlers for logging
-#        h        = self.state.h
-#        dpnslist = []
-#        log      = ScreenLogMinimizer()
-#
-#        # Reset step
-#        self.state.step = 0
-#
-#        while len(dpnslist) < samples or max(dpnslist) > max_dpns:
-#            # Calculate next M and dM for minimization step
-#            M_next = self.state.minimizer_M(h)
-#            dM = self.state.minimizer_dM
-#
-#            # Get s^n-1 for step-size calculation
-#            M_diff = VectorField(self.mesh)
-#            M_diff.assign(M_next)
-#            M_diff.add(self.state.M, -1.0)
-#
-#            # Set next M
-#            self.state.y = M_next
-#            self.state.finish_step() # normalize, TODO really need to do this every step?
-#            self.state.flush_cache()
-#
-#            # Calculate deg per ns
-#            # TODO M.absMax might be the wrong choice if different materials are in use
-#            dp_timestep = (180.0 / math.pi) * math.atan2(M_diff.absMax(), self.state.M.absMax())
-#            dpns = abs(1e-9 * dp_timestep / h)
-#            dpnslist.append(dpns)
-#            if len(dpnslist) > samples: dpnslist.pop(0)
-#            self.state.deg_per_ns_minimizer = dpns
-#
-#            # Get y^n-1 for step-size calculation
-#            dM_diff = VectorField(self.mesh)
-#            dM_diff.assign(self.state.minimizer_dM)
-#            dM_diff.add(dM, -1.0)
-#
-#            # Next stepsize (Alternate h1 and h2)
-#            try:
-#              if (self.state.step % 2 == 0):
-#                h = M_diff.dotSum(M_diff) / M_diff.dotSum(dM_diff)
-#              else:
-#                h = M_diff.dotSum(dM_diff) / dM_diff.dotSum(dM_diff)
-#            except ZeroDivisionError, ex:
-#              h = h_max
-
