@@ -53,3 +53,30 @@ def test_interface_1D():
         llg.step(state, 1e-11)
     assert state.m[...,0].max().cpu() == pytest.approx(0.443, rel=1e-2)
     assert state.m[...,2].min().cpu() == pytest.approx(0.896, rel=1e-2)
+
+@pytest.mark.parametrize("dmi_term", [InterfaceDMIField, BulkDMIField, D2dDMIField])
+def test_nonequi_vs_equi(dmi_term):
+    n  = (10, 10, 10)
+    dx1 = (1e-9, 2e-9, 5e-9)
+    mesh1 = Mesh(n, dx1)
+    state1 = State(mesh1)
+    state1.material = {"Ms": 1./constants.mu_0,
+                       "Di": 1.,
+                       "Db": 1.,
+                       "DD2d": 1.}
+
+    dx2 = (torch.ones(n[0]) * 1e-9, 2e-9, 5e-9)
+    mesh2 = Mesh(n, dx2)
+    state2 = State(mesh2)
+    state2.material = {"Ms": 1./constants.mu_0,
+                       "Di": 1.,
+                       "Db": 1.,
+                       "DD2d": 1.}
+    x, y, z = state1.SpatialCoordinate()
+    state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
+
+    dmi = dmi_term()
+    h1 = dmi.h(state1).cpu()
+    h2 = dmi.h(state2).cpu()
+    torch.testing.assert_close(h1/h1.max(), h2/h1.max(), atol=1e-10, rtol=0)
