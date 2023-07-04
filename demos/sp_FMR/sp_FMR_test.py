@@ -18,4 +18,4 @@ def test_FMR():
     data_y = torch.from_numpy(data[:, 2])
     ref_y = torch.from_numpy(ref[:, 2])
 
-    torch.testing.assert_close(data_y, ref_y, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-3)

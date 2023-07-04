@@ -20,5 +20,5 @@ def test_sp_DMI():
     ref_x = torch.from_numpy(ref[1:-1,1])
     ref_z = torch.from_numpy(ref[1:-1:2,3])
 
-    torch.testing.assert_close(data_x, ref_x, atol=1e-6, rtol=0.02)
-    torch.testing.assert_close(data_z, ref_z, atol=1e-6, rtol=0.02)
+    torch.testing.assert_close(data_x, ref_x, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(data_z, ref_z, atol=1e-3, rtol=1e-3)

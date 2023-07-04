@@ -14,6 +14,7 @@ ax.plot(data[:,2]*4*np.pi*1e-7, data[:,5], '-', color = cycle[0], label = "magnu
 ax.plot(ref[:,2][0::4]*4*np.pi*1e-7, ref[:,5][0::4], 'x', color = cycle[0], linewidth = 6, label = "reference")
 ax.plot(data_dieter[:,1], data_dieter[:,3], '-', color = cycle[1], label = "dieter")
 ax.plot(data_magnumaf[:,4]*4*np.pi*1e-7, data_magnumaf[:,2], '-', color = cycle[2], label = "magnum.af")
+ax.axvline(x = 1.568, linestyle = '--', color = 'black', alpha = 0.2, label = 'analytic')
 
 ax.set_xlim([1.4,1.8])
 ax.set_ylim([-0.2,1.2])

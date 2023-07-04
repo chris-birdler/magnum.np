@@ -23,6 +23,6 @@ def test_sp5():
     ref_y = torch.from_numpy(ref[:, 2])
     ref_z = torch.from_numpy(ref[:, 3])
     
-    torch.testing.assert_close(data_x, ref_x, atol=1e-3, rtol=1e-1)
-    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-1) 
-    torch.testing.assert_close(data_z, ref_z, atol=1e-3, rtol=1e-1)
+    torch.testing.assert_close(data_x, ref_x, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-3) 
+    torch.testing.assert_close(data_z, ref_z, atol=1e-3, rtol=1e-3)

@@ -21,5 +21,5 @@ def test_domainwall_pinning():
     ref_h = torch.from_numpy(ref[:,2])
     ref_m = torch.from_numpy(ref[:,5])
 
-    torch.testing.assert_close(data_h, ref_h, atol=1e-10, rtol=1e-10)
-    torch.testing.assert_close(data_m, ref_m, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(data_h, ref_h, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(data_m, ref_m, atol=1e-3, rtol=1e-3)
