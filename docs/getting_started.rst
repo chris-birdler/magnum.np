@@ -83,27 +83,27 @@ Once the initial magnetic vortex pattern is found the LLG solver is reapplied, t
       logger << state
 
   Timer.print_report()
-  
+
 Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through magnum.np, in order to catch mistakes in the code when new features are added.
-  
+
 .. code-block:: python
 
   # plot the results
   data = np.loadtxt("data/log.dat")
   ref = np.loadtxt("data/m_ref.dat")
-  
+
   fig, ax = plt.subplots(figsize=(10,5))
   cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-  
+
   ax.plot(data[:,0]*1e9, data[:,1], '-', color = cycle[0], label = "magnum.np - x")
   ax.plot(ref[:,0]*1e9, ref[:,1], '-', color = cycle[0], linewidth = 6, alpha = 0.4, label = "reference - x")
-  
+
   ax.plot(data[:,0]*1e9, data[:,2], '-', color = cycle[1], label = "magnum.np - y")
   ax.plot(ref[:,0]*1e9, ref[:,2], '-', color = cycle[1], linewidth = 6, alpha = 0.4, label = "reference - y")
-  
+
   ax.plot(data[:,0]*1e9, data[:,3], '-', color = cycle[2], label = "magnum.np - z")
   ax.plot(ref[:,0]*1e9, ref[:,3], '-', color = cycle[2], linewidth = 6, alpha = 0.4, label = "reference - z")
-  
+
   ax.set_xlim([0,6])
   ax.set_title("Standard Problem #5")
   ax.set_xlabel("Time t[ns]")
@@ -135,16 +135,14 @@ The plot will look as below:
 .. image:: _static/results.png
   :width: 620
 
-The following is a video showing the progression of the vortex during the simulated time created using ParaView:  
+The following is a video showing the progression of the vortex during the simulated time created using ParaView:
 
 .. raw:: html
 
   <video controls src="_static/animation.mp4" width="620"></video>
-  
+
 
 Complete Code
 *************
 
 The complete code can be viewed here: :download:`run.py <../demos/sp5/run.py>`.
-  
-

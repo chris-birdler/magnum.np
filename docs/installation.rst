@@ -44,4 +44,3 @@ installing with the -e option also allows to modify the source code:
   pip install -e .
 
 Note that a default version of `pytorch <http://www.pytorch.org/>`__ is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
-
