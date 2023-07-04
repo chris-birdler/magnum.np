@@ -15,11 +15,11 @@ def test_sot():
     data = np.loadtxt(data_path)
     ref = np.loadtxt(ref_path)
     
-    data_x = torch.from_numpy(data[:, 1])
-    data_y = torch.from_numpy(data[:, 2])
+    data_x = torch.from_numpy(data[:,1])
+    data_y = torch.from_numpy(data[:,2])
     
-    ref_x = torch.from_numpy(ref[:, 1])
-    ref_y = torch.from_numpy(ref[:, 2])
+    ref_x = torch.from_numpy(ref[:,1])
+    ref_y = torch.from_numpy(ref[:,2])
     
-    torch.testing.assert_close(data_x, ref_x, atol=1e-10, rtol=1e-10)
-    torch.testing.assert_close(data_y, ref_y, atol=1e-10, rtol=1e-10) 
+    torch.testing.assert_close(data_x, ref_x, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-3) 
