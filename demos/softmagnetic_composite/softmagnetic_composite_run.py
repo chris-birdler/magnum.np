@@ -1,5 +1,6 @@
 from magnumnp import *
 import torch
+import pathlib
 
 def run_softmagnetic_composite():
     #SIZE_CUBE = 900e-9
@@ -9,6 +10,7 @@ def run_softmagnetic_composite():
     
     N = 40
     Timer.enable()
+    this_dir = pathlib.Path(__file__).resolve().parent
     
     # initialize state
     eps = 1e-15
@@ -76,7 +78,7 @@ def run_softmagnetic_composite():
     
     # perform integration
     llg = LLGSolver([demag, exchange, aniso, external])
-    logger = ScalarLogger("data/m.dat", ['t', external.h, 'm'])
+    logger = ScalarLogger(this_dir / "data" / "m.dat", ['t', external.h, 'm'])
     
     while state.t < 13.5e-9-eps:
         llg.step(state, 1e-10)
