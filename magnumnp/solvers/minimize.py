@@ -143,54 +143,37 @@ class MinimizerBB(object):
         return state, energy, steps
 
 
-    def _linesearch(self, state, tau, dm):
+    def _linesearch(self, state, m0, h0, E0, dm0, tau):
         r = 0.5  # Reduction factor
         c = 0.5  # Sufficient decrease parameter
-        h = sum([term.h(state) for term in self._terms])
-        E = sum([term.E(state) for term in self._terms])
-        m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm*dm).sum()
+        m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm0*dm0).sum()
         t = -c*m
-        j = 0
-        m0 =torch.clone(state.m)
 
-        while j < 100:
-            #print(f'j = {j}')
-            #print(f'tau = {tau}')
-            h = sum([term.h(state) for term in self._terms])
-            m_new = self._midpoint(m0, h, tau)
-            state.m = torch.clone(m_new)
-            E_new = sum([term.E(state) for term in self._terms])
-            #print(f'E_new = {E_new}')
-            #print(f'(del_E = {E - E_new}')
-            #print(f'tau * t = {tau * t}')
-            if E - E_new >= tau * t:
+        for j in range(10):
+            state.m = self._midpoint(m0, h0, tau)
+            E = sum([term.E(state) for term in self._terms])
+            if E0 - E >= tau * t:
                 break
             tau *= r
-            j += 1
 
-        return state.m, E_new
+        return E
 
     def minimize2(self, state):
         tau = self._tau_min
         step = 0
         dm_max = 1e18
         last_dm_max = []
-        E = sum([term.E(state) for term in self._terms])
+        m0 = state.m.clone()
+        h0 = sum([term.h(state) for term in self._terms])
+        E0 = sum([term.E(state) for term in self._terms])
+        dm0 = torch.cross(state.m, torch.cross(state.m, h0))
         energy = []
-        energy.append(E)
+        energy.append(E0)
         steps = [0]
-        h = sum([term.h(state) for term in self._terms])
 
         while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
-            m0 =torch.clone(state.m)
-            dm = torch.cross(state.m, torch.cross(state.m, h))
-            m_next, E = self._linesearch(state, tau, dm)
-            #m_next = self._midpoint(m0, h, tau)
-
-            # update state
-            state.m = torch.clone(m_next)
-
-            #E = sum([term.E(state) for term in self._terms])
+            E = self._linesearch(state, m0, h0, E0, dm0, tau)
+            h = sum([term.h(state) for term in self._terms])
             energy.append(E)
 
             #if energy[-1] > energy[-2]:
@@ -205,15 +188,14 @@ class MinimizerBB(object):
             logging.info_blue("Step: %g, Tau: %.5g, dm_max: %.5g, E=%g" % (step, tau, dm_max, E))
 
             # compute s^n-1 for step-size control
-            m_diff = m_next - m0
+            m_diff = state.m - m0
 
             # compute y^n-1 for step-size control
-            h = sum([term.h(state) for term in self._terms]) # TODO: calculate only once
-            dm_next = torch.cross(state.m, torch.cross(state.m, h))
-            dm_diff = dm_next - dm
+            dm = torch.cross(state.m, torch.cross(state.m, h))
+            dm_diff = dm - dm0
 
             # compute dm_max as convergence indicator
-            dm_max = dm_next.max()
+            dm_max = dm.max()
             last_dm_max.append(dm_max)
             if len(last_dm_max) > self._samples: last_dm_max.pop(0)
 
@@ -232,7 +214,9 @@ class MinimizerBB(object):
             # increase step count
             step += 1
             steps.append(step)
-
-
+            m0 = state.m.clone()
+            h0 = h.clone()
+            E0 = E.clone()
+            dm0 = dm.clone()
 
         return state, energy, steps
