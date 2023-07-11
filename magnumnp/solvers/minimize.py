@@ -34,7 +34,6 @@ class MinimizerBB(object):
         self._tau_max = tau_max
         self._dm_max = dm_max
         self._tau = tau_min
-        self._n = 0
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
@@ -110,13 +109,12 @@ class MinimizerBB(object):
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
             tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
 
-            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g, n: %g" % (steps, tau, dm_max, self._n))
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (steps, tau, dm_max))
 
             # increase step count
             steps += 1
             m0 = state.m.clone()
             h0 = h.clone()
             dm0 = dm.clone()
-            self._n += 1
 
         return steps
