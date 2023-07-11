@@ -4,7 +4,7 @@ import torch
 __all__ = ["MinimizerBB"]
 
 class MinimizerBB(object):
-    def __init__(self, terms, tau_min = 1e-13, tau_max = 1e-5, dm_max = 1e-3, samples = 1):
+    def __init__(self, terms, tau_min = 1e-13, tau_max = 1e-5, dm_max = 1e-3):
         """
         This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
 
@@ -28,24 +28,21 @@ class MinimizerBB(object):
             maximum step size
           dm_max (:class:`float`)
             stop criterion given as supremum norm of dm/dt
-          sample (:class:`int`)
-            number of subsequent steps the stop criterion has to be fulfilled
         """
         self._terms = terms
         self._tau_min = tau_min
         self._tau_max = tau_max
         self._dm_max = dm_max
-        self._samples = samples
         self._tau = tau_min
         self._n = 0
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
 
-    def _h(self, state):
+    def h(self, state):
         return sum([term.h(state) for term in self._terms])
 
-    def _dm(self, state, h):
+    def dm(self, state, h):
         return torch.cross(state.m, torch.cross(state.m, h))
 
     def _midpoint(self, m, h, tau):
@@ -88,26 +85,13 @@ class MinimizerBB(object):
         tau = self._tau_min
         steps = 0
         dm_max = 1e18
-        last_dm_max = []
         m0 = state.m.clone()
-        h0 = sum([term.h(state) for term in self._terms])
-        E0 = sum([term.E(state) for term in self._terms])
-        dm0 = torch.cross(state.m, torch.cross(state.m, h0))
+        h0 = self.h(state)
+        dm0 = self.dm(state, h0)
 
-        #while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
         while dm_max > self._dm_max:
-            #E = self._linesearch(state, m0, h0, E0, dm0, tau)
             state.m = self._midpoint(m0, h0, tau)
-            h = sum([term.h(state) for term in self._terms])
-            E = sum([term.E(state) for term in self._terms])
-
-            #if energy[-1] > energy[-2]:
-            #    for dt in state._linspace(0, 1e-5, 1000):
-            #        #state.m = m0 - dt*dm
-            #        state.m = self._midpoint(m0, h, dt)
-            #        E = sum([term.E(state) for term in self._terms]).numpy()
-            #        print(f'{E} {dt}')
-            #    exit(0)
+            h = self.h(state)
 
             # compute s^n-1 for step-size control
             m_diff = state.m - m0
@@ -126,18 +110,13 @@ class MinimizerBB(object):
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
             tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
 
-            if torch.isnan(state.Tensor(tau)):
-                logging.info_blue("[MinimizerBB] Minimum reached (isnan).")
-                break
-
-            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g, E=%g, last: %g, n: %g" % (steps, tau, dm_max, E, dm_max, self._n))
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g, n: %g" % (steps, tau, dm_max, self._n))
 
             # increase step count
             steps += 1
             m0 = state.m.clone()
             h0 = h.clone()
-            E0 = E.clone()
             dm0 = dm.clone()
             self._n += 1
 
-        return E, steps
+        return steps

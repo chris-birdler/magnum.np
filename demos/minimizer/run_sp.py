@@ -52,14 +52,14 @@ state.m = state.Constant([0,0,1])
 state.m[~magnetic] = 0.
 
 #minimizer = MinimizerBB([demag, exchange, aniso, external])
-minimizer = MinimizerBB([exchange, aniso, external], samples=10)
+minimizer = MinimizerBB([exchange, aniso, external])
 m_magnetic = lambda state: state.m[magnetic].sum() / magnetic.sum()
 logger = Logger("data", [external.h, 'm', m_magnetic], ["m"])
 
 for i in range(4000):
     external.h = [0.0, 0.0, -i * 1e-3 / constants.mu_0]
-    E, steps = minimizer.minimize(state)
-    print("i:", i, "E:", E, "steps:", steps)
+    steps = minimizer.minimize(state)
+    print("i:", i, "steps:", steps)
     logger << state
 
 Timer.print_report()
