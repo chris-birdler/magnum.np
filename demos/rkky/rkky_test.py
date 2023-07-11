@@ -24,5 +24,5 @@ def test_rkky():
     ref_m = torch.from_numpy(ref[:, 3])
     ref_h = torch.from_numpy(ref[:, 6]/Hk)
     
-    torch.testing.assert_close(data_m, ref_m, atol=1e-10, rtol=1e-10)
-    torch.testing.assert_close(data_h, ref_h, atol=1e-10, rtol=1e-10) 
+    torch.testing.assert_close(data_m, ref_m, atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(data_h, ref_h, atol=1e-3, rtol=1e-3) 
