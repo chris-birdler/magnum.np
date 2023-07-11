@@ -43,8 +43,7 @@ def run_sp_domainwall_pinning():
     state.m.normalize()
 
     exchange = ExchangeField()
-    aniso = UniaxialAnisotropyField()
-
+    aniso    = UniaxialAnisotropyField()
     external = ExternalField(lambda t: state.Constant([0, (Hextmax-Hextmin)*t/tfinal+Hextmin, 0]))
 
     llg = LLGSolver([exchange, aniso, external])

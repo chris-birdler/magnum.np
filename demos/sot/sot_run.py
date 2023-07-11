@@ -44,8 +44,8 @@ def run_sot():
     state.m = state.Constant([0,0,1])
     
     # relax without external field
-    llg = LLGSolver([exchange, aniso])
-    llg.relax(state)
+    minimizer = MinimizerBB([exchange, aniso])
+    minimizer.minimize(state)
     
     # perform integration with external field
     state.t = 0.

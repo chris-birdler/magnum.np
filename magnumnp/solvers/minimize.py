@@ -4,7 +4,7 @@ import torch
 __all__ = ["MinimizerBB"]
 
 class MinimizerBB(object):
-    def __init__(self, terms, tau_min = 1e-13, tau_max = 1e-5, dm_max = 1e-3):
+    def __init__(self, terms):
         """
         This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
 
@@ -20,20 +20,8 @@ class MinimizerBB(object):
         *Arguments*
           terms ([:class:`LLGTerm`])
             List of LLG contributions to be considered for energy minimization
-          region (:class:`str`)
-            region on which the energy is minimized
-          tau_min (:class:`float`)
-            minimum step size
-          tau_max (:class:`float`)
-            maximum step size
-          dm_max (:class:`float`)
-            stop criterion given as supremum norm of dm/dt
         """
         self._terms = terms
-        self._tau_min = tau_min
-        self._tau_max = tau_max
-        self._dm_max = dm_max
-        self._tau = tau_min
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
@@ -64,31 +52,32 @@ class MinimizerBB(object):
         #// m = 1 / (4 + τ²(m x H)²) [{4 - τ²(m x H)²} m - 4τ(m x m x H)]
         #// note: torque from LLNoPrecess has negative sign
 
-    def _linesearch(self, state, m0, h0, E0, dm0, tau):
+    def _linesearch(self, state, m0, h0, dm0, tau):
         r = 0.5  # Reduction factor
         c = 0.5  # Sufficient decrease parameter
         m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm0*dm0).sum()
         t = -c*m
+        E0 = self.E(state)
 
         for j in range(10):
             state.m = self._midpoint(m0, h0, tau)
-            E = sum([term.E(state) for term in self._terms])
+            E = self.E(state)
             if E0 - E >= tau * t:
                 break
             tau *= r
             logging.info_blue("[MinimizerBB] Linesearch: %d, E=%g" % (j, E))
 
-        return E
-
-    def minimize(self, state):
-        tau = self._tau_min
+    @timedmethod
+    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5):
+        tau = tau_min
         steps = 0
         dm_max = 1e18
         m0 = state.m.clone()
         h0 = self.h(state)
         dm0 = self.dm(state, h0)
 
-        while dm_max > self._dm_max:
+        for i in range(maxiter):
+            #self._linesearch(state, m0, h0, dm0, tau)
             state.m = self._midpoint(m0, h0, tau)
             h = self.h(state)
 
@@ -101,13 +90,15 @@ class MinimizerBB(object):
 
             # compute dm_max as convergence indicator
             dm_max = dm.abs().max()
+            if dm_max < dm_tol:
+                break
 
             # next stepsize (alternate tau1 and tau2)
             if (steps % 2 == 0):
                 tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
             else:
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
-            tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
+            tau = max(min(abs(tau), tau_max), tau_min) #* tau_sign
 
             logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (steps, tau, dm_max))
 

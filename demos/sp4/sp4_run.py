@@ -32,8 +32,8 @@ def run_sp4():
     state.m[(-1,0),:,:,1] = 1.0
     
     # relax without external field
-    llg = LLGSolver([demag, exchange])
-    llg.relax(state)
+    minimizer = MinimizerBB([demag, exchange])
+    minimizer.minimize(state)
     write_vti(state.m, "data/m0.vti", state)
     
     # perform integration with external field
