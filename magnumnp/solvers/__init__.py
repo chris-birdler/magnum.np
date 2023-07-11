@@ -25,6 +25,7 @@ from magnumnp.solvers.steepest_descent import *
 from magnumnp.solvers.LBFGS import *
 
 __all__ = (eigensolver.__all__ +
+           llg.__all__ +
            ode_solvers.__all__ +
            string.__all__ +
            minimize.__all__ +

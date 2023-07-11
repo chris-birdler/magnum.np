@@ -58,7 +58,7 @@ logger = Logger("data", [external.h, 'm', m_magnetic], ["m"])
 
 for i in range(4000):
     external.h = [0.0, 0.0, -i * 1e-3 / constants.mu_0]
-    E, steps = minimizer.minimize2(state)
+    E, steps = minimizer.minimize(state)
     print("i:", i, "E:", E, "steps:", steps)
     logger << state
 

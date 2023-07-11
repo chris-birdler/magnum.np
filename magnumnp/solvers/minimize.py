@@ -37,6 +37,7 @@ class MinimizerBB(object):
         self._dm_max = dm_max
         self._samples = samples
         self._tau = tau_min
+        self._n = 0
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
@@ -67,90 +68,6 @@ class MinimizerBB(object):
         #// m = 1 / (4 + τ²(m x H)²) [{4 - τ²(m x H)²} m - 4τ(m x m x H)]
         #// note: torque from LLNoPrecess has negative sign
 
-    def minimize(self, state):
-        tau = self._tau_min
-        step = 0
-        dm_max = 1e18
-        last_dm_max = []
-        E = sum([term.E(state) for term in self._terms])
-        energy = [E]
-        steps = []
-        h = sum([term.h(state) for term in self._terms])
-        logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
-
-        while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
-#        for i in range(1000):
-            m_next = self._midpoint(state.m, h, tau)
-
-            #m_next = state.m - tau*dm
-            #m_next = m_next.normalize()
-
-            # compute s^n-1 for step-size control
-            m_diff = m_next - state.m
-
-            m0 = torch.clone(state.m)
-            dm = torch.cross(state.m, torch.cross(state.m, h))
-
-            # update state
-            state.m = torch.clone(m_next)
-            E = sum([term.E(state) for term in self._terms])
-
-#            if E > energy[-1]:
-#                print("dE > 0: E= ", E.numpy())
-#            #    tau = self._linesearch(state, dm_next)
-#            #    #energy[-1] = E
-#            #    print(f'E={E}')
-#            #    print(f'tau={tau}')
-#            #    continue
-#
-#                for dt in state.linspace(0, tau, 1000):
-#                    #state.m = m0 - dt*dm
-#                    state.m = self._midpoint(m0, h, dt)
-#                    E = sum([term.E(state) for term in self._terms]).numpy()
-#                    print(f'TEST E = {E}, dt/tau = {(dt/tau).numpy()}')
-#                state.m = self._midpoint(m0, h, tau)
-#                E = sum([term.E(state) for term in self._terms]).numpy()
-#                exit(0)
-
-            # compute y^n-1 for step-size control
-            h = sum([term.h(state) for term in self._terms]) # TODO: calculate only once
-            dm_next = torch.cross(state.m, torch.cross(state.m, h))
-            dm_diff = dm_next - dm
-
-            # compute dm_max as convergence indicator
-            dm_max = dm_next.max()
-            last_dm_max.append(dm_max)
-            if len(last_dm_max) > self._samples: last_dm_max.pop(0)
-
-            if m_diff.abs().max() == 0.:
-                logging.info_blue("[MinimizerBB] dm == 0! Minimum reached.")
-                break
-
-            if dm_diff.abs().max() == 0.:
-                logging.info_blue("[MinimizerBB] dm_diff == 0! Minimum reached.")
-                break
-
-            # next stepsize (alternate tau1 and tau2)
-            try:
-                if (step % 2 == 0):
-                    tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
-                else:
-                    tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
-            except ZeroDivisionError:
-                tau = self._tau_max
-
-            tau_sign = torch.sign(tau) #TODO: check tau_sign
-            tau = max(min(abs(tau), self._tau_max), self._tau_min) #* tau_sign
-
-            # increase step count
-            step += 1
-            steps.append(step)
-
-            logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %g  " % (tau, dm_max, E))
-
-        return energy, steps
-
-
     def _linesearch(self, state, m0, h0, E0, dm0, tau):
         r = 0.5  # Reduction factor
         c = 0.5  # Sufficient decrease parameter
@@ -167,7 +84,7 @@ class MinimizerBB(object):
 
         return E
 
-    def minimize2(self, state):
+    def minimize(self, state):
         tau = self._tau_min
         steps = 0
         dm_max = 1e18
@@ -213,7 +130,7 @@ class MinimizerBB(object):
                 logging.info_blue("[MinimizerBB] Minimum reached (isnan).")
                 break
 
-            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g, E=%g, last: %g" % (steps, tau, dm_max, E, dm_max))
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g, E=%g, last: %g, n: %g" % (steps, tau, dm_max, E, dm_max, self._n))
 
             # increase step count
             steps += 1
@@ -221,5 +138,6 @@ class MinimizerBB(object):
             h0 = h.clone()
             E0 = E.clone()
             dm0 = dm.clone()
+            self._n += 1
 
         return E, steps
