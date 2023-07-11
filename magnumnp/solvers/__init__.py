@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from magnumnp.solvers.eigensolver import *
 from magnumnp.solvers.llg import *
 from magnumnp.solvers.ode_solvers import *
 from magnumnp.solvers.string import *
@@ -23,7 +24,7 @@ from magnumnp.solvers.minimize import *
 from magnumnp.solvers.steepest_descent import *
 from magnumnp.solvers.LBFGS import *
 
-__all__ = (llg.__all__ +
+__all__ = (eigensolver.__all__ +
            ode_solvers.__all__ +
            string.__all__ +
            minimize.__all__ +
