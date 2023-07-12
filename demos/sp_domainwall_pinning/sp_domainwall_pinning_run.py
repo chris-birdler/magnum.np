@@ -6,8 +6,8 @@ def run_sp_domainwall_pinning():
     Timer.enable()
     this_dir = pathlib.Path(__file__).resolve().parent
 
-    Hextmax=2.5/constants.mu_0
-    Hextmin=0.0/constants.mu_0
+    Hextmax=1.8/constants.mu_0
+    Hextmin=1.4/constants.mu_0
     tfinal = 20e-9
 
     n  = (80, 1, 1)
@@ -43,14 +43,16 @@ def run_sp_domainwall_pinning():
     state.m.normalize()
 
     exchange = ExchangeField()
-    aniso = UniaxialAnisotropyField()
+    aniso    = UniaxialAnisotropyField()
+    external = ExternalField([0, 0, 0])
+#    external = ExternalField(lambda t: state.Constant([0, (Hextmax-Hextmin)*t/tfinal+Hextmin, 0]))
 
-    external = ExternalField(lambda t: state.Constant([0, (Hextmax-Hextmin)*t/tfinal+Hextmin, 0]))
-
-    llg = LLGSolver([exchange, aniso, external])
+#    llg = LLGSolver([exchange, aniso, external])
+    minimizer = MinimizerBB([exchange, aniso, external])
     logger = ScalarLogger(this_dir / "data" / "m.dat", ['t', external.h, 'm'])
-    while state.t < tfinal:
-        llg.step(state, 1e-11)
+    for h in state.linspace(Hextmin, Hextmax, steps=100):
+        external.h = [0, h, 0]
+        minimizer.minimize(state)
         logger << state
 
     Timer.print_report()

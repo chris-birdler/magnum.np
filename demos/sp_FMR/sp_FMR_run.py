@@ -24,13 +24,14 @@ def run_sp_FMR():
         }
     state.m = state.Constant([0, 0, 1])
 
-    #relax state
+    # initialize field terms
     demag    = DemagField()
     exchange = ExchangeField()
     bias     = ExternalField(80e3*state.Tensor([1., 0.715, 0]).normalize())
 
-    llg = LLGSolver([demag, exchange, bias])
-    llg.relax(state)
+    #relax state
+    minimizer = MinimizerBB([demag, exchange, bias])
+    minimizer.minimize(state)
 
     #integrate
     state.t = 0.0
