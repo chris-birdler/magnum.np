@@ -1,6 +1,6 @@
 """magnum.np main module"""
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 import magnumnp.common.logging as logging
 import torch
