@@ -15,7 +15,7 @@ ax.plot(data[:,6]/Hk, data[:,3], '-', color = cycle[2], label = "magnum.np")
 ax.plot(ref[:,6]/Hk, ref[:,3], '-', color = cycle[2], linewidth = 6, alpha = 0.4, label = "reference")
 
 ax.set_xlim([4.82,5.0])
-ax.set_ylim([0.99994,1.0])
+ax.set_ylim([0.99994,1.000001])
 ax.set_yticklabels(['0.99994', '0.99995', '0.99996', '0.99997', '0.99998', '0.99999', '1.00000'])
 ax.set_title("RKKY Standard Problem")
 ax.set_xlabel("External Field H$_{ext}$ / H$_k$ [1]")
