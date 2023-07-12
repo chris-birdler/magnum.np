@@ -23,6 +23,14 @@ from .field_terms import LinearFieldTerm
 __all__ = ["AtomisticRuXExchangeField"]
 
 class AtomisticRuXExchangeField(LinearFieldTerm):
+    r"""
+    Noncollinear coupling caused by Ru-X Spacer Layers:
+    see: https://www.science.org/doi/full/10.1126/sciadv.abd8861
+         https://journals.aps.org/prb/abstract/10.1103/PhysRevB.106.054401
+
+    :param Jij: List of Coupling Constants
+    :type Jij: list, optional
+    """
     parameters = ["J"]
 
     def __init__(self, Jij, hom = None, **kwargs):
