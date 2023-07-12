@@ -1,3 +1,12 @@
+1.1.1 [2023-06-13]
+- added eigensolver
+- added RUX
+- fixed float32 bug in demag field
+
+1.1.0 [2023-05-24]
+- added pseudo PBCs
+- some fixes for non-equidistant code
+
 1.0.9 [2023-05-03]
 - added nonequidistant mesh support
 - refactor demag field

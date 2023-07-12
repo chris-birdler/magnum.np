@@ -23,6 +23,7 @@ import numpy as np
 
 __all__ = ["DMIField", "InterfaceDMIField", "BulkDMIField", "D2dDMIField"]
 
+
 class DMIField(LinearFieldTerm):
     r"""
     General Dzyaloshinskii-Moriya interaction
@@ -54,39 +55,79 @@ class DMIField(LinearFieldTerm):
         D = state.material[self.D].torch_tensor
         Ms = state.material["Ms"].torch_tensor
         m = state.m.torch_tensor
-        h = self._h(m, D, Ms, state)
+        dx = state.dx[0].reshape(-1,1,1,1)
+        dy = state.dx[1].reshape(1,-1,1,1)
+        dz = state.dx[2].reshape(1,1,-1,1)
+        h = self._h(m, D, Ms, dx, dy, dz, state)
         return state.Tensor(h)
 
     @torch.compile
-    def _h(self, m, D, Ms, state):
-        h = state._zeros(state.mesh.n + (3,))
+    def _h(self, m, D, Ms, dx, dy, dz, state):
+        h = state.zeros(state.mesh.n + (3,))
+
         # x
-        v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
-        D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0,
-                            torch.sqrt(torch.sqrt(-D[1:,:,:]*D[:-1,:,:])*torch.abs(D[1:,:,:]+D[:-1,:,:]) / 2.), # TODO: is sign missing?
-                            2.*D[1:,:,:]*D[:-1,:,:]/(D[1:,:,:]+D[:-1,:,:]))
-        h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / (2.*state.mesh.dx[0])
-        h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / (2.*state.mesh.dx[0])
+        if state.mesh.pbc[0] == 0:
+            v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0, ...
+            D_avg = 2.*D[1:,:,:]*D[:-1,:,:] / (D[1:,:,:]*dx[:-1,:,:,:] + D[:-1,:,:]*dx[1:,:,:,:])
+            h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / 2.
+            h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / 2.
+        else:
+            v = state._tensor(self._dmi_vector[0]).expand(m.shape)
+            D_next = torch.roll(D, +1, dims=0)
+            dx_next = torch.roll(dx, +1, dims=0)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D_next*D < 0,
+            D_avg = 2.*D_next*D / (D_next*dx + D*dx_next)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=0)) / 2.
+
+            D_avg = torch.roll(D_avg, -1, dims=0)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=0)) / 2.
 
         # y
-        v = state._tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
-        D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
-                            torch.sqrt(torch.sqrt(-D[:,1:,:]*D[:,:-1,:])*torch.abs(D[:,1:,:]+D[:,:-1,:]) / 2.),
-                            2.*D[:,1:,:]*D[:,:-1,:]/(D[:,1:,:]+D[:,:-1,:]))
-        h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / (2.*state.mesh.dx[1])
-        h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / (2.*state.mesh.dx[1])
+        if state.mesh.pbc[1] == 0:
+            v = state._tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
+            D_avg = 2.*D[:,1:,:]*D[:,:-1,:] / (D[:,1:,:]*dy[:,:-1,:,:] + D[:,:-1,:]*dy[:,1:,:,:])
+            h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / 2.
+            h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / 2.
+        else:
+            v = state._tensor(self._dmi_vector[1]).expand(m.shape)
+            D_next = torch.roll(D, +1, dims=1)
+            dy_next = torch.roll(dx, +1, dims=1)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D_next*D < 0,
+            D_avg = 2.*D_next*D / (D_next*dy + D*dy_next)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=1)) / 2.
+
+            D_avg = torch.roll(D_avg, -1, dims=1)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=1)) / 2.
 
         # z
-        v = state._tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
-        D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
-                            torch.sqrt(torch.sqrt(-D[:,:,1:]*D[:,:,:-1])*torch.abs(D[:,:,1:]+D[:,:,:-1]) / 2.),
-                            2.*D[:,:,1:]*D[:,:,:-1]/(D[:,:,1:]+D[:,:,:-1]))
-        h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / (2.*state.mesh.dx[2])
-        h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / (2.*state.mesh.dx[2])
+        if state.mesh.pbc[2] == 0:
+            v = state._tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
+            D_avg = 2.*D[:,:,1:]*D[:,:,:-1] / (D[:,:,1:]*dz[:,:,:-1,:] + D[:,:,:-1]*dz[:,:,1:,:])
+            h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / 2.
+            h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / 2.
+        else:
+            v = state._tensor(self._dmi_vector[2]).expand(m.shape)
+            D_next = torch.roll(D, +1, dims=2)
+            dz_next = torch.roll(dx, +1, dims=2)
+            # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
+            # D_avg = torch.where(D_next*D < 0,
+            D_avg = 2.*D_next*D / (D_next*dz + D*dz_next)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=2)) / 2.
+
+            D_avg = torch.roll(D_avg, -1, dims=2)
+            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / 2.
 
         h *= 2. / (constants.mu_0 * Ms)
-        h = torch.nan_to_num(h, posinf=0, neginf=0)
-        return h
+        return h.nan_to_num(posinf=0, neginf=0)
+
 
 class InterfaceDMIField(DMIField):
     r"""

@@ -17,15 +17,17 @@
 #
 
 from magnumnp.common import logging
+import torch
 
 __all__ = ["Mesh"]
 
 class Mesh(object):
-    def __init__(self, n, dx, origin=(0,0,0)):
+    def __init__(self, n, dx, origin=(0,0,0), pbc=(0,0,0)):
         self.n = tuple(n)
         self.dx = tuple(dx)
         self.origin = tuple(origin)
+        self.pbc = tuple(pbc)
 
     def __str__(self):
-        str_dx = ["%g" % dx if isinstance(dx, (float, int)) else "XX" for dx in self.dx]
+        str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx]
         return "%dx%dx%d (size= %s x %s x %s)" % (*self.n, *str_dx)

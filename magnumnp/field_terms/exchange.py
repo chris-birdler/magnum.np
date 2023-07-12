@@ -55,20 +55,49 @@ class ExchangeField(LinearFieldTerm):
 
     @torch.compile
     def _h(self, m, A, Ms, dx, dy, dz, state):
-        h = state._zeros(state.mesh.n + (3,))
+        h = state.zeros(state.mesh.n + (3,))
 
-        A_avg = 2.*A[1:,:,:]*A[:-1,:,:] / (A[1:,:,:]*dx[:-1,:,:,:] + A[:-1,:,:]*dx[1:,:,:,:])
-        h[:-1,:,:,:] += A_avg * (m[ 1:,:,:,:]-m[:-1,:,:,:]) / dx[:-1,:,:,:] # m_i-1 - m_i
-        h[ 1:,:,:,:] += A_avg * (m[:-1,:,:,:]-m[ 1:,:,:,:]) / dx[ 1:,:,:,:] # m_i+1 - m_i
+        # x
+        if state.mesh.pbc[0] == 0:
+            A_avg = 2.*A[1:,:,:]*A[:-1,:,:] / (A[1:,:,:]*dx[:-1,:,:,:] + A[:-1,:,:]*dx[1:,:,:,:])
+            h[:-1,:,:,:] += A_avg * (m[ 1:,:,:,:]-m[:-1,:,:,:]) / dx[:-1,:,:,:] # m_i-1 - m_i
+            h[ 1:,:,:,:] += A_avg * (m[:-1,:,:,:]-m[ 1:,:,:,:]) / dx[ 1:,:,:,:] # m_i+1 - m_i
+        else:
+            A_next = torch.roll(A, +1, dims=0)
+            dx_next = torch.roll(dx, +1, dims=0)
+            A_avg = 2.*A_next * A / (A_next*dx + A*dx_next)
+            h += A_avg * (torch.roll(state.m, +1, dims=0) - state.m) / dx # m_i+1 - m_i
 
-        A_avg = 2.*A[:,1:,:]*A[:,:-1,:] / (A[:,1:,:]*dy[:,:-1,:,:] + A[:,:-1,:]*dy[:,1:,:,:])
-        h[:,:-1,:,:] += A_avg * (m[:, 1:,:,:]-m[:,:-1,:,:]) / dy[:,:-1,:,:] # m_i-1 - m_i
-        h[:, 1:,:,:] += A_avg * (m[:,:-1,:,:]-m[:, 1:,:,:]) / dy[:, 1:,:,:] # m_i+1 - m_i
+            A_avg = torch.roll(A_avg, -1, dims=0)
+            h += A_avg * (torch.roll(state.m, -1, dims=0) - state.m) / dx # m_i-1 - m_i
 
-        A_avg = 2.*A[:,:,1:]*A[:,:,:-1] / (A[:,:,1:]*dz[:,:,:-1,:] + A[:,:,:-1]*dz[:,:,1:,:])
-        h[:,:,:-1,:] += A_avg * (m[:,:, 1:,:]-m[:,:,:-1,:]) / dz[:,:,:-1,:] # m_i-1 - m_i
-        h[:,:, 1:,:] += A_avg * (m[:,:,:-1,:]-m[:,:, 1:,:]) / dz[:,:, 1:,:] # m_i+1 - m_i
+        # y
+        if state.mesh.pbc[1] == 0:
+            A_avg = 2.*A[:,1:,:]*A[:,:-1,:] / (A[:,1:,:]*dy[:,:-1,:,:] + A[:,:-1,:]*dy[:,1:,:,:])
+            h[:,:-1,:,:] += A_avg * (m[:, 1:,:,:]-m[:,:-1,:,:]) / dy[:,:-1,:,:] # m_i-1 - m_i
+            h[:, 1:,:,:] += A_avg * (m[:,:-1,:,:]-m[:, 1:,:,:]) / dy[:, 1:,:,:] # m_i+1 - m_i
+        else:
+            A_next = torch.roll(A, +1, dims=1)
+            dy_next = torch.roll(dy, +1, dims=1)
+            A_avg = 2. * A_next * A / (A_next*dy + A*dy_next)
+            h += A_avg * (torch.roll(state.m, +1, dims=1) - state.m) / dy # m_i+1 - m_i
+
+            A_avg = torch.roll(A_avg, -1, dims=1)
+            h += A_avg * (torch.roll(state.m, -1, dims=1) - state.m) / dy # m_i-1 - m_i
+
+        # z
+        if state.mesh.pbc[2] == 0:
+            A_avg = 2.*A[:,:,1:]*A[:,:,:-1] / (A[:,:,1:]*dz[:,:,:-1,:] + A[:,:,:-1]*dz[:,:,1:,:])
+            h[:,:,:-1,:] += A_avg * (m[:,:, 1:,:]-m[:,:,:-1,:]) / dz[:,:,:-1,:] # m_i-1 - m_i
+            h[:,:, 1:,:] += A_avg * (m[:,:,:-1,:]-m[:,:, 1:,:]) / dz[:,:, 1:,:] # m_i+1 - m_i
+        else:
+            A_next = torch.roll(A, +1, dims=2)
+            dz_next = torch.roll(dz, +1, dims=2)
+            A_avg = 2. * A_next * A / (A_next*dz + A*dz_next)
+            h += A_avg * (torch.roll(state.m, +1, dims=2) - state.m) / dz # m_i+1 - m_i
+
+            A_avg = torch.roll(A_avg, -1, dims=2)
+            h += A_avg * (torch.roll(state.m, -1, dims=2) - state.m) / dz # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
-        h = torch.nan_to_num(h, posinf=0, neginf=0)
-        return h
+        return h.nan_to_num(posinf=0, neginf=0)

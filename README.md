@@ -1,6 +1,7 @@
-magnum.np 1.0.9
-===============
+![magnum.np](logo.png)
 
+magnum.np 1.1.1
+===============
 magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference method. It implements state-of-the-art algorithms and is based on [pytorch](http://www.pytorch.org/), which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in Python which leads to very readable yet flexible code. Due to [pytorch](http://www.pytorch.org/) integration, extensive postprocessing can be done directly in the simulations scripts. Furthermore [pytorch](http://www.paraview.org/)'s autograd feature makes it possible to solve inverse problems without significant modifications of the code. This manual is meant to give you both a quick start and a reference to magnum.np.
 
 
@@ -9,13 +10,16 @@ Features
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
-* Arbitrary Material Parameters variing in space and time
-* Spin-torque model by Zhang and Li, Slonczewski
+* Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
+* Non-Equidistant Mesh for Multilayer Structures
+* Arbitrary Material Parameters varying in space and time
+* Spin-torque model by Zhang and Li
+* Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* Seemingless VTK import / export via [pyvista](https://docs.pyvista.org/)
+* Seamless VTK import / export via [pyvista](https://docs.pyvista.org/)
 * Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
 
 
@@ -25,14 +29,13 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HZyMxhG1HZCMsbdOohNqfmR0WUnoQ-ux))
-   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/11dP3VrckM_hc24jP0sHIM_0_MlkNioRV))
-   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1vfLhEUMGFCfJ-CB1QNKgZtLP6vkjf3hw))
-   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1UNdTe5y41k_6HrZ7WsNASQSs5viUMzss))
-   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1AR7ksZUbThvJAn3mTgFKh6ka7dgXbUOb))
-   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1tMKEFtOfg7NSCGYUONeHLa0nC0AXVGRP))
-   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/160QXXUkDEpd-GvZyI2PhLIdnSIDRVyG0))
-
+   * [RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo))
+   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir))
+   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8))
+   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu))
+   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk))
+   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB))
+   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS))
 
 
 Installation
@@ -47,7 +50,11 @@ For a clean and independent system, we start with a clean virtual python environ
 
 Finally install a release versions of magnum.np by means of pip:
 
-    pip install magnum.np
+    pip install magnumnp
+
+You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+    pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
 ### from source code (gitlab.com)
