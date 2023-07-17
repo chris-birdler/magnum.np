@@ -1,3 +1,7 @@
+1.1.2 [2023-07-12]
+- added MinimizerBB
+- use demos as integration tests
+
 1.1.1 [2023-06-13]
 - added eigensolver
 - added RUX
