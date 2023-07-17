@@ -1,5 +1,4 @@
 from magnumnp import *
-from torch import sqrt
 import matplotlib.pyplot as plt
 import numpy as np
 
