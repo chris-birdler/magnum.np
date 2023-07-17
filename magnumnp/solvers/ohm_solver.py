@@ -27,7 +27,7 @@ class OhmSolver(object):
 
     def u(self, state, **kwargs):
         sigma = state.material["sigma"].squeeze(-1)
-        rhs = state._zeros(state.mesh.n)
+        rhs = state.zeros(state.mesh.n)
         u0 = state.u.clone()
 
         def _M(u):
