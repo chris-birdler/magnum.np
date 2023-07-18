@@ -165,7 +165,7 @@ class EigenResult(object):
         vvv = self.evecs().numpy()
 
         dx = self._state.mesh.dx[0]
-        mz = vvv[:,10,0,2,:]
+        mz = vvv[1,10,:,2,:]
         kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(mz.shape[0], dx))
 
         window = np.hanning(mz.shape[0])[:,None]
