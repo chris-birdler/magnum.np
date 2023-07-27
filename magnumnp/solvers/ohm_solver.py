@@ -97,5 +97,6 @@ def conjugate_gradient(A, x, b, tol=1e-6, max_iter=1000):
         beta = rsnew / rsold
         p = r + beta * p
         rsold = rsnew
-        print("i:", i, "norm:", norm)
+        if i % 100 ==0:
+            logging.info_blue("[OhmSolver] it= %d, norm= %.5e" % (i, norm))
     return x
