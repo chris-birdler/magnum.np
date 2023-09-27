@@ -54,6 +54,8 @@ class State(object):
 
         self._material = Material(self)
         self.t = t0
+        self._step = 0
+        self._dt = 0.
 
         dtype_str = str(self._dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))

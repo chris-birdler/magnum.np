@@ -25,7 +25,7 @@ __all__ = ["LLGSolver"]
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, **kwargs):
         self._terms = terms
-        self._solver = solver(self.dm, self.update_thermal_field, self.get_thermal_field, **kwargs)
+        self._solver = solver(self.dm, **kwargs)
 
     def dm(self, state, alpha = None, no_precession = False):
         alpha = alpha or state.material["alpha"]
@@ -34,7 +34,6 @@ class LLGSolver(object):
         alpha_prime = alpha * gamma_prime
 
         h = sum([term.h(state) for term in self._terms])
-        h += self._thermal_field
 
         dm = -alpha_prime * torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
         if not no_precession:
@@ -44,16 +43,6 @@ class LLGSolver(object):
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
-
-    @timedmethod
-    def update_thermal_field(self, state):
-        self._sigma = state._normal(0., 1., size = state.m.shape)
-        return self._sigma
-
-    @timedmethod
-    def get_thermal_field(self, state, dt):
-        self._thermal_field = self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.cell_volumes * dt))
-        return self._thermal_field
 
     @timedmethod
     def step(self, state, dt, **kwargs):

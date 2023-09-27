@@ -23,12 +23,10 @@ __all__ = ["RKF45"]
 
 #Runge-Kutta-Fehlberg method with stepsize control
 class RKF45(object):
-    def __init__(self, f, update_thermal_field, get_thermal_field, dt = 1e-15, atol = 1e-5, rtol = 1e-5):
+    def __init__(self, f, dt = 1e-15, atol = 1e-5, rtol = 1e-5):
         self._f = f
         self._dt = dt
         self._order = 4
-        self._update_thermal_field = update_thermal_field
-        self._get_thermal_field = get_thermal_field
 
         # Numerical Recipies 3rd Edition suggests these values:
         self._headroom = 0.9
@@ -51,7 +49,7 @@ class RKF45(object):
 
     def _try_step(self, state, **llg_args):
         f, m, t, dt = self._f_wrapper, state.m, state.t, self._dt
-        self._get_thermal_field(state, dt)
+        state._dt = dt  # update current dt in state used by thermal field class
         k1 = dt * f(state, t,              m, **llg_args)
         k2 = dt * f(state, t +  1./ 4.*dt, m +      1./ 4.*k1, **llg_args)
         k3 = dt * f(state, t +  3./ 8.*dt, m +      3./32.*k1 +      9./32.*k2, **llg_args)
@@ -90,8 +88,6 @@ class RKF45(object):
         return dt_opt
 
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        if not hasattr(self, "_sigma"):
-            self._update_thermal_field(state)
         t0, t1 = state.t, state.t + dt
         while state.t < t1:
             _m1, _t1, err = self._try_step(state, **llg_args)
@@ -106,4 +102,4 @@ class RKF45(object):
                 state.t = _t1
                 logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
                 self._dt = dt_opt
-                self._update_thermal_field(state)
+                state.step += 1
