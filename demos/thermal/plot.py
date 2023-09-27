@@ -9,7 +9,7 @@ for i, xi in enumerate([30, 91, 242, 725]):
     h = 4*np.pi*1e-7*data[:,1]
     ax.plot(h, data[:,4], 'x', color = cycle[i], label = f"$\\xi = {xi}$")
 
-    h_ref = np.linspace(0.001, 0.1, num=100)
+    h_ref = np.linspace(0.0001, 0.1, num=100)
     ax.plot(h_ref, np.cosh(xi*h_ref)/np.sinh(xi*h_ref)-1/(xi*h_ref), '-', color = cycle[i])
 
 
