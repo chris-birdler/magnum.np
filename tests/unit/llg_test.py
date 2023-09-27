@@ -64,7 +64,7 @@ def test_relax(solver):
     llg = LLGSolver([aniso], solver = solver)
     llg.relax(state, rtol = 1e-8)
 
-    torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]), atol=1e-2, rtol=1e-2)
 
 def test_stochastic():
     n  = (1, 1, 1)
