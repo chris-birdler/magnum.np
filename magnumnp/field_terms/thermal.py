@@ -18,7 +18,7 @@
 
 from magnumnp.common import timedmethod, constants
 import torch
-from .field_terms import LinearFieldTerm
+from .field_terms import FieldTerm
 
 __all__ = ["ThermalField"]
 
@@ -32,8 +32,8 @@ class ThermalField(FieldTerm):
 
     @timedmethod
     def h(self, state):
-        if state.step != self._step: # update random field
+        if state._step != self._step: # update random field
             self._sigma = state._normal(0., 1., size = state.m.shape)
             self._step = state._step
             
-        return self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.cell_volumes * dt))
+        return self._sigma * torch.sqrt(2. * state.material["alpha"] * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.cell_volumes * state._dt))

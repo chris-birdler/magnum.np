@@ -102,4 +102,4 @@ class RKF45(object):
                 state.t = _t1
                 logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
                 self._dt = dt_opt
-                state.step += 1
+                state._step += 1

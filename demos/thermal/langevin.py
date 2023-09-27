@@ -31,7 +31,8 @@ add_noise(state.m)
 state.m.normalize()
 
 external = ExternalField([0,0,0])
-llg = LLGSolver([external], solver = RKF45)
+thermal = ThermalField()
+llg = LLGSolver([external, thermal], solver = RKF45)
 
 # perform stochastic integration
 for xi in [30, 91, 242, 725]:
@@ -39,6 +40,7 @@ for xi in [30, 91, 242, 725]:
     state.T = constants.mu_0 * Ms * state.cell_volumes.max() * 1./constants.mu_0 / (constants.kb * xi)
     print(f"Running for xi = {xi} (T = {state.T})")
     for h in np.linspace(0, 0.1, num=11):
+        print(f"h = {h}")
         external.h = [h / constants.mu_0, 0, 0]
         llg.step(state, dt = t_final)
         logger << state
