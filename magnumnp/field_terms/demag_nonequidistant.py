@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, Timer
+from magnumnp.common import logging, timedmethod, constants, Timer, complex_dtype
 from .field_terms import LinearFieldTerm
 from . import demag_f, demag_g
 import numpy as np
@@ -125,9 +125,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         s = [shape[i] for i in dim]
 
         m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
-        hx = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
-        hy = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
-        hz = state.zeros(m_pad_fft.shape[:-1], dtype=state.complex_dtype)
+        hx = state.zeros(m_pad_fft.shape[:-1], dtype=complex_dtype[state.dtype])
+        hy = state.zeros(m_pad_fft.shape[:-1], dtype=complex_dtype[state.dtype])
+        hz = state.zeros(m_pad_fft.shape[:-1], dtype=complex_dtype[state.dtype])
 
         for i_dst in range(state.mesh.n[2]):
             for i_src in range(state.mesh.n[2]):

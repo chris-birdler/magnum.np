@@ -222,9 +222,8 @@ def test_regression():
     state.material = {"Ms": 1.}
     state.m = state.Constant([0,0,0])
     state.m[50,50,50] = 1.
-    demag = DemagField()
 
-    m = state.m.cpu()
+    demag = DemagField()
     h_demag = demag.h(state).cpu()
 
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -234,3 +233,24 @@ def test_regression():
     mesh, ref = read_vti(filename)
 
     torch.testing.assert_close(h_demag, ref["h_demag"], atol=1e-10, rtol=1e-6)
+
+def test_precision():
+    ''' if Newell formula is evaluated with single precision large fluctuations are expected '''
+    n = (100,1,1)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx)
+    dtype = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float32)
+    state = State(mesh)
+    state.material = {"Ms": 1.}
+    state.m = state.Constant([0,0,0])
+    state.m[0,0,0,2] = 1.
+
+    demag = DemagField()
+    h_demag = demag.h(state).abs().log()[:,0,0,2]
+
+    ref = state.arange(n[0])
+    ref = torch.log(1/4./torch.pi/ref**3)
+
+    torch.set_default_dtype(dtype)
+    torch.testing.assert_close(h_demag[20:], ref[20:], atol=1e-2, rtol=1e-2)

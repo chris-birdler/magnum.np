@@ -1,3 +1,12 @@
+1.1.2 [2023-07-12]
+- added MinimizerBB
+- use demos as integration tests
+
+1.1.1 [2023-06-13]
+- added eigensolver
+- added RUX
+- fixed float32 bug in demag field
+
 1.1.0 [2023-05-24]
 - added pseudo PBCs
 - some fixes for non-equidistant code

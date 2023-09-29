@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 ###############
 Getting Started
 ###############
@@ -20,7 +22,7 @@ Timer.enable() is used to measure the duration of the simulation.
 
   Timer.enable()
 
-Next the state is initialized. To do so a mesh is created where n defines a rectangular cuboid that represents the magnetic material and dx denotes the discretization. For this problem the material is defined as constant and homogeneous.
+Next the state is initialized. To do so a mesh is created where *n* defines a rectangular cuboid that represents the magnetic material and *dx* denotes the discretization. For this problem the material is defined as constant and homogeneous.
 
 .. code-block:: python
 
@@ -38,7 +40,7 @@ Next the state is initialized. To do so a mesh is created where n defines a rect
       "b": 72.17e-12
       }
 
-The initial magnetization m is defined using torch.Tensor. The elements of the tensor can be accessed using Python's slicing. j is the in-plain current in x direction which will be applied to the initial magnetization vortex pattern.
+The initial magnetization *m* is defined using torch.Tensor. The elements of the tensor can be accessed using Python's slicing. *j* is the in-plain current in x-direction which will be applied to the initial magnetization vortex pattern.
 
 .. code-block:: python
 
@@ -81,27 +83,27 @@ Once the initial magnetic vortex pattern is found the LLG solver is reapplied, t
       logger << state
 
   Timer.print_report()
-  
+
 Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through magnum.np, in order to catch mistakes in the code when new features are added.
-  
+
 .. code-block:: python
 
   # plot the results
   data = np.loadtxt("data/log.dat")
   ref = np.loadtxt("data/m_ref.dat")
-  
+
   fig, ax = plt.subplots(figsize=(10,5))
   cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-  
+
   ax.plot(data[:,0]*1e9, data[:,1], '-', color = cycle[0], label = "magnum.np - x")
   ax.plot(ref[:,0]*1e9, ref[:,1], '-', color = cycle[0], linewidth = 6, alpha = 0.4, label = "reference - x")
-  
+
   ax.plot(data[:,0]*1e9, data[:,2], '-', color = cycle[1], label = "magnum.np - y")
   ax.plot(ref[:,0]*1e9, ref[:,2], '-', color = cycle[1], linewidth = 6, alpha = 0.4, label = "reference - y")
-  
+
   ax.plot(data[:,0]*1e9, data[:,3], '-', color = cycle[2], label = "magnum.np - z")
   ax.plot(ref[:,0]*1e9, ref[:,3], '-', color = cycle[2], linewidth = 6, alpha = 0.4, label = "reference - z")
-  
+
   ax.set_xlim([0,6])
   ax.set_title("Standard Problem #5")
   ax.set_xlabel("Time t[ns]")
@@ -122,21 +124,25 @@ To run the simulation save the script to a file called *run.py* and enter the fo
 See the Results
 ***************
 
-After running run.py a plot of the results is saved as *results.png*\ . The plot will look as below:
+After running run.py you can save the code for the plot in a file called plot.py. A plot of the results will be saved as *results.png*\ by entering the following in the command line:
+
+.. code-block:: python
+
+  python plot.py
+
+The plot will look as below:
 
 .. image:: _static/results.png
   :width: 620
 
-The following is a video showing the progression of the vortex during the simulated time created using ParaView:  
+The following is a video showing the progression of the vortex during the simulated time created using ParaView:
 
 .. raw:: html
 
   <video controls src="_static/animation.mp4" width="620"></video>
-  
+
 
 Complete Code
 *************
 
 The complete code can be viewed here: :download:`run.py <../demos/sp5/run.py>`.
-  
-

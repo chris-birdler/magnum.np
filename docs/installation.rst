@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 ############
 Installation
 ############
@@ -19,6 +21,12 @@ Finally install a release versions of magnum.np by means of pip:
 
   pip install magnumnp
 
+You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+.. code-block:: bash
+
+  pip install git+https://gitlab.com/magnum.np/magnum.np@main
+
 
 *****************************
 from source code (gitlab.com)
@@ -36,4 +44,3 @@ installing with the -e option also allows to modify the source code:
   pip install -e .
 
 Note that a default version of `pytorch <http://www.pytorch.org/>`__ is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
-

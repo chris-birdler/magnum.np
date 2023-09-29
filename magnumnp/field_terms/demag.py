@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, Timer
+from magnumnp.common import logging, timedmethod, constants, Timer, complex_dtype
 from .field_terms import LinearFieldTerm
 import numpy as np
 import torch
@@ -130,7 +130,7 @@ class DemagField(LinearFieldTerm):
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n).to(device=state._device) for n in shape] # local indices
+        ij = [torch.fft.fftfreq(n,1/n).to(dtype=state._dtype,device=state._device) for n in shape] # local indices
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [ij[ind]*dx[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
@@ -181,9 +181,9 @@ class DemagField(LinearFieldTerm):
                              torch.stack(self._N[2], dim=-1)], dim=-1)
             return (N * state.m).sum(dim=-1)
 
-        hx = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
-        hy = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
-        hz = state.zeros(self._N[0][0].shape, dtype=state.complex_dtype)
+        hx = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
+        hy = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
+        hz = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = dim, s = s).squeeze(-1)
 

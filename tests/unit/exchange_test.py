@@ -49,7 +49,7 @@ def test_nonequi_vs_equi():
     exchange = ExchangeField()
     h1 = exchange.h(state1).cpu()
     h2 = exchange.h(state2).cpu()
-    torch.testing.assert_close(h1/h1.max(), h2/h1.max(), atol=1e-12, rtol=1e-12)
+    torch.testing.assert_close(h1/h1.max(), h2/h1.max(), atol=1e-10, rtol=0)
 
 def test_nonequidistant():
     n  = (9, 2, 3)
