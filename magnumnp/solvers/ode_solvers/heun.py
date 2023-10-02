@@ -22,11 +22,9 @@ from magnumnp.common import logging
 __all__ = ["Heun"]
 
 class Heun(object):
-    def __init__(self, f, update_thermal_field, get_thermal_field, dt = 1e-15):
+    def __init__(self, f, dt = 5e-15):
         self._f = f
         self._dt = dt
-        self._update_thermal_field = update_thermal_field
-        self._get_thermal_field = get_thermal_field
 
         logging.info_green("[LLGSolver] using Heun solver (dt = %g)" % dt)
 
@@ -43,12 +41,10 @@ class Heun(object):
     def step(self, state, dt, **llg_args):
         f, m, t = self._f_wrapper, state.m, state.t
 
-        self._update_thermal_field(state)
-        self._get_thermal_field(state, dt)
-        k1 = dt * f(state, t,      m,           **llg_args)
-        self._update_thermal_field(state)
-        self._get_thermal_field(state, dt)
-        k2 = dt * f(state, t + dt, m + k1 + k1, **llg_args)
+        state._dt = dt  # update current dt in state used by thermal field class
+        k1 = dt * f(state, t,      m,      **llg_args)
+        k2 = dt * f(state, t + dt, m + k1, **llg_args)
     
-        state.m = (k1 + k2) / 2.
+        state.m = m + (k1 + k2) / 2.
         state.t = t + dt
+        state._step += 1
