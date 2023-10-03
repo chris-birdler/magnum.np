@@ -61,6 +61,16 @@ DemagField
 .. autoclass:: DemagField
    :show-inheritance:
 
+DemagFieldPBC
+*************
+.. autoclass:: DemagFieldPBC
+   :show-inheritance:
+
+DemagFieldNonEquidistant
+*************
+.. autoclass:: DemagFieldNonEquidistant
+   :show-inheritance:
+
 ExchangeField
 *************
 .. autoclass:: ExchangeField

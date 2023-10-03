@@ -53,13 +53,13 @@ def info_blue(message, *args, **kwargs):
     info(BLUE % message, *args, **kwargs)
 
 def set_log_level(level):
-  """
-  Set the log level of magnum.np specific logging messages.
-  Defaults to :code:`INFO = 20`.
+    """
+    Set the log level of magnum.np specific logging messages.
+    Defaults to :code:`INFO = 20`.
 
-  *Arguments*
-    level (:class:`int`)
-      The log level
-  """
-  logger.setLevel(level)
+    *Arguments*
+      level (:class:`int`)
+        The log level
+    """
+    logger.setLevel(level)
 
