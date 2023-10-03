@@ -35,7 +35,7 @@ class ThermalField(FieldTerm):
         if state._step != self._step: # update random field
             self._sigma = state._normal(0., 1., size = state.m.shape)
             self._step = state._step
-            
+
         alpha = state.material["alpha"].torch_tensor
         Ms = state.material["Ms"].torch_tensor
         return self._h(self._sigma, alpha, Ms, state)

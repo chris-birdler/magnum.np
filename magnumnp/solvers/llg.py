@@ -67,4 +67,3 @@ class LLGSolver(object):
             E0 = E
 
         state.t = t0
-

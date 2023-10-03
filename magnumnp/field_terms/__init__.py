@@ -41,5 +41,5 @@ __all__ = (anisotropy.__all__ +
            oersted.__all__ +
            rux.__all__ +
            rkky.__all__ +
-           spintorque.__all__ + 
+           spintorque.__all__ +
            thermal.__all__)
