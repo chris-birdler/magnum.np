@@ -60,7 +60,7 @@ Citation
 ********
 If you use magnum.np in your work or publication, please cite the following reference:
 
-[1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", to be published (2023).
+[1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", Scientific Reports volume 13, 12054 (2023).
 
 
 ************
