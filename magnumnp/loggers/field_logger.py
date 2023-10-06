@@ -104,6 +104,7 @@ class FieldLogger(object):
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
+            df.flush()
 
     def __lshift__(self, state):
         self.log(state)
