@@ -4,9 +4,7 @@
 Getting Started
 ###############
 
-The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex.
-
-Google Colab allows to run magnum.np demos without local installation on CPUs as well as on GPUs (TODO: add link):
+The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex. Google Colab allows to run magnum.np demos without local installation on CPUs as well as on GPUs.
 
 Standard Problem #5
 *******************

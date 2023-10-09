@@ -19,14 +19,14 @@
 import torch
 from magnumnp.common import logging
 
-__all__ = ["RKF45"]
+__all__ = ["RKF56"]
 
 #Runge-Kutta-Fehlberg method with stepsize control
-class RKF45(object):
+class RKF56(object):
     def __init__(self, f, dt = 1e-15, atol = 1e-5, rtol = 1e-5):
         self._f = f
         self._dt = dt
-        self._order = 4
+        self._order = 5
 
         # Numerical Recipies 3rd Edition suggests these values:
         self._headroom = 0.9
@@ -35,7 +35,7 @@ class RKF45(object):
         self._maxscale = 10.
         self._atol = atol
         self._rtol = rtol # currently rtol is ignored since m is normalized!
-        logging.info_green("[LLGSolver] using RKF45 solver (atol = %g)" % atol)
+        logging.info_green("[LLGSolver] using RKF56 solver (atol = %g)" % atol)
 
     def _f_wrapper(self, state, t, m, **llg_args):
         t0 = state.t
@@ -44,21 +44,23 @@ class RKF45(object):
         state.m = m
         f = self._f(state, **llg_args)
         state.t = t0
-        state.m = m0
+        state.m = m0.normalize()
         return f
 
     def _try_step(self, state, **llg_args):
         f, m, t, dt = self._f_wrapper, state.m, state.t, self._dt
         state._dt = dt  # update current dt in state used by thermal field class
-        k1 = dt * f(state, t,              m, **llg_args)
-        k2 = dt * f(state, t +  1./ 4.*dt, m +      1./ 4.*k1, **llg_args)
-        k3 = dt * f(state, t +  3./ 8.*dt, m +      3./32.*k1 +      9./32.*k2, **llg_args)
-        k4 = dt * f(state, t + 12./13.*dt, m + 1932./2197.*k1 - 7200./2197.*k2 + 7296./2197.*k3, **llg_args)
-        k5 = dt * f(state, t +      1.*dt, m +   439./216.*k1 -          8.*k2 + 3680./ 513.*k3 -  845./4104.*k4, **llg_args)
-        k6 = dt * f(state, t +  1./ 2.*dt, m -    8. / 27.*k1 +          2.*k2 - 3544./2565.*k3 + 1859./4104.*k4 - 11./40.*k5, **llg_args)
+        k1 = dt * f(state, t,               m, **llg_args)
+        k2 = dt * f(state, t +  1./ 6.*dt,  m +    1. / 6.*k1, **llg_args)
+        k3 = dt * f(state, t +  4./ 15.*dt, m +    4. / 75.*k1    + 16./75.*k2, **llg_args)
+        k4 = dt * f(state, t +  2./ 3.*dt,  m +    5. / 6.*k1     - 8./3.*k2    + 5./2.*k3, **llg_args)
+        k5 = dt * f(state, t +  4./ 5.*dt,  m -    8. / 5.*k1     + 144./25.*k2 - 4.*k3        + 16./25.*k4, **llg_args)
+        k6 = dt * f(state, t +  1.*dt,      m +    361. / 320.*k1 - 18/5.*k2    + 407./128.*k3 - 11./80.*k4  + 55./128.*k5, **llg_args)
+        k7 = dt * f(state, t,               m -    11. / 640.*k1                + 11./256.*k3  - 11./160.*k4 + 11./256.*k5, **llg_args)
+        k8 = dt * f(state, t +  1.*dt,      m +    93. / 640.*k1  - 18./5.*k2   + 803./256.*k3 - 11./160.*k4 + 99./256.*k5 + 1.*k7, **llg_args)
 
-        dm = 16./135.*k1 + 6656./12825.*k3 + 28561./56430.*k4 - 9./50.*k5 + 2./55.*k6
-        rk_error = dm - (25./216.*k1 + 1408./2565.*k3 + 2197./4104.*k4 - 1./5.*k5)
+        dm =             31./384.*k1 + 1125./2816.*k3 + 9./32.*k4 + 125./768.*k5 + 5./66.*k6
+        rk_error = dm - (7./1408.*k1 + 1125./2816.*k3 + 9./32.*k4 + 125./768.*k5             + 5./66.*k7 + 5./66.*k8)
         return m+dm, t+dt, rk_error
 
     def _optimal_stepsize(self, rk_error, atol):
@@ -94,6 +96,7 @@ class RKF45(object):
             dt_opt = state._tensor(self._optimal_stepsize(err, atol or self._atol))
             if self._dt > dt_opt or self._dt > t1 - state.t:
                 # step size was too large, retry with optimal stepsize
+                # also rescale the thermal field accordingly
                 self._dt = torch.min(dt_opt, t1 - state.t).detach()
                 logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
             else:

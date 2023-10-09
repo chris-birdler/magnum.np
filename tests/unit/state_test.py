@@ -1,6 +1,7 @@
 import pytest
 import torch
 from magnumnp import *
+from helpers import *
 
 def test_decorated_function():
     n  = (8,10,12)
@@ -34,6 +35,12 @@ def test_Constant(requires_grad):
     state.m = state.Constant([0,0,1], requires_grad = requires_grad)
     torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]))
     assert state.m.requires_grad == requires_grad
+
+
+def test_normal(simple_state):
+    x = simple_state._normal(0.,1., size = simple_state.m.shape)
+    assert isinstance(x, torch.Tensor)
+    torch.testing.assert_close(x.shape, simple_state.m.shape)
 
 
 def test_spatial_coordinate():

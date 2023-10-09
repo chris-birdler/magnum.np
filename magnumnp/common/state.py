@@ -54,6 +54,8 @@ class State(object):
 
         self._material = Material(self)
         self.t = t0
+        self._step = 0
+        self._dt = 0.
 
         dtype_str = str(self._dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))
@@ -94,6 +96,13 @@ class State(object):
     def linspace(self, start, end, steps, dtype = None, **kwargs):
         dtype = dtype or self._dtype
         return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
+
+    def _normal(self, mean, std, dtype = None, **kwargs):
+        if not hasattr(self, "_rng"):
+            self._rng = torch.Generator(device=self._device)
+            self._rng.manual_seed(2147483647) # fixed seed
+        dtype = dtype or self._dtype or torch.get_default_dtype()
+        return torch.normal(mean, std, dtype=dtype, device=self._device, **kwargs)
 
     # _tensor for internal use only
     def _tensor(self, data, dtype = None):
