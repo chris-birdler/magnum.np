@@ -47,22 +47,23 @@ with Timer("Store evecs"):
     res.save_evecs3D("data/evecs.pvd")
 
 with Timer("Calculate Dispersion"):
+    points = lambda vvv: vvv[:,10,0,2,:]
     omega = res.omega.numpy()
-    kk, ww, mm = res.dispersion()
+    kk, ww, mm = res.dispersion(points, dx[0])
 
     fig, ax = plt.subplots()
     cbmax = np.log10(mm*2.).max()
     cbmin = np.log10(mm*2.).min()
-    ax.pcolormesh(kk*1e-9, ww*1e-9/2./np.pi, np.log10(np.abs(mm)**2.), cmap = "viridis", vmax = cbmax, vmin = cbmin, shading = "auto")
+    ax.pcolormesh(kk*1e-9, ww*1e-9/2./np.pi, np.log10(np.abs(mm)**2.), cmap = "viridis") #, vmax = cbmax, vmin = cbmin, shading = "auto")
 
-#    ref1 = np.loadtxt("ref/disp1.dat")
-#    ref2 = np.loadtxt("ref/disp2.dat")
-#    ref3 = np.loadtxt("ref/disp3.dat")
-#    ref4 = np.loadtxt("ref/disp4.dat")
-#    ax.plot(ref1[:,0], ref1[:,1], 'k--', linewidth=2)
-#    ax.plot(ref2[:,0], ref2[:,1], 'k--', linewidth=2)
-#    ax.plot(ref3[:,0], ref3[:,1], 'k--', linewidth=2)
-#    ax.plot(ref4[:,0], ref4[:,1], 'k--', linewidth=2)
+    ref1 = np.loadtxt("ref/disp1.dat")
+    ref2 = np.loadtxt("ref/disp2.dat")
+    ref3 = np.loadtxt("ref/disp3.dat")
+    ref4 = np.loadtxt("ref/disp4.dat")
+    ax.plot(ref1[:,0], ref1[:,1], 'k--', linewidth=2)
+    ax.plot(ref2[:,0], ref2[:,1], 'k--', linewidth=2)
+    ax.plot(ref3[:,0], ref3[:,1], 'k--', linewidth=2)
+    ax.plot(ref4[:,0], ref4[:,1], 'k--', linewidth=2)
 
     ax.set_xlim([-0.3, 0.3])
     ax.set_ylim([40, 80])

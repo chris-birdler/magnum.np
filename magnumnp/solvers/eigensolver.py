@@ -160,22 +160,18 @@ class EigenResult(object):
         with open(filename, 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
 
-    def dispersion(self, num_omega = 1000):
+    def dispersion(self, points, dx, num_omega = 1000):
         state = self._state
         vvv = self.evecs().numpy()
+        m = points(vvv)
+        kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(m.shape[0], dx))
 
-        dx = self._state.mesh.dx[0]
-        mz = vvv[1,10,:,2,:]
-        kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(mz.shape[0], dx))
-
-        window = np.hanning(mz.shape[0])[:,None]
-        mfft = np.abs(np.fft.fftshift(np.fft.fft(mz*window, axis=0), axes=0))
-        #mfft /= mfft.max(axis=0)[None,:]
+        window = np.hanning(m.shape[0])[:,None]
+        mfft = np.abs(np.fft.fftshift(np.fft.fft(m*window, axis=0), axes=0))
         mfft = mfft.T
 
-#        # resample on equidistant omega-grid
+        # resample on equidistant omega-grid
         ww = self._omega.numpy()
-#        mm = mfft
         disp = interp2d(kk, ww, mfft)
         ww = np.linspace(np.abs(ww).min(), np.abs(ww).max(), num = num_omega)
         mm = disp(kk, ww)
