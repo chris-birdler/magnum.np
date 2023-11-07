@@ -43,12 +43,12 @@ with Timer("Calculate Eigenvectors"):
         res.store("data/eigen.pt")
 
 with Timer("Store evecs"):
-    print("evals[GHz]:", res.freq.numpy()*1e-9)
+    print("evals[GHz]:", res.freq.cpu().numpy()*1e-9)
     res.save_evecs3D("data/evecs.pvd")
 
 with Timer("Calculate Dispersion"):
     points = lambda vvv: vvv[:,10,0,2,:]
-    omega = res.omega.numpy()
+    omega = res.omega.cpu().numpy()
     kk, ww, mm = res.dispersion(points, dx[0])
 
     fig, ax = plt.subplots()

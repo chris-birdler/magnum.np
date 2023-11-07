@@ -155,14 +155,14 @@ class EigenResult(object):
         for i, vvv in enumerate(evecs):
             filename_vti = "%s_%04d.vti" % (os.path.splitext(filename)[0], i)
             write_vti(vvv, filename_vti, self._state)
-            cElementTree.SubElement(xmlroot[0], "DataSet", timestep=str(self.freq[i].numpy()), file=os.path.basename(filename_vti))
+            cElementTree.SubElement(xmlroot[0], "DataSet", timestep=str(self.freq[i].cpu().numpy()), file=os.path.basename(filename_vti))
 
         with open(filename, 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
 
     def dispersion(self, points, dx, num_omega = 1000):
         state = self._state
-        vvv = self.evecs().numpy()
+        vvv = self.evecs().cpu().numpy()
         m = points(vvv)
         kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(m.shape[0], dx))
 
@@ -171,7 +171,7 @@ class EigenResult(object):
         mfft = mfft.T
 
         # resample on equidistant omega-grid
-        ww = self._omega.numpy()
+        ww = self._omega.cpu().numpy()
         disp = interp2d(kk, ww, mfft)
         ww = np.linspace(np.abs(ww).min(), np.abs(ww).max(), num = num_omega)
         mm = disp(kk, ww)
