@@ -59,5 +59,6 @@ class ExternalField(object):
         else:
             super().__setattr__(name, value)
 
-    def E(self, state):
-        return - constants.mu_0 * torch.sum(state.material["Ms"] * state.m * self.h(state) * state.cell_volumes)
+    def E(self, state, domain = Ellipsis):
+        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
+        return E[domain].sum()

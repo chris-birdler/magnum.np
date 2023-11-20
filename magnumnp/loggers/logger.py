@@ -37,8 +37,6 @@ class Logger(object):
             Write scalar to log file every nth call
         fields ([:class:`str` | :class:`function`])
             The columns to be written to the log file
-        every (:class:`int`)
-            Write row to log file every nth call
         fields_every (:class:`int`)
             Write fields to log file every nth call
 
