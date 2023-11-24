@@ -45,5 +45,6 @@ setup(name='magnumnp',
             'torch',
             'torchdiffeq',
             'xitorch',
+            'tqdm',
             ]
      )
