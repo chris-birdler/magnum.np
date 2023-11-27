@@ -47,8 +47,9 @@ class ExternalField(object):
         self._h = h
 
     @timedmethod
+    @torch.compile
     def h(self, state):
-        h = state.Tensor(self._h)(state.t)
+        h = state.Tensor(self._h)#(state.t)
         if len(h.shape) == 1:
             h = h.expand(state.m.shape)
         return h

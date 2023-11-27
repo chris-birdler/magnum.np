@@ -23,13 +23,27 @@ import numpy as np
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["State", "complex_dtype"]
+__all__ = ["State", "complex_dtype", "avg", "normalize"]
 
 complex_dtype = {
     torch.float: torch.complex,
     torch.float32: torch.complex64,
     torch.float64: torch.complex128
     }
+
+
+def avg(data, dim=(0,1,2)):
+    if data.dim() <= 1: # e.g. [0,0,1]
+        return data
+    elif data.dim() == 2: # state.m[domain]
+        return data.mean(dim=0)
+    else:                 # [nx,ny,nz,...]
+        return data.mean(dim=dim)
+
+def normalize(data):
+    data /= torch.linalg.norm(data, dim = -1, keepdim = True)
+    data[...] = torch.nan_to_num(data, posinf=0, neginf=0)
+    return data
 
 class State(object):
     def __init__(self, mesh, t0 = 0., device = None, dtype = None):

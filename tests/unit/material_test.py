@@ -17,7 +17,7 @@ def test_float():
     assert Ms.cpu() == pytest.approx(1./constants.mu_0)
     assert isinstance(state.t, torch.Tensor)
     assert isinstance(Ms, torch.Tensor)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
     demag.h(state)
     exchange.h(state)
 
@@ -27,55 +27,55 @@ def test_setter(simple_state):
     simple_state.material = {"Ms": 1./constants.mu_0, "A": 1e-11}
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     # set tensor
     simple_state.material = {"Ms": simple_state.Tensor([1./constants.mu_0]), "A": simple_state.Tensor([1e-11])}
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     # set tensor (no brackets)
     simple_state.material = {"Ms": simple_state.Tensor(1./constants.mu_0), "A": simple_state.Tensor(1e-11)}
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     # set tensor-field
     simple_state.material = {"Ms": simple_state.Constant([1./constants.mu_0]), "A": simple_state.Constant([1e-11])}
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     # set tensor-field (no brackets)
     simple_state.material = {"Ms": simple_state.Constant(1./constants.mu_0), "A": simple_state.Constant(1e-11)}
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     # set lambda (float)
     simple_state.material["Ms"] = lambda t: 1./constants.mu_0 * (t+1.)
     simple_state.t = 0.
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     simple_state.t = 1.
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(2./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(2./constants.mu_0)
 
     # set lambda (tensorfield)
     simple_state.material["Ms"] = lambda t: simple_state.Constant(1./constants.mu_0 * (t+1.))
     simple_state.t = 0.
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(1./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     simple_state.t = 1.
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
-    assert Ms.avg().cpu() == pytest.approx(2./constants.mu_0)
+    assert avg(Ms).cpu() == pytest.approx(2./constants.mu_0)
 
 
 def test_material_as_dict():
@@ -109,7 +109,7 @@ def test_domain():
     domain2 = x > 6e-9
     state.material["Ms"] = 1.
     state.material["Ms"][domain1] = 0.
-    assert state.material["Ms"].avg().cpu() == pytest.approx(0.75)
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(0.75)
 
 
 def test_set():
@@ -121,10 +121,10 @@ def test_set():
     domain1 = x < 2e-9
     domain2 = x > 6e-9
     state.material.set({"Ms": 1.}, domain1)
-    assert state.material["Ms"].avg().cpu() == pytest.approx(0.25)
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(0.25)
 
     state.material.set({"Ms": 2.})
-    assert state.material["Ms"].avg().cpu() == pytest.approx(2.)
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(2.)
 
     state.material.set({"Ms": 1.}, domain2)
-    assert state.material["Ms"].avg().cpu() == pytest.approx(1.75)
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(1.75)

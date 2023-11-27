@@ -20,7 +20,7 @@ import torch
 import os
 from collections.abc import Iterable
 from functools import reduce
-from magnumnp.common import logging, DecoratedTensor
+from magnumnp.common import logging, DecoratedTensor, avg
 
 __all__ = ["ScalarLogger"]
 
@@ -99,7 +99,7 @@ class ScalarLogger(object):
             if isinstance(raw_value, DecoratedTensor):
                 value = raw_value.avg().tolist()
             elif isinstance(raw_value, torch.Tensor):
-                value = raw_value.tolist()
+                value = avg(raw_value).tolist()
             else:
                 value = raw_value
             values.append((name, value))

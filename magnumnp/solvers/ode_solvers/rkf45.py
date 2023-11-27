@@ -62,7 +62,7 @@ class RKF45(object):
         return m+dm, t+dt, rk_error
 
     def _optimal_stepsize(self, rk_error, atol):
-        norm = torch.linalg.norm(rk_error._base.flatten() / atol, torch.inf)
+        norm = torch.linalg.norm(rk_error.flatten() / atol, torch.inf)
         if torch.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 

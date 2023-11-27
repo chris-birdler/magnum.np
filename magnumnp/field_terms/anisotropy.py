@@ -40,6 +40,7 @@ class UniaxialAnisotropyField(LinearFieldTerm):
     parameters = ["Ku", "Ku_axis"]
 
     @timedmethod
+    @torch.compile
     def h(self, state):
         Ku = state.material[self.Ku]
         Ku_axis = state.material[self.Ku_axis]
@@ -96,6 +97,7 @@ class CubicAnisotropyField(FieldTerm):
         return R
 
     @timedmethod
+    @torch.compile
     def h(self, state):
         Kc1 = state.material[self.Kc1]
         Kc2 = state.material[self.Kc2]
@@ -108,6 +110,7 @@ class CubicAnisotropyField(FieldTerm):
         h = torch.einsum('...a, ...ba-> ...b', h, R) # matmult transpose
         return torch.nan_to_num(-1./constants.mu_0/state.material["Ms"] * h, posinf=0, neginf=0)
 
+    @torch.compile
     def E(self, state):
         R = self._R(state)
         mx, my, mz = torch.einsum('...a, ...ab-> ...b', state.m, R).unbind(dim=-1) # matmult
