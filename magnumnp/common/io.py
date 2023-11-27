@@ -21,7 +21,7 @@ import numpy as np
 import scipy
 import pyvista as pv
 import os
-from . import Mesh, DecoratedTensor
+from . import Mesh
 
 __all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
 
@@ -147,7 +147,7 @@ def read_vti(filename):
             dim = mesh.n
         else:
             dim = mesh.n + (vals.shape[-1],)
-        f = torch.from_numpy(vals.reshape(dim, order="F")).as_subclass(DecoratedTensor)
+        f = torch.from_numpy(vals.reshape(dim, order="F"))
         fields[name] = f
     return mesh, fields
 

@@ -28,7 +28,6 @@ from magnumnp.common.io import *
 from magnumnp.common.time_interpolator import *
 
 __all__ = (["constants"] +
-           decorated_tensor.__all__ +
            logging.__all__ +
            material.__all__ +
            mesh.__all__ +

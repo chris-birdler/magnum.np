@@ -20,7 +20,7 @@ import torch
 import os
 import subprocess
 import numpy as np
-from magnumnp.common import logging, DecoratedTensor, Material
+from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
 __all__ = ["State", "complex_dtype"]
@@ -115,16 +115,14 @@ class State(object):
     # TODO: avoid unneeded DecoratedTensors (e.g. state.Tensor(0.))
     def Tensor(self, data, dtype = None, requires_grad = False):
         dtype = dtype or self._dtype
-        if isinstance(data, DecoratedTensor) and data.dtype == dtype:
-            return data
-
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
-            t = DecoratedTensor(torch.tensor(data, dtype=dtype, device=self._device), self.cell_volumes)
+            t = torch.tensor(data, dtype=dtype, device=self._device)
             t.requires_grad = requires_grad
             return t
         elif isinstance(data, torch.Tensor):
             requires_grad = requires_grad or data.requires_grad
-            return DecoratedTensor(data.requires_grad_(requires_grad), self.cell_volumes)
+            data.requires_grad_(requires_grad)
+            return data
         elif callable(data):
             return lambda t: self.Tensor(data(t))
         else:
@@ -133,7 +131,7 @@ class State(object):
     def Constant(self, c, dtype = None, requires_grad = False):
         dtype = dtype or self._dtype
         c = self.Tensor(c, dtype=dtype)
-        x = DecoratedTensor(self.zeros(self.mesh.n + c.shape, dtype=dtype), self.cell_volumes)
+        x = self.zeros(self.mesh.n + c.shape, dtype=dtype)
         x[...] = c
         x.requires_grad = requires_grad
         return x
@@ -144,7 +142,7 @@ class State(object):
         z = self.dx[2].cumsum(0) - self.dx[2]/2. + self.mesh.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
-        return DecoratedTensor(XX, self.cell_volumes), DecoratedTensor(YY, self.cell_volumes), DecoratedTensor(ZZ, self.cell_volumes)
+        return XX, YY, ZZ
 
     def convert_tensorfield(self, value):
         ''' convert arbitrary input to tensor-fields '''

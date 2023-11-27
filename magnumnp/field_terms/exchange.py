@@ -41,20 +41,14 @@ class ExchangeField(LinearFieldTerm):
         super().__init__(**kwargs)
 
     @timedmethod
+    @torch.compile
     def h(self, state):
-        A = state.material[self.A].torch_tensor
-        Ms = state.material["Ms"].torch_tensor
-        m = state.m.torch_tensor
-        if self._domain != None:
-            A = A * self._domain[:,:,:,None]
+        A = state.material[self.A]
+        Ms = state.material["Ms"]
+        m = state.m
         dx = state.dx[0].reshape(-1,1,1,1)
         dy = state.dx[1].reshape(1,-1,1,1)
         dz = state.dx[2].reshape(1,1,-1,1)
-        h = self._h(m, A, Ms, dx, dy, dz, state)
-        return state.Tensor(h)
-
-    @torch.compile
-    def _h(self, m, A, Ms, dx, dy, dz, state):
         h = state.zeros(state.mesh.n + (3,))
 
         # x
@@ -100,4 +94,4 @@ class ExchangeField(LinearFieldTerm):
             h += A_avg * (torch.roll(state.m, -1, dims=2) - state.m) / dz # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return state.Tensor(h.nan_to_num(posinf=0, neginf=0))
