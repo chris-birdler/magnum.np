@@ -109,7 +109,8 @@ def write_vti(fields, filename, state = None):
                           spacing = dx,
                           origin = origin)
 
-    for name, f in fields.items():
+    for name in fields:
+        f = fields[name]
         if len(f.shape) == 0 or len(f.shape) == 1: # expand constant tensor to tensorfield
             f = f.expand(n + f.shape)
         if len(f.shape) == 4 and f.shape[-1] == 1: # remove dim for scalar field (nx,ny,nz,1) => (nx,ny,nz)

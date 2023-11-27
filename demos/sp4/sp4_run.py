@@ -15,7 +15,7 @@ def run_sp4():
     
     state.material = {
         "Ms": 8e5,
-        "A": state.Constant([1.3e-11]),
+        "A": 1.3e-11,
         "alpha": 0.02
         }
     
