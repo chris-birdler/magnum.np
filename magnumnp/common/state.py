@@ -126,7 +126,6 @@ class State(object):
         else:
             return torch.tensor(data, dtype=dtype, device=self._device)
 
-    # TODO: avoid unneeded DecoratedTensors (e.g. state.Tensor(0.))
     def Tensor(self, data, dtype = None, requires_grad = False):
         dtype = dtype or self._dtype
         if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
@@ -166,8 +165,7 @@ class State(object):
         if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
             shape = value.shape
             value = value.reshape((1,1,1) + tuple(shape))
-            value = value.expand(self.mesh.n + tuple(shape))
-            value._expanded = True # annotate expanded tensor (clone will be before individual items are modified)
+            value = value.expand(self.mesh.n + tuple(shape)).clone()
         elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
             value = value.unsqueeze(-1)
         else: # otherwise assume the dimention is correct!
