@@ -24,14 +24,15 @@ class Material(dict):
     def __init__(self, state):
         self._state = state
 
-#    def __getitem__(self, key):
-#        return super().__getitem__(key)(self._state.t)
+    def __getitem__(self, key):
+        return super().__getitem__(key)(self._state.t)
 
     def __setitem__(self, key, value):
         if callable(value):
             super().__setitem__(key, lambda t: self._state.convert_tensorfield(value(t)))
         else:
-            super().__setitem__(key, self._state.convert_tensorfield(value))
+            value = self._state.convert_tensorfield(value)
+            super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
     def set(self, material, domain=None):
         r"""
