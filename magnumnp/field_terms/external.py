@@ -49,10 +49,10 @@ class ExternalField(object):
     @timedmethod
     @torch.compile
     def h(self, state):
-        h = state.Tensor(self._h)#(state.t)
-        if len(h.shape) == 1:
-            h = h.expand(state.m.shape)
-        return h
+        h = self._h
+        if callable(h):
+            h = h(state.t)
+        return state.Tensor(h)
 
     def __setattr__(self, name, value):
         if name == "h":
@@ -60,6 +60,7 @@ class ExternalField(object):
         else:
             super().__setattr__(name, value)
 
+    @torch.compile
     def E(self, state, domain = Ellipsis):
         E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
         return E[domain].sum()

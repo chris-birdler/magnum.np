@@ -77,7 +77,7 @@ def test_cubic_material_tensor():
     my = sin(phi - pi/4)
     mz = 0.
     state.m = state.Constant((mx, my, mz))
-    torch.testing.assert_close(aniso.h(state).avg(), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
+    torch.testing.assert_close(avg(aniso.h(state)), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
 
 def test_renamed_parameters():
     n  = (2, 3, 4)
@@ -96,4 +96,4 @@ def test_renamed_parameters():
     my = sin(phi - pi/4)
     mz = 0.
     state.m = state.Constant((mx, my, mz))
-    torch.testing.assert_close(aniso.h(state).avg(), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
+    torch.testing.assert_close(avg(aniso.h(state)), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
