@@ -51,18 +51,14 @@ class DMIField(LinearFieldTerm):
         super().__init__(**kwargs)
 
     @timedmethod
+    @torch.compile
     def h(self, state):
-        D = state.material[self.D].torch_tensor
-        Ms = state.material["Ms"].torch_tensor
-        m = state.m.torch_tensor
+        D = state.material[self.D]
+        Ms = state.material["Ms"]
+        m = state.m
         dx = state.dx[0].reshape(-1,1,1,1)
         dy = state.dx[1].reshape(1,-1,1,1)
         dz = state.dx[2].reshape(1,1,-1,1)
-        h = self._h(m, D, Ms, dx, dy, dz, state)
-        return state.Tensor(h)
-
-    @torch.compile
-    def _h(self, m, D, Ms, dx, dy, dz, state):
         h = state.zeros(state.mesh.n + (3,))
 
         # x
@@ -126,7 +122,8 @@ class DMIField(LinearFieldTerm):
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / 2.
 
         h *= 2. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return state.Tensor(h.nan_to_num(posinf=0, neginf=0))
+
 
 
 class InterfaceDMIField(DMIField):
