@@ -97,7 +97,8 @@ def write_vti(fields, filename, state = None):
         fields = {"f%03d"%i:f for (i,f) in enumerate(fields)}
 
     if state is None:
-        n = list(fields.values())[0].shape[:3]
+        values = [fields[name] for name in fields]
+        n = values[0].shape[:3]
         dx = (1., 1., 1.)
         origin = (0., 0., 0.)
     else:

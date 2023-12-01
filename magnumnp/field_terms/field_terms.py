@@ -34,7 +34,6 @@ class FieldTerm(object):
             setattr(self, key, value)
 
 class LinearFieldTerm(FieldTerm):
-    @torch.compile
     def E(self, state, domain = Ellipsis):
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
         return E[domain].sum()

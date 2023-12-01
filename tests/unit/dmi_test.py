@@ -40,7 +40,7 @@ def test_interface_1D():
                       "Di": -3e-3,
                       "alpha": 1.}
     state.m = state.Constant([0.1,0.0,1.0])
-    state.m.normalize()
+    normalize(state.m)
 
     exchange = ExchangeField()
     aniso = UniaxialAnisotropyField()

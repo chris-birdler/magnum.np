@@ -32,13 +32,24 @@ complex_dtype = {
     }
 
 
-def avg(data, dim=(0,1,2)):
-    if data.dim() <= 1: # e.g. [0,0,1]
-        return data
-    elif data.dim() == 2: # state.m[domain]
-        return data.mean(dim=0)
-    else:                 # [nx,ny,nz,...]
-        return data.mean(dim=dim)
+def avg(data, cell_volumes = None, dim=(0,1,2)):
+    if cell_volumes == None:
+        if data.dim() <= 1: # e.g. [0,0,1]
+            return data
+        elif data.dim() == 2: # state.m[domain]
+            return data.mean(dim=0)
+        else:                 # [nx,ny,nz,...]
+            return data.mean(dim=dim)
+    else: # non-equidistant
+        if data.dim() <= 1: # e.g. [0,0,1]
+            return data
+        elif data.dim() == 2: # state.m[domain]
+            return (data * cell_volumes).sum(dim=0) / cell_volumes.sum(dim=0)
+        elif data.dim() == 3: # [nx,ny,nz]
+            return (data * cell_volumes.squeeze(-1)).sum(dim=dim) / cell_volumes.sum()
+        else:                 # [nx,ny,nz,...]
+            return (data * cell_volumes).sum(dim=dim) / cell_volumes.sum()
+
 
 def normalize(data):
     data /= torch.linalg.norm(data, dim = -1, keepdim = True)

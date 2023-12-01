@@ -37,6 +37,7 @@ class SpinOrbitTorque(object):
     In case of Spin-Orbit-Torqe (SOT) :math:`\eta_\text{field}` and :math:`\eta_\text{damp}` are constant material parameters.
     """
     @timedmethod
+    @torch.compile
     def h(self, state):
         p = state.material["p"].expand_as(state.m)
         h = state.material["eta_damp"] * torch.linalg.cross(state.m, p) + state.material["eta_field"] * p
@@ -66,7 +67,7 @@ class SpinTorqueZhangLi(object):
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
 
-        j = state.j(state.t)
+        j = state.j # (state.t) TODO: allow time-dependent j
         jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
 
         return state.material["b"] / constants.gamma * (torch.linalg.cross(state.m, jgradm) + state.material["xi"] * jgradm)

@@ -31,17 +31,17 @@ def test_precession(solver):
         "alpha": 0.00
         }
     state.m = state.Constant([0.1,0,1])
-    state.m.normalize()
+    normalize(state.m)
 
     hz = 0.1/constants.mu_0
-    external = ExternalField([0.0, 0.0, hz])
+    external = ExternalField(state.Constant([0.0, 0.0, hz]))
 
     f0 = constants.gamma * hz  / (2. * torch.pi) # lamour frequency
 
     llg = LLGSolver([external], solver = solver, rtol = 1e-5, atol = 1e-5)
     llg.step(state, 1/f0)
 
-    assert state.m.average()[1].cpu() == pytest.approx(0., abs=1e-4, rel=0)
+    assert avg(state.m)[1].cpu() == pytest.approx(0., abs=1e-4, rel=0)
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_relax(solver):
@@ -57,14 +57,14 @@ def test_relax(solver):
         "alpha": 0.01
         }
     state.m = state.Constant([1,0,0.1])
-    state.m.normalize()
+    normalize(state.m)
 
     aniso = UniaxialAnisotropyField()
 
     llg = LLGSolver([aniso], solver = solver)
     llg.relax(state, rtol = 1e-8)
 
-    torch.testing.assert_close(state.m.avg(), state.Tensor([0,0,1]), atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(avg(state.m), state.Tensor([0,0,1]), atol=1e-2, rtol=1e-2)
 
 def test_stochastic():
     n  = (1, 1, 1)
@@ -79,7 +79,7 @@ def test_stochastic():
         "alpha": 0.01
         }
     state.m = state.Constant([0,0,1])
-    state.m.normalize()
+    normalize(state.m)
     state.T = 300
 
     aniso = UniaxialAnisotropyField()

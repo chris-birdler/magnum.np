@@ -49,10 +49,10 @@ class ExternalField(object):
     @timedmethod
     @torch.compile
     def h(self, state):
-        h = self._h
-        if callable(h):
-            h = h(state.t)
-        return state.Tensor(h)
+        if callable(self._h):
+            return state.Tensor(self._h(state.t))
+        else:
+            return state.Tensor(self._h)
 
     def __setattr__(self, name, value):
         if name == "h":
