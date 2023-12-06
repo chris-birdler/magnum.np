@@ -1,3 +1,6 @@
+latest [2023-12-06]
+- fixed sign in DMI when using PBCs
+
 1.1.4 [2023-11-08]
 - added Dispersion Calculator demo
 - added dispersion to eigenmode solver
