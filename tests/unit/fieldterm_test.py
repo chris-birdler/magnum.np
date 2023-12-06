@@ -248,3 +248,45 @@ def test_energy_domain():
     E2 = aniso.E(state, ~domain1)
 
     torch.testing.assert_close(E1, 5*E2, atol=0, rtol=1e-15)
+
+@pytest.mark.parametrize("field_term", [InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField()])
+def test_pbc(field_term):
+    n  = (20, 10, 5)
+    dx = (1e-9, 1e-9, 1e-9)
+
+    # no PBC
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+
+    state.material = {"alpha":   state.Constant([0.02]),
+                      "Ms":      state.Constant([8e5]),
+                      "A":       state.Constant([1.3e-11]),
+                      "Ku":      state.Constant([1e5]),
+                      "Ku_axis": state.Constant([0,1,0]),
+                      "Di":      state.Constant([1.]),
+                      "Db":      state.Constant([1.]),
+                      "DD2d":    state.Constant([1.])}
+
+    x, y, z = state.SpatialCoordinate()
+    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    h1 = field_term.h(state)
+
+    # PBC
+    mesh = Mesh(n, dx, pbc = (10,10,0))
+    state = State(mesh, device = state._device)
+
+    state.material = {"alpha":   state.Constant([0.02]),
+                      "Ms":      state.Constant([8e5]),
+                      "A":       state.Constant([1.3e-11]),
+                      "Di":      state.Constant([1.]),
+                      "Db":      state.Constant([1.]),
+                      "DD2d":    state.Constant([1.])}
+
+    x, y, z = state.SpatialCoordinate()
+    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    h2 = field_term.h(state)
+    diff = (h1-h2)[1:-1,1:-1,1:-1,:]
+
+    #print("diff:", diff.abs().max(), h1.abs().max(), diff)
+    #write_vti({"h":h1, "h_pbc": h2, "diff":h1-h2}, "test.vti")
+    torch.testing.assert_close(diff, torch.zeros_like(diff), atol=1e-20, rtol=1e-20)
