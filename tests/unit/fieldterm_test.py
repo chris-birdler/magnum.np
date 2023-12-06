@@ -287,6 +287,4 @@ def test_pbc(field_term):
     h2 = field_term.h(state)
     diff = (h1-h2)[1:-1,1:-1,1:-1,:]
 
-    #print("diff:", diff.abs().max(), h1.abs().max(), diff)
-    #write_vti({"h":h1, "h_pbc": h2, "diff":h1-h2}, "test.vti")
     torch.testing.assert_close(diff, torch.zeros_like(diff), atol=1e-20, rtol=1e-20)
