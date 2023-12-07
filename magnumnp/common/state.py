@@ -155,8 +155,6 @@ class State(object):
     def Constant(self, c, dtype = None):
         dtype = dtype or self._dtype
         c = self.Tensor(c, dtype = dtype)
-        if len(c.shape) == 0: # allow e.g. state.Constant(Ms) instead of state.Constant([Ms])
-            c = c.reshape(-1)
         x = self.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c
         return x

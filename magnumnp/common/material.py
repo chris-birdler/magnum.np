@@ -31,6 +31,8 @@ class Material(dict):
         if callable(value):
             super().__setitem__(key, value)
         else:
+            if len(value.shape) < 4:
+                raise ValueError("Casting of material parameters is deprecated. Use state.Constant([value]) instead.")
             super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
     def set(self, material, domain=None):
