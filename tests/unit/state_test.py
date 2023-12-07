@@ -9,7 +9,7 @@ def test_domain():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
+    state.material = {"Ms": state.Constant(Ms)}
     state.m = state.Constant([1,1,1])
     torch.testing.assert_close(avg(state.m), state.Tensor([1,1,1]))
 
@@ -31,7 +31,7 @@ def test_Constant(requires_grad):
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
+    state.material = {"Ms": state.Constant(Ms)}
     state.m = state.Constant([0,0,1], requires_grad = requires_grad)
     torch.testing.assert_close(avg(state.m), state.Tensor([0,0,1]))
     assert state.m.requires_grad == requires_grad
@@ -73,7 +73,7 @@ def test_average():
     mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.) )
     state = State(mesh)
     state.m = state.Constant([1.,0.,0.])
-    state.material["A"] = 1.
+    state.material["A"] = state.Constant(1.)
     x, y, z = state.SpatialCoordinate()
 
     torch.testing.assert_close(avg(state.m), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
@@ -88,7 +88,7 @@ def test_average_nonequi():
     mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0))
     state = State(mesh)
     state.m = state.Constant([1.,0.,0.])
-    state.material["A"] = 1.
+    state.material["A"] = state.Constant(1.)
     x, y, z = state.SpatialCoordinate()
 
     torch.testing.assert_close(avg(state.m, state.cell_volumes), state.Tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)

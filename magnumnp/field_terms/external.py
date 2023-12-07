@@ -44,23 +44,21 @@ class ExternalField(object):
         external = ExternalField(h)
     """
     def __init__(self, h):
-        self._h = h
+        self.__setattr__("h", h)
 
     @timedmethod
-    @torch.compile
     def h(self, state):
-        if callable(self._h):
-            return state.Tensor(self._h(state.t))
-        else:
-            return state.Tensor(self._h)
+        return state.Tensor(self._h(state.t))
 
     def __setattr__(self, name, value):
         if name == "h":
-            self._h = value
+            if callable(value):
+                self._h = value
+            else:
+                self._h = lambda t: value
         else:
             super().__setattr__(name, value)
 
-    @torch.compile
     def E(self, state, domain = Ellipsis):
         E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
         return E[domain].sum()

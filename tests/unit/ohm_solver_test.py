@@ -9,7 +9,7 @@ def test_cube():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"sigma": 1.}
+    state.material = {"sigma": state.Constant(1.)}
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)
     dirichlet_bc_nodes[0,:,:] = True

@@ -7,9 +7,9 @@ from helpers import *
 def test_step(simple_state, solver):
     demag    = DemagField()
     exchange = ExchangeField()
-    external = ExternalField([-24.6e-3/constants.mu_0,
-                              +4.3e-3/constants.mu_0,
-                              0.0])
+    external = ExternalField(simple_state.Constant([-24.6e-3/constants.mu_0,
+                                                    +4.3e-3/constants.mu_0,
+                                                     0.0]))
 
     simple_state.m = simple_state.Constant([1,0,0])
     simple_state.m[5:,:,:,0] = -1.0
@@ -27,8 +27,8 @@ def test_precession(solver):
 
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "alpha": 0.00
+        "Ms": state.Constant(8e5),
+        "alpha": state.Constant(0.00)
         }
     state.m = state.Constant([0.1,0,1])
     normalize(state.m)
@@ -51,10 +51,10 @@ def test_relax(solver):
 
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "Ku": 1e5,
-        "Ku_axis": state.Tensor([0,0,1]),
-        "alpha": 0.01
+        "Ms": state.Constant(8e5),
+        "Ku": state.Constant(1e5),
+        "Ku_axis": state.Constant([0,0,1]),
+        "alpha": state.Constant(0.01)
         }
     state.m = state.Constant([1,0,0.1])
     normalize(state.m)
@@ -73,10 +73,10 @@ def test_stochastic():
 
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "Ku": 1e5,
-        "Ku_axis": state.Tensor([0,0,1]),
-        "alpha": 0.01
+        "Ms": state.Constant(8e5),
+        "Ku": state.Constant(1e5),
+        "Ku_axis": state.Constant([0,0,1]),
+        "alpha": state.Constant(0.01)
         }
     state.m = state.Constant([0,0,1])
     normalize(state.m)

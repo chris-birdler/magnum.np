@@ -44,90 +44,24 @@ def test_material_constant(field_term):
 
     h = field_term.h(state)
 
-
-@pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
-def test_material_tensor(field_term):
-    n  = (10, 5, 1)
-    dx = (1e-9, 1e-9, 1e-9)
-    mesh = Mesh(n, dx)
-    state = State(mesh)
-
-    state.material = {"alpha":   state.Tensor([0.02]),
-                      "Ms":      state.Tensor([8e5]),
-                      "A":       state.Tensor([1.3e-11]),
-                      "Ku":      state.Tensor([1e5]),
-                      "Ku_axis": state.Tensor([0,1,0]),
-                      "Di":      state.Tensor([1.]),
-                      "Db":      state.Tensor([1.]),
-                      "DD2d":    state.Tensor([1.])}
-
-    state.m = state.Constant([1,0,0])
-    state.m[5:,:,:,0] = -1.0
-
-    h = field_term.h(state)
-
-
-@pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
-def test_material_tensor2(field_term):
-    n  = (10, 5, 1)
-    dx = (1e-9, 1e-9, 1e-9)
-    mesh = Mesh(n, dx)
-    state = State(mesh)
-
-    state.material = {"alpha":   state.Tensor(0.02),
-                      "Ms":      state.Tensor(8e5),
-                      "A":       state.Tensor(1.3e-11),
-                      "Ku":      state.Tensor(1e5),
-                      "Ku_axis": state.Tensor([0,1,0]),
-                      "Di":      state.Tensor(1.),
-                      "Db":      state.Tensor(1.),
-                      "DD2d":    state.Tensor(1.)}
-
-    state.m = state.Constant([1,0,0])
-    state.m[5:,:,:,0] = -1.0
-
-    h = field_term.h(state)
-
-
-@pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
-def test_material_float(field_term):
-    n  = (10, 5, 1)
-    dx = (1e-9, 1e-9, 1e-9)
-    mesh = Mesh(n, dx)
-    state = State(mesh)
-
-    state.material = {"alpha":   0.02,
-                      "Ms":      8e5,
-                      "A":       1.3e-11,
-                      "Ku":      1e5,
-                      "Ku_axis": [0,1,0],
-                      "Di":      1.,
-                      "Db":      1.,
-                      "DD2d":    1.}
-
-    state.m = state.Constant([1,0,0])
-    state.m[5:,:,:,0] = -1.0
-
-    h = field_term.h(state)
-
 def test_regression():
     n  = (10, 20, 30)
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"alpha":    state.Tensor(0.02),
-                      "Ms":       state.Tensor(8e5),
-                      "A":        state.Tensor(1.3e-11),
-                      "Ku":       state.Tensor(1e5),
-                      "Ku_axis":  state.Tensor([0,1,0]),
-                      "Kc1":      state.Tensor(1e3),
-                      "Kc2":      state.Tensor(1e4),
-                      "Kc_alpha": state.Tensor(0.1),
-                      "Kc_beta":  state.Tensor(0.2),
-                      "Kc_gamma": state.Tensor(0.3),
-                      "Di":       state.Tensor(1.),
-                      "Db":       state.Tensor(1.),
-                      "DD2d":     state.Tensor(1.)}
+    state.material = {"alpha":    state.Constant(0.02),
+                      "Ms":       state.Constant(8e5),
+                      "A":        state.Constant(1.3e-11),
+                      "Ku":       state.Constant(1e5),
+                      "Ku_axis":  state.Constant([0,1,0]),
+                      "Kc1":      state.Constant(1e3),
+                      "Kc2":      state.Constant(1e4),
+                      "Kc_alpha": state.Constant(0.1),
+                      "Kc_beta":  state.Constant(0.2),
+                      "Kc_gamma": state.Constant(0.3),
+                      "Di":       state.Constant(1.),
+                      "Db":       state.Constant(1.),
+                      "DD2d":     state.Constant(1.)}
 
     x, y, z = state.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
@@ -186,14 +120,14 @@ def test_nonequidistant(field_term):
     mesh = Mesh(n, dx)
     state = State(mesh)
 
-    state.material = {"alpha":   state.Tensor([0.02]),
-                      "Ms":      state.Tensor([8e5]),
-                      "A":       state.Tensor([1.3e-11]),
-                      "Ku":      state.Tensor([1e5]),
-                      "Ku_axis": state.Tensor([0,1,0]),
-                      "Di":      state.Tensor([1.]),
-                      "Db":      state.Tensor([1.]),
-                      "DD2d":    state.Tensor([1.])}
+    state.material = {"alpha":   state.Constant([0.02]),
+                      "Ms":      state.Constant([8e5]),
+                      "A":       state.Constant([1.3e-11]),
+                      "Ku":      state.Constant([1e5]),
+                      "Ku_axis": state.Constant([0,1,0]),
+                      "Di":      state.Constant([1.]),
+                      "Db":      state.Constant([1.]),
+                      "DD2d":    state.Constant([1.])}
 
     state.m = state.Constant([1,0,0])
     state.m[5:,:,:,0] = -1.0
@@ -209,9 +143,9 @@ def test_energy_nonequidistant():
     mesh = Mesh(n, dx)
     state = State(mesh)
 
-    state.material = {"Ms":      state.Tensor([1.]),
-                      "Ku":      state.Tensor([1.]),
-                      "Ku_axis": state.Tensor([0,1,0])}
+    state.material = {"Ms":      state.Constant([1.]),
+                      "Ku":      state.Constant([1.]),
+                      "Ku_axis": state.Constant([0,1,0])}
 
     aniso = UniaxialAnisotropyField()
 
@@ -234,9 +168,9 @@ def test_energy_domain():
     mesh = Mesh(n, dx)
     state = State(mesh)
 
-    state.material = {"Ms":      state.Tensor([1.]),
-                      "Ku":      state.Tensor([1.]),
-                      "Ku_axis": state.Tensor([0,1,0])}
+    state.material = {"Ms":      state.Constant([1.]),
+                      "Ku":      state.Constant([1.]),
+                      "Ku_axis": state.Constant([0,1,0])}
 
     aniso = UniaxialAnisotropyField()
 

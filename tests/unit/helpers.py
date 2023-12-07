@@ -14,21 +14,21 @@ def simple_state(simple_mesh):
     state = magnumnp.State(simple_mesh)
 
     state.material = {
-        "Ms": 8e5,
-        "A": 1.3e-11,
-        "Ku": 1e3,
-        "Ku_axis": [0, 0, 1],
-        "Di": 1e-3,
-        "Db": 1e-3,
-        "DD2d": 1e-3,
-        "eta_damp": -0.1,
-        "eta_field": 0.3,
-        "p": [0, -1, 0],
-        "d": 3e-9,
-        "je": 6.9e10,
-        "xi": 0.05,
-        "b": 72.17e-12,
-        "alpha": 0.02
+        "Ms": state.Constant(8e5),
+        "A": state.Constant(1.3e-11),
+        "Ku": state.Constant(1e3),
+        "Ku_axis": state.Constant([0, 0, 1]),
+        "Di": state.Constant(1e-3),
+        "Db": state.Constant(1e-3),
+        "DD2d": state.Constant(1e-3),
+        "eta_damp": state.Constant(-0.1),
+        "eta_field": state.Constant(0.3),
+        "p": state.Constant([0, -1, 0]),
+        "d": state.Constant(3e-9),
+        "je": state.Constant(6.9e10),
+        "xi": state.Constant(0.05),
+        "b": state.Constant(72.17e-12),
+        "alpha": state.Constant(0.02)
         }
 
     state.m = state.Constant([1,0,0])

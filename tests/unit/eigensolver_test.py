@@ -26,7 +26,8 @@ def test_singlespin_exchange():
     mesh = Mesh(n, dx)
     state = State(mesh)
     x,y,z = state.SpatialCoordinate()
-    state.material = {"Ms": 1., "A": 1.3e-11}
+    state.material = {"Ms": state.Constant(1.), 
+                      "A": state.Constant(1.3e-11)}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
     magnetic = (x**2.> 0) 
 
@@ -46,9 +47,9 @@ def test_singlespin_exchange():
 ##    mesh = Mesh(n, dx)
 ##    state = State(mesh)
 ##    state.material = {
-##            "Ms": Ms,
-##            "Ku": 0.5/constants.mu_0,
-##            "Ku_axis": (1,0,0),
+##            "Ms": state.Constant(Ms),
+##            "Ku": state.Constant(0.5/constants.mu_0),
+##            "Ku_axis": state.Constant([1,0,0]),
 ##            }
 ##    aniso = UniaxialAnisotropyField()
 ##
@@ -70,8 +71,8 @@ def test_saturated_thinfilm():
     state = State(mesh)
     x,y,z = state.SpatialCoordinate()
     state.material = {
-            "A":lex**2*Js**2/(2.*constants.mu_0),
-            "Ms":1./constants.mu_0,
+            "A": state.Constant(lex**2*Js**2/(2.*constants.mu_0)),
+            "Ms": state.Constant(1./constants.mu_0),
             }
     magnetic = (x**2.> 0) 
     demag    = DemagField()

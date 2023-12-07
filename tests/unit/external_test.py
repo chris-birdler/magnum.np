@@ -10,7 +10,7 @@ def test_different_tensors():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
+    state.material = {"Ms": state.Constant(Ms)}
     state.m = state.Constant([1,0,0])
 
     # test vector [3]
@@ -45,11 +45,11 @@ def test_setter():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
+    state.material = {"Ms": state.Constant(Ms)}
     state.m = state.Constant([1,0,0])
 
-    external = ExternalField([1,0,0])
+    external = ExternalField(state.Constant([1,0,0]))
     torch.testing.assert_close(avg(external.h(state)), state.Tensor([1,0,0]), atol=1e-15, rtol=1e-15)
 
-    external.h = [0,1,0]
+    external.h = state.Constant([0,1,0])
     torch.testing.assert_close(avg(external.h(state)), state.Tensor([0,1,0]), atol=1e-15, rtol=1e-15)
