@@ -13,11 +13,11 @@ def run_sp5():
     
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "A": 1.3e-11,
-        "alpha": 0.1,
-        "xi": 0.05,
-        "b": 72.17e-12
+        "Ms": state.Constant([8e5]),
+        "A": state.Constant([1.3e-11]),
+        "alpha": state.Constant([0.1]),
+        "xi": state.Constant([0.05]),
+        "b": state.Constant([72.17e-12])
         }
     
     # initialize magnetization that relaxes into s-state
