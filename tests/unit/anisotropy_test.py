@@ -20,7 +20,7 @@ def test_cubic_energy():
         mx = cos(phi)
         my = sin(phi)
         mz = 0.
-        state.m = state.Constant((mx, my, mz))
+        state.m = state.Constant([mx, my, mz])
 
         h_sim = aniso.h(state)
         E_sim = aniso.E(state)
@@ -48,7 +48,7 @@ def test_cubic_energy_rotated():
         mx = cos(phi - pi/4)
         my = sin(phi - pi/4)
         mz = 0.
-        state.m = state.Constant((mx, my, mz))
+        state.m = state.Constant([mx, my, mz])
         h_sim = aniso.h(state)
         E_sim = aniso.E(state)
 
@@ -75,5 +75,5 @@ def test_renamed_parameters():
     mx = cos(phi - pi/4)
     my = sin(phi - pi/4)
     mz = 0.
-    state.m = state.Constant((mx, my, mz))
+    state.m = state.Constant([mx, my, mz])
     torch.testing.assert_close(avg(aniso.h(state)), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)

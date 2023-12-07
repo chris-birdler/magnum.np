@@ -12,7 +12,7 @@ def test_energy_cube(dtype):
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh, dtype=dtype)
-    state.material = {"Ms": state.Constant(Ms)}
+    state.material = {"Ms": state.Constant([Ms])}
     demag = DemagField()
 
     state.m = state.Constant([1,0,0])
@@ -28,7 +28,7 @@ def test_single():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
     demag = DemagField()
 
     state.m = state.Constant([1,0,0])
@@ -41,7 +41,7 @@ def test_truePBC():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {'Ms': state.Constant(Ms)}
+    state.material = {'Ms': state.Constant([Ms])}
     state.m = state.Constant([1,0,0])
     demag = DemagFieldPBC()
 
@@ -57,7 +57,7 @@ def test_pseudoPBC():
     # cube
     mesh = Mesh(n, dx, pbc = (0,0,0))
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
@@ -72,7 +72,7 @@ def test_pseudoPBC():
     # long cylinder
     mesh = Mesh(n, dx, pbc = (10,0,0))
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
@@ -87,7 +87,7 @@ def test_pseudoPBC():
     # thin film
     mesh = Mesh(n, dx, pbc = (10,10,0))
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
@@ -106,7 +106,7 @@ def test_pseudoPBC_single(nx):
 
     mesh = Mesh(n, dx, pbc = (1,0,0))
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
     demag = DemagField()
     state.m = state.Constant([0,0,0])
     state.m[0,0,0,0] = 1.
@@ -133,7 +133,7 @@ def test_pseudoPBC_vs_repeat():
     # pbc
     mesh = Mesh(n, dx, pbc = (1,0,0))
     state = State(mesh)
-    state.material = {'Ms': state.Constant(2.1/constants.mu_0)}
+    state.material = {'Ms': state.Constant([2.1/constants.mu_0])}
 
     demag = DemagField()
     state.m = state.Constant([0.0, 1.0, 0.0])
@@ -144,7 +144,7 @@ def test_pseudoPBC_vs_repeat():
     # nopbc (repeat)
     mesh2 = Mesh((3*n[0], n[1], n[2]), dx, origin=(-n[0]*dx[0],0.,0.))
     state2 = State(mesh2)
-    state2.material = {'Ms': state2.Constant(2.1/constants.mu_0)}
+    state2.material = {'Ms': state2.Constant([2.1/constants.mu_0])}
     demag2 = DemagField()
     state2.m = torch.vstack([state.m,state.m,state.m])
     write_vti(state.m, "data/m.vti", state)
@@ -158,7 +158,7 @@ def test_nonequi_vs_equi():
     dx = (1., 2., 5.)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {'Ms': state.Constant(1.)}
+    state.material = {'Ms': state.Constant([1.])}
 
     x, y, z = state.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
@@ -176,7 +176,7 @@ def test_nonequidistant():
     dx1 = (5., 3., 1.)
     mesh1 = Mesh(n, dx1)
     state1 = State(mesh1)
-    state1.material = {'Ms': state1.Constant(1.)}
+    state1.material = {'Ms': state1.Constant([1.])}
 
     state1.m = state1.Constant([0.,0.,0.])
     state1.m[0,0,0:2,0] = 1.
@@ -190,7 +190,7 @@ def test_nonequidistant():
     dx = (5., 3., dx2)
     mesh2 = Mesh(n, dx)
     state2 = State(mesh2)
-    state2.material = {'Ms': state2.Constant(1.)}
+    state2.material = {'Ms': state2.Constant([1.])}
 
     state2.m = state2.Constant([0.,0.,0.])
     state2.m[0,0,0,0] = 1.
@@ -205,7 +205,7 @@ def test_regression():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(1.)}
+    state.material = {"Ms": state.Constant([1.])}
     state.m = state.Constant([0,0,0])
     state.m[50,50,50] = 1.
 
@@ -228,7 +228,7 @@ def test_precision():
     dtype = torch.get_default_dtype()
     torch.set_default_dtype(torch.float32)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(1.)}
+    state.material = {"Ms": state.Constant([1.])}
     state.m = state.Constant([0,0,0])
     state.m[0,0,0,2] = 1.
 

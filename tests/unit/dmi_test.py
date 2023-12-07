@@ -10,10 +10,10 @@ def test_call():
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.m = state.Constant([1,0,0])
-    state.material = {"Ms": state.Constant(1./constants.mu_0),
-                      "xDi": state.Constant(1.),
-                      "xDb": state.Constant(1.),
-                      "xDD2d": state.Constant(1.)}
+    state.material = {"Ms": state.Constant([1./constants.mu_0]),
+                      "xDi": state.Constant([1.]),
+                      "xDb": state.Constant([1.]),
+                      "xDD2d": state.Constant([1.])}
 
     dmi = InterfaceDMIField(Di = "xDi")
     dmi.h(state)
@@ -33,12 +33,12 @@ def test_interface_1D():
     origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.,)
     mesh = Mesh(n, dx, origin)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(0.86e6),
-                      "A": state.Constant(13e-12),
-                      "Ku": state.Constant(0.4e6),
+    state.material = {"Ms": state.Constant([0.86e6]),
+                      "A": state.Constant([13e-12]),
+                      "Ku": state.Constant([0.4e6]),
                       "Ku_axis": state.Constant([0,0,1]),
-                      "Di": state.Constant(-3e-3),
-                      "alpha": state.Constant(1.)}
+                      "Di": state.Constant([-3e-3]),
+                      "alpha": state.Constant([1.])}
     state.m = state.Constant([0.1,0.0,1.0])
     normalize(state.m)
 
@@ -60,18 +60,18 @@ def test_nonequi_vs_equi(dmi_term):
     dx1 = (1e-9, 2e-9, 5e-9)
     mesh1 = Mesh(n, dx1)
     state1 = State(mesh1)
-    state1.material = {"Ms": state1.Constant(1./constants.mu_0),
-                       "Di": state1.Constant(1.),
-                       "Db": state1.Constant(1.),
-                       "DD2d": state1.Constant(1.)}
+    state1.material = {"Ms": state1.Constant([1./constants.mu_0]),
+                       "Di": state1.Constant([1.]),
+                       "Db": state1.Constant([1.]),
+                       "DD2d": state1.Constant([1.])}
 
     dx2 = (torch.ones(n[0]) * 1e-9, 2e-9, 5e-9)
     mesh2 = Mesh(n, dx2)
     state2 = State(mesh2)
-    state2.material = {"Ms": state2.Constant(1./constants.mu_0),
-                       "Di": state2.Constant(1.),
-                       "Db": state2.Constant(1.),
-                       "DD2d": state2.Constant(1.)}
+    state2.material = {"Ms": state2.Constant([1./constants.mu_0]),
+                       "Di": state2.Constant([1.]),
+                       "Db": state2.Constant([1.]),
+                       "DD2d": state2.Constant([1.])}
     x, y, z = state1.SpatialCoordinate()
     state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
     state2.m = torch.stack([x*y, y*z, z*x], dim=-1)

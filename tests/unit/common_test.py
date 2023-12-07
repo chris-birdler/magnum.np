@@ -7,7 +7,7 @@ def test_timeinterpolator():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.m = state.Constant((0,0,1))
+    state.m = state.Constant([0,0,1])
 
     interpolator = TimeInterpolator(state, {
         0.00e-9: [0.0, 0.0, 0.0],

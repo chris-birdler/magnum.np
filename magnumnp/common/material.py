@@ -31,13 +31,13 @@ class Material(dict):
         if callable(value):
             super().__setitem__(key, value)
         else:
-            if len(value.shape) < 4:
+            if not isinstance(value, torch.Tensor) or len(value.shape) < 4:
                 raise ValueError("Casting of material parameters is deprecated. Use state.Constant([value]) instead.")
             super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
     def set(self, material, domain=None):
         r"""
-        Setting several material parameters at once
+        Setting several constant material parameters at once
 
         :param materials: material that should be set
         :type materials:  :class:`Material`
@@ -56,9 +56,13 @@ class Material(dict):
             state.material.set(material1, domain1)
         """
         for key, value in material.items():
+            if not isinstance(value, list):
+               value = [value]
+            value = self._state._tensor(value)
+
             if domain == None:
-                self[key] = value
+                self[key] = self._state.Constant(value)
             else:
                 if key not in self.keys():
-                    self[key] = 0.
+                    self[key] = self._state.Constant(0 * value)
                 self[key][domain] = value

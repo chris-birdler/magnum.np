@@ -10,8 +10,8 @@ def test_call():
     mesh = Mesh(n, dx)
     
     state = State(mesh)
-    state.material = {"Ms": state.Constant(1./constants.mu_0),
-                      "A": state.Constant(1e-11)}
+    state.material = {"Ms": state.Constant([1./constants.mu_0]),
+                      "A": state.Constant([1e-11])}
     state.m = state.Constant([1,0,0])
     
     domain1 = state.Constant(False, dtype=torch.bool)

@@ -10,7 +10,7 @@ def test_different_tensors():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(Ms)}
+    state.material = {"Ms": state.Constant([Ms])}
     state.m = state.Constant([1,0,0])
 
     # test vector [3]
@@ -45,7 +45,7 @@ def test_setter():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(Ms)}
+    state.material = {"Ms": state.Constant([Ms])}
     state.m = state.Constant([1,0,0])
 
     external = ExternalField(state.Constant([1,0,0]))

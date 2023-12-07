@@ -49,19 +49,19 @@ def test_regression():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"alpha":    state.Constant(0.02),
-                      "Ms":       state.Constant(8e5),
-                      "A":        state.Constant(1.3e-11),
-                      "Ku":       state.Constant(1e5),
+    state.material = {"alpha":    state.Constant([0.02]),
+                      "Ms":       state.Constant([8e5]),
+                      "A":        state.Constant([1.3e-11]),
+                      "Ku":       state.Constant([1e5]),
                       "Ku_axis":  state.Constant([0,1,0]),
-                      "Kc1":      state.Constant(1e3),
-                      "Kc2":      state.Constant(1e4),
-                      "Kc_alpha": state.Constant(0.1),
-                      "Kc_beta":  state.Constant(0.2),
-                      "Kc_gamma": state.Constant(0.3),
-                      "Di":       state.Constant(1.),
-                      "Db":       state.Constant(1.),
-                      "DD2d":     state.Constant(1.)}
+                      "Kc1":      state.Constant([1e3]),
+                      "Kc2":      state.Constant([1e4]),
+                      "Kc_alpha": state.Constant([0.1]),
+                      "Kc_beta":  state.Constant([0.2]),
+                      "Kc_gamma": state.Constant([0.3]),
+                      "Di":       state.Constant([1.]),
+                      "Db":       state.Constant([1.]),
+                      "DD2d":     state.Constant([1.])}
 
     x, y, z = state.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)

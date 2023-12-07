@@ -11,9 +11,9 @@ def test_sp4():
     state = State(mesh)
 
     state.material = {
-        "Ms": state.Constant(8e5),
-        "A": state.Constant(1.3e-11),
-        "alpha": state.Constant(0.02)
+        "Ms": state.Constant([8e5]),
+        "A": state.Constant([1.3e-11]),
+        "alpha": state.Constant([0.02])
         }
 
     # initialize field terms

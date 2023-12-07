@@ -10,12 +10,8 @@ def test_zhangli(simple_state):
 
     torque = SpinTorqueZhangLi()
 
-    state.j = state.Tensor((1e12, 0, 0))
-    h1 = torque.h(state)
     state.j = state.Constant([1e12,0,0])
-    h2 = torque.h(state)
-
-    assert torch.allclose(h1, h2)
+    h = torque.h(state)
 
 def test_sot(simple_state):
     state = simple_state
@@ -24,10 +20,6 @@ def test_sot(simple_state):
 
     torque = SpinOrbitTorque()
 
-    state.material["p"] = state.Tensor([0, -1, 0])
-    h1 = torque.h(state)
     state.material["p"] = state.Constant([0, -1, 0])
-    h2 = torque.h(state)
-
-    assert torch.allclose(h1, h2)
+    h = torque.h(state)
 
