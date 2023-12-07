@@ -152,12 +152,13 @@ class State(object):
         else:
             raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
-    def Constant(self, c, dtype = None, requires_grad = False):
+    def Constant(self, c, dtype = None):
         dtype = dtype or self._dtype
-        c = self.Tensor(c, dtype=dtype)
-        x = self.zeros(self.mesh.n + c.shape, dtype=dtype)
+        c = self.Tensor(c, dtype = dtype)
+        if len(c.shape) == 0: # allow e.g. state.Constant(Ms) instead of state.Constant([Ms])
+            c = c.reshape(-1)
+        x = self.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c
-        x.requires_grad = requires_grad
         return x
 
     def SpatialCoordinate(self):
@@ -167,21 +168,6 @@ class State(object):
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ
-
-    def convert_tensorfield(self, value):
-        ''' convert arbitrary input to tensor-fields '''
-        value = self.Tensor(value)
-        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
-            value = value.reshape(1)
-        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
-            shape = value.shape
-            value = value.reshape((1,1,1) + tuple(shape))
-            value = value.expand(self.mesh.n + tuple(shape)).clone()
-        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
-            value = value.unsqueeze(-1)
-        else: # otherwise assume the dimention is correct!
-            pass
-        return value
 
     def write_vtk(self, fields, filename):
         if self._is_equidistant:

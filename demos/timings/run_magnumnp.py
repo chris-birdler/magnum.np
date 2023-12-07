@@ -43,33 +43,33 @@ state.m[(-1,0),:,:,1] = 1.0
 
 with Timer("first"):
     h1 = demag.h(state)
-    h2 = exchange.h(state)
-    h3 = aniso.h(state)
-    h4 = dmii.h(state)
-    h5 = dmib.h(state)
-    h6 = dmiD2d.h(state)
-    h7 = external.h(state)
+#    h2 = exchange.h(state)
+#    h3 = aniso.h(state)
+#    h4 = dmii.h(state)
+#    h5 = dmib.h(state)
+#    h6 = dmiD2d.h(state)
+#    h7 = external.h(state)
 
 with Timer("warmup"):
+    for i in range(100):
+        state.m *= 1.01
+        h1 = demag.h(state)
+#        h2 = exchange.h(state)
+#        h3 = aniso.h(state)
+#        h4 = dmii.h(state)
+#        h5 = dmib.h(state)
+#        h6 = dmiD2d.h(state)
+#        h7 = external.h(state)
+
+with Timer("measure"):
     for i in range(1000):
         state.m *= 1.01
         h1 = demag.h(state)
-        h2 = exchange.h(state)
-        h3 = aniso.h(state)
-        h4 = dmii.h(state)
-        h5 = dmib.h(state)
-        h6 = dmiD2d.h(state)
-        h7 = external.h(state)
-
-with Timer("measure"):
-    for i in range(10000):
-        state.m *= 1.01
-        h1 = demag.h(state)
-        h2 = exchange.h(state)
-        h3 = aniso.h(state)
-        h4 = dmii.h(state)
-        h5 = dmib.h(state)
-        h6 = dmiD2d.h(state)
-        h7 = external.h(state)
+#        h2 = exchange.h(state)
+#        h3 = aniso.h(state)
+#        h4 = dmii.h(state)
+#        h5 = dmib.h(state)
+#        h6 = dmiD2d.h(state)
+#        h7 = external.h(state)
 
 Timer.print_report()

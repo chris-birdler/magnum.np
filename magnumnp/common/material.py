@@ -29,9 +29,8 @@ class Material(dict):
 
     def __setitem__(self, key, value):
         if callable(value):
-            super().__setitem__(key, lambda t: self._state.convert_tensorfield(value(t)))
+            super().__setitem__(key, value)
         else:
-            value = self._state.convert_tensorfield(value)
             super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
     def set(self, material, domain=None):

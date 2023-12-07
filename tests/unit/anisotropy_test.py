@@ -10,11 +10,11 @@ def test_cubic_energy():
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {"Kc_alpha": state.Constant([0.]),
-                      "Kc_beta": state.Constant([0.]),
+                      "Kc_beta":  state.Constant([0.]),
                       "Kc_gamma": state.Constant([0.]),
-                      "Kc1": state.Tensor([1e3]),
-                      "Kc2": state.Tensor([0.]),
-                      "Ms": 800e3}
+                      "Kc1": state.Constant([1e3]),
+                      "Kc2": state.Constant([0.]),
+                      "Ms": state.Constant([800e3])}
     aniso = CubicAnisotropyField()
     for phi in torch.linspace(0., pi, steps=10):
         mx = cos(phi)
@@ -40,9 +40,9 @@ def test_cubic_energy_rotated():
     state.material = {"Kc_alpha": state.Constant([pi/4.]),
                       "Kc_beta": state.Constant([0.]),
                       "Kc_gamma": state.Constant([0.]),
-                      "Kc1": state.Tensor([1e3]),
-                      "Kc2": state.Tensor([0.]),
-                      "Ms": 800e3}
+                      "Kc1": state.Constant([1e3]),
+                      "Kc2": state.Constant([0.]),
+                      "Ms": state.Constant([800e3])}
     aniso = CubicAnisotropyField()
     for phi in torch.linspace(0., pi, steps=10):
         mx = cos(phi - pi/4)
@@ -59,37 +59,17 @@ def test_cubic_energy_rotated():
 
         torch.testing.assert_close(E_sim, E_analytic, atol=1e-4, rtol=1e-4)
 
-# TODO: generalize in Fieldterms test
-def test_cubic_material_tensor():
-    n  = (2, 3, 4)
-    dx = (1, 2, 5)
-    mesh = Mesh(n, dx)
-    state = State(mesh)
-    state.material = {"Kc_alpha": state.Tensor([pi/4.]),
-                      "Kc_beta": state.Tensor([0.]),
-                      "Kc_gamma": state.Tensor([0.]),
-                      "Kc1": state.Tensor([1e3]),
-                      "Kc2": state.Tensor([0.]),
-                      "Ms": 800e3}
-    aniso = CubicAnisotropyField()
-    phi = 0.123
-    mx = cos(phi - pi/4)
-    my = sin(phi - pi/4)
-    mz = 0.
-    state.m = state.Constant((mx, my, mz))
-    torch.testing.assert_close(avg(aniso.h(state)), state.Tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
-
 def test_renamed_parameters():
     n  = (2, 3, 4)
     dx = (1, 2, 5)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"K_alpha": state.Tensor([pi/4.]),
-                      "Kc_beta": state.Tensor([0.]),
-                      "Kc_gamma": state.Tensor([0.]),
-                      "Kc1": state.Tensor([1e3]),
-                      "Kc2": state.Tensor([0.]),
-                      "Ms": 800e3}
+    state.material = {"K_alpha": state.Constant([pi/4.]),
+                      "Kc_beta": state.Constant([0.]),
+                      "Kc_gamma": state.Constant([0.]),
+                      "Kc1": state.Constant([1e3]),
+                      "Kc2": state.Constant([0.]),
+                      "Ms": state.Constant([800e3])}
     aniso = CubicAnisotropyField(Kc_alpha = "K_alpha")
     phi = 0.123
     mx = cos(phi - pi/4)
