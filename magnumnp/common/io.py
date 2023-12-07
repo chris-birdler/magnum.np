@@ -106,9 +106,9 @@ def write_vti(fields, filename, state = None):
         dx = state.mesh.dx
         origin = state.mesh.origin
 
-    grid = pv.UniformGrid(dimensions = np.array(n) + 1,
-                          spacing = dx,
-                          origin = origin)
+    grid = pv.ImageData(dimensions = np.array(n) + 1,
+                        spacing = dx,
+                        origin = origin)
 
     for name in fields:
         f = fields[name]

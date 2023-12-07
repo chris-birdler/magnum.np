@@ -76,7 +76,7 @@ class DMIField(LinearFieldTerm):
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D_next*D < 0,
             D_avg = 2.*D_next*D / (D_next*dx + D*dx_next)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=0)) / 2.
+            h -= D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=0)) / 2.
 
             D_avg = torch.roll(D_avg, -1, dims=0)
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=0)) / 2.
@@ -96,7 +96,7 @@ class DMIField(LinearFieldTerm):
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D_next*D < 0,
             D_avg = 2.*D_next*D / (D_next*dy + D*dy_next)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=1)) / 2.
+            h -= D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=1)) / 2.
 
             D_avg = torch.roll(D_avg, -1, dims=1)
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=1)) / 2.
@@ -116,7 +116,7 @@ class DMIField(LinearFieldTerm):
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D_next*D < 0,
             D_avg = 2.*D_next*D / (D_next*dz + D*dz_next)
-            h += D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=2)) / 2.
+            h -= D_avg * torch.linalg.cross(v, torch.roll(state.m, +1, dims=2)) / 2.
 
             D_avg = torch.roll(D_avg, -1, dims=2)
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / 2.
