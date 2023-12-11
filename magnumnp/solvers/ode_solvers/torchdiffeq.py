@@ -40,12 +40,12 @@ class TorchDiffEq(object):
         t1 = state.t + dt
         res = odeint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
                      state.m,
-                     state.Tensor([state.t*1e9, t1*1e9]),
+                     torch.tensor([state.t*1e9, t1*1e9]),
                      method = self._method,
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,
                      options = self._options) # TODO: reuse solver object?
-        state.m = state.Tensor(res[1])
+        state.m = torch.tensor(res[1])
         state.t = t1
 
 class TorchDiffEqAdjoint(object):
@@ -60,18 +60,18 @@ class TorchDiffEqAdjoint(object):
 
     def _f_wrapper(self, t, m, state, **llg_args):
         state.t = t * 1e-9 # scale time by 1e9 to prevent underflow error
-        state.m = state.Tensor(m)
+        state.m = torch.tensor(m)
         return self._f(state, **llg_args) * 1e-9
 
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
         t1 = state.t + dt
         res = odeint_adjoint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
                      state.m,
-                     state.Tensor([state.t*1e9, t1*1e9]),
+                     torch.tensor([state.t*1e9, t1*1e9]),
                      method = self._method,
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,
                      adjoint_params = self._adjoint_parameters,
                      options = self._options) # TODO: reuse solver object?
-        state.m = state.Tensor(res[1])
+        state.m = torch.tensor(res[1])
         state.t = t1

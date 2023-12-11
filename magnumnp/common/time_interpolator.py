@@ -24,8 +24,8 @@ __all__ = ["TimeInterpolator"]
 
 class TimeInterpolator(object):
     def __init__(self, state, points):
-        self._tp = state._tensor(list(points.keys()))
-        self._fp = state._tensor(list(points.values()))
+        self._tp = torch.tensor(list(points.keys()))
+        self._fp = torch.tensor(list(points.values()))
         self._state = state
 
     def __call__(self, t):

@@ -36,7 +36,7 @@ class ScipyOdeint(object):
 
     def _f_wrapper(self, t, m, state, llg_args):
         state.t = t * 1e-9 # scale time by 1e9 to prevent underflow error
-        state.m = state.Tensor(m.reshape(state.mesh.n + (3,), order = "F"))
+        state.m = torch.tensor(m.reshape(state.mesh.n + (3,), order = "F"))
         f = self._f(state, **llg_args) * 1e-9
         return f.detach().cpu().numpy().flatten(order = "F")
 
@@ -52,5 +52,5 @@ class ScipyOdeint(object):
                     atol = atol or self._atol,
                     tfirst = True)[1]
 
-        state.m = state.Tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
+        state.m = torch.tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
         state.t = t1

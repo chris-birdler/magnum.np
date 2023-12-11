@@ -130,16 +130,16 @@ class DemagField(LinearFieldTerm):
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n).to(dtype=state._dtype,device=state._device) for n in shape] # local indices
+        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [ij[ind]*dx[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        offsets = [state.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = state.zeros(shape)
+        Nc = torch.zeros(shape)
         for offset in offsets:
             Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx, *dx, self._p)
 
@@ -148,9 +148,10 @@ class DemagField(LinearFieldTerm):
             Nc = torch.fft.rfftn(Nc, dim = dim)
         return Nc.real.clone()
 
+
     def _init_N(self, state):
-        dtype = state._dtype
-        state._dtype = torch.float64 # always use double precision
+        dtype = torch.get_default_dtype()
+        torch.set_default_dtype(torch.float64) # always use double precision
         time_kernel = time()
 
         Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
@@ -164,7 +165,7 @@ class DemagField(LinearFieldTerm):
                    [Nxy, Nyy, Nyz],
                    [Nxz, Nyz, Nzz]]
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-        state._dtype = dtype # restore dtype
+        torch.set_default_dtype(dtype) # restore dtype
 
     @timedmethod
     def h(self, state):
@@ -175,15 +176,17 @@ class DemagField(LinearFieldTerm):
         shape = self._shape(state)
         s = [shape[i] for i in dim]
 
+
         if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
             N = torch.stack([torch.stack(self._N[0], dim=-1),
                              torch.stack(self._N[1], dim=-1),
                              torch.stack(self._N[2], dim=-1)], dim=-1)
             return (N * state.m).sum(dim=-1)
 
-        hx = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
-        hy = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
-        hz = state.zeros(self._N[0][0].shape, dtype=complex_dtype[state.dtype])
+        hx = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+        hy = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+        hz = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = dim, s = s).squeeze(-1)
 

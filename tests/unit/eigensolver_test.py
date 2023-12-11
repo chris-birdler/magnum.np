@@ -31,15 +31,15 @@ def test_singlespin_exchange():
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
     magnetic = (x**2.> 0)
 
-    external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
+    external = ExternalField(state.Constant([0.,hext/sqrt(2.),hext/sqrt(2.)]))
     exchange = ExchangeField()
 
     eigen = EigenSolver(state, [exchange], [external])
     res = eigen.solve(k=20)
 
-    torch.testing.assert_close(res.omega[0].abs(), state.Tensor(constants.gamma*hext), atol=0, rtol=1e-6)
+    torch.testing.assert_close(res.omega[0].abs(), torch.tensor(constants.gamma*hext), atol=0, rtol=1e-6)
 
-# this test only succeeds if ran as a single test (seems to depend on the random intial value of eigs)
+# this test only succeeds if ran as a single test (seems to depend on the random initial value of eigs)
 ##def test_singlespin_aniso():
 ##    Ms = 1./constants.mu_0
 ##    n  = (10, 10, 10)
@@ -58,7 +58,7 @@ def test_singlespin_exchange():
 ##    eigen = EigenSolver(state, [aniso], [])
 ##    res = eigen.solve(k=20)
 ##    print("omega:", res.omega)
-##    print("omega:", res.omega[0].abs().numpy(), state.Tensor(constants.gamma*Ms).numpy())
+##    print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*Ms).numpy())
 ##    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*Ms), atol=1e-10, rtol=1e-10)
 
 def test_saturated_thinfilm():
@@ -77,14 +77,14 @@ def test_saturated_thinfilm():
     magnetic = (x**2.> 0)
     demag    = DemagField()
     exchange = ExchangeField()
-    external = ExternalField([0.,0.,1.2/constants.mu_0])
+    external = ExternalField(state.Constant([0.,0.,1.2/constants.mu_0]))
 
     state.m = state.Constant([0.,0.,1.])
     eigen = EigenSolver(state, [demag, exchange], [external])
     res = eigen.solve(k=20, tol=1e-6)
     #print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
     #res.save_evecs3D("data/evecs.vti")
-    torch.testing.assert_close(res.omega.abs()[:5]/2./torch.pi*1e-9, state.Tensor([8.23468553,10.29218845,10.36022486,12.28226803,13.60508024]), atol=1e-3, rtol=1e-2)
+    torch.testing.assert_close(res.omega.abs()[:5]/2./torch.pi*1e-9, torch.tensor([8.23468553,10.29218845,10.36022486,12.28226803,13.60508024]), atol=1e-3, rtol=1e-2)
 
 #def test_vortex():
 #    lex = 5.71e-9

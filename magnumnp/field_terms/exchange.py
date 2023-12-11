@@ -49,7 +49,7 @@ class ExchangeField(LinearFieldTerm):
         dx = state.dx[0].reshape(-1,1,1,1)
         dy = state.dx[1].reshape(1,-1,1,1)
         dz = state.dx[2].reshape(1,1,-1,1)
-        h = state.zeros(state.mesh.n + (3,))
+        h = torch.zeros(state.mesh.n + (3,))
 
         # x
         if state.mesh.pbc[0] == 0:
@@ -94,4 +94,4 @@ class ExchangeField(LinearFieldTerm):
             h += A_avg * (torch.roll(state.m, -1, dims=2) - state.m) / dz # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
-        return state.Tensor(h.nan_to_num(posinf=0, neginf=0))
+        return torch.tensor(h.nan_to_num(posinf=0, neginf=0))

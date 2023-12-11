@@ -9,7 +9,7 @@ def test_call():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.m = state.Constant([1,0,0])
+    state.m = state.Constant([1.,0.,0.])
     state.material = {"Ms": state.Constant([1./constants.mu_0]),
                       "xDi": state.Constant([1.]),
                       "xDb": state.Constant([1.]),

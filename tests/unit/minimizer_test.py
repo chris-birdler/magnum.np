@@ -32,4 +32,4 @@ def test_sp4():
     minimizer = MinimizerBB([demag, exchange])
     minimizer.minimize(state)
 
-    torch.testing.assert_close(avg(state.m), state.Tensor([0.96720725, 0.12482232, 0.]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(avg(state.m), torch.tensor([0.96720725, 0.12482232, 0.]), atol=1e-3, rtol=1e-3)

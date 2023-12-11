@@ -44,9 +44,9 @@ def write_vtr(fields, filename, state = None):
         dx = state.mesh.dx
         origin = state.mesh.origin
 
-    x = torch.hstack([state._tensor([0.]), state.dx[0].cumsum(0)]).cpu().numpy() + state.mesh.origin[0]
-    y = torch.hstack([state._tensor([0.]), state.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
-    z = torch.hstack([state._tensor([0.]), state.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
+    x = torch.hstack([torch.tensor([0.]), state.dx[0].cumsum(0)]).cpu().numpy() + state.mesh.origin[0]
+    y = torch.hstack([torch.tensor([0.]), state.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
+    z = torch.hstack([torch.tensor([0.]), state.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
 
     grid = pv.RectilinearGrid(x, y, z)
 

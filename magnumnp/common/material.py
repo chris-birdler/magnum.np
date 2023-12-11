@@ -35,6 +35,8 @@ class Material(dict):
                 raise ValueError("Casting of material parameters is deprecated. Use state.Constant([value]) instead.")
             super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
+
+    # TODO: move to state.set_material ??
     def set(self, material, domain=None):
         r"""
         Setting several constant material parameters at once
@@ -58,7 +60,7 @@ class Material(dict):
         for key, value in material.items():
             if not isinstance(value, list):
                value = [value]
-            value = self._state._tensor(value)
+            value = torch.tensor(value)
 
             if domain == None:
                 self[key] = self._state.Constant(value)

@@ -15,16 +15,16 @@ def test_timeinterpolator():
         2.00e-9: [0.0, 0.0, 3.0]})
 
     state.t = 0.7e-9
-    torch.testing.assert_close(interpolator(-1.0e-9), state.Tensor([0.0,0.0,-1.0]))
-    torch.testing.assert_close(interpolator(0.0e-9), state.Tensor([0.0,0.0,0.0]))
-    torch.testing.assert_close(interpolator(0.5e-9), state.Tensor([0.0,0.0,0.5]))
-    torch.testing.assert_close(interpolator(1.1e-9), state.Tensor([0.0,0.0,1.2]))
-    torch.testing.assert_close(interpolator(1.5e-9), state.Tensor([0.0,0.0,2.0]))
-    torch.testing.assert_close(interpolator(2.5e-9), state.Tensor([0.0,0.0,4.0]))
-    torch.testing.assert_close(interpolator(state.t), state.Tensor([0.0,0.0,0.7]))
+    torch.testing.assert_close(interpolator(-1.0e-9), torch.tensor([0.0,0.0,-1.0]))
+    torch.testing.assert_close(interpolator(0.0e-9), torch.tensor([0.0,0.0,0.0]))
+    torch.testing.assert_close(interpolator(0.5e-9), torch.tensor([0.0,0.0,0.5]))
+    torch.testing.assert_close(interpolator(1.1e-9), torch.tensor([0.0,0.0,1.2]))
+    torch.testing.assert_close(interpolator(1.5e-9), torch.tensor([0.0,0.0,2.0]))
+    torch.testing.assert_close(interpolator(2.5e-9), torch.tensor([0.0,0.0,4.0]))
+    torch.testing.assert_close(interpolator(state.t), torch.tensor([0.0,0.0,0.7]))
 
     external = ExternalField(interpolator)
-    torch.testing.assert_close(avg(external.h(state)), state.Tensor([0.0,0.0,0.7]), atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(avg(external.h(state)), torch.tensor([0.0,0.0,0.7]), atol=1e-6, rtol=1e-6)
 
 def test_timeinterpolator_field():
     n  = (1, 1, 10)

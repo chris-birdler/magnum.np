@@ -17,9 +17,6 @@
 #
 
 import torch
-import os
-import subprocess
-import numpy as np
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
@@ -57,24 +54,15 @@ def normalize(data):
     return data
 
 class State(object):
-    def __init__(self, mesh, t0 = 0., device = None, dtype = None):
-        if device == None:
-            device_id = os.environ.get('CUDA_DEVICE')
-            if device_id == None:
-                device_id = get_gpu_with_least_memory()
-            self._device = torch.device(f"cuda:{device_id}" if int(device_id) >= 0 else "cpu")
-        else:
-            self._device = device
-
+    def __init__(self, mesh, t0 = 0.):
         #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
-        self._dtype = dtype or torch.get_default_dtype()
         self.mesh = mesh
 
         self._is_equidistant = all([isinstance(dx, (float, int)) for dx in mesh.dx])
-        self.dx = [self._tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
+        self.dx = [torch.tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
 
         # compute cell_volumes (use expand for equidistant dimentions)
-        dx, dy, dz = torch.meshgrid([self._tensor(dx) for dx in mesh.dx], indexing = "ij")
+        dx, dy, dz = torch.meshgrid([torch.tensor(dx) for dx in mesh.dx], indexing = "ij")
         self._cell_volumes = (dx*dy*dz).expand(mesh.n).unsqueeze(-1)
 
         self._material = Material(self)
@@ -82,17 +70,19 @@ class State(object):
         self._step = 0
         self._dt = 0.
 
-        dtype_str = str(self._dtype).split('.')[1]
-        logging.info_green("[State] running on device: %s (dtype = %s)" % (self._device, dtype_str))
+        x = torch.tensor(1.)
+        dtype_str = str(x.dtype).split('.')[1]
+        device = x.device
+        logging.info_green("[State] running on device: %s (dtype = %s)" % (device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
 
     @property
-    def t(self):
+    def t(self): # TODO: should t be a float? would this break the inverse code?
         return self._t
 
     @t.setter
     def t(self, value):
-        self._t = self._tensor(value)
+        self._t = torch.tensor(value)
 
     @property
     def material(self):
@@ -107,55 +97,16 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
-    def zeros(self, size, dtype = None, **kwargs):
-        dtype = dtype or self._dtype
-        return torch.zeros(size, dtype=dtype, device=self._device, **kwargs)
-
-    def arange(self, start, end = None, step=1, dtype = None, **kwargs):
-        dtype = dtype or self._dtype
-        if end == None:
-           end = start
-           start = 0
-        return torch.arange(start, end, step, dtype=dtype, device=self._device, **kwargs)
-
-    def linspace(self, start, end, steps, dtype = None, **kwargs):
-        dtype = dtype or self._dtype
-        return torch.linspace(start, end, steps, dtype=dtype, device=self._device, **kwargs)
-
-    def _normal(self, mean, std, dtype = None, **kwargs):
+    def _normal(self, mean, std, **kwargs):
         if not hasattr(self, "_rng"):
-            self._rng = torch.Generator(device=self._device)
+            self._rng = torch.Generator()
             self._rng.manual_seed(2147483647) # fixed seed
-        dtype = dtype or self._dtype or torch.get_default_dtype()
-        return torch.normal(mean, std, dtype=dtype, device=self._device, **kwargs)
+        return torch.normal(mean, std, **kwargs)
 
-    # _tensor for internal use only
-    def _tensor(self, data, dtype = None):
-        dtype = dtype or self._dtype
-        if isinstance(data, torch.Tensor):
-            return data.to(dtype=dtype, device=self._device)
-        else:
-            return torch.tensor(data, dtype=dtype, device=self._device)
-
-    def Tensor(self, data, dtype = None, requires_grad = False):
-        dtype = dtype or self._dtype
-        if isinstance(data, list) or isinstance(data, tuple) or isinstance(data, float) or isinstance(data, int) or isinstance(data, np.ndarray):
-            t = torch.tensor(data, dtype=dtype, device=self._device)
-            t.requires_grad = requires_grad
-            return t
-        elif isinstance(data, torch.Tensor):
-            requires_grad = requires_grad or data.requires_grad
-            data.requires_grad_(requires_grad)
-            return data
-        elif callable(data):
-            return lambda t: self.Tensor(data(t))
-        else:
-            raise TypeError("Unknown data of type '%s' (needs to be 'list', 'tuple', 'torch.Tensor', or 'function')!" % type(data))
 
     def Constant(self, c, dtype = None):
-        dtype = dtype or self._dtype
-        c = self.Tensor(c, dtype = dtype)
-        x = self.zeros(self.mesh.n + c.shape, dtype = dtype)
+        c = torch.tensor(c, dtype = dtype)
+        x = torch.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c
         return x
 
@@ -174,28 +125,5 @@ class State(object):
             write_vtr(fields, filename + ".vtr", self)
 
     @property
-    def dtype(self):
-        return self._dtype
-
-    @property
     def cell_volumes(self):
         return self._cell_volumes
-
-
-
-def get_gpu_with_least_memory():
-    if not torch.cuda.is_available():
-        return -1
-
-    import pynvml
-    pynvml.nvmlInit()
-    num_gpus = pynvml.nvmlDeviceGetCount()
-
-    gpu_memory = []
-    for i in range(num_gpus):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        gpu_memory.append(mem_info.used)
-
-    pynvml.nvmlShutdown()
-    return gpu_memory.index(min(gpu_memory))

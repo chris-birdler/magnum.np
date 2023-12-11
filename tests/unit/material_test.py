@@ -30,13 +30,13 @@ def test_setter(simple_state):
     #assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     ## set tensor -> deprecated
-    #simple_state.material = {"Ms": simple_state.Tensor([1./constants.mu_0]), "A": simple_state.Tensor([1e-11])}
+    #simple_state.material = {"Ms": simple_torch.tensor([1./constants.mu_0]), "A": simple_torch.tensor([1e-11])}
     #Ms = simple_state.material["Ms"]
     #assert Ms.shape == (100, 25, 1, 1)
     #assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
 
     ## set tensor (no brackets) -> deprecated
-    #simple_state.material = {"Ms": simple_state.Tensor(1./constants.mu_0), "A": simple_state.Tensor(1e-11)}
+    #simple_state.material = {"Ms": simple_torch.tensor(1./constants.mu_0), "A": simple_torch.tensor(1e-11)}
     #Ms = simple_state.material["Ms"]
     #assert Ms.shape == (100, 25, 1, 1)
     #assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
@@ -104,10 +104,10 @@ def test_domain():
     assert avg(state.material["Ms"][~domain1]).cpu() == pytest.approx(1.0)
 
     state.material["Ku_axis"] = state.Constant([0.,0.,1.])
-    state.material["Ku_axis"][domain1] = state.Tensor([1.,0.,0.])
+    state.material["Ku_axis"][domain1] = torch.tensor([1.,0.,0.])
 
-    torch.testing.assert_close(avg(state.material["Ku_axis"]), state.Tensor([0.25,0.00,0.75]))
-    torch.testing.assert_close(avg(state.material["Ku_axis"][~domain1]), state.Tensor([0.,0.,1.]))
+    torch.testing.assert_close(avg(state.material["Ku_axis"]), torch.tensor([0.25,0.00,0.75]))
+    torch.testing.assert_close(avg(state.material["Ku_axis"][~domain1]), torch.tensor([0.,0.,1.]))
 
 
 def test_spatial():

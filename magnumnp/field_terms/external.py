@@ -48,7 +48,7 @@ class ExternalField(object):
 
     @timedmethod
     def h(self, state):
-        return state.Tensor(self._h(state.t))
+        return self._h(state.t)
 
     def __setattr__(self, name, value):
         if name == "h":

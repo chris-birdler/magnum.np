@@ -207,7 +207,7 @@ def test_pbc(field_term):
 
     # PBC
     mesh = Mesh(n, dx, pbc = (10,10,0))
-    state = State(mesh, device = state._device)
+    state = State(mesh)
 
     state.material = {"alpha":   state.Constant([0.02]),
                       "Ms":      state.Constant([8e5]),

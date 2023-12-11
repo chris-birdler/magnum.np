@@ -31,7 +31,7 @@ def test_curved():
     x, y, z = state.SpatialCoordinate()
     r_i = 30e-9
     r_a = 50e-9
-    state.material["sigma"] = 5.3e5 * ((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))
+    state.material["sigma"] = 5.3e5 * (((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))).unsqueeze(-1)
     write_vti(state.material, "data/material.vti")
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)
@@ -53,7 +53,7 @@ def test_curved_2D():
     x, y, z = state.SpatialCoordinate()
     r_i = 30e-9
     r_a = 50e-9
-    state.material["sigma"] = 1. * ((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))
+    state.material["sigma"] = 1. * (((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))).unsqueeze(-1)
     write_vti(state.material, "data/material.vti")
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)

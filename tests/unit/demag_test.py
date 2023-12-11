@@ -6,19 +6,20 @@ from magnumnp import *
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_energy_cube(dtype):
+    torch.set_default_dtype(dtype)
     n  = (20, 20, 20)
     dx = (1e-9, 1e-9, 1e-9)
     mesh_volume = n[0] * n[1] * n[2] * dx[0] * dx[1] * dx[2]
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
-    state = State(mesh, dtype=dtype)
+    state = State(mesh)
     state.material = {"Ms": state.Constant([Ms])}
     demag = DemagField()
 
     state.m = state.Constant([1,0,0])
 
     h = demag.h(state)
-    torch.testing.assert_close(constants.mu_0*h[10,10,10], state.Tensor([-1./3., 0.0, 0.0]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(constants.mu_0*h[10,10,10], torch.tensor([-1./3., 0.0, 0.0]), atol=1e-3, rtol=1e-3)
 
     E = demag.E(state)
     assert E.cpu() == pytest.approx(1./6.*mesh_volume*constants.mu_0*Ms**2, abs=0, rel=1e-3)
@@ -33,7 +34,7 @@ def test_single():
 
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([-1./3.,0.,0.]), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([-1./3.,0.,0.]), atol=1e-10, rtol=1e-10)
 
 def test_truePBC():
     n  = (4, 4, 4)
@@ -61,13 +62,13 @@ def test_pseudoPBC():
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([-1./3.,0.,0.]), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([-1./3.,0.,0.]), atol=1e-10, rtol=1e-10)
     state.m = state.Constant([0,1,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,-1./3.,0.]), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,-1./3.,0.]), atol=1e-10, rtol=1e-10)
     state.m = state.Constant([0,0,1])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,-1./3.]), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,-1./3.]), atol=1e-10, rtol=1e-10)
 
     # long cylinder
     mesh = Mesh(n, dx, pbc = (10,0,0))
@@ -76,13 +77,13 @@ def test_pseudoPBC():
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,0.]), atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,0.]), atol=1e-2, rtol=1e-2)
     state.m = state.Constant([0,1,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,-1./2.,0.]), atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,-1./2.,0.]), atol=1e-2, rtol=1e-2)
     state.m = state.Constant([0,0,1])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,-1./2.]), atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,-1./2.]), atol=1e-2, rtol=1e-2)
 
     # thin film
     mesh = Mesh(n, dx, pbc = (10,10,0))
@@ -91,13 +92,13 @@ def test_pseudoPBC():
     demag = DemagField()
     state.m = state.Constant([1,0,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,0.]), atol=5e-2, rtol=5e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,0.]), atol=5e-2, rtol=5e-2)
     state.m = state.Constant([0,1,0])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,0.]), atol=5e-2, rtol=5e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,0.]), atol=5e-2, rtol=5e-2)
     state.m = state.Constant([0,0,1])
     h = demag.h(state)
-    torch.testing.assert_close(h[0,0,0,:], state.Tensor([0.,0.,-1.]), atol=5e-2, rtol=5e-2)
+    torch.testing.assert_close(h[0,0,0,:], torch.tensor([0.,0.,-1.]), atol=5e-2, rtol=5e-2)
 
 @pytest.mark.parametrize("nx", [5,6])
 def test_pseudoPBC_single(nx):
@@ -113,15 +114,15 @@ def test_pseudoPBC_single(nx):
 
     h = demag.h(state)
 
-    h2xa = newell(f, state.Tensor(2*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
-    h2xb = newell(f, state.Tensor((2+n[0])*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
-    h2xc = newell(f, state.Tensor((2-n[0])*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
+    h2xa = newell(f, torch.tensor(2*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
+    h2xb = newell(f, torch.tensor((2+n[0])*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
+    h2xc = newell(f, torch.tensor((2-n[0])*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
     h2x = h2xa + h2xb + h2xc
     torch.testing.assert_close(h[2,2,0,0]/h.max(), h2x/h.max(), atol=1e-10, rtol=1e-10)
 
-    h2ya = newell(g, state.Tensor(2*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
-    h2yb = newell(g, state.Tensor((2+n[0])*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
-    h2yc = newell(g, state.Tensor((2-n[0])*dx[0]), state.Tensor(2*dx[1]), state.Tensor(0), *dx, *dx)
+    h2ya = newell(g, torch.tensor(2*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
+    h2yb = newell(g, torch.tensor((2+n[0])*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
+    h2yc = newell(g, torch.tensor((2-n[0])*dx[0]), torch.tensor(2*dx[1]), torch.tensor(0), *dx, *dx)
     h2y = h2ya + h2yb + h2yc
 
     torch.testing.assert_close(h[2,2,0,1]/h.max(), h2y/h.max(), atol=1e-10, rtol=1e-10)
@@ -235,7 +236,7 @@ def test_precision():
     demag = DemagField()
     h_demag = demag.h(state).abs().log()[:,0,0,2]
 
-    ref = state.arange(n[0])
+    ref = torch.arange(n[0])
     ref = torch.log(1/4./torch.pi/ref**3)
 
     torch.set_default_dtype(dtype)

@@ -17,9 +17,9 @@ def finite_grad(op, x0):
     return grad
 
 def test_hext(simple_state):
-    h_ext = simple_state.Tensor([1,0,0], requires_grad = True)
+    h_ext = torch.tensor([1.,0.,0.], requires_grad = True)
     external = ExternalField(h_ext)
-    h_target = simple_state.Tensor([0,0,1])
+    h_target = torch.tensor([0.,0.,1.])
 
     def forward(h_ext):
         external.h = h_ext
@@ -30,7 +30,7 @@ def test_hext(simple_state):
     L.backward()
     grad = h_ext.grad
 
-    h_ext2 = simple_state.Tensor([1,0,0])
+    h_ext2 = torch.tensor([1.,0.,0.])
     grad2 = finite_grad(forward, h_ext2)
 
     torch.testing.assert_close(grad, grad2)
@@ -57,4 +57,5 @@ def test_linear_fieldterms(simple_state, fieldterm):
     L.backward()
     h1 = -m0.grad / (constants.mu_0 * simple_state.material["Ms"] * cell_volume)
 
+    write_vti({"h1":h1, "h0":h0}, "data/results.vti", simple_state)
     torch.testing.assert_close(h0/h0.abs().max(), h1/h0.abs().max(), atol=1e-4, rtol=1e-4)

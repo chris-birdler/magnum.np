@@ -35,7 +35,7 @@ class ScipyODE(object):
 
     def _f_wrapper(self, t, m, state, llg_args):
         state.t = t
-        state.m = state.Tensor(m.reshape(state.mesh.n + (3,), order = "F"))
+        state.m = torch.tensor(m.reshape(state.mesh.n + (3,), order = "F"))
         f = self._f(state, **llg_args)
         return f.detach().cpu().numpy().flatten(order = "F")
 
@@ -52,5 +52,5 @@ class ScipyODE(object):
         if not self._solver.successful():
             logging.warning("[LLGSolver] Scipy ODE solver: integration not successful!")
 
-        state.m = state.Tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
+        state.m = torch.tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
         state.t = self._solver.t

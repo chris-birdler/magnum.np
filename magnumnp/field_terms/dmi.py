@@ -59,18 +59,18 @@ class DMIField(LinearFieldTerm):
         dx = state.dx[0].reshape(-1,1,1,1)
         dy = state.dx[1].reshape(1,-1,1,1)
         dz = state.dx[2].reshape(1,1,-1,1)
-        h = state.zeros(state.mesh.n + (3,))
+        h = torch.zeros(state.mesh.n + (3,))
 
         # x
         if state.mesh.pbc[0] == 0:
-            v = state._tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
+            v = torch.tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0, ...
             D_avg = 2.*D[1:,:,:]*D[:-1,:,:] / (D[1:,:,:]*dx[:-1,:,:,:] + D[:-1,:,:]*dx[1:,:,:,:])
             h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / 2.
             h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / 2.
         else:
-            v = state._tensor(self._dmi_vector[0]).expand(m.shape)
+            v = torch.tensor(self._dmi_vector[0]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=0)
             dx_next = torch.roll(dx, +1, dims=0)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
@@ -83,14 +83,14 @@ class DMIField(LinearFieldTerm):
 
         # y
         if state.mesh.pbc[1] == 0:
-            v = state._tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
+            v = torch.tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
             D_avg = 2.*D[:,1:,:]*D[:,:-1,:] / (D[:,1:,:]*dy[:,:-1,:,:] + D[:,:-1,:]*dy[:,1:,:,:])
             h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / 2.
             h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / 2.
         else:
-            v = state._tensor(self._dmi_vector[1]).expand(m.shape)
+            v = torch.tensor(self._dmi_vector[1]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=1)
             dy_next = torch.roll(dx, +1, dims=1)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
@@ -103,14 +103,14 @@ class DMIField(LinearFieldTerm):
 
         # z
         if state.mesh.pbc[2] == 0:
-            v = state._tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
+            v = torch.tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
             D_avg = 2.*D[:,:,1:]*D[:,:,:-1] / (D[:,:,1:]*dz[:,:,:-1,:] + D[:,:,:-1]*dz[:,:,1:,:])
             h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / 2.
             h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / 2.
         else:
-            v = state._tensor(self._dmi_vector[2]).expand(m.shape)
+            v = torch.tensor(self._dmi_vector[2]).expand(m.shape)
             D_next = torch.roll(D, +1, dims=2)
             dz_next = torch.roll(dx, +1, dims=2)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
@@ -122,7 +122,7 @@ class DMIField(LinearFieldTerm):
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / 2.
 
         h *= 2. / (constants.mu_0 * Ms)
-        return state.Tensor(h.nan_to_num(posinf=0, neginf=0))
+        return torch.tensor(h.nan_to_num(posinf=0, neginf=0))
 
 
 
@@ -140,9 +140,9 @@ class InterfaceDMIField(DMIField):
     :type Di: str, optional
     """
     def __init__(self, Di = "Di"):
-        dmi_vector = [[ 0, 1, 0], # x
-                      [-1, 0, 0], # y
-                      [ 0, 0, 0]] # z
+        dmi_vector = [[ 0., 1., 0.], # x
+                      [-1., 0., 0.], # y
+                      [ 0., 0., 0.]] # z
         super().__init__(dmi_vector, D = Di)
 
 
@@ -160,9 +160,9 @@ class BulkDMIField(DMIField):
     :type Db: str, optional
     """
     def __init__(self, Db = "Db"):
-        dmi_vector = [[1, 0, 0], # x
-                      [0, 1, 0], # y
-                      [0, 0, 1]] # z
+        dmi_vector = [[1., 0., 0.], # x
+                      [0., 1., 0.], # y
+                      [0., 0., 1.]] # z
         super().__init__(dmi_vector, D = Db)
 
 
@@ -180,7 +180,7 @@ class D2dDMIField(DMIField):
     :type DD2d: str, optional
     """
     def __init__(self, DD2d = "DD2d"):
-        dmi_vector = [[-1, 0, 0], # x
-                      [ 0, 1, 0], # y
-                      [ 0, 0, 0]] # z
+        dmi_vector = [[-1., 0., 0.], # x
+                      [ 0., 1., 0.], # y
+                      [ 0., 0., 0.]] # z
         super().__init__(dmi_vector, D = DD2d)

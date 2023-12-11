@@ -101,8 +101,8 @@ class LTEM(object): # TODO: document and improve interface
     def _Phim_Mansuripur(self):
         m_int = torch.sum(self._m, dim = self._comp)*self._mesh.dx[self._comp]
         Mmn = torch.fft.fftn(m_int, dim = self._dim)
-        p = self._state.Tensor([0., sin(self._theta), cos(self._theta)], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
-        ez = self._state.Tensor([0, 0, 1], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
+        p = torch.tensor([0., sin(self._theta), cos(self._theta)], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
+        ez = torch.tensor([0, 0, 1], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
         k, dk = self._k()
         ks = torch.linalg.norm(k, dim = -1, keepdim = True)# + (dk[0]**2 * self._kcx**2. + dk[1]**2 * self._kcy**2.)
         ks[0,0, :] = 1e-15
