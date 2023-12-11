@@ -22,7 +22,6 @@ def test_float():
     demag.h(state)
     exchange.h(state)
 
-
 def test_setter(simple_state):
     ## set float -> deprecated
     #simple_state.material = {"Ms": simple_state.Constant([1./constants.mu_0]), "A": 1e-11}
@@ -102,7 +101,23 @@ def test_domain():
     state.material["Ms"] = state.Constant([1.])
     state.material["Ms"][domain1] = 0.
     assert avg(state.material["Ms"]).cpu() == pytest.approx(0.75)
+    assert avg(state.material["Ms"][~domain1]).cpu() == pytest.approx(1.0)
 
+    state.material["Ku_axis"] = state.Constant([0.,0.,1.])
+    state.material["Ku_axis"][domain1] = state.Tensor([1.,0.,0.])
+
+    torch.testing.assert_close(avg(state.material["Ku_axis"]), state.Tensor([0.25,0.00,0.75]))
+    torch.testing.assert_close(avg(state.material["Ku_axis"][~domain1]), state.Tensor([0.,0.,1.]))
+
+
+def test_spatial():
+    n  = (8,1,1)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    x,y,z = state.SpatialCoordinate()
+    state.material["Ms"] = 5.3e5 * x.unsqueeze(-1)
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(0.00212)
 
 def test_set():
     n  = (8,10,12)
