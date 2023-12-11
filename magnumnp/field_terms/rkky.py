@@ -97,7 +97,7 @@ class RKKYField(object):
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
         h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
-        return torch.nan_to_num(h)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         m1 = state.m[:,:,(self._id1,),:]
