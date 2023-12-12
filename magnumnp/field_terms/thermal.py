@@ -37,5 +37,5 @@ class ThermalField(FieldTerm):
             self._sigma = state._normal(0., 1., size = state.m.shape)
             self._step = state._step
 
-        h = sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.cell_volumes * state._dt))
+        h = sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volumes * state._dt))
         return h.nan_to_num(posinf=0, neginf=0)

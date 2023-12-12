@@ -161,7 +161,7 @@ def test_nonequi_vs_equi():
     state = State(mesh)
     state.material = {'Ms': state.Constant([1.])}
 
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
 
     demag = DemagField()

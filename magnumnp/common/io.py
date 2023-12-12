@@ -41,12 +41,12 @@ def write_vtr(fields, filename, state = None):
         origin = (0., 0., 0.)
     else:
         n = state.mesh.n
-        dx = state.mesh.dx
+        dx = state.mesh.dx_tuple
         origin = state.mesh.origin
 
-    x = torch.hstack([torch.tensor([0.]), state.dx[0].cumsum(0)]).cpu().numpy() + state.mesh.origin[0]
-    y = torch.hstack([torch.tensor([0.]), state.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
-    z = torch.hstack([torch.tensor([0.]), state.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
+    x = torch.hstack([torch.tensor([0.]), state.mesh.dx[0].cumsum(0)]).cpu().numpy() + state.mesh.origin[0]
+    y = torch.hstack([torch.tensor([0.]), state.mesh.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
+    z = torch.hstack([torch.tensor([0.]), state.mesh.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
 
     grid = pv.RectilinearGrid(x, y, z)
 
@@ -103,7 +103,7 @@ def write_vti(fields, filename, state = None):
         origin = (0., 0., 0.)
     else:
         n = state.mesh.n
-        dx = state.mesh.dx
+        dx = state.mesh.dx_tuple
         origin = state.mesh.origin
 
     grid = pv.ImageData(dimensions = np.array(n) + 1,
@@ -189,11 +189,11 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None,
     if Lx != None and Ly != None and fix_aspect_ratio == True:
         raise RuntimeError("Aspect ratio cannot be kept fix, if both Lx and Ly are provided!")
     if Ly == None:
-        Ly = mesh.n[1] * mesh.dx[1]
+        Ly = mesh.n[1] * mesh.dx_tuple[1]
         if fix_aspect_ratio == True:
             Lx = Ly * image.dimensions[0] / image.dimensions[1]
     if Lx == None:
-        Lx = mesh.n[0] * mesh.dx[0]
+        Lx = mesh.n[0] * mesh.dx_tuple[0]
         if fix_aspect_ratio == True:
             Ly = Lx * image.dimensions[1] / image.dimensions[0]
 
@@ -205,8 +205,8 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None,
     data = data.reshape(-1)
 
     # interpolate on mesh
-    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
-    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
+    x = np.arange(mesh.n[0]) * mesh.dx_tuple[0] + mesh.dx_tuple[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx_tuple[1] + mesh.dx_tuple[1]/2. + mesh.origin[1]
     xx, yy = np.meshgrid(x, y, indexing = "ij")
 
     return scipy.interpolate.griddata((xx_image, yy_image), data, (xx, yy), fill_value=-1)
@@ -228,9 +228,9 @@ def read_mesh(mesh, filename, scale = 1.):
     unstructured_mesh = pv.read(filename)
 
     # interpolate on mesh
-    x = np.arange(mesh.n[0]) * mesh.dx[0] + mesh.dx[0]/2. + mesh.origin[0]
-    y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
-    z = np.arange(mesh.n[2]) * mesh.dx[2] + mesh.dx[2]/2. + mesh.origin[2]
+    x = np.arange(mesh.n[0]) * mesh.dx_tuple[0] + mesh.dx_tuple[0]/2. + mesh.origin[0]
+    y = np.arange(mesh.n[1]) * mesh.dx_tuple[1] + mesh.dx_tuple[1]/2. + mesh.origin[1]
+    z = np.arange(mesh.n[2]) * mesh.dx_tuple[2] + mesh.dx_tuple[2]/2. + mesh.origin[2]
     points = np.stack(np.meshgrid(x, y, z, indexing = "ij"), axis=-1).reshape(-1,3) / scale
 
     containing_cells = unstructured_mesh.find_containing_cell(points)

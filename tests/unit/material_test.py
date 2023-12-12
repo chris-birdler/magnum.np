@@ -95,7 +95,7 @@ def test_domain():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     domain1 = x < 2e-9
     domain2 = x > 6e-9
     state.material["Ms"] = state.Constant([1.])
@@ -115,7 +115,7 @@ def test_spatial():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     state.material["Ms"] = 5.3e5 * x.unsqueeze(-1)
     assert avg(state.material["Ms"]).cpu() == pytest.approx(0.00212)
 
@@ -124,7 +124,7 @@ def test_set():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     domain1 = x < 2e-9
     domain2 = x > 6e-9
     state.material.set({"Ms": 1.}, domain1)

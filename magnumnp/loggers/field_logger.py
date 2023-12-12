@@ -97,7 +97,7 @@ class FieldLogger(object):
         filename = "%s_%04d" % (self._filename, self._i // self._every)
         state.write_vtk(values, filename)
 
-        if state._is_equidistant:
+        if state.mesh.is_equidistant:
             filename += ".vti"
         else:
             filename += ".vtr"

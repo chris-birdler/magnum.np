@@ -60,5 +60,5 @@ class ExternalField(object):
             super().__setattr__(name, value)
 
     def E(self, state, domain = Ellipsis):
-        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
+        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
         return E[domain].sum()

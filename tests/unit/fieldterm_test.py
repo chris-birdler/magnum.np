@@ -63,7 +63,7 @@ def test_regression():
                       "Db":       state.Constant([1.]),
                       "DD2d":     state.Constant([1.])}
 
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
     demag        = DemagField()
     demag_pbc    = DemagFieldPBC()
@@ -201,7 +201,7 @@ def test_pbc(field_term):
                       "Db":      state.Constant([1.]),
                       "DD2d":    state.Constant([1.])}
 
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
     h1 = field_term.h(state)
 
@@ -216,7 +216,7 @@ def test_pbc(field_term):
                       "Db":      state.Constant([1.]),
                       "DD2d":    state.Constant([1.])}
 
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     state.m = torch.stack([x*y, y*z, z*x], dim=-1)
     h2 = field_term.h(state)
     diff = (h1-h2)[1:-1,1:-1,1:-1,:]

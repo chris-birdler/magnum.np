@@ -126,7 +126,7 @@ class DemagField(LinearFieldTerm):
         return s
 
     def _init_N_component(self, state, perm, func):
-        dx = np.array(state.mesh.dx)
+        dx = np.array(state.mesh.dx_tuple)
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
         shape = self._shape(state)

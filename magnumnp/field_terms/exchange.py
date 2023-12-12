@@ -46,9 +46,9 @@ class ExchangeField(LinearFieldTerm):
         A = state.material[self.A]
         Ms = state.material["Ms"]
         m = state.m
-        dx = state.dx[0].reshape(-1,1,1,1)
-        dy = state.dx[1].reshape(1,-1,1,1)
-        dz = state.dx[2].reshape(1,1,-1,1)
+        dx = state.mesh.dx[0].reshape(-1,1,1,1)
+        dy = state.mesh.dx[1].reshape(1,-1,1,1)
+        dz = state.mesh.dx[2].reshape(1,1,-1,1)
         h = torch.zeros(state.mesh.n + (3,))
 
         # x

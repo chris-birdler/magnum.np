@@ -83,12 +83,14 @@ class OerstedField(FieldTerm):
 
     def _init_K_component(self, state, perm, func_near, func_far):
         # dipole far-field
+        dx = np.array(state.mesh.dx_tuple)
+
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         ij = [torch.fft.fftshift(torch.arange(n)) - n//2 for n in shape]
         ij = torch.meshgrid(*ij,indexing='ij')
 
-        r = torch.stack([ij[ind]*state.mesh.dx[ind] for ind in perm], dim=-1)
-        Kc = func_far(r) * np.prod(state.mesh.dx) / (4.*np.pi)
+        r = torch.stack([ij[ind]*dx[ind] for ind in perm], dim=-1)
+        Kc = func_far(r) * np.prod(dx) / (4.*np.pi)
 
         # newell near-field
         n_near = np.minimum(state.mesh.n, self._p)
@@ -97,8 +99,8 @@ class OerstedField(FieldTerm):
         ij = torch.meshgrid(*ij,indexing='ij')
 
         for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
-            r = torch.stack([(ij[ind] + k[ind])*state.mesh.dx[ind] for ind in perm], dim=-1)
-            K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(state.mesh.dx))
+            r = torch.stack([(ij[ind] + k[ind])*dx[ind] for ind in perm], dim=-1)
+            K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(dx))
 
         Kc[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ] = K_near[:n_near[0]   ,:n_near[1]   ,:n_near[2]   ]
         Kc[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:] = K_near[:n_near[0]   ,:n_near[1]   ,-n_near[2]+1:]

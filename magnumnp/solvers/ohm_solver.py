@@ -26,6 +26,7 @@ class OhmSolver(object):
         self._dirichlet_bc_nodes = dirichlet_bc_nodes
 
     def u(self, state, **kwargs):
+        dx = state.mesh.dx_tuple
         sigma = state.material["sigma"].squeeze(-1)
         rhs = torch.zeros(state.mesh.n)
         u0 = state.u.clone()
@@ -52,22 +53,22 @@ class OhmSolver(object):
             sigma_avg = 2. * sigma[1:,:,:] * sigma[:-1,:,:] / (sigma[1:,:,:] + sigma[:-1,:,:])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[1:,:,:] - u[:-1,:,:]
-            du *= sigma_avg / state.mesh.dx[0]
-            res[1:-1,:,:] += (du[1:,:,:] - du[:-1,:,:]) / state.mesh.dx[0]
+            du *= sigma_avg / dx[0]
+            res[1:-1,:,:] += (du[1:,:,:] - du[:-1,:,:]) / dx[0]
 
             # y
             sigma_avg = 2. * sigma[:,1:,:] * sigma[:,:-1,:] / (sigma[:,1:,:] + sigma[:,:-1,:])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[:,1:,:] - u[:,:-1,:]
-            du *= sigma_avg / state.mesh.dx[1]
-            res[:,1:-1,:] += (du[:,1:,:] - du[:,:-1,:]) / state.mesh.dx[1]
+            du *= sigma_avg / dx[1]
+            res[:,1:-1,:] += (du[:,1:,:] - du[:,:-1,:]) / dx[1]
 
             # z
             sigma_avg = 2. * sigma[:,:,1:] * sigma[:,:,:-1] / (sigma[:,:,1:] + sigma[:,:,:-1])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[:,:,1:] - u[:,:,:-1]
-            du *= sigma_avg / state.mesh.dx[2]
-            res[:,:,1:-1] += (du[:,:,1:] - du[:,:,:-1]) / state.mesh.dx[2]
+            du *= sigma_avg / dx[2]
+            res[:,:,1:-1] += (du[:,:,1:] - du[:,:,:-1]) / dx[2]
 
             return res
 

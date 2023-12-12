@@ -46,7 +46,7 @@ def test_wire():
     h1 = oersted.h(state)
     h1 = h1[:,n[1]//2,n[2]//2,1]
 
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     h2 = dx[0]**2/(2.*torch.pi*x[:,n[1]//2,n[2]//2])
     h2[n[0]//2] = 0
 

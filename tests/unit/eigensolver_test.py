@@ -25,7 +25,7 @@ def test_singlespin_exchange():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     state.material = {"Ms": state.Constant([1.]),
                       "A": state.Constant([1.3e-11])}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
@@ -69,7 +69,7 @@ def test_saturated_thinfilm():
 
     mesh = Mesh(n, dx)
     state = State(mesh)
-    x,y,z = state.SpatialCoordinate()
+    x,y,z = mesh.SpatialCoordinate()
     state.material = {
             "A": state.Constant([lex**2*Js**2/(2.*constants.mu_0)]),
             "Ms": state.Constant([1./constants.mu_0]),

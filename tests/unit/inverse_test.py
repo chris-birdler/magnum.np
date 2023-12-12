@@ -42,8 +42,8 @@ def test_hext(simple_state):
                                        BulkDMIField(),
                                        D2dDMIField()])
 def test_linear_fieldterms(simple_state, fieldterm):
-    cell_volume = simple_state.mesh.dx[0] * simple_state.mesh.dx[1] * simple_state.mesh.dx[2]
-    x,y,z = simple_state.SpatialCoordinate()
+    cell_volume = simple_state.mesh.dx_tuple[0] * simple_state.mesh.dx_tuple[1] * simple_state.mesh.dx_tuple[2]
+    x,y,z = simple_state.mesh.SpatialCoordinate()
     m0 = torch.stack([x,2*x,y], dim=-1)
     m0.requires_grad = True
 
@@ -57,5 +57,4 @@ def test_linear_fieldterms(simple_state, fieldterm):
     L.backward()
     h1 = -m0.grad / (constants.mu_0 * simple_state.material["Ms"] * cell_volume)
 
-    write_vti({"h1":h1, "h0":h0}, "data/results.vti", simple_state)
     torch.testing.assert_close(h0/h0.abs().max(), h1/h0.abs().max(), atol=1e-4, rtol=1e-4)

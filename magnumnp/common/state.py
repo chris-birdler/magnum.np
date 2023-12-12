@@ -58,13 +58,6 @@ class State(object):
         #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
         self.mesh = mesh
 
-        self._is_equidistant = all([isinstance(dx, (float, int)) for dx in mesh.dx])
-        self.dx = [torch.tensor(dx).expand(n) for n, dx in zip(mesh.n, mesh.dx)] # use state.dx when a torch.tensor is needed
-
-        # compute cell_volumes (use expand for equidistant dimentions)
-        dx, dy, dz = torch.meshgrid([torch.tensor(dx) for dx in mesh.dx], indexing = "ij")
-        self._cell_volumes = (dx*dy*dz).expand(mesh.n).unsqueeze(-1)
-
         self._material = Material(self)
         self.t = t0
         self._step = 0
@@ -111,19 +104,11 @@ class State(object):
         return x
 
     def SpatialCoordinate(self):
-        x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.mesh.origin[0]
-        y = self.dx[1].cumsum(0) - self.dx[1]/2. + self.mesh.origin[1]
-        z = self.dx[2].cumsum(0) - self.dx[2]/2. + self.mesh.origin[2]
-
-        XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
-        return XX, YY, ZZ
+        logging.warning("State.SpatialCoordinate() is deprecated! Use mesh.SpatialCoordinate() instead!")
+        return self.mesh.SpatialCoordinate()
 
     def write_vtk(self, fields, filename):
-        if self._is_equidistant:
+        if self.mesh.is_equidistant:
             write_vti(fields, filename + ".vti", self)
         else:
             write_vtr(fields, filename + ".vtr", self)
-
-    @property
-    def cell_volumes(self):
-        return self._cell_volumes

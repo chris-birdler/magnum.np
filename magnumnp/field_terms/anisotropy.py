@@ -116,4 +116,4 @@ class CubicAnisotropyField(FieldTerm):
         mx, my, mz = torch.einsum('...a, ...ab-> ...b', state.m, R).unbind(dim=-1) # matmult
 
         return ((state.material[self.Kc1] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) +
-                 state.material[self.Kc2] * (mx**2 * my**2 * mz**2)) * state.cell_volumes).sum()
+                 state.material[self.Kc2] * (mx**2 * my**2 * mz**2)) * state.mesh.cell_volumes).sum()
