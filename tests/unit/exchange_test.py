@@ -43,8 +43,8 @@ def test_nonequi_vs_equi():
     state2.material = {"A": state2.Constant(1.), #1.3e-11,
                       "Ms": state2.Constant(1.)} #800e3}
     x, y, z = state1.SpatialCoordinate()
-    state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
-    state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state1.m = Expression([x*y, y*z, z*x])
+    state2.m = Expression([x*y, y*z, z*x])
 
     exchange = ExchangeField()
     h1 = exchange.h(state1).cpu()

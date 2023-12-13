@@ -44,7 +44,7 @@ def test_hext(simple_state):
 def test_linear_fieldterms(simple_state, fieldterm):
     cell_volume = simple_state.mesh.dx_tuple[0] * simple_state.mesh.dx_tuple[1] * simple_state.mesh.dx_tuple[2]
     x,y,z = simple_state.mesh.SpatialCoordinate()
-    m0 = torch.stack([x,2*x,y], dim=-1)
+    m0 = Expression([x,2*x,y])
     m0.requires_grad = True
 
     simple_state.m = m0

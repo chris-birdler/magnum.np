@@ -37,3 +37,15 @@ def test_timeinterpolator_field():
                                                     1e-9: [0, 0,  1]}))
 
     zeeman.h(state)
+
+def test_expression():
+    n  = (1, 1, 10)
+    dx = (2e-9, 2e-9, 2e-9)
+    mesh = Mesh(n, dx)
+    x, y, z = mesh.SpatialCoordinate()
+
+    Ms = Expression(x)
+    assert Ms.shape == torch.Size([1,1,10,1])
+
+    Ku_axis = Expression((x,y,z))
+    assert Ku_axis.shape == torch.Size([1,1,10,3])

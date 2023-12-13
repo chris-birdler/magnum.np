@@ -25,6 +25,7 @@ from magnumnp.common.tabulate import *
 from magnumnp.common.timer import *
 from magnumnp.common.io import *
 from magnumnp.common.time_interpolator import *
+from magnumnp.common.utils import *
 
 __all__ = (["constants"] +
            logging.__all__ +
@@ -33,4 +34,5 @@ __all__ = (["constants"] +
            state.__all__ +
            timer.__all__ +
            io.__all__ +
-           time_interpolator.__all__ )
+           time_interpolator.__all__ +
+           utils.__all__)

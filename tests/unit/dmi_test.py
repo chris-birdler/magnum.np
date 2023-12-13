@@ -74,8 +74,8 @@ def test_nonequi_vs_equi(dmi_term):
                        "Db": state2.Constant(1.),
                        "DD2d": state2.Constant(1.)}
     x, y, z = mesh1.SpatialCoordinate()
-    state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
-    state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state1.m = Expression([x*y, y*z, z*x])
+    state2.m = Expression([x*y, y*z, z*x])
 
     dmi = dmi_term()
     h1 = dmi.h(state1).cpu()

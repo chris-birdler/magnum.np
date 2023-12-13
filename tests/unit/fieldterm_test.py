@@ -64,7 +64,7 @@ def test_regression():
                       "DD2d":     state.Constant(1.)}
 
     x, y, z = mesh.SpatialCoordinate()
-    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state.m = Expression([x*y, y*z, z*x])
     demag        = DemagField()
     demag_pbc    = DemagFieldPBC()
     dmi_i        = InterfaceDMIField()
@@ -202,7 +202,7 @@ def test_pbc(field_term):
                       "DD2d":    state.Constant(1.)}
 
     x, y, z = mesh.SpatialCoordinate()
-    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state.m = Expression([x*y, y*z, z*x])
     h1 = field_term.h(state)
 
     # PBC
@@ -217,7 +217,7 @@ def test_pbc(field_term):
                       "DD2d":    state.Constant(1.)}
 
     x, y, z = mesh.SpatialCoordinate()
-    state.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state.m = Expression([x*y, y*z, z*x])
     h2 = field_term.h(state)
     diff = (h1-h2)[1:-1,1:-1,1:-1,:]
 
