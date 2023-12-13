@@ -21,6 +21,7 @@ import pathlib
 import torch
 from magnumnp import *
 from helpers import *
+import numpy as np
 
 
 @pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
@@ -113,7 +114,7 @@ def test_regression():
 @pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
 def test_nonequidistant(field_term):
     n  = (10, 5, 4)
-    dx2 = torch.ones(n[2]) * 5e-9
+    dx2 = np.ones(n[2]) * 5e-9
     dx2[2:] = 1.
     dx = (1e-9, 2e-9, dx2)
 
@@ -136,7 +137,7 @@ def test_nonequidistant(field_term):
 
 def test_energy_nonequidistant():
     n  = (10, 5, 4)
-    dx2 = torch.ones(n[2]) * 5e-9
+    dx2 = np.ones(n[2]) * 5e-9
     dx2[2:] = 1e-9
     dx = (1e-9, 2e-9, dx2)
 
@@ -161,7 +162,7 @@ def test_energy_nonequidistant():
 
 def test_energy_domain():
     n  = (10, 5, 4)
-    dx2 = torch.ones(n[2]) * 5e-9
+    dx2 = np.ones(n[2]) * 5e-9
     dx2[2:] = 1e-9
     dx = (1e-9, 2e-9, dx2)
 

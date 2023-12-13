@@ -57,13 +57,10 @@ class Material(dict):
             state.material.set(material1, domain1)
         """
         for key, value in material.items():
-            if not isinstance(value, list):
-               value = [value]
-            value = torch.tensor(value)
-
             if domain == None:
                 self[key] = self._state.Constant(value)
             else:
                 if key not in self.keys():
-                    self[key] = self._state.Constant(0 * value)
+                    self[key] = self._state.Constant(value)
+                    self[key][...] = 0.
                 self[key][domain] = value
