@@ -27,8 +27,8 @@ def test_precession(solver):
 
     state = State(mesh)
     state.material = {
-        "Ms": state.Constant([8e5]),
-        "alpha": state.Constant([0.00])
+        "Ms": state.Constant(8e5),
+        "alpha": state.Constant(0.00)
         }
     state.m = state.Constant([0.1,0,1])
     normalize(state.m)
@@ -51,10 +51,10 @@ def test_relax(solver):
 
     state = State(mesh)
     state.material = {
-        "Ms": state.Constant([8e5]),
-        "Ku": state.Constant([1e5]),
+        "Ms": state.Constant(8e5),
+        "Ku": state.Constant(1e5),
         "Ku_axis": state.Constant([0,0,1]),
-        "alpha": state.Constant([0.01])
+        "alpha": state.Constant(0.01)
         }
     state.m = state.Constant([1,0,0.1])
     normalize(state.m)
@@ -73,10 +73,10 @@ def test_stochastic():
 
     state = State(mesh)
     state.material = {
-        "Ms": state.Constant([8e5]),
-        "Ku": state.Constant([1e5]),
+        "Ms": state.Constant(8e5),
+        "Ku": state.Constant(1e5),
         "Ku_axis": state.Constant([0,0,1]),
-        "alpha": state.Constant([0.01])
+        "alpha": state.Constant(0.01)
         }
     state.m = state.Constant([0,0,1])
     normalize(state.m)

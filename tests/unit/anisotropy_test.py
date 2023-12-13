@@ -9,12 +9,12 @@ def test_cubic_energy():
     cell_volume = dx[0] * dx[1] * dx[2]
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Kc_alpha": state.Constant([0.]),
-                      "Kc_beta":  state.Constant([0.]),
-                      "Kc_gamma": state.Constant([0.]),
-                      "Kc1": state.Constant([1e3]),
-                      "Kc2": state.Constant([0.]),
-                      "Ms": state.Constant([800e3])}
+    state.material = {"Kc_alpha": state.Constant(0.),
+                      "Kc_beta":  state.Constant(0.),
+                      "Kc_gamma": state.Constant(0.),
+                      "Kc1": state.Constant(1e3),
+                      "Kc2": state.Constant(0.),
+                      "Ms": state.Constant(800e3)}
     aniso = CubicAnisotropyField()
     for phi in torch.linspace(0., pi, steps=10):
         mx = cos(phi)
@@ -37,12 +37,12 @@ def test_cubic_energy_rotated():
     cell_volume = dx[0] * dx[1] * dx[2]
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Kc_alpha": state.Constant([pi/4.]),
-                      "Kc_beta": state.Constant([0.]),
-                      "Kc_gamma": state.Constant([0.]),
-                      "Kc1": state.Constant([1e3]),
-                      "Kc2": state.Constant([0.]),
-                      "Ms": state.Constant([800e3])}
+    state.material = {"Kc_alpha": state.Constant(pi/4.),
+                      "Kc_beta": state.Constant(0.),
+                      "Kc_gamma": state.Constant(0.),
+                      "Kc1": state.Constant(1e3),
+                      "Kc2": state.Constant(0.),
+                      "Ms": state.Constant(800e3)}
     aniso = CubicAnisotropyField()
     for phi in torch.linspace(0., pi, steps=10):
         mx = cos(phi - pi/4)
@@ -64,12 +64,12 @@ def test_renamed_parameters():
     dx = (1, 2, 5)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"K_alpha": state.Constant([pi/4.]),
-                      "Kc_beta": state.Constant([0.]),
-                      "Kc_gamma": state.Constant([0.]),
-                      "Kc1": state.Constant([1e3]),
-                      "Kc2": state.Constant([0.]),
-                      "Ms": state.Constant([800e3])}
+    state.material = {"K_alpha": state.Constant(pi/4.),
+                      "Kc_beta": state.Constant(0.),
+                      "Kc_gamma": state.Constant(0.),
+                      "Kc1": state.Constant(1e3),
+                      "Kc2": state.Constant(0.),
+                      "Ms": state.Constant(800e3)}
     aniso = CubicAnisotropyField(Kc_alpha = "K_alpha")
     phi = 0.123
     mx = cos(phi - pi/4)
