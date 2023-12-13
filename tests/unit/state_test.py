@@ -1,5 +1,6 @@
 import pytest
 import torch
+import numpy as np
 from magnumnp import *
 from helpers import *
 
@@ -46,7 +47,7 @@ def test_spatial_coordinate():
 
 def test_spatial_coordinate_nonequi():
     n = (1, 1, 4)
-    dx = (5e-9, 5e-9, (torch.arange(n[2])+1.)*1e-9)
+    dx = (5e-9, 5e-9, (np.arange(n[2])+1.)*1e-9)
     mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0) )
     state = State(mesh)
     x, y, z = mesh.SpatialCoordinate()
@@ -71,7 +72,7 @@ def test_average():
 
 def test_average_nonequi():
     n = (1, 1, 4)
-    dx = (5e-9, 5e-9, (torch.arange(n[2])+1.)*1e-9)
+    dx = (5e-9, 5e-9, (np.arange(n[2])+1.)*1e-9)
     mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0))
     state = State(mesh)
     state.m = state.Constant([1.,0.,0.])

@@ -54,12 +54,12 @@ def normalize(data):
     return data
 
 class State(object):
-    def __init__(self, mesh, t0 = 0.):
+    def __init__(self, mesh):
         #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
         self.mesh = mesh
 
         self._material = Material(self)
-        self.t = t0
+        self.t = 0.
         self._step = 0
         self._dt = 0.
 
@@ -99,6 +99,8 @@ class State(object):
 
     def Constant(self, c, dtype = None):
         c = torch.tensor(c, dtype = dtype)
+        if c.shape == []:
+            c = c.reshape(1)
         x = torch.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c
         return x

@@ -2,6 +2,7 @@ import pytest
 import pathlib
 import torch
 from magnumnp import *
+import numpy as np
 
 # move to fieldterms test
 def test_call():
@@ -65,14 +66,14 @@ def test_nonequi_vs_equi(dmi_term):
                        "Db": state1.Constant([1.]),
                        "DD2d": state1.Constant([1.])}
 
-    dx2 = (torch.ones(n[0]) * 1e-9, 2e-9, 5e-9)
+    dx2 = (np.ones(n[0]) * 1e-9, 2e-9, 5e-9)
     mesh2 = Mesh(n, dx2)
     state2 = State(mesh2)
     state2.material = {"Ms": state2.Constant([1./constants.mu_0]),
                        "Di": state2.Constant([1.]),
                        "Db": state2.Constant([1.]),
                        "DD2d": state2.Constant([1.])}
-    x, y, z = state1.SpatialCoordinate()
+    x, y, z = mesh1.SpatialCoordinate()
     state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
     state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
 

@@ -36,7 +36,6 @@ class Material(dict):
             super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
 
 
-    # TODO: move to state.set_material ??
     def set(self, material, domain=None):
         r"""
         Setting several constant material parameters at once
