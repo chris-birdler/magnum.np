@@ -36,7 +36,7 @@ class Mesh(object):
         self.cell_volumes = (dx*dy*dz).expand(self.n).unsqueeze(-1)
 
     def __str__(self):
-        str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx]
+        str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx_tuple]
         return "%dx%dx%d (size= %s x %s x %s)" % (*self.n, *str_dx)
 
     def SpatialCoordinate(self):
