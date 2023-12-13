@@ -88,8 +88,7 @@ class EigenSolver(object):
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
-        evecs2D = torch.from_numpy(evecs2D)
-        evecs2D = torch.tensor(evecs2D).reshape(-1,2,evecs2D.shape[-1])
+        evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
         omega = torch.tensor(evals.imag)
 
@@ -115,7 +114,7 @@ class EigenResult(object):
     def load(state, filename):
         stored = torch.load(filename)
         m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
-        state.m = torch.tensor(m0)
+        state.m = m0
 
         ez = state.Constant([1e-15,0.,1.])
         e1 = torch.linalg.cross(ez, m0)
