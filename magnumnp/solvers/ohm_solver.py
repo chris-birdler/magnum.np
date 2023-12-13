@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, DecoratedTensor
+from magnumnp.common import logging, timedmethod, constants
 import torch
 
 __all__ = ["OhmSolver"]

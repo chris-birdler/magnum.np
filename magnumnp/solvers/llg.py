@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, DecoratedTensor
+from magnumnp.common import logging, timedmethod, constants
 from .ode_solvers import RKF45
 import torch
 

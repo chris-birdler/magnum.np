@@ -17,7 +17,7 @@
 #
 
 import torch
-from magnumnp.common import logging, DecoratedTensor
+from magnumnp.common import logging
 from torchdiffeq import odeint, odeint_adjoint
 
 __all__ = ["TorchDiffEq", "TorchDiffEqAdjoint"]

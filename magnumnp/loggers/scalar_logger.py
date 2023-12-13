@@ -20,7 +20,7 @@ import torch
 import os
 from collections.abc import Iterable
 from functools import reduce
-from magnumnp.common import logging, DecoratedTensor, avg
+from magnumnp.common import logging, avg
 
 __all__ = ["ScalarLogger"]
 
@@ -96,9 +96,7 @@ class ScalarLogger(object):
             else:
                 raise RuntimeError('Column type not supported.')
 
-            if isinstance(raw_value, DecoratedTensor):
-                value = raw_value.avg().tolist()
-            elif isinstance(raw_value, torch.Tensor):
+            if isinstance(raw_value, torch.Tensor):
                 value = avg(raw_value).tolist()
             else:
                 value = raw_value

@@ -16,7 +16,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common.decorated_tensor import *
 from magnumnp.common.constants import *
 from magnumnp.common.logging import *
 from magnumnp.common.material import *

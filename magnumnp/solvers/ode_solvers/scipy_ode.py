@@ -17,7 +17,7 @@
 #
 
 import torch
-from magnumnp.common import logging, DecoratedTensor
+from magnumnp.common import logging
 from scipy.integrate import ode
 
 __all__ = ["ScipyODE"]
