@@ -3,7 +3,7 @@
 __version__ = '2.0.1'
 
 import magnumnp.common.logging as logging
-from magnumnp.utils import get_gpu_with_least_memory
+from magnumnp.common.utils import get_gpu_with_least_memory
 import torch
 import os
 

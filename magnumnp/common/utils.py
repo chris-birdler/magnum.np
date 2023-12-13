@@ -92,3 +92,21 @@ def Expression(comps):
     if isinstance(comps, torch.Tensor):
         comps = [comps]
     return torch.stack(comps, dim=-1)
+
+
+def get_gpu_with_least_memory():
+    if not torch.cuda.is_available():
+        return -1
+
+    import pynvml
+    pynvml.nvmlInit()
+    num_gpus = pynvml.nvmlDeviceGetCount()
+
+    gpu_memory = []
+    for i in range(num_gpus):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+        gpu_memory.append(mem_info.used)
+
+    pynvml.nvmlShutdown()
+    return gpu_memory.index(min(gpu_memory))

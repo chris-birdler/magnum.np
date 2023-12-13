@@ -16,7 +16,7 @@ def test_float():
     demag = DemagField()
     exchange = ExchangeField()
     assert Ms.cpu() == pytest.approx(1./constants.mu_0)
-    assert isinstance(state.t, torch.Tensor)
+    assert isinstance(state.t, float)
     assert isinstance(Ms, torch.Tensor)
     assert avg(Ms).cpu() == pytest.approx(1./constants.mu_0)
     demag.h(state)

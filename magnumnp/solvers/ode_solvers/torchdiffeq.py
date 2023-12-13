@@ -45,7 +45,7 @@ class TorchDiffEq(object):
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,
                      options = self._options) # TODO: reuse solver object?
-        state.m = torch.tensor(res[1])
+        state.m = res[1]
         state.t = t1
 
 class TorchDiffEqAdjoint(object):
@@ -73,5 +73,5 @@ class TorchDiffEqAdjoint(object):
                      atol = atol or self._atol,
                      adjoint_params = self._adjoint_parameters,
                      options = self._options) # TODO: reuse solver object?
-        state.m = torch.tensor(res[1])
+        state.m = res[1]
         state.t = t1
