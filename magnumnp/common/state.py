@@ -69,7 +69,7 @@ class State(object):
 
     def Constant(self, c, dtype = None):
         c = torch.tensor(c, dtype = dtype)
-        if c.dim() == 0:
+        if c.dim() == 0 and c.dtype != torch.bool:
             c = c.reshape(1)
         x = torch.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c

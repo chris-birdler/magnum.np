@@ -27,8 +27,8 @@ class OhmSolver(object):
 
     def u(self, state, **kwargs):
         dx = state.mesh.dx_tuple
-        sigma = state.material["sigma"].squeeze(-1)
-        rhs = torch.zeros(state.mesh.n)
+        sigma = state.material["sigma"]
+        rhs = state.Constant(0.)
         u0 = state.u.clone()
 
         def _M(u):
@@ -77,7 +77,8 @@ class OhmSolver(object):
 
     def j(self, state, **kwargs):
         sigma = state.material["sigma"]
-        grad = [torch.gradient(self.u(state, **kwargs), dim=i)[0] if state.mesh.n[i] > 2 else torch.zeros_like(sigma[:,:,:,0]) for i in range(3)]
+        u = self.u(state, **kwargs).squeeze(-1)
+        grad = [torch.gradient(u, dim=i)[0] if state.mesh.n[i] > 2 else torch.zeros_like(u) for i in range(3)]
         return -sigma * torch.stack(grad, dim=-1)
 
 def conjugate_gradient(A, x, b, tol=1e-6, max_iter=1000):
