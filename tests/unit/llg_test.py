@@ -16,7 +16,7 @@ def test_step(simple_state, solver):
 
     llg = LLGSolver([demag, exchange, external], solver = solver)
     llg.step(simple_state, 1e-11)
-    assert simple_state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)
+    assert simple_state.t == pytest.approx(1e-11, abs=0, rel=1e-6)
 
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])

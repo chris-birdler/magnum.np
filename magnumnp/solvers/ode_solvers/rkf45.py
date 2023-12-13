@@ -85,16 +85,16 @@ class RKF45(object):
         dt_opt = self._dt * r
         if dt_opt > self._maxstep:
             dt_opt = self._maxstep
-        return dt_opt
+        return float(dt_opt)
 
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
         t0, t1 = state.t, state.t + dt
         while state.t < t1:
             _m1, _t1, err = self._try_step(state, **llg_args)
-            dt_opt = torch.tensor(self._optimal_stepsize(err, atol or self._atol))
+            dt_opt = self._optimal_stepsize(err, atol or self._atol)
             if self._dt > dt_opt or self._dt > t1 - state.t:
                 # step size was too large, retry with optimal stepsize
-                self._dt = torch.min(dt_opt, t1 - state.t).detach()
+                self._dt = min(dt_opt, t1 - state.t)
                 logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
             else:
                 # accept step, adapt stepsize for next step

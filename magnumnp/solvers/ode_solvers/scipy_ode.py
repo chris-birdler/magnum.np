@@ -42,7 +42,7 @@ class ScipyODE(object):
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
         if not self._initialized:
             m = state.m.detach().cpu().numpy().reshape(-1, order = 'F')
-            self._solver.set_initial_value(m, state.t.item())
+            self._solver.set_initial_value(m, state.t)
             self._initialized = True
 
         self._solver.set_f_params(state, llg_args)

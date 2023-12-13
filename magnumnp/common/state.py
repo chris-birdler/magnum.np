@@ -40,14 +40,6 @@ class State(object):
         logging.info_green("[Mesh] %s" % mesh)
 
     @property
-    def t(self): # TODO: should t be a float? would this break the inverse code?
-        return self._t
-
-    @t.setter
-    def t(self, value):
-        self._t = torch.tensor(value)
-
-    @property
     def material(self):
         return self._material
 
