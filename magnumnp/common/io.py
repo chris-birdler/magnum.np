@@ -26,6 +26,9 @@ from . import Mesh
 __all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
 
 def write_vtr(fields, filename, state = None):
+    if filename[-4:] != ".vtr":
+        logging.warning("[write_vtr] Extention '.vtr' should be used on non-equidistant grids!")
+
     dirname = os.path.dirname(filename)
     if dirname and not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -87,6 +90,9 @@ def write_vti(fields, filename, state = None):
         write_vti([state.m, h], "list.vti")
         write_vti({'m':state.m, 'h':h}, "dict.vti")
     """
+    if filename[-4:] != ".vti":
+        logging.warning("[write_vti] Extention '.vti' should be used on equidistant grids!")
+
     dirname = os.path.dirname(filename)
     if dirname and not os.path.isdir(dirname):
         os.makedirs(dirname)

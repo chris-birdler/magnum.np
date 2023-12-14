@@ -1,10 +1,12 @@
 import torch
 from magnumnp import *
+import numpy as np
 from tqdm import tqdm
 import pathlib
 
 def run_dispersion_calculator():
     Timer.enable()
+    torch.set_default_dtype(torch.float32)
     this_dir = pathlib.Path(__file__).resolve().parent
 
     Nt = 500
@@ -26,18 +28,18 @@ def run_dispersion_calculator():
     mesh = Mesh(n, dx, origin)
     
     # initialize state
-    state = State(mesh, dtype = torch.float32)
-    x,y,z = state.SpatialCoordinate()
-    mt = state.zeros((Nt, n[0], n[1], n[2]))
+    state = State(mesh)
+    x,y,z = mesh.SpatialCoordinate()
+    mt = torch.zeros((Nt, n[0], n[1], n[2]))
     
     state.material = {
-        'Ms': Ms,
-        'A': A,
-        'alpha': alpha
+        'Ms': state.Constant(Ms),
+        'A': state.Constant(A),
+        'alpha': state.Constant(alpha)
         }
     
     state.m = state.Constant(h_bias)
-    state.m.normalize()
+    normalize(state.m)
     
     # initialize spin wave excitation field
     N = n[0] / 2
@@ -45,12 +47,12 @@ def run_dispersion_calculator():
     fc = 1/(2*dt)
     
     h0 = state.Constant(h_excite)
-    h0 *= torch.special.sinc(kc / torch.pi * x).unsqueeze(-1)
-    h0 *= torch.special.sinc(kc / torch.pi * y).unsqueeze(-1)
+    h0 *= Expression(torch.sinc(kc / torch.pi * x))
+    h0 *= Expression(torch.sinc(kc / torch.pi * y))
     
     omega = 2.*fc
     t0 = 50e-12
-    ht = lambda t: torch.sinc(omega * (t-t0)) * h0
+    ht = lambda t: np.sinc(omega * (t-t0)) * h0
     
     # initialize energy terms
     demag    = DemagField()

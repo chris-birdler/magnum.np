@@ -68,7 +68,7 @@ class MinimizerBB(object):
             logging.info_blue("[MinimizerBB] Linesearch: %d, E=%g" % (j, E))
 
     @timedmethod
-    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5):
+    def minimize(self, state, maxiter = 2000, dm_tol = 1e2, tau_min = 1e-13, tau_max = 1e-5):
         tau = tau_min
         steps = 0
         dm_max = 1e18

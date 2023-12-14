@@ -56,6 +56,11 @@ class ExternalField(object):
                 self._h = value
             else:
                 self._h = lambda t: value
+
+            # check type
+            value = self._h(0.)
+            if not isinstance(value, torch.Tensor) or value.dim() < 4:
+                raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
         else:
             super().__setattr__(name, value)
 
