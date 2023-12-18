@@ -59,7 +59,7 @@ def run_rkky():
     logger = Logger(this_dir / "data", ['t', 'm', zeeman.h], ['m'], fields_every = 100)
     for h in np.linspace(Hxmin, Hxmax, num=100):
         zeeman.h = state.Constant([0, 0, h])
-        minimizer.minimize(state)
+        minimizer.minimize(state, dm_tol=1e-4)
         logger << state
 
     Timer.print_report()

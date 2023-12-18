@@ -44,6 +44,8 @@ class ExchangeField(LinearFieldTerm):
     @torch.compile
     def h(self, state):
         A = state.material[self.A]
+        if self._domain != None:
+            A = A * self._domain[:,:,:,None]
         Ms = state.material["Ms"]
         m = state.m
         dx = state.mesh.dx[0].reshape(-1,1,1,1)
