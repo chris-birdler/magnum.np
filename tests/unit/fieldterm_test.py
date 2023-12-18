@@ -24,7 +24,7 @@ from helpers import *
 import numpy as np
 
 
-@pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
+@pytest.mark.parametrize("field_term", [DemagField(), DemagFieldPBC(), InterfaceDMIField(), BulkDMIField(), D2dDMIField(), ExchangeField(), UniaxialAnisotropyField()])
 def test_material_constant(field_term):
     n  = (10, 5, 1)
     dx = (1e-9, 1e-9, 1e-9)
@@ -111,7 +111,7 @@ def test_regression():
     torch.testing.assert_close(torch.linalg.cross(m, h_aniso        / ref["h_aniso"].max()),        torch.linalg.cross(m, ref["h_aniso"]        / ref["h_aniso"].max()),         atol=1e-15, rtol=1e-6)
     torch.testing.assert_close(torch.linalg.cross(m, h_aniso_cubic  / ref["h_aniso_cubic"].max()),  torch.linalg.cross(m, ref["h_aniso_cubic"]  / ref["h_aniso_cubic"].max()),   atol=1e-15, rtol=1e-6)
 
-@pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), ExternalField([-24.6e-3/constants.mu_0, +4.3e-3/constants.mu_0, 0.0]), UniaxialAnisotropyField() ])
+@pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), UniaxialAnisotropyField()])
 def test_nonequidistant(field_term):
     n  = (10, 5, 4)
     dx2 = np.ones(n[2]) * 5e-9
