@@ -31,5 +31,5 @@ def simple_state(simple_mesh):
         "alpha": state.Constant(0.02)
         }
 
-    state.m = state.Constant([1,0,0])
+    state.m = state.Constant([1.,0.,0.])
     return state

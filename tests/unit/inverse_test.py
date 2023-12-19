@@ -14,6 +14,7 @@ def finite_grad(op, x0):
         x[i] -= 2*eps
         y1 = op(x)
         grad[i] = (y2-y1)/(2*eps)
+        print("grad[i]:", grad[i].shape)
     return grad
 
 def test_hext(simple_state):
@@ -21,8 +22,10 @@ def test_hext(simple_state):
     external = ExternalField(h_ext)
     h_target = torch.tensor([0.,0.,1.])
 
-    def forward(h_ext):
-        external.h = h_ext
+    def forward(h):
+        external.h = h
+        
+        print("hext:", external.h(simple_state).detach().abs().max().numpy())
         L = ((external.h(simple_state)-h_target)**2).sum()
         return L
 
@@ -30,9 +33,11 @@ def test_hext(simple_state):
     L.backward()
     grad = h_ext.grad
 
-    h_ext2 = torch.tensor([1.,0.,0.])
+    h_ext2 = simple_state.Constant([1.,0.,0.])
     grad2 = finite_grad(forward, h_ext2)
 
+    print("grad:", grad.abs().max().numpy(), grad.shape)
+    print("grad2:", grad2.abs().max().numpy(), grad2.shape)
     torch.testing.assert_close(grad, grad2)
 
 @pytest.mark.parametrize("fieldterm", [UniaxialAnisotropyField(),
