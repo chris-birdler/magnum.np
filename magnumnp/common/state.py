@@ -66,7 +66,8 @@ class State(object):
             c = c.reshape(1)
         x = torch.zeros(self.mesh.n + c.shape, dtype = dtype)
         x[...] = c
-        x.requires_grad = requires_grad
+        if requires_grad == True:
+            x.requires_grad = requires_grad
         return x
 
     def SpatialCoordinate(self):

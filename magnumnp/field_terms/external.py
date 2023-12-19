@@ -43,8 +43,9 @@ class ExternalField(object):
         h = torch.stack([x,y,z], dim=-1)
         external = ExternalField(h)
     """
-    def __init__(self, h):
-        self.__setattr__("h", h)
+    def __init__(self, h = None):
+        if h != None:
+            self.__setattr__("h", h)
 
     @timedmethod
     def h(self, state):
