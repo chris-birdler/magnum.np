@@ -19,9 +19,9 @@ def test_sp4():
     # initialize field terms
     demag    = DemagField()
     exchange = ExchangeField()
-    external = ExternalField([-24.6e-3/constants.mu_0,
-                              +4.3e-3/constants.mu_0,
-                              0.0])
+    external = ExternalField(state.Constant([-24.6e-3/constants.mu_0,
+                                              +4.3e-3/constants.mu_0,
+                                              0.0]))
 
     # initialize magnetization that relaxes into s-state
     state.m = state.Constant([0,0,0])

@@ -17,7 +17,7 @@ def finite_grad(op, x0):
     return grad
 
 def test_hext(simple_state):
-    h_ext = torch.tensor([1.,0.,0.], requires_grad = True)
+    h_ext = simple_state.Constant([1.,0.,0.], requires_grad = True)
     external = ExternalField(h_ext)
     h_target = torch.tensor([0.,0.,1.])
 

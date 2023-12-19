@@ -62,7 +62,7 @@ def test_relax(solver):
     aniso = UniaxialAnisotropyField()
 
     llg = LLGSolver([aniso], solver = solver)
-    llg.relax(state, rtol = 1e-8)
+    llg.relax(state)
 
     torch.testing.assert_close(avg(state.m), torch.tensor([0.,0.,1.]), atol=1e-2, rtol=1e-2)
 
