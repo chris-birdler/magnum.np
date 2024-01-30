@@ -52,7 +52,7 @@ class StringSolver(object):
             if self._fix_end and i == len(images): continue
             state.t = 0.0
             state.m = image
-            llg = LLGSolver(self._fields)
+            llg = LLGSolver(self._fields, no_precession = True)
             llg.step(state, h)
             images[i] = state.m
 

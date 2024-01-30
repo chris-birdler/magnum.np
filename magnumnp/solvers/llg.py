@@ -23,11 +23,12 @@ import torch
 __all__ = ["LLGSolver"]
 
 class LLGSolver(object):
-    def __init__(self, terms, solver = RKF45, **kwargs):
+    def __init__(self, terms, solver = RKF45, no_precession = False, **kwargs):
         self._terms = terms
         self._solver = solver(self.dm, **kwargs)
+        self._no_precession = no_precession
 
-    def dm(self, state, alpha = None, no_precession = False):
+    def dm(self, state, alpha = None):
         alpha = alpha or state.material["alpha"]
 
         gamma_prime = constants.gamma / (1. + alpha**2)
@@ -36,7 +37,7 @@ class LLGSolver(object):
         h = sum([term.h(state) for term in self._terms])
 
         dm = -alpha_prime * torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
-        if not no_precession:
+        if not self._no_precession:
             dm -= gamma_prime * torch.linalg.cross(state.m, h)
 
         return dm
