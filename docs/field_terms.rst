@@ -113,6 +113,10 @@ SpinTorqueZhangLi
 *****************
 .. autoclass:: SpinTorqueZhangLi
 
+SpinTorqueSlonczewski
+********************
+.. autoclass:: SpinTorqueSlonczewski
+
 OerstedField
 ************
 .. autoclass:: OerstedField

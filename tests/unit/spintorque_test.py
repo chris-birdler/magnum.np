@@ -31,3 +31,32 @@ def test_sot(simple_state):
 
     assert torch.allclose(h1, h2)
 
+
+def test_slonczewski(simple_state):
+    state = simple_state
+    state.m = state.Constant([0,1,0])
+    state.m[:1,:,:,1] = -1.
+
+
+    state.material = {
+        "Ms": 8e5,
+        "A": 1.3e-11,
+        "alpha": 0.01,
+        "P": 0.5669,
+        "Lambda": 2,
+        "gamma0": 2.211e5,
+        "epsilon_prime": 1,
+        "p": state.Tensor((0.93, 0.34, 0)), 
+        "d": 5e-9,
+        "J": -4e11,
+        }
+
+    torque = SpinTorqueSlonczewski(state)
+
+    state.material["p"] = state.Tensor([0, -1, 0])
+    h1 = torque.h(state)
+    state.material["p"] = state.Constant([0, -1, 0])
+    h2 = torque.h(state)
+
+    assert torch.allclose(h1, h2)
+    

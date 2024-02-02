@@ -19,7 +19,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["SpinOrbitTorque", "SpinTorqueZhangLi"]
+__all__ = ["SpinOrbitTorque", "SpinTorqueZhangLi", "SpinTorqueSlonczewski"]
 
 #TODO: generalize interface (ZhangLi uses state.j, SOT uses material["je"]
 class SpinOrbitTorque(object):
@@ -70,6 +70,86 @@ class SpinTorqueZhangLi(object):
         jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
 
         return state.material["b"] / constants.gamma * (torch.linalg.cross(state.m, jgradm) + state.material["xi"] * jgradm)
+
+    def E(self, state):
+        raise NotImplemented()
+
+
+class SpinTorqueSlonczewski(object):
+
+    r"""
+    Slonczewski spin torque contributions can be described by the following field:
+
+    .. math::
+        \vec{h}^\text{stt,slonczewski} = \beta \left[ \epsilon (\vec{m} \times \vec{p}_\text{p}) + \epsilon' \vec{p}_\text{p} \right],
+
+    with the polarization vector of the conducting electrons :math:`\vec{p}_\text{p}`
+    and the secondary spin torque efficiency :math:`\epsilon'`.
+
+    The :math:`\beta` is given by current density :math:`J`,
+    the thickness of the fixed layer :math:`d` (default using the thickness of the mesh),
+    the reduced Planck constant :math:`\hbar`,
+    the elementary charge :math:`e`,
+    the permeability of free space :math:`\mu_0`,
+
+    .. math::
+        \beta = \frac{\hbar J} {e M_s d \mu_0},
+
+    The :math:`\epsilon` is computed by assuming both the fixed layer and free layer have the same spin polarization :math:`P` and the spin diffusion length :math:`\Lambda`: across the spacer layer
+
+    .. math::
+        \epsilon = \frac{P \Lambda^2} {(\Lambda^2 + 1) + (\Lambda^2 - 1) \vec{m} \cdot \vec{p}_\text{p}}.
+    """
+
+
+    def __init__(self, state, ):
+        # These values are only needed for the initialization
+        # Discard them after initialization
+        _eps_prime = state.material["epsilon_prime"]
+        _J = state.material["J"]
+        _P = state.material["P"]
+        _Lambda = state.material["Lambda"]
+        _Lambda_sq = _Lambda ** 2
+        
+        self._mp = state.material["p"]
+
+        # Use the thickness of the mesh if no thickness of fixed layer is given
+        if state.material["d"] is None:
+            _d = state.mesh.dx[2]
+        else:
+            _d = state.material["d"]
+
+        
+        # These values are precomputed to speed up the calculation
+        # Store them as attributes to avoid recomputing them
+        self._beta = constants.hbar * _J /\
+                  (constants.mu_0 * state.material["Ms"] * constants.e * _d)
+
+        self._eps_prefactor = _P * _Lambda_sq 
+        self._h_prefactor = _eps_prime * self._mp
+
+        self._Lambda_sq_plus_1 = _Lambda_sq + 1
+        self._Lambda_sq_minus_1 = _Lambda_sq - 1
+
+        #TODO: Implement a spatial and time dependent J
+
+    
+    @timedmethod
+    def h(self, state):
+
+        epsilon = self._eps_prefactor / \
+                        (self._Lambda_sq_plus_1 + (self._Lambda_sq_minus_1 * \
+                        torch.tensordot(state.m, 
+                                         self._mp[0,0,0], 
+                                         dims=([-1], [-1])).view(state.m.shape[0], 
+                                                                 state.m.shape[1], 
+                                                                 state.m.shape[2], -1))) #TODO: optimize this
+
+
+        mxp = torch.linalg.cross(state.m, self._mp)
+
+        h = self._beta * (epsilon * mxp + self._h_prefactor)
+        return h
 
     def E(self, state):
         raise NotImplemented()
