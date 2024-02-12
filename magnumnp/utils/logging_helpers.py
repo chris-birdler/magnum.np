@@ -17,35 +17,45 @@
 #
 
 import torch
+import numpy as np
 
-__all__ = ["log_cumsum", "log_diff"]
+__all__ = ["LogDt", "LogMovingAverage", "LogCumSum"]
 
-
-def log_cumsum(**kwargs):
-    ''' Cummulate values '''
-    items = list(kwargs.items())
-    if len(items) > 1:
-        raise ValueError("only a single parameter allowed") 
-    key, value = items[0]
-    try:  
-        globals()[key] += value
-    except: 
-        globals()[key] = value 
-    return globals()[key]
-    
-
-def log_diff(**kwargs):
+class LogDt():
     ''' Discrete difference '''
-    items = list(kwargs.items())
-    if len(items) > 1:
-        raise ValueError("only a single parameter allowed") 
-    key, value = items[0]
-    try:  
-        x0 = globals()[key]
-    except: 
-        x0 = 0
-    diff = value - x0
-    globals()[key] = value
-    return diff
-    
+    def __init__(self, func):
+        self._func = func
 
+    def __call__(self, state):
+        try:
+            f0 = self._f
+            t0 = self._t
+        except:
+            f0 = 0
+            t0 = 0
+        self._f = self._func(state)
+        self._t = state.t
+        return (self._f - f0) / (self._t - t0)
+
+class LogMovingAverage():
+    def __init__(self, func, N = 10):
+        self._func = func
+        self._vals = np.zeros(N)
+        self._fill = np.zeros(N)
+
+    def __call__(self, state):
+        self._vals = np.roll(self._vals, -1)
+        self._fill = np.roll(self._fill, -1)
+
+        self._vals[-1] = self._func(state)
+        self._fill[-1] = 1
+        return self._vals.sum() / self._fill.sum()
+
+class LogCumSum():
+    def __init__(self, func):
+        self._func = func
+        self._val = 0.
+
+    def __call__(self, state):
+        self._val += self._func(state)
+        return self._val
