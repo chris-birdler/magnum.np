@@ -67,7 +67,7 @@ DemagFieldPBC
    :show-inheritance:
 
 DemagFieldNonEquidistant
-*************
+************************
 .. autoclass:: DemagFieldNonEquidistant
    :show-inheritance:
 
@@ -114,7 +114,7 @@ SpinTorqueZhangLi
 .. autoclass:: SpinTorqueZhangLi
 
 SpinTorqueSlonczewski
-********************
+*********************
 .. autoclass:: SpinTorqueSlonczewski
 
 OerstedField
