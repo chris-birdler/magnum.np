@@ -99,50 +99,24 @@ class SpinTorqueSlonczewski(object):
     .. math::
         \epsilon = \frac{P \Lambda^2} {(\Lambda^2 + 1) + (\Lambda^2 - 1) \vec{m} \cdot \vec{p}_\text{p}}.
     """
+    # TODO: add torch.compile after redesign
     @timedmethod
     def h(self, state):
-        # These values are only needed for the initialization
-        # Discard them after initialization
-        _eps_prime = state.material["epsilon_prime"]
-        _J = state.material["J"]
-        _P = state.material["P"]
-        _Lambda = state.material["Lambda"]
-        _Lambda_sq = _Lambda ** 2
-        
-        self._mp = state.material["p"]
+        mp = state.material["mp"]
+        Lambda = state.material["Lambda"]
 
-        # Use the thickness of the mesh if no thickness of fixed layer is given
+        # use thickness of mesh if not provided
         if state.material["d"] is None:
-            _d = state.mesh.dx[2]
+            d = state.mesh.dx[2]
         else:
-            _d = state.material["d"]
+            d = state.material["d"]
 
-        
-        # These values are precomputed to speed up the calculation
-        # Store them as attributes to avoid recomputing them
-        self._beta = constants.hbar * _J /\
-                  (constants.mu_0 * state.material["Ms"] * constants.e * _d)
+        epsilon = state.material["P"] * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (state.m*mp).sum(axis = 3, keepdim=True)))
+        mxp = torch.linalg.cross(state.m, mp)
+        h = epsilon * mxp + state.material["epsilon_prime"] * mp
 
-        self._eps_prefactor = _P * _Lambda_sq 
-        self._h_prefactor = _eps_prime * self._mp
-
-        self._Lambda_sq_plus_1 = _Lambda_sq + 1
-        self._Lambda_sq_minus_1 = _Lambda_sq - 1
-
-        #TODO: Implement a spatial and time dependent J
-        epsilon = self._eps_prefactor / \
-                        (self._Lambda_sq_plus_1 + (self._Lambda_sq_minus_1 * \
-                        torch.tensordot(state.m, 
-                                         self._mp[0,0,0], 
-                                         dims=([-1], [-1])).view(state.m.shape[0], 
-                                                                 state.m.shape[1], 
-                                                                 state.m.shape[2], -1))) #TODO: optimize this
-
-
-        mxp = torch.linalg.cross(state.m, self._mp)
-
-        h = self._beta * (epsilon * mxp + self._h_prefactor)
-        return h
+        h *= constants.hbar * state.material["J"] / (constants.mu_0 * state.material["Ms"] * constants.e * d)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         raise NotImplemented()
