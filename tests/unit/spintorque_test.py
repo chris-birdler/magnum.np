@@ -46,7 +46,7 @@ def test_slonczewski(simple_state):
         "Lambda": 2,
         "gamma0": 2.211e5,
         "epsilon_prime": 1,
-        "p": state.Tensor((0.93, 0.34, 0)), 
+        "p": state.Tensor((0.93, 0.34, 0)),
         "d": 5e-9,
         "J": -4e11,
         }
@@ -59,4 +59,3 @@ def test_slonczewski(simple_state):
     h2 = torque.h(state)
 
     assert torch.allclose(h1, h2)
-    

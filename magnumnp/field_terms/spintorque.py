@@ -76,7 +76,6 @@ class SpinTorqueZhangLi(object):
 
 
 class SpinTorqueSlonczewski(object):
-
     r"""
     Slonczewski spin torque contributions can be described by the following field:
 
@@ -100,9 +99,8 @@ class SpinTorqueSlonczewski(object):
     .. math::
         \epsilon = \frac{P \Lambda^2} {(\Lambda^2 + 1) + (\Lambda^2 - 1) \vec{m} \cdot \vec{p}_\text{p}}.
     """
-
-
-    def __init__(self, state, ):
+    @timedmethod
+    def h(self, state):
         # These values are only needed for the initialization
         # Discard them after initialization
         _eps_prime = state.material["epsilon_prime"]
@@ -132,11 +130,6 @@ class SpinTorqueSlonczewski(object):
         self._Lambda_sq_minus_1 = _Lambda_sq - 1
 
         #TODO: Implement a spatial and time dependent J
-
-    
-    @timedmethod
-    def h(self, state):
-
         epsilon = self._eps_prefactor / \
                         (self._Lambda_sq_plus_1 + (self._Lambda_sq_minus_1 * \
                         torch.tensordot(state.m, 
