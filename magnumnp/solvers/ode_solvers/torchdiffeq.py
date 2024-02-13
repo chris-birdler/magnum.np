@@ -31,22 +31,19 @@ class TorchDiffEq(object):
         self._options = options
         logging.info_green("[LLGSolver] using TorchDiffEq solver (method = '%s', rtol = %g, atol = %g)" % (method, rtol, atol))
 
-    def _f_wrapper(self, t, m, state, **llg_args):
-        state.t = t * 1e-9 # scale time by 1e9 to prevent underflow error
-        state.m = m
-        return self._f(state, **llg_args) * 1e-9
+    def _f_wrapper(self, t, x, **kwargs): # TODO: move scaling to dm?
+        return self._f(t * 1e-9, x, **kwargs) * 1e-9 # scale time by 1e9 to prevent underflow error
 
-    def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        t1 = state.t + dt
-        res = odeint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
-                     state.m,
-                     torch.tensor([state.t*1e9, t1*1e9]),
+    def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
+        t1 = t + dt
+        res = odeint(lambda t, x: self._f_wrapper(t, x, **kwargs),
+                     x,
+                     torch.tensor([t*1e9, t1*1e9]),
                      method = self._method,
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,
                      options = self._options) # TODO: reuse solver object?
-        state.m = res[1]
-        state.t = t1
+        return t1, res[1]
 
 class TorchDiffEqAdjoint(object):
     def __init__(self, f, adjoint_parameters, method = "dopri5", rtol = 1e-5, atol = 1e-5, options = {}):
@@ -58,20 +55,17 @@ class TorchDiffEqAdjoint(object):
         self._options = options
         logging.info_green("[LLGSolver] using TorchDiffEq adjoint solver (method = '%s', rtol = %g, atol = %g)" % (method, rtol, atol))
 
-    def _f_wrapper(self, t, m, state, **llg_args):
-        state.t = t * 1e-9 # scale time by 1e9 to prevent underflow error
-        state.m = torch.tensor(m)
-        return self._f(state, **llg_args) * 1e-9
+    def _f_wrapper(self, t, x, **kwargs): # TODO: move scaling to dm?
+        return self._f(t * 1e-9, x, **kwargs) * 1e-9 # scale time by 1e9 to prevent underflow error
 
-    def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        t1 = state.t + dt
-        res = odeint_adjoint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
-                     state.m,
-                     torch.tensor([state.t*1e9, t1*1e9]),
+    def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
+        t1 = t + dt
+        res = odeint_adjoint(lambda t, m: self._f_wrapper(t, m, state, **kwargs),
+                     x,
+                     torch.tensor([t*1e9, t1*1e9]),
                      method = self._method,
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,
                      adjoint_params = self._adjoint_parameters,
                      options = self._options) # TODO: reuse solver object?
-        state.m = res[1]
-        state.t = t1
+        return t1, res[1]

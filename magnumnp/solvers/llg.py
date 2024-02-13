@@ -27,7 +27,9 @@ class LLGSolver(object):
         self._terms = terms
         self._solver = solver(self.dm, **kwargs)
 
-    def dm(self, state, alpha = None, no_precession = False):
+    def dm(self, t, x, state, alpha = None, no_precession = False):
+        state.t = t
+        state.m = x
         alpha = alpha or state.material["alpha"]
 
         gamma_prime = constants.gamma / (1. + alpha**2)
@@ -46,7 +48,7 @@ class LLGSolver(object):
 
     @timedmethod
     def step(self, state, dt, **kwargs):
-        self._solver.step(state, dt, **kwargs)
+        state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, **kwargs)
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
@@ -54,11 +56,14 @@ class LLGSolver(object):
         t0 = state.t
 
         for i in range(maxiter):
-            self._solver.step(state, dt, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
+            state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
-            dm = self.dm(state, alpha = 1.0).abs().max() / constants.gamma # use same scaling as within minimizer
+            dm = self.dm(state.t, state.m, state=state, alpha = 1.0).abs().max() / constants.gamma # use same scaling as within minimizer
             logging.info_blue("[LLG] relax: t=%g |dm|=%g" % (state.t-t0, dm))
             if dm < dm_tol:
                 break
 
         state.t = t0
+
+    # TODO: add solve interface
+    # TODO: move relax to minimizer?
