@@ -35,7 +35,7 @@ class ScipyOdeint(object):
         logging.info_green("[LLGSolver] using Scipy odeint Solver (rtol = %g, atol = %g)" % (rtol, atol))
 
     def _f_wrapper(self, t, x, kwargs):
-        x_torch = torch.tensor(x.reshape(kwargs["state"].mesh.n + (3,), order = "F"))
+        x_torch = torch.tensor(x.reshape(kwargs["state"].mesh.n + (-1,), order = "F"))
         f = self._f(t * 1e-9, x_torch, **kwargs) * 1e-9 # scale time by 1e9 to prevent underflow error
         return f.detach().cpu().numpy().flatten(order = "F")
 

@@ -34,7 +34,7 @@ class ScipyODE(object):
         logging.info_green("[LLGSolver] using Scipy ODE solver '%s' (method = '%s', rtol = %g, atol = %g)" % (name, method, rtol, atol))
 
     def _f_wrapper(self, t, x, kwargs): # TODO: should x be a 1D array?
-        x_torch = torch.tensor(x.reshape(kwargs["state"].mesh.n + (3,), order = "F"))
+        x_torch = torch.tensor(x.reshape(kwargs["state"].mesh.n + (-1,), order = "F"))
         f = self._f(t, x_torch, **kwargs)
         return f.detach().cpu().numpy().flatten(order = "F")
 
