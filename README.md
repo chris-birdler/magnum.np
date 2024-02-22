@@ -13,7 +13,7 @@ Features
 * Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
 * Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters varying in space and time
-* Spin-torque model by Slonczewski 
+* Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
