@@ -102,20 +102,30 @@ class SpinTorqueSlonczewski(object):
     # TODO: add torch.compile after redesign
     @timedmethod
     def h(self, state):
-        mp = state.material["mp"]
-        Lambda = state.material["Lambda"]
+        Ms = state.material["Ms"].torch_tensor
+        m = state.m.torch_tensor
+        mp = state.material["mp"].torch_tensor
+        Lambda = state.material["Lambda"].torch_tensor
+        P = state.material["P"].torch_tensor
+        J = state.material["J"].torch_tensor
+        epsilon_prime = state.material["epsilon_prime"].torch_tensor
 
         # use thickness of mesh if not provided
         if state.material["d"] is None:
             d = state.mesh.dx[2]
         else:
-            d = state.material["d"]
+            d = state.material["d"].torch_tensor
 
-        epsilon = state.material["P"] * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (state.m*mp).sum(axis = 3, keepdim=True)))
-        mxp = torch.linalg.cross(state.m, mp)
-        h = epsilon * mxp + state.material["epsilon_prime"] * mp
+        h = self._h(m, P, Lambda, mp, Ms, J, d, epsilon_prime)
+        return state.Tensor(h)
 
-        h *= constants.hbar * state.material["J"] / (constants.mu_0 * state.material["Ms"] * constants.e * d)
+    @torch.compile
+    def _h(self, m, P, Lambda, mp, Ms, J, d, epsilon_prime):
+        epsilon = P * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (m*mp).sum(axis = 3, keepdim=True)))
+        mxp = torch.linalg.cross(m, mp)
+        h = epsilon * mxp + epsilon_prime * mp
+
+        h *= constants.hbar * J / (constants.mu_0 * Ms * constants.e * d)
         return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
