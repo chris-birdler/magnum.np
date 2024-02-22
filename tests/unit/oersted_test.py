@@ -42,19 +42,19 @@ def test_wire():
     state.j[N//2,N//2,:,2] = 1
 
     oersted = OerstedField()
-    h1 = oersted.h(state).cpu()
+    h1 = oersted.h(state)
     h1 = h1[:,n[1]//2,n[2]//2,1]
 
     x,y,z = state.SpatialCoordinate()
     h2 = dx[0]**2/(2.*torch.pi*x[:,n[1]//2,n[2]//2])
     h2[n[0]//2] = 0
 
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.plot(x[:,n[1]//2,n[2]//2], h1, '-')
-    ax.plot(x[:,n[1]//2,n[2]//2], h2, '-')
-    ax.set_ylim([-2e-10, 2e-10])
-    ax.grid()
-    fig.savefig("data/results.png")
+    #import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots()
+    #ax.plot(x[:,n[1]//2,n[2]//2], h1, '-')
+    #ax.plot(x[:,n[1]//2,n[2]//2], h2, '-')
+    #ax.set_ylim([-2e-10, 2e-10])
+    #ax.grid()
+    #fig.savefig("data/results.png")
 
     torch.testing.assert_close(h1[:n[0]//2-5]/h1.max(), h2[:n[0]//2-5]/h1.max(), atol=1e-3, rtol=1e-3)

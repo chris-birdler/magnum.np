@@ -13,6 +13,7 @@ Features
 * Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
 * Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters varying in space and time
+* Spin-torque model by Slonczewski 
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
@@ -29,6 +30,7 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
+   * [Slonczewski Spin Torque](demos/slonczewski/run2.ipynb) ([Colab]())
    * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir))
    * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8))
    * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu))

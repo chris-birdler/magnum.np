@@ -17,6 +17,7 @@ Features
 * Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
 * Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters varying in space and time
+* Spin-torque model by Slonczewski 
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
@@ -30,6 +31,7 @@ Features
 *************
 List of Demos
 *************
+* `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <>`__)
 * `RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
 * `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
