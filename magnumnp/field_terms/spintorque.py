@@ -19,7 +19,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["SpinOrbitTorque", "SpinTorqueZhangLi"]
+__all__ = ["SpinOrbitTorque", "SpinTorqueZhangLi", "SpinTorqueSlonczewski"]
 
 #TODO: generalize interface (ZhangLi uses state.j, SOT uses material["je"]
 class SpinOrbitTorque(object):
@@ -71,6 +71,63 @@ class SpinTorqueZhangLi(object):
         jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
 
         return state.material["b"] / constants.gamma * (torch.linalg.cross(state.m, jgradm) + state.material["xi"] * jgradm)
+
+    def E(self, state):
+        raise NotImplemented()
+
+
+class SpinTorqueSlonczewski(object):
+    r"""
+    Slonczewski spin torque contributions can be described by the following field:
+
+    .. math::
+        \vec{h}^\text{stt,slonczewski} = \beta \left[ \epsilon (\vec{m} \times \vec{p}_\text{p}) + \epsilon' \vec{p}_\text{p} \right],
+
+    with the polarization vector of the conducting electrons :math:`\vec{p}_\text{p}`
+    and the secondary spin torque efficiency :math:`\epsilon'`.
+
+    The :math:`\beta` is given by current density :math:`J`,
+    the thickness of the fixed layer :math:`d` (default using the thickness of the mesh),
+    the reduced Planck constant :math:`\hbar`,
+    the elementary charge :math:`e`,
+    the permeability of free space :math:`\mu_0`,
+
+    .. math::
+        \beta = \frac{\hbar J} {e M_s d \mu_0},
+
+    The :math:`\epsilon` is computed by assuming both the fixed layer and free layer have the same spin polarization :math:`P` and the spin diffusion length :math:`\Lambda`: across the spacer layer
+
+    .. math::
+        \epsilon = \frac{P \Lambda^2} {(\Lambda^2 + 1) + (\Lambda^2 - 1) \vec{m} \cdot \vec{p}_\text{p}}.
+    """
+    # TODO: add torch.compile after redesign
+    @timedmethod
+    def h(self, state):
+        Ms = state.material["Ms"].torch_tensor
+        m = state.m.torch_tensor
+        mp = state.material["mp"].torch_tensor
+        Lambda = state.material["Lambda"].torch_tensor
+        P = state.material["P"].torch_tensor
+        J = state.material["J"].torch_tensor
+        epsilon_prime = state.material["epsilon_prime"].torch_tensor
+
+        # use thickness of mesh if not provided
+        if state.material["d"] is None:
+            d = state.mesh.dx[2]
+        else:
+            d = state.material["d"].torch_tensor
+
+        h = self._h(m, P, Lambda, mp, Ms, J, d, epsilon_prime)
+        return state.Tensor(h)
+
+    @torch.compile
+    def _h(self, m, P, Lambda, mp, Ms, J, d, epsilon_prime):
+        epsilon = P * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (m*mp).sum(axis = 3, keepdim=True)))
+        mxp = torch.linalg.cross(m, mp)
+        h = epsilon * mxp + epsilon_prime * mp
+
+        h *= constants.hbar * J / (constants.mu_0 * Ms * constants.e * d)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         raise NotImplemented()

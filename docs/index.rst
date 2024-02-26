@@ -3,7 +3,7 @@
   :alt: magnum.np Logo
 
 #####################################
-magnum.np 1.1.4
+magnum.np 1.1.5
 #####################################
 
 magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference method. It implements state-of-the-art algorithms and is based on `pytorch <http://www.pytorch.org/>`__, which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in Python which leads to very readable yet flexible code. Due to `pytorch <http://www.pytorch.org/>`__ integration, extensive postprocessing can be done directly in the simulations scripts. Alternatively, results can be written to PVD files and postprocessed with `Paraview <http://www.paraview.org/>`__. Furthermore `pytorch <http://www.paraview.org/>`__'s autograd feature makes it possible to solve inverse problems without significant modifications of the code. This manual is meant to give you both a quick start and a reference to magnum.np.
@@ -17,6 +17,7 @@ Features
 * Periodic Boundary Conditions in 1D, 2D, and 3D (True and Pseudo-Periodic)
 * Non-Equidistant Mesh for Multilayer Structures
 * Arbitrary Material Parameters varying in space and time
+* Spin-torque model by Slonczewski 
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
 * Antiferromagnetic coupling layers (RKKY)
@@ -30,6 +31,7 @@ Features
 *************
 List of Demos
 *************
+* `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <>`__)
 * `RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
 * `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)

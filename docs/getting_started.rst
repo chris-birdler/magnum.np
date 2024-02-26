@@ -143,4 +143,4 @@ The following is a video showing the progression of the vortex during the simula
 Complete Code
 *************
 
-The complete code can be viewed here: :download:`run.py <../demos/sp5/run.py>`.
+The complete code can be viewed here: :download:`run.py <../demos/sp5/sp5_run.py>`.
