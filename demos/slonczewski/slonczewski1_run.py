@@ -21,15 +21,15 @@ def run_slonczewski1():
 
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "A": 1.3e-11,
-        "alpha": 0.01,
-        "P": 0.5669,
-        "Lambda": 2,
-        "epsilon_prime": 1,
-        "mp": state.Tensor((np.cos(np.radians(20)), np.sin(np.radians(20)), 0)),
-        "d": L[2],
-        "J": -4e11,
+        "Ms": state.Constant(8e5),
+        "A": state.Constant(1.3e-11),
+        "alpha": state.Constant(0.01),
+        "P": state.Constant(0.5669),
+        "Lambda": state.Constant(2),
+        "epsilon_prime": state.Constant(1),
+        "mp": state.Constant([np.cos(np.radians(20)), np.sin(np.radians(20)), 0]),
+        "d": state.Constant(L[2]),
+        "J": state.Constant(-4e11),
         }
     state.m = state.Constant([1,0,0])
 

@@ -29,22 +29,18 @@ def test_slonczewski(simple_state):
     state.m[:1,:,:,1] = -1.
 
     state.material = {
-        "Ms": 8e5,
-        "A": 1.3e-11,
-        "alpha": 0.01,
-        "P": 0.5669,
-        "Lambda": 2,
-        "epsilon_prime": 1,
-        "mp": state.Tensor((0.93, 0.34, 0)),
-        "d": 5e-9,
-        "J": -4e11,
+        "Ms": state.Constant(8e5),
+        "A": state.Constant(1.3e-11),
+        "alpha": state.Constant(0.01),
+        "P": state.Constant(0.5669),
+        "Lambda": state.Constant(2),
+        "epsilon_prime": state.Constant(1),
+        "mp": state.Constant([0.93, 0.34, 0]),
+        "d": state.Constant(5e-9),
+        "J": state.Constant(-4e11),
         }
 
     torque = SpinTorqueSlonczewski()
 
-    state.material["mp"] = state.Tensor([0, -1, 0])
-    h1 = torque.h(state)
     state.material["mp"] = state.Constant([0, -1, 0])
-    h2 = torque.h(state)
-
-    assert torch.allclose(h1, h2)
+    h = torque.h(state)
