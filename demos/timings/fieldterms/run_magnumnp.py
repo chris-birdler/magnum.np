@@ -22,6 +22,11 @@ state.material = {
         "gamma": 2.211e5,
         "Ku": 0.4e6,
         "Ku_axis": (0,0,1),
+        "Kc_alpha": 0.,
+        "Kc_beta": 0.,
+        "Kc_gamma": 0.,
+        "Kc1": 1e3,
+        "Kc2": 0.,
         "Di": state.Constant([3e-3]),
         "Db": state.Constant([3e-3]),
         "DD2d": state.Constant([3e-3]),
@@ -38,12 +43,15 @@ state.material = {
         "eta_damp": -0.1,
         "eta_field": 0.3,
         }
-state.j = state.Tensor((1e12, 0, 0))
-
+#state.j = state.Tensor((1e12, 0, 0))
+state.j = state.Constant((1e12, 0, 0))
 
 demag          = DemagField()
+demagPBC       = DemagFieldPBC()
+oersted        = OerstedField()
 exchange       = ExchangeField()
 aniso          = UniaxialAnisotropyField()
+caniso         = CubicAnisotropyField()
 dmii           = InterfaceDMIField()
 dmib           = BulkDMIField()
 dmiD2d         = D2dDMIField()
@@ -72,8 +80,11 @@ def benchmark_fieldterm(term, NN = 10000):
             h = term.h(state)
 
 benchmark_fieldterm(demag, NN = 1000)
+benchmark_fieldterm(demagPBC, NN = 1000)
+benchmark_fieldterm(oersted, NN = 1000)
 benchmark_fieldterm(exchange)
 benchmark_fieldterm(aniso)
+benchmark_fieldterm(caniso)
 benchmark_fieldterm(dmii)
 benchmark_fieldterm(dmib)
 benchmark_fieldterm(dmiD2d)

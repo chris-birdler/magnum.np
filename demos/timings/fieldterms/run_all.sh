@@ -24,3 +24,5 @@ cat tmp | column -t > timings_eval.dat
 
 rm tmp
 
+# plot results
+python plot.py
