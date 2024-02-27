@@ -60,7 +60,7 @@ class TorchDiffEqAdjoint(object):
 
     def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
         t1 = t + dt
-        res = odeint_adjoint(lambda t, m: self._f_wrapper(t, m, state, **kwargs),
+        res = odeint_adjoint(lambda t, m: self._f_wrapper(t, x, **kwargs),
                      x,
                      torch.tensor([t*1e9, t1*1e9]),
                      method = self._method,
