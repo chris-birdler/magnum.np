@@ -48,6 +48,8 @@ class TorchDiffEq(object):
 class TorchDiffEqAdjoint(object):
     def __init__(self, f, adjoint_parameters, method = "dopri5", rtol = 1e-5, atol = 1e-5, options = {}):
         self._f = f
+        if not (isinstance(adjoint_parameters, list) or isinstance(adjoint_parameters, tuple)):
+            raise ValueError("[TorchDiffEqAdjoint] adjoint_parameters must be a List (use [adjoint_parameters]).")
         self._adjoint_parameters = adjoint_parameters
         self._method = method
         self._rtol = rtol
