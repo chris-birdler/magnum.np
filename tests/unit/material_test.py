@@ -135,3 +135,17 @@ def test_set():
 
     state.material.set({"Ms": 1.}, domain2)
     assert avg(state.material["Ms"]).cpu() == pytest.approx(1.75)
+
+def test_rho():
+    n  = (8,10,12)
+    dx = (1e-9, 2e-9, 5e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"Ms": state.Constant(2.)}
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(2.)
+
+    x,y,z = mesh.SpatialCoordinate()
+    domain = x <= 4e-9
+    state.rho = domain
+    assert avg(state.material["Ms"]).cpu() == pytest.approx(1.)
+

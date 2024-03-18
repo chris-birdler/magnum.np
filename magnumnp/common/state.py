@@ -29,6 +29,8 @@ class State(object):
         self.mesh = mesh
 
         self._material = Material(self)
+        self._rho = 1. # set material everywhere
+
         self.t = 0.
         self._step = 0
         self._dt = 0.
@@ -38,6 +40,17 @@ class State(object):
         device = x.device
         logging.info_green("[State] running on device: %s (dtype = %s)" % (device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
+    
+
+    @property
+    def rho(self):
+        return self._rho
+    @rho.setter
+    def rho(self, value):
+        if value.dim() == 3:
+            self._rho = value[:,:,:,None]
+        else:
+            self._rho = value
 
     @property
     def material(self):
