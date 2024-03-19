@@ -48,6 +48,20 @@ class TorchDiffEq(object):
         state.m = state.Tensor(res[1])
         state.t = t1
 
+    def solve(self, state, tt, rtol = None, atol = None, **llg_args):
+        res = odeint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
+                     state.m,
+                     tt*1e9,
+                     method = self._method,
+                     rtol = rtol or self._rtol,
+                     atol = atol or self._atol,
+                     options = self._options) # TODO: reuse solver object?
+        state.m = state.Tensor(res[-1])
+        state.t = tt[-1]
+        return res
+
+
+
 class TorchDiffEqAdjoint(object):
     def __init__(self, f, adjoint_parameters, method = "dopri5", rtol = 1e-5, atol = 1e-5, options = {}):
         self._f = f
@@ -75,3 +89,16 @@ class TorchDiffEqAdjoint(object):
                      options = self._options) # TODO: reuse solver object?
         state.m = state.Tensor(res[1])
         state.t = t1
+
+    def solve(self, state, tt, rtol = None, atol = None, **llg_args):
+        res = odeint_adjoint(lambda t, m: self._f_wrapper(t, m, state, **llg_args),
+                     state.m,
+                     tt*1e9,
+                     method = self._method,
+                     rtol = rtol or self._rtol,
+                     atol = atol or self._atol,
+                     adjoint_params = self._adjoint_parameters,
+                     options = self._options) # TODO: reuse solver object?
+        state.m = state.Tensor(res[-1])
+        state.t = tt[-1]
+        return res

@@ -18,6 +18,22 @@ def test_step(simple_state, solver):
     llg.step(simple_state, 1e-11)
     assert simple_state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)
 
+@pytest.mark.parametrize("solver", [ScipyODE, ScipyOdeint, TorchDiffEq])
+def test_solve(simple_state, solver):
+    demag    = DemagField()
+    exchange = ExchangeField()
+    external = ExternalField([-24.6e-3/constants.mu_0,
+                              +4.3e-3/constants.mu_0,
+                              0.0])
+
+    simple_state.m = simple_state.Constant([1,0,0])
+    simple_state.m[5:,:,:,0] = -1.0
+
+    llg = LLGSolver([demag, exchange, external], solver = solver)
+    tt = simple_state.linspace(0., 5e-11, steps=5)
+    res = llg.solve(simple_state, tt)
+    assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
+
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_precession(solver):
