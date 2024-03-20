@@ -53,6 +53,16 @@ class LLGSolver(object):
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
+    def solve(self, state, tt, **kwargs):
+        logging.info_blue("[LLG] solve: t0=%g  t1=%g Integrating ..." % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
+        res = self._solver.solve(tt, state.m, state=state, **kwargs)
+        logging.info_green("[LLG] solve: t0=%g  t1=%g Finished" % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
+
+        state.t = tt[-1]
+        state.m = res[-1]
+        return res
+
+    @timedmethod
     def relax(self, state, maxiter = 500, dm_tol = 1e2, dt = 1e-11):
         t0 = state.t
 
@@ -65,6 +75,3 @@ class LLGSolver(object):
                 break
 
         state.t = t0
-
-    # TODO: add solve interface
-    # TODO: move relax to minimizer?

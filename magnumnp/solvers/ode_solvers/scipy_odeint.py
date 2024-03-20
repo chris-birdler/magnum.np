@@ -41,7 +41,6 @@ class ScipyOdeint(object):
 
     def step(self, t, x_torch, dt, rtol = None, atol = None, **kwargs):
         x0 = x_torch.detach().cpu().numpy().reshape(-1, order = 'F')
-
         t1 = t + dt
         x1 = odeint(self._f_wrapper,
                     x0,
@@ -52,3 +51,15 @@ class ScipyOdeint(object):
                     tfirst = True)[1]
 
         return t1, torch.tensor(x1.reshape(x_torch.shape, order = "F"))
+
+    def solve(self, tt, x_torch, rtol = None, atol = None, **kwargs):
+        x0 = x_torch.detach().cpu().numpy().reshape(-1, order = 'F')
+        res = odeint(self._f_wrapper,
+                     x0,
+                     tt*1e9,
+                     args = (kwargs,),
+                     rtol = rtol or self._rtol,
+                     atol = atol or self._atol,
+                     tfirst = True)
+
+        return torch.tensor(res.reshape(tt.shape + x_torch.shape, order = "F"))
