@@ -31,9 +31,12 @@ class Mesh(object):
         self.is_equidistant = all([isinstance(dx, (float, int)) for dx in dx])
         self.dx = [torch.tensor(dx).expand(n) for n, dx in zip(n, dx)]
 
-        # compute cell_volumes (use expand for equidistant dimentions)
-        dx, dy, dz = torch.meshgrid([torch.tensor(dx) for dx in dx], indexing = "ij")
-        self.cell_volumes = (dx*dy*dz).expand(self.n).unsqueeze(-1)
+        # compute cell_volumes
+        if self.is_equidistant:
+            self.cell_volumes = dx[0] * dx[1] * dx[2]
+        else:
+            dx, dy, dz = torch.meshgrid([torch.tensor(dx) for dx in dx], indexing = "ij") # use expand for equidistant dimentions
+            self.cell_volumes = (dx*dy*dz).expand(self.n).unsqueeze(-1)
 
     def __str__(self):
         str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx_tuple]

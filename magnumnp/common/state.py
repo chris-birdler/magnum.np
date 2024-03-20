@@ -25,7 +25,6 @@ __all__ = ["State"]
 
 class State(object):
     def __init__(self, mesh):
-        #TODO: add scale parameter to fix paraview issue, and use characteristic length scales
         self.mesh = mesh
 
         self._material = Material(self)
@@ -74,8 +73,12 @@ class State(object):
         logging.warning("State.SpatialCoordinate() is deprecated! Use mesh.SpatialCoordinate() instead!")
         return self.mesh.SpatialCoordinate()
 
-    def write_vtk(self, fields, filename):
+    def write_vtk(self, fields, filename, scale = 1.):
         if self.mesh.is_equidistant:
-            write_vti(fields, filename + ".vti", self)
+            if not filename.endswith(".vti"):
+                logging.warning("[write_vtk] Equidistant meshes are stored as .vti files! (filename '%s')", filename)
+            write_vti(fields, filename, self, scale)
         else:
-            write_vtr(fields, filename + ".vtr", self)
+            if not filename.endswith(".vtr"):
+                logging.warning("[write_vtk] Non-Equidistant meshes are stored as .vtr files! (filename '%s')", filename)
+            write_vtr(fields, filename, self, scale)

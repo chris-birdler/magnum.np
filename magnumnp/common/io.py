@@ -25,7 +25,7 @@ from . import Mesh
 
 __all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
 
-def write_vtr(fields, filename, state = None):
+def write_vtr(fields, filename, state = None, scale = 1.):
     if filename[-4:] != ".vtr":
         logging.warning("[write_vtr] Extention '.vtr' should be used on non-equidistant grids!")
 
@@ -51,7 +51,7 @@ def write_vtr(fields, filename, state = None):
     y = torch.hstack([torch.tensor([0.]), state.mesh.dx[1].cumsum(0)]).cpu().numpy() + state.mesh.origin[1]
     z = torch.hstack([torch.tensor([0.]), state.mesh.dx[2].cumsum(0)]).cpu().numpy() + state.mesh.origin[2]
 
-    grid = pv.RectilinearGrid(x, y, z)
+    grid = pv.RectilinearGrid(x*scale, y*scale, z*scale)
 
     for name, f in fields.items():
         if len(f.shape) == 0 or len(f.shape) == 1: # expand constant tensor to tensorfield
@@ -67,7 +67,7 @@ def write_vtr(fields, filename, state = None):
     grid.save(filename)
 
 
-def write_vti(fields, filename, state = None):
+def write_vti(fields, filename, state = None, scale = 1.):
     r"""
     Write vti files (equidistant rectangular grid, compressed) using pyvista.
 
@@ -113,8 +113,8 @@ def write_vti(fields, filename, state = None):
         origin = state.mesh.origin
 
     grid = pv.ImageData(dimensions = np.array(n) + 1,
-                        spacing = dx,
-                        origin = origin)
+                        spacing = np.array(dx) * scale,
+                        origin = np.array(origin) * scale)
 
     for name in fields:
         f = fields[name]
@@ -132,12 +132,14 @@ def write_vti(fields, filename, state = None):
     grid.save(filename)
 
 
-def read_vti(filename):
+def read_vti(filename, scale = 1.):
     r"""
     Read vti files using pyvista
 
     :param str filename: Filename to be read
+    :param float scale: scale with which the file was written
     :return :class:`Mesh` & dict: Mesh object and dictionary containing all data tensors
+
 
     :Examples:
       .. code::
@@ -146,7 +148,7 @@ def read_vti(filename):
     fields = {}
     data = pv.read(filename)
 
-    mesh = Mesh(np.array(data.dimensions)-1, data.spacing, data.origin)
+    mesh = Mesh(np.array(data.dimensions)-1, data.spacing / scale, data.origin / scale)
 
     for name in data.array_names:
         f = data.get_array(name)
