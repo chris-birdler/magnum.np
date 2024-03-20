@@ -20,7 +20,6 @@ import os
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
 from xml.dom import minidom
-from magnumnp.common.io import write_vti
 
 __all__ = ["FieldLogger"]
 
@@ -95,12 +94,12 @@ class FieldLogger(object):
             values[name] = value
 
         filename = "%s_%04d" % (self._filename, self._i // self._every)
-        state.write_vtk(values, filename)
-
         if state.mesh.is_equidistant:
             filename += ".vti"
         else:
             filename += ".vtr"
+        state.write_vtk(values, filename)
+
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))

@@ -75,10 +75,6 @@ class State(object):
 
     def write_vtk(self, fields, filename, scale = 1.):
         if self.mesh.is_equidistant:
-            if not filename.endswith(".vti"):
-                logging.warning("[write_vtk] Equidistant meshes are stored as .vti files! (filename '%s')", filename)
             write_vti(fields, filename, self, scale)
         else:
-            if not filename.endswith(".vtr"):
-                logging.warning("[write_vtk] Non-Equidistant meshes are stored as .vtr files! (filename '%s')", filename)
             write_vtr(fields, filename, self, scale)

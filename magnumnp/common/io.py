@@ -22,12 +22,13 @@ import scipy
 import pyvista as pv
 import os
 from . import Mesh
+from magnumnp.common import logging, Material
 
 __all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
 
 def write_vtr(fields, filename, state = None, scale = 1.):
-    if filename[-4:] != ".vtr":
-        logging.warning("[write_vtr] Extention '.vtr' should be used on non-equidistant grids!")
+    if not filename.endswith(".vtr"):
+        logging.warning("[write_vtr] Extention '.vtr' should be used on non-equidistant grids! (filename = '%s')" % filename)
 
     dirname = os.path.dirname(filename)
     if dirname and not os.path.isdir(dirname):
@@ -148,7 +149,7 @@ def read_vti(filename, scale = 1.):
     fields = {}
     data = pv.read(filename)
 
-    mesh = Mesh(np.array(data.dimensions)-1, data.spacing / scale, data.origin / scale)
+    mesh = Mesh(np.array(data.dimensions)-1, np.array(data.spacing) / scale, np.array(data.origin) / scale)
 
     for name in data.array_names:
         f = data.get_array(name)
