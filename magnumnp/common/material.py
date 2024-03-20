@@ -25,8 +25,7 @@ class Material(dict):
         self._state = state
 
     def __getitem__(self, key):
-        mat = super().__getitem__(key)(self._state.t)
-        return mat * self._state.rho
+        return super().__getitem__(key)(self._state.t)
 
     def __setitem__(self, key, value):
         if callable(value):
