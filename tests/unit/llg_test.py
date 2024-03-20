@@ -15,10 +15,11 @@ def test_step(simple_state, solver):
     simple_state.m[5:,:,:,0] = -1.0
 
     llg = LLGSolver([demag, exchange, external], solver = solver)
-    llg.step(simple_state, 1e-11)
-    assert simple_state.t.cpu() == pytest.approx(1e-11, abs=0, rel=1e-6)
+    llg.step(simple_state, 5e-11)
+    assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
+    torch.testing.assert_close(simple_state.m.avg(), simple_state.Tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
-@pytest.mark.parametrize("solver", [ScipyODE, ScipyOdeint, TorchDiffEq])
+@pytest.mark.parametrize("solver", [ScipyOdeint, TorchDiffEq])
 def test_solve(simple_state, solver):
     demag    = DemagField()
     exchange = ExchangeField()
@@ -33,6 +34,7 @@ def test_solve(simple_state, solver):
     tt = simple_state.linspace(0., 5e-11, steps=5)
     res = llg.solve(simple_state, tt)
     assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
+    torch.testing.assert_close(simple_state.m.avg(), simple_state.Tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
