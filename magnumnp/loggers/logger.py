@@ -50,13 +50,13 @@ class Logger(object):
             state = State(mesh)
             logger << state
     """
-    def __init__(self, directory, scalars = [], fields = [], scalars_every = 1, fields_every = 1):
+    def __init__(self, directory, scalars = [], fields = [], scalars_every = 1, fields_every = 1, scale = 1.):
         self.loggers = {}
         self._resume_time = None
         if len(scalars) > 0:
             self.loggers["scalars"] = ScalarLogger(os.path.join(directory, "log.dat"), scalars, every = scalars_every)
         if len(fields) > 0:
-            self.loggers["fields"] = FieldLogger(os.path.join(directory, "fields.pvd"), fields, every = fields_every)
+            self.loggers["fields"] = FieldLogger(os.path.join(directory, "fields.pvd"), fields, every = fields_every, scale = scale)
 
     def log(self, state):
         if state.t == self._resume_time: # avoid logging directly after resume

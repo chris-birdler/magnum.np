@@ -74,9 +74,9 @@ def write_vti(fields, filename, state = None, scale = 1.):
 
     :param fields: single torch Tensor or List/Dictionary of tensors to be written
     :type fields: :class:`Tensor`, list, dict
-    :param filename: filename to be writen
+    :param filename: filename to be written
     :type filename: str
-    :param state: filename to be writen
+    :param state: filename to be written
     :type state: :class:`State`
 
     :Examples:

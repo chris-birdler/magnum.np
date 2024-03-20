@@ -75,6 +75,10 @@ class State(object):
 
     def write_vtk(self, fields, filename, scale = 1.):
         if self.mesh.is_equidistant:
+            if not filename.endswith(".vti"):
+                filename += ".vti"
             write_vti(fields, filename, self, scale)
         else:
+            if not filename.endswith(".vtr"):
+                filename += ".vtr"
             write_vtr(fields, filename, self, scale)
