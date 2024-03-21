@@ -25,7 +25,7 @@ from torch import asinh, atan, sqrt, log, abs
 from time import time
 import os
 
-__all__ = ["DemagField", "demag_f", "demag_g", "newell", "f", "g"]
+__all__ = ["DemagField"]
 
 def f(x, y, z):
     x, y, z = abs(x), abs(y), abs(z)

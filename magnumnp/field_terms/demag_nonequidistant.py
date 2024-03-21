@@ -18,7 +18,7 @@
 
 from magnumnp.common import logging, timedmethod, constants, Timer, complex_dtype
 from .field_terms import LinearFieldTerm
-from . import demag_f, demag_g
+from .demag import demag_f, demag_g
 import numpy as np
 import torch
 from time import time

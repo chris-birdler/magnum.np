@@ -2,6 +2,7 @@ import pytest
 import pathlib
 import torch
 from magnumnp import *
+from magnumnp.field_terms.demag import newell, f, g
 import numpy as np
 
 
