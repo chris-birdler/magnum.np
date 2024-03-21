@@ -44,7 +44,7 @@ class Mesh(object):
             str_pbc = ", pbc=[%d,%d,%d])" % self.pbc
         else:
             str_pbc = ")"
-        return "%dx%dx%d (size= %s x %s x %s%s" % (*self.n, *str_dx, str_pbc)
+        return "%dx%dx%d (dx= %s x %s x %s%s" % (*self.n, *str_dx, str_pbc)
 
     def SpatialCoordinate(self):
         x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.origin[0]
