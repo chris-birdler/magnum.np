@@ -111,8 +111,9 @@ class DemagField(LinearFieldTerm):
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20):
+    def __init__(self, p = 20, cache_dir = None):
         self._p = p
+        self._cache_dir = cache_dir
 
     def _shape(self, state): # TODO: try padding to 2N-1 for small N like mumax does
         s = [1,1,1]
@@ -150,32 +151,45 @@ class DemagField(LinearFieldTerm):
 
 
     def _init_N(self, state):
-        dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64) # always use double precision
-        time_kernel = time()
+        name = "/N_%s.pt" % str(state.mesh).replace(" ","")
+        if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
+            [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = torch.load(self._cache_dir + name, map_location=torch.tensor(1.).device)
+            logging.info("[DEMAG]: Use cached demag kernel from '%s'" % (self._cache_dir + name))
+        else:
+            dtype = torch.get_default_dtype()
+            torch.set_default_dtype(torch.float64) # always use double precision
+            time_kernel = time()
 
-        Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
-        Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype)
-        Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype)
-        Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype)
-        Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype)
-        Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype)
+            Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
+            Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype)
+            Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype)
+            Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype)
+            Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype)
+            Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype)
 
-        self._N = [[Nxx, Nxy, Nxz],
-                   [Nxy, Nyy, Nyz],
-                   [Nxz, Nyz, Nzz]]
-        logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-        torch.set_default_dtype(dtype) # restore dtype
+            logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
+            torch.set_default_dtype(dtype) # restore dtype
+
+            # cache demag tensor
+            if self._cache_dir != None:
+                if not os.path.isdir(self._cache_dir):
+                    os.makedirs(self._cache_dir)
+                torch.save([Nxx,Nxy,Nxz,Nyy,Nyz,Nzz], self._cache_dir + name)
+                logging.info("[DEMAG]: Save demag kernel to '%s'" % (self._cache_dir + name))
+
+        return [[Nxx, Nxy, Nxz],
+                [Nxy, Nyy, Nyz],
+                [Nxz, Nyz, Nzz]]
+
 
     @timedmethod
     def h(self, state):
         if not hasattr(self, "_N"):
-            self._init_N(state)
+            self._N = self._init_N(state)
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         shape = self._shape(state)
         s = [shape[i] for i in dim]
-
 
         if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
             N = torch.stack([torch.stack(self._N[0], dim=-1),

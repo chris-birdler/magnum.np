@@ -40,7 +40,11 @@ class Mesh(object):
 
     def __str__(self):
         str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx_tuple]
-        return "%dx%dx%d (size= %s x %s x %s)" % (*self.n, *str_dx)
+        if self.pbc[0] != 0 or self.pbc[1] != 0 or self.pbc[2] != 0:
+            str_pbc = ", pbc=[%d,%d,%d])" % self.pbc
+        else:
+            str_pbc = ")"
+        return "%dx%dx%d (size= %s x %s x %s%s" % (*self.n, *str_dx, str_pbc)
 
     def SpatialCoordinate(self):
         x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.origin[0]

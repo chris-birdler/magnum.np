@@ -78,8 +78,9 @@ class OerstedField(FieldTerm):
     :param p: number of next neighbors for near field via Krueger's equations (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20):
+    def __init__(self, p = 20, cache_dir = None):
         self._p = p
+        self._cache_dir = cache_dir
 
     def _init_K_component(self, state, perm, func_near, func_far):
         # dipole far-field
@@ -114,24 +115,36 @@ class OerstedField(FieldTerm):
         return torch.fft.rfftn(Kc, dim = [i for i in range(3) if state.mesh.n[i] > 1])#.real.clone()
 
     def _init_K(self, state):
-        dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64) # always use double precision
-        time_kernel = time()
-        Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
-        Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
-        Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+        name = "/K_%s.pt" % str(state.mesh).replace(" ","")
+        if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
+            [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=torch.tensor(1.).device)
+            logging.info("[OERSTED]: Use cached Oersted kernel from '%s'" % (self._cache_dir + name))
+        else:
+            dtype = torch.get_default_dtype()
+            torch.set_default_dtype(torch.float64) # always use double precision
+            time_kernel = time()
+            Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+            Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+            Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
 
-        self._K = [[  0., -Kxy, +Kxz],
-                   [+Kxy,   0., -Kyz],
-                   [-Kxz, +Kyz,   0.]]
+            logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
+            torch.set_default_dtype(dtype) # restore dtype
 
-        logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
-        torch.set_default_dtype(dtype) # restore dtype
+            # cache Oersted tensor
+            if self._cache_dir != None:
+                if not os.path.isdir(self._cache_dir):
+                    os.makedirs(self._cache_dir)
+                torch.save([Kxy, Kyz, Kxz], self._cache_dir + name)
+                logging.info("[OERSTED]: Save Oersted kernel to '%s'" % (self._cache_dir + name))
+
+        return [[  0., -Kxy, +Kxz],
+                [+Kxy,   0., -Kyz],
+                [-Kxz, +Kyz,   0.]]
 
     @timedmethod
     def h(self, state):
         if not hasattr(self, "_K"):
-            self._init_K(state)
+            self._K = self._init_K(state)
 
         hx = torch.zeros_like(self._K[0][1])
         hy = torch.zeros_like(self._K[0][1])
