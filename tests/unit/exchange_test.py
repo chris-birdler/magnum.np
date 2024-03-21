@@ -19,7 +19,7 @@ def test_call():
 def test_PBC():
     n  = (100, 25, 1)
     dx = (5e-9, 5e-9, 3e-9)
-    mesh = Mesh(n, dx, pbc="xyz")
+    mesh = Mesh(n, dx, pbc=(1,1,1))
     state = State(mesh)
     state.material = {"A": state.Constant(1.3e-11),
                       "Ms": state.Constant(800e3)}
