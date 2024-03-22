@@ -27,7 +27,7 @@ from time import time
 
 __all__ = ["OerstedField"]
 
-def krueger_g(x, y, z):
+def g(x, y, z):
     R = sqrt(x**2 + y**2 + z**2)
 
     res = (3.*x**2 + 3.*y**2 - 2.*z**2)*z*R/24.
@@ -40,19 +40,39 @@ def krueger_g(x, y, z):
 
     return res
 
-def dipole_g(x, y, z):
+def G1(x, y, z, dz):
+    return - 1.*g(x, y, z+dz) \
+           + 2.*g(x, y, z   ) \
+           - 1.*g(x, y, z-dz)
+
+def G0(x, y, z, dy, dz):
+    return - 1.*G1(x, y+dy, z, dz) \
+           + 2.*G1(x, y   , z, dz) \
+           - 1.*G1(x, y-dy, z, dz)
+
+def krueger_g(x, y, z, dx, dy, dz):
+    ret = - 1.*G0(x+dx, y, z, dy, dz) \
+          + 2.*G0(x   , y, z, dy, dz) \
+          - 1.*G0(x-dx, y, z, dy, dz)
+    return ret / (4.*np.pi*dx*dy*dz)
+
+
+def dipole_g(x, y, z, dx, dy, dz):
     R = sqrt(x**2 + y**2 + z**2)
     res = -z/R**3
     res[0,0,0] = 0.
-    return res
+    return res * dx*dy*dz / (4.*np.pi)
 
-def oersted_g(x, y, z, p):
-    res = dipole_g(x, y, z)
+def oersted_g(x, y, z, dx, dy, dz, p):
+    res = dipole_g(x, y, z, dx, dy, dz)
     near = (x**2 + y**2 + z**2) / (dx**2 + dy**2 + dz**2) < p**2
     res[near] = krueger_g(x[near], y[near], z[near], dx, dy, dz)
     return res
-    
 
+
+#    for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
+#        r = torch.stack([(ij[ind] + k[ind])*dx[ind] for ind in perm], dim=-1)
+#        K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(dx))
 class OerstedField(FieldTerm):
     r"""
     The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law
@@ -73,7 +93,6 @@ class OerstedField(FieldTerm):
     def _init_K_component(self, state, perm, func):
         # dipole far-field
         dx = np.array(state.mesh.dx_tuple)
-        dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
@@ -81,11 +100,7 @@ class OerstedField(FieldTerm):
         x, y, z = [ij[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        Kc = func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx, *dx, self._p)
-
-#    for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
-#        r = torch.stack([(ij[ind] + k[ind])*dx[ind] for ind in perm], dim=-1)
-#        K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(dx))
+        Kc = func(x, y, z, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -102,9 +117,10 @@ class OerstedField(FieldTerm):
             dtype = torch.get_default_dtype()
             torch.set_default_dtype(torch.float64) # always use double precision
             time_kernel = time()
-            Kxy = self._init_K_component(state, [0,1,2], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
-            Kyz = self._init_K_component(state, [1,2,0], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
-            Kxz = self._init_K_component(state, [2,0,1], krueger_g, dipole_g).to(dtype=complex_dtype[dtype])
+
+            Kxy = self._init_K_component(state, [0,1,2], oersted_g).to(dtype=complex_dtype[dtype])
+            Kyz = self._init_K_component(state, [1,2,0], oersted_g).to(dtype=complex_dtype[dtype])
+            Kxz = self._init_K_component(state, [2,0,1], oersted_g).to(dtype=complex_dtype[dtype])
 
             logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
             torch.set_default_dtype(dtype) # restore dtype

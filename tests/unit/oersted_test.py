@@ -52,10 +52,11 @@ def test_wire():
 
     #import matplotlib.pyplot as plt
     #fig, ax = plt.subplots()
-    #ax.plot(x[:,n[1]//2,n[2]//2], h1, '-')
-    #ax.plot(x[:,n[1]//2,n[2]//2], h2, '-')
+    #ax.plot(x[:,n[1]//2,n[2]//2], h1, '--', label="magnum.np")
+    #ax.plot(x[:,n[1]//2,n[2]//2], h2, '-', label="analytic")
     #ax.set_ylim([-2e-10, 2e-10])
     #ax.grid()
+    #ax.legend()
     #fig.savefig("data/results.png")
 
     torch.testing.assert_close(h1[:n[0]//2-5]/h1.max(), h2[:n[0]//2-5]/h1.max(), atol=1e-3, rtol=1e-3)

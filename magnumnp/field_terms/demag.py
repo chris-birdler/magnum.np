@@ -31,24 +31,24 @@ def f(x, y, z):
     x, y, z = abs(x), abs(y), abs(z)
     x2, y2, z2 = x**2, y**2, z**2
     r = sqrt(x2 + y2 + z2)
-    result = 1.0 / 6.0 * (2*x2 - y2 - z2) * r
-    result += (y / 2.0 * (z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
-    result += (z / 2.0 * (y2 - x2) * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
-    result -= (x * y * z * atan(y*z / (x * r))).nan_to_num(posinf=0, neginf=0)
-    return result
+    res = 1.0 / 6.0 * (2*x2 - y2 - z2) * r
+    res += (y / 2.0 * (z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
+    res += (z / 2.0 * (y2 - x2) * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
+    res -= (x * y * z * atan(y*z / (x * r))).nan_to_num(posinf=0, neginf=0)
+    return res
 
 def g(x, y, z):
     z = abs(z)
     x2, y2, z2 = x**2, y**2, z**2
     r = sqrt(x2 + y2 + z2)
-    result = -x * y * r / 3.0
-    result += (x * y * z * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
-    result += (y / 6.0 * (3.0 * z2 - y2) * asinh(x / sqrt(y2 + z2))).nan_to_num(posinf=0, neginf=0)
-    result += (x / 6.0 * (3.0 * z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
-    result -= (z**3 / 6.0 * atan(x * y / (z * r))).nan_to_num(posinf=0, neginf=0)
-    result -= (z * y2 / 2.0 * atan(x * z / (y * r))).nan_to_num(posinf=0, neginf=0)
-    result -= (z * x2 / 2.0 * atan(y * z / (x * r))).nan_to_num(posinf=0, neginf=0)
-    return result
+    res = -x * y * r / 3.0
+    res += (x * y * z * asinh(z / sqrt(x2 + y2))).nan_to_num(posinf=0, neginf=0)
+    res += (y / 6.0 * (3.0 * z2 - y2) * asinh(x / sqrt(y2 + z2))).nan_to_num(posinf=0, neginf=0)
+    res += (x / 6.0 * (3.0 * z2 - x2) * asinh(y / sqrt(x2 + z2))).nan_to_num(posinf=0, neginf=0)
+    res -= (z**3 / 6.0 * atan(x * y / (z * r))).nan_to_num(posinf=0, neginf=0)
+    res -= (z * y2 / 2.0 * atan(x * z / (y * r))).nan_to_num(posinf=0, neginf=0)
+    res -= (z * x2 / 2.0 * atan(y * z / (x * r))).nan_to_num(posinf=0, neginf=0)
+    return res
 
 def F1(func, x, y, z, dz, dZ):
     return func(x, y, z      + dZ) \
@@ -63,23 +63,23 @@ def F0(func, x, y, z, dy, dY, dz, dZ):
          + F1(func, x, y - dy,      z, dz, dZ)
 
 def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
-    ret = F0(func, x,           y, z, dy, dY, dz, dZ) \
+    res = F0(func, x,           y, z, dy, dY, dz, dZ) \
         - F0(func, x - dx,      y, z, dy, dY, dz, dZ) \
         - F0(func, x + dX,      y, z, dy, dY, dz, dZ) \
         + F0(func, x - dx + dX, y, z, dy, dY, dz, dZ)
-    return -ret / (4.*np.pi*dx*dy*dz)
+    return -res / (4.*np.pi*dx*dy*dz)
 
 def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
-    result = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
-    result[0,0,0] = 0.
-    return result * dx*dy*dz / (4.*np.pi)
+    res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
+    res[0,0,0] = 0.
+    return res * dx*dy*dz / (4.*np.pi)
 
 def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
-    result = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
-    result[0,0,0] = 0.
-    return result * dx*dy*dz / (4.*np.pi)
+    res = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
+    res[0,0,0] = 0.
+    return res * dx*dy*dz / (4.*np.pi)
 
 def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
     res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)
