@@ -20,7 +20,7 @@ mesh = Mesh(n, dx)
 state = State(mesh, dtype=torch.float32)
 state.material = {
         "Ms": 800e3,
-        "A": 13e-12, 
+        "A": 13e-12,
         "alpha": 0.01,
         }
 
