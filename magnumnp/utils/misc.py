@@ -25,6 +25,7 @@ def add_noise(x, dev = 1.0, mean = 0.0):
         x += torch.empty_like(x).normal_(mean = mean, std = dev)
         x.normalize()
 
+
 def nsk(state): # TODO: document and improve interface
     m = state.m.mean(axis=2)
     dxm = torch.stack(torch.gradient(m, spacing = state.mesh.dx[0], dim = 0), dim = -1).squeeze(-1)

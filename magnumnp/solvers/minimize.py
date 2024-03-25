@@ -55,7 +55,7 @@ class MinimizerBB(object):
     def _linesearch(self, state, m0, h0, dm0, tau):
         r = 0.5  # Reduction factor
         c = 0.5  # Sufficient decrease parameter
-        m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm0*dm0).sum()
+        m = -(constants.mu_0*state.material["Ms"]*state.mesh.cell_volumes*dm0*dm0).sum()
         t = -c*m
         E0 = self.E(state)
 
@@ -68,7 +68,7 @@ class MinimizerBB(object):
             logging.info_blue("[MinimizerBB] Linesearch: %d, E=%g" % (j, E))
 
     @timedmethod
-    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5):
+    def minimize(self, state, maxiter = 2000, dm_tol = 1., tau_min = 1e-13, tau_max = 1e-5):
         tau = tau_min
         steps = 0
         dm_max = 1e18

@@ -17,12 +17,12 @@ def finite_grad(op, x0):
     return grad
 
 def test_hext(simple_state):
-    h_ext = simple_state.Tensor([1,0,0], requires_grad = True)
-    external = ExternalField(h_ext)
-    h_target = simple_state.Tensor([0,0,1])
+    h_ext = torch.tensor([1.,0.,0.], requires_grad = True)
+    external = ExternalField()
+    h_target = torch.tensor([0.,0.,1.])
 
-    def forward(h_ext):
-        external.h = h_ext
+    def forward(h):
+        external.h = simple_state.Constant(h)
         L = ((external.h(simple_state)-h_target)**2).sum()
         return L
 
@@ -30,7 +30,7 @@ def test_hext(simple_state):
     L.backward()
     grad = h_ext.grad
 
-    h_ext2 = simple_state.Tensor([1,0,0])
+    h_ext2 = torch.tensor([1.,0.,0.])
     grad2 = finite_grad(forward, h_ext2)
 
     torch.testing.assert_close(grad, grad2)
@@ -42,9 +42,9 @@ def test_hext(simple_state):
                                        BulkDMIField(),
                                        D2dDMIField()])
 def test_linear_fieldterms(simple_state, fieldterm):
-    cell_volume = simple_state.mesh.dx[0] * simple_state.mesh.dx[1] * simple_state.mesh.dx[2]
-    x,y,z = simple_state.SpatialCoordinate()
-    m0 = torch.stack([x,2*x,y], dim=-1)
+    cell_volume = simple_state.mesh.dx_tuple[0] * simple_state.mesh.dx_tuple[1] * simple_state.mesh.dx_tuple[2]
+    x,y,z = simple_state.mesh.SpatialCoordinate()
+    m0 = Expression([x,2*x,y])
     m0.requires_grad = True
 
     simple_state.m = m0

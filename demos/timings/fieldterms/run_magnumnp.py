@@ -15,7 +15,7 @@ dx = (1e-9, 1e-9, 1e-9)
 mesh = Mesh(n, dx)
 
 # initialize material
-state = State(mesh)
+state = State(mesh, dtype=torch.float32)
 state.material = {
         "Ms": 8e5,
         "A": state.Constant([1.3e-11]),

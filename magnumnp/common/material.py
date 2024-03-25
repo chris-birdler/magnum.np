@@ -17,7 +17,6 @@
 #
 
 import torch
-from . import DecoratedTensor
 
 __all__ = ["Material"]
 
@@ -29,14 +28,17 @@ class Material(dict):
         return super().__getitem__(key)(self._state.t)
 
     def __setitem__(self, key, value):
-        if callable(value) and not isinstance(value, DecoratedTensor):
-            super().__setitem__(key, lambda t: self._state.convert_tensorfield(value(t)))
+        if callable(value):
+            super().__setitem__(key, value)
         else:
-            super().__setitem__(key, self._state.convert_tensorfield(value))
+            if not isinstance(value, torch.Tensor) or value.dim() < 4:
+                raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
+            super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
+
 
     def set(self, material, domain=None):
         r"""
-        Setting several material parameters at once
+        Setting several constant material parameters at once
 
         :param materials: material that should be set
         :type materials:  :class:`Material`
@@ -56,8 +58,9 @@ class Material(dict):
         """
         for key, value in material.items():
             if domain == None:
-                self[key] = value
+                self[key] = self._state.Constant(value)
             else:
                 if key not in self.keys():
-                    self[key] = 0.
+                    self[key] = self._state.Constant(value)
+                    self[key][...] = 0.
                 self[key][domain] = value

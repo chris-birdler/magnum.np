@@ -54,7 +54,7 @@ class EigenSolver(object):
         if self._it % 500 == 0:
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
-        vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
+        vv = torch.from_numpy(vv)#.to(dtype=self._vv.dtype, device=self._state._device)
         vv = vv.reshape(self._vv[self._domain].shape)
         self._vv[...] = 0.
         self._vv[self._domain] = vv
@@ -88,12 +88,11 @@ class EigenSolver(object):
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
-        evecs2D = torch.from_numpy(evecs2D).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
-        evecs2D = self._state.Tensor(evecs2D).reshape(-1,2,evecs2D.shape[-1])
+        evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
-        omega = self._state.Tensor(evals.imag)
+        omega = torch.tensor(evals.imag)
 
-        res = self._state.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
+        res = torch.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
 
@@ -115,7 +114,7 @@ class EigenResult(object):
     def load(state, filename):
         stored = torch.load(filename)
         m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
-        state.m = state.Tensor(m0)
+        state.m = m0
 
         ez = state.Constant([1e-15,0.,1.])
         e1 = torch.linalg.cross(ez, m0)

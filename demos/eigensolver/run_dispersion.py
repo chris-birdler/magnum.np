@@ -10,15 +10,15 @@ dx = (2.5e-9, 2.5e-9, 1e-9)
 mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {
-        "A": 13e-12,
-        "Ms": 800e3,
+        "A": state.Constant(13e-12),
+        "Ms": state.Constant(800e3),
         }
 
 state.m = state.Constant([1.,0.,0.])
 
 demag    = DemagField()
 exchange = ExchangeField()
-external = ExternalField([804e3,0.0,0.0])
+external = ExternalField(state.Constant([804e3,0.0,0.0]))
 
 # calculate groundstate
 try:
@@ -26,11 +26,8 @@ try:
     state.m[...] = fields0["m0"]
 except:
     with Timer("Calculate Groundstate"):
-        llg = LLGSolver([demag, exchange, external])
-        logger = ScalarLogger("data/m0_dispersion.dat", ['t', 'm'])
-        while state.t < 5e-9:
-            llg.step(state, 1e-11, alpha=1.)
-            logger << state
+        minimizer = MinimizerBB([demag, exchange, external])
+        minimizer.minimize(state)
         write_vti({"m0":state.m}, "data/m0_dispersion.vti", state)
 
 # calculate eigenmodes
@@ -72,4 +69,3 @@ with Timer("Calculate Dispersion"):
     fig.savefig("data/dispersion.png")
 
 Timer.print_report()
-

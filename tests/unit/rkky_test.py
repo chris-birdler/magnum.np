@@ -10,7 +10,8 @@ def test_call():
     mesh = Mesh(n, dx)
     
     state = State(mesh)
-    state.material = {"Ms":1./constants.mu_0, "A":1e-11}
+    state.material = {"Ms": state.Constant(1./constants.mu_0),
+                      "A": state.Constant(1e-11)}
     state.m = state.Constant([1,0,0])
     
     domain1 = state.Constant(False, dtype=torch.bool)
@@ -24,7 +25,7 @@ def test_call():
     rkky = RKKYField(-0.002, "z", 0, 1)
     
     for phi in torch.linspace(0, 2*pi, 100):
-        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
+        state.m[domain2] = torch.tensor([cos(phi), sin(phi), 0])
         E_rkky = rkky.E(state).detach().cpu().numpy()
         E_ex1 = exchange1.E(state).detach().cpu().numpy()
         E_ex2 = exchange1.E(state).detach().cpu().numpy()

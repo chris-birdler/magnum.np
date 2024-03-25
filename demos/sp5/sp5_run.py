@@ -13,11 +13,11 @@ def run_sp5():
     
     state = State(mesh)
     state.material = {
-        "Ms": 8e5,
-        "A": 1.3e-11,
-        "alpha": 0.1,
-        "xi": 0.05,
-        "b": 72.17e-12
+        "Ms": state.Constant(8e5),
+        "A": state.Constant(1.3e-11),
+        "alpha": state.Constant(0.1),
+        "xi": state.Constant(0.05),
+        "b": state.Constant(72.17e-12)
         }
     
     # initialize magnetization that relaxes into s-state
@@ -27,7 +27,7 @@ def run_sp5():
     state.m[20,20,:,1] = 0.
     state.m[20,20,:,2] = 1.
     
-    state.j = state.Tensor([1e12, 0, 0])
+    state.j = state.Constant([1e12, 0, 0])
     
     # initialize field terms
     demag    = DemagField()
@@ -35,8 +35,8 @@ def run_sp5():
     torque   = SpinTorqueZhangLi()
     
     # initialize sstate
-    llg = LLGSolver([demag, exchange])
-    llg.relax(state)
+    minimizer = MinimizerBB([demag, exchange])
+    minimizer.minimize(state)
     write_vti(state.m, "data/m0.vti", state)
     
     # perform integration with spin torque

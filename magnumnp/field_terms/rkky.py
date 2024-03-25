@@ -57,14 +57,14 @@ class RKKYField(object):
         state = State(mesh)
 
         # create domains as bool arrays, e.g:
-        domain1 = state.zeros(n, dtype=torch.bool)
+        domain1 = torch.zeros(n, dtype=torch.bool)
         domain1[n[0]//2:,:,:] = True
 
-        domain2 = state.zeros(n, dtype=torch.bool)
+        domain2 = torch.zeros(n, dtype=torch.bool)
         domain2[:-n[0]//2:,:,:] = True
 
         # rotate magnetization within one subdomain
-        state.m[domain1] = state.Tensor([np.cos(phi), np.sin(phi), 0])
+        state.m[domain1] = torch.tensor([np.cos(phi), np.sin(phi), 0])
 
         # without interface layer, two seperate exchange fields need to be defined
         exchange1 = ExchangeField(Aex1, domain1)
@@ -82,7 +82,7 @@ class RKKYField(object):
 
     @timedmethod
     def h(self, state):
-        h = state.zeros(state.mesh.n + (3,))
+        h = torch.zeros(state.mesh.n + (3,))
         if self._order == 0:
             m1 = state.m[:,:,(self._id1,),:]
             m2 = state.m[:,:,(self._id2,),:]
@@ -96,8 +96,8 @@ class RKKYField(object):
         h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
-        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
-        return torch.nan_to_num(h)
+        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx_tuple[2]
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         m1 = state.m[:,:,(self._id1,),:]
@@ -110,7 +110,7 @@ class RKKYField(object):
             m2 += 0.25 * (3*state.m[:,:,(self._id2,),:] - 4*state.m[:,:,(self._id2+1,),:] + state.m[:,:,(self._id2+2,),:])
 
         E = (m2*m1).sum()
-        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky
+        E *= -state.mesh.dx_tuple[0] * state.mesh.dx_tuple[1] * self._J_rkky
         return E
 
 

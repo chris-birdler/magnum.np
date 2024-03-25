@@ -17,7 +17,9 @@
 #
 
 from magnumnp.utils.imaging_tools import *
+from magnumnp.utils.logging_helpers import *
 from magnumnp.utils.misc import *
 
 __all__ = (imaging_tools.__all__ +
+           logging_helpers.__all__ +
            misc.__all__)

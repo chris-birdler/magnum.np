@@ -20,12 +20,11 @@ import os
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
 from xml.dom import minidom
-from magnumnp.common.io import write_vti
 
 __all__ = ["FieldLogger"]
 
 class FieldLogger(object):
-    def __init__(self, filename, fields, every = 1):
+    def __init__(self, filename, fields, every = 1, scale = 1.):
         """
         Logger class for fields
 
@@ -36,6 +35,8 @@ class FieldLogger(object):
                 The columns to be written to the log file
             every (:class:`int`)
                 Write row to log file every nth call
+            scale (:class:`float`)
+                Scale factor for dimentions (e.g. 1e9 for nm-units)
 
         *Example*
             .. code-block:: python
@@ -61,6 +62,7 @@ class FieldLogger(object):
             raise NameError("Only .pvd extention allowed")
         self._filename = filename
         self._every = every
+        self._scale = scale
         if isinstance(fields, str):
             fields = [fields]
         self._fields = fields
@@ -95,13 +97,13 @@ class FieldLogger(object):
             values[name] = value
 
         filename = "%s_%04d" % (self._filename, self._i // self._every)
-        state.write_vtk(values, filename)
-
-        if state._is_equidistant:
+        if state.mesh.is_equidistant:
             filename += ".vti"
         else:
             filename += ".vtr"
-        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
+        state.write_vtk(values, filename, scale = self._scale)
+
+        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
             fd.flush()

@@ -37,11 +37,12 @@ class SpinOrbitTorque(object):
     In case of Spin-Orbit-Torqe (SOT) :math:`\eta_\text{field}` and :math:`\eta_\text{damp}` are constant material parameters.
     """
     @timedmethod
+    @torch.compile
     def h(self, state):
         p = state.material["p"].expand_as(state.m)
         h = state.material["eta_damp"] * torch.linalg.cross(state.m, p) + state.material["eta_field"] * p
         h *= -state.material["je"] * constants.hbar / (2. * constants.e * state.material["Ms"] * constants.mu_0 * state.material["d"])
-        return torch.nan_to_num(h, posinf=0, neginf=0)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         raise NotImplemented()
@@ -62,11 +63,12 @@ class SpinTorqueZhangLi(object):
     with the Bohr magneton :math:`\mu_B`, and the dimensionless polarization rate :math:`\beta`.
     """
     @timedmethod
+    @torch.compile
     def h(self, state):
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
-        dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
+        dx = [state.mesh.dx_tuple[i] for i in range(3) if state.mesh.n[i] > 1]
 
-        j = state.j(state.t)
+        j = state.j # (state.t) TODO: allow time-dependent j
         jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult
 
         return state.material["b"] / constants.gamma * (torch.linalg.cross(state.m, jgradm) + state.material["xi"] * jgradm)
@@ -99,33 +101,23 @@ class SpinTorqueSlonczewski(object):
     .. math::
         \epsilon = \frac{P \Lambda^2} {(\Lambda^2 + 1) + (\Lambda^2 - 1) \vec{m} \cdot \vec{p}_\text{p}}.
     """
-    # TODO: add torch.compile after redesign
     @timedmethod
+    @torch.compile
     def h(self, state):
-        Ms = state.material["Ms"].torch_tensor
-        m = state.m.torch_tensor
-        mp = state.material["mp"].torch_tensor
-        Lambda = state.material["Lambda"].torch_tensor
-        P = state.material["P"].torch_tensor
-        J = state.material["J"].torch_tensor
-        epsilon_prime = state.material["epsilon_prime"].torch_tensor
+        mp = state.material["mp"]
+        Lambda = state.material["Lambda"]
 
         # use thickness of mesh if not provided
         if state.material["d"] is None:
             d = state.mesh.dx[2]
         else:
-            d = state.material["d"].torch_tensor
+            d = state.material["d"]
 
-        h = self._h(m, P, Lambda, mp, Ms, J, d, epsilon_prime)
-        return state.Tensor(h)
+        epsilon = state.material["P"] * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (state.m*mp).sum(axis = 3, keepdim=True)))
+        mxp = torch.linalg.cross(state.m, mp)
+        h = epsilon * mxp + state.material["epsilon_prime"] * mp
 
-    @torch.compile
-    def _h(self, m, P, Lambda, mp, Ms, J, d, epsilon_prime):
-        epsilon = P * Lambda**2 / ((Lambda**2 + 1) + ((Lambda**2 - 1) * (m*mp).sum(axis = 3, keepdim=True)))
-        mxp = torch.linalg.cross(m, mp)
-        h = epsilon * mxp + epsilon_prime * mp
-
-        h *= constants.hbar * J / (constants.mu_0 * Ms * constants.e * d)
+        h *= constants.hbar * state.material["J"] / (constants.mu_0 * state.material["Ms"] * constants.e * d)
         return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):

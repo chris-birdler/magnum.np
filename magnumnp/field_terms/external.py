@@ -43,22 +43,28 @@ class ExternalField(object):
         h = torch.stack([x,y,z], dim=-1)
         external = ExternalField(h)
     """
-    def __init__(self, h):
-        self._h = h
+    def __init__(self, h = None):
+        if h != None:
+            self.__setattr__("h", h)
 
     @timedmethod
     def h(self, state):
-        h = state.Tensor(self._h)(state.t)
-        if len(h.shape) == 1:
-            h = h.expand(state.m.shape)
-        return h
+        return self._h(state.t)
 
     def __setattr__(self, name, value):
         if name == "h":
-            self._h = value
+            if callable(value):
+                self._h = value
+            else:
+                self._h = lambda t: value
+
+            # check type
+            value = self._h(0.)
+            if not isinstance(value, torch.Tensor) or value.dim() < 4:
+                raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
         else:
             super().__setattr__(name, value)
 
     def E(self, state, domain = Ellipsis):
-        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
+        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
         return E[domain].sum()

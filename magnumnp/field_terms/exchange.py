@@ -41,21 +41,17 @@ class ExchangeField(LinearFieldTerm):
         super().__init__(**kwargs)
 
     @timedmethod
+    @torch.compile
     def h(self, state):
-        A = state.material[self.A].torch_tensor
-        Ms = state.material["Ms"].torch_tensor
-        m = state.m.torch_tensor
+        A = state.material[self.A]
         if self._domain != None:
             A = A * self._domain[:,:,:,None]
-        dx = state.dx[0].reshape(-1,1,1,1)
-        dy = state.dx[1].reshape(1,-1,1,1)
-        dz = state.dx[2].reshape(1,1,-1,1)
-        h = self._h(m, A, Ms, dx, dy, dz, state)
-        return state.Tensor(h)
-
-    @torch.compile
-    def _h(self, m, A, Ms, dx, dy, dz, state):
-        h = state.zeros(state.mesh.n + (3,))
+        Ms = state.material["Ms"]
+        m = state.m
+        dx = state.mesh.dx[0].reshape(-1,1,1,1)
+        dy = state.mesh.dx[1].reshape(1,-1,1,1)
+        dz = state.mesh.dx[2].reshape(1,1,-1,1)
+        h = torch.zeros(state.mesh.n + (3,))
 
         # x
         if state.mesh.pbc[0] == 0:

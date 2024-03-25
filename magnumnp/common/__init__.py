@@ -16,7 +16,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common.decorated_tensor import *
 from magnumnp.common.constants import *
 from magnumnp.common.logging import *
 from magnumnp.common.material import *
@@ -26,13 +25,14 @@ from magnumnp.common.tabulate import *
 from magnumnp.common.timer import *
 from magnumnp.common.io import *
 from magnumnp.common.time_interpolator import *
+from magnumnp.common.utils import *
 
 __all__ = (["constants"] +
-           decorated_tensor.__all__ +
            logging.__all__ +
            material.__all__ +
            mesh.__all__ +
            state.__all__ +
            timer.__all__ +
            io.__all__ +
-           time_interpolator.__all__ )
+           time_interpolator.__all__ +
+           utils.__all__)
