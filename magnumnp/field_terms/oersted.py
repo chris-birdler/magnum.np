@@ -109,6 +109,9 @@ class OerstedField(FieldTerm):
         return Kc #.real.clone() ## Oersted Kernel is not symmetric
 
     def _init_K(self, state):
+        if state.mesh.pbc[0] != 0 or state.mesh.pbc[1] != 0 or state.mesh.pbc[2] != 0:
+            logging.warning(f"[OERSTED]: PBCs are not used by OerstedField! (mesh.pbc = %s)" % str(state.mesh.pbc))
+
         name = "/K_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=torch.tensor(1.).device)
