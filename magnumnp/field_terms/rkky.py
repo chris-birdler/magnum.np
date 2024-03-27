@@ -19,7 +19,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["RKKYField"]
+__all__ = ["RKKYField", "BiquadraticField"]
 
 # TODO: interface should be generalized and simplified
 class RKKYField(object):
@@ -114,3 +114,60 @@ class RKKYField(object):
         return E
 
 
+
+
+class BiquadraticField(object):
+    r"""
+    Biquadratic surface exchange couplong between two layers gives rise to the following energy contribution:
+    .. math::
+        E^\text{biquadratic} = -\int\limits_\Gamma J_\text{biquadratic} \, (\vec{m}_i \cdot \vec{m}_j)^2 \, d\vec{A},
+
+
+    where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j` with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
+
+    The effective field is given by:
+
+    .. math::
+        \vec{h}^\text{biquadratic} = -\frac{2 J_\text{biquadratic}} {M_s \Delta z \mu_0} \, (\vec{m}_i \cdot \vec{m}_j) \, \vec{m}_j,
+
+    with the interlayer exchange constant :math:`J_\text{biquadratic}`.
+
+    """
+
+    def __init__(self, J_rkky_BQ, dir, id1, id2, order=0):
+        self._J_rkky_BQ = J_rkky_BQ
+        if dir != "z":
+            raise ValueError("Currently only dir='z' is implemented!")
+        
+        self._dir = dir 
+        self._id1 = min(id1,id2)
+        self._id2 = max(id1,id2)
+
+        if order != 0:
+            raise ValueError("Only order=0 is implemented!")
+
+
+    @timedmethod
+    def h(self, state):
+        h_BQ = state.zeros(state.mesh.n + (3,))
+
+
+        m1 = state.m[:,:,self._id1,:]
+        m2 = state.m[:,:,self._id2,:]
+
+        h_BQ_tmp = (m1*m2).sum(axis=2, keepdim=True)
+        h_BQ[:,:,self._id1,:] = m2 * h_BQ_tmp
+        h_BQ[:,:,self._id2,:] = m1 * h_BQ_tmp
+
+        #TODO: find out why there is a 2x discrepancy compared with oommf
+        h_BQ *= 2 * self._J_rkky_BQ / (state.material["Ms"] * state.mesh.dx[2] * constants.mu_0)
+
+
+        return torch.nan_to_num(h_BQ)
+    
+    def E(self, state):
+        m1 = state.m[:,:,self._id1,:]
+        m2 = state.m[:,:,self._id2,:]
+
+        E = (m1*m2).sum()**2
+        return -E * self._J_rkky_BQ / state.mesh.dx[2] 
