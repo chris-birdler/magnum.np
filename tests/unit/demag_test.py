@@ -201,7 +201,7 @@ def test_nonequidistant():
     demag2 = DemagFieldNonEquidistant()
     h2 = demag2.h(state2)
 
-    torch.testing.assert_close(h1[:,:,-2:,:].cpu(), h2[:,:,-2:,:].cpu(), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(h1[:,:,-2:,:], h2[:,:,-2:,:], atol=1e-10, rtol=1e-10)
 
 def test_regression():
     n  = (101, 101, 101)
@@ -213,7 +213,7 @@ def test_regression():
     state.m[50,50,50] = 1.
 
     demag = DemagField()
-    h_demag = demag.h(state).cpu()
+    h_demag = demag.h(state)
 
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "h_demag_regression.vti"

@@ -56,7 +56,7 @@ class ScipyOdeint(object):
         x0 = x_torch.detach().cpu().numpy().reshape(-1, order = 'F')
         res = odeint(self._f_wrapper,
                      x0,
-                     tt*1e9,
+                     tt.detach().cpu().numpy()*1e9,
                      args = (kwargs,),
                      rtol = rtol or self._rtol,
                      atol = atol or self._atol,

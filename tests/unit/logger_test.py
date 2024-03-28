@@ -48,9 +48,9 @@ def test_nonequi(tmpdir):
     n  = (20, 4, 4)
     dx = (5., 3., np.arange(n[2]) + 1.)
     mesh = Mesh(n, dx)
-    #state = State(mesh)
-    #state.m = state.Constant([1,0,0])
+    state = State(mesh)
+    state.m = state.Constant([1,0,0])
 
-    #p = str(tmpdir)
-    #logger = Logger(p, scalars = ["t", "m"], fields = ["m"])
-    #logger << state
+    p = str(tmpdir)
+    logger = Logger(p, scalars = ["t", "m"], fields = ["m"])
+    logger << state

@@ -75,18 +75,16 @@ def test_regression():
     aniso        = UniaxialAnisotropyField()
     aniso_cubic  = CubicAnisotropyField()
 
-    m = state.m.cpu()
+    m = state.m
     h = exchange.h(state)
-    h_demag        = demag.h(state).cpu()
-    h_demag_pbc    = demag_pbc.h(state).cpu()
-    h_dmi_i        = dmi_i.h(state).cpu()
-    h_dmi_b        = dmi_b.h(state).cpu()
-    h_dmi_D2d      = dmi_D2d.h(state).cpu()
-    h_exchange     = exchange.h(state).cpu()
-    h_aniso        = aniso.h(state).cpu()
-    h_aniso_cubic  = aniso_cubic.h(state).cpu()
-
-    m = state.m.cpu()
+    h_demag        = demag.h(state)
+    h_demag_pbc    = demag_pbc.h(state)
+    h_dmi_i        = dmi_i.h(state)
+    h_dmi_b        = dmi_b.h(state)
+    h_dmi_D2d      = dmi_D2d.h(state)
+    h_exchange     = exchange.h(state)
+    h_aniso        = aniso.h(state)
+    h_aniso_cubic  = aniso_cubic.h(state)
 
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "h_regression.vti"

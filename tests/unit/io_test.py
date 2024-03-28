@@ -19,6 +19,7 @@ def test_read_vti():
     torch.set_default_dtype(torch.float32)
     mesh, fields = read_vti(filename)
     assert fields['m'].dtype == torch.float32
+    torch.set_default_dtype(torch.float64)
 
 def test_write_vti(tmp_path):
     os.chdir(tmp_path)
