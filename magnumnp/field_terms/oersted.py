@@ -148,8 +148,10 @@ class OerstedField(FieldTerm):
         hy = torch.zeros_like(self._K[0][1])
         hz = torch.zeros_like(self._K[0][1])
 
+        j = state.j # state calls j(state) if j is a function
+
         for ax in range(3):
-            j_pad_fft1D = torch.fft.rfftn(state.j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])
+            j_pad_fft1D = torch.fft.rfftn(j[:,:,:,ax], dim = [i for i in range(3) if state.mesh.n[i] > 1], s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1])
 
             hx += self._K[0][ax] * j_pad_fft1D
             hy += self._K[1][ax] * j_pad_fft1D

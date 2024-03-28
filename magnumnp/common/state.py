@@ -35,6 +35,7 @@ class State(object):
         x = torch.tensor(1.)
         dtype_str = str(x.dtype).split('.')[1]
         device = x.device
+
         logging.info_green("[State] running on device: %s (dtype = %s)" % (device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
 
@@ -51,12 +52,16 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
-    def _normal(self, mean, std, **kwargs):
-        if not hasattr(self, "_rng"):
-            self._rng = torch.Generator()
-            self._rng.manual_seed(2147483647) # fixed seed
-        return torch.normal(mean, std, **kwargs)
+    @property
+    def j(self):
+        return self._j(self)
 
+    @j.setter
+    def j(self, value):
+        if callable(value):
+            self._j = value
+        else:
+            self._j = lambda state: value
 
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
