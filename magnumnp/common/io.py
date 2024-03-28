@@ -158,7 +158,8 @@ def read_vti(filename, scale = 1.):
             dim = mesh.n
         else:
             dim = mesh.n + (vals.shape[-1],)
-        f = torch.from_numpy(vals.reshape(dim, order="F"))
+        t = torch.tensor(1.)
+        f = torch.from_numpy(vals.reshape(dim, order="F")).to(device=t.device, dtype=t.dtype)
         fields[name] = f
     return mesh, fields
 

@@ -68,7 +68,7 @@ def test_setter(simple_state):
     #assert avg(Ms).cpu() == pytest.approx(2./constants.mu_0)
 
     # set lambda (tensorfield)
-    simple_state.material["Ms"] = lambda t: simple_state.Constant(1./constants.mu_0 * (t+1.))
+    simple_state.material["Ms"] = lambda state: simple_state.Constant(1./constants.mu_0 * (state.t+1.))
     simple_state.t = 0.
     Ms = simple_state.material["Ms"]
     assert Ms.shape == (100, 25, 1, 1)
