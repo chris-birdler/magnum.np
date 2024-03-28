@@ -28,12 +28,12 @@ class TimeInterpolator(object):
         self._fp = list(points.values())
         self._state = state
 
-    def __call__(self, t):
-        i = torch.searchsorted(self._tp, t) # upper index
+    def __call__(self, state):
+        i = torch.searchsorted(self._tp, state.t) # upper index
         i = torch.clamp(i, min=1, max=len(self._tp)-1) # extrapolate on bounds
         tp = self._tp
         fp = self._fp
-        return fp[i-1] + (t-tp[i-1]) / (tp[i]-tp[i-1]) * (fp[i] - fp[i-1])
+        return fp[i-1] + (state.t-tp[i-1]) / (tp[i]-tp[i-1]) * (fp[i] - fp[i-1])
 
     @property
     def final_time(self):

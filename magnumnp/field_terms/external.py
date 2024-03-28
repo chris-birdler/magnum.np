@@ -49,19 +49,18 @@ class ExternalField(object):
 
     @timedmethod
     def h(self, state):
-        return self._h(state.t)
+        return self._h(state)
 
     def __setattr__(self, name, value):
         if name == "h":
             if callable(value):
                 self._h = value
             else:
-                self._h = lambda t: value
+                self._h = lambda state: value
 
-            # check type
-            value = self._h(0.)
-            if not isinstance(value, torch.Tensor) or value.dim() < 4:
-                raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
+                # check type
+                if not isinstance(value, torch.Tensor) or value.dim() < 4:
+                    raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
         else:
             super().__setattr__(name, value)
 
