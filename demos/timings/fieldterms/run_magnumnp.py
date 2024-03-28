@@ -2,6 +2,8 @@ from magnumnp import *
 import torch
 import argparse
 
+torch.set_default_dtype(torch.float32)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('N', type=int)
 args = parser.parse_args()
@@ -15,36 +17,34 @@ dx = (1e-9, 1e-9, 1e-9)
 mesh = Mesh(n, dx)
 
 # initialize material
-state = State(mesh, dtype=torch.float32)
+state = State(mesh)
 state.material = {
-        "Ms": 8e5,
-        "A": state.Constant([1.3e-11]),
-        "gamma": 2.211e5,
-        "Ku": 0.4e6,
-        "Ku_axis": (0,0,1),
-        "Kc_alpha": 0.,
-        "Kc_beta": 0.,
-        "Kc_gamma": 0.,
-        "Kc1": 1e3,
-        "Kc2": 0.,
-        "Di": state.Constant([3e-3]),
-        "Db": state.Constant([3e-3]),
-        "DD2d": state.Constant([3e-3]),
-        "P": 0.5669,
-        "Lambda": 2,
-        "epsilon_prime": 1,
-        "mp": state.Tensor((0.940, 0.342, 0)),
-        "p": [0, -1, 0],
-        "d": dx[2],
-        "J": -4e11,
-        "je": 6.9e10,
-        "xi": 0.05,
-        "b": 72.17e-12,
-        "eta_damp": -0.1,
-        "eta_field": 0.3,
+        "Ms": state.Constant(8e5),
+        "A": state.Constant(1.3e-11),
+        "Ku": state.Constant(0.4e6),
+        "Ku_axis": state.Constant([0,0,1]),
+        "Kc_alpha": state.Constant(0.),
+        "Kc_beta": state.Constant(0.),
+        "Kc_gamma": state.Constant(0.),
+        "Kc1": state.Constant(1e3),
+        "Kc2": state.Constant(0.),
+        "Di": state.Constant(3e-3),
+        "Db": state.Constant(3e-3),
+        "DD2d": state.Constant(3e-3),
+        "P": state.Constant(0.5669),
+        "Lambda": state.Constant(2),
+        "epsilon_prime": state.Constant(1),
+        "mp": state.Constant([0.940, 0.342, 0]),
+        "p": state.Constant([0, -1, 0]),
+        "d": state.Constant(dx[2]),
+        "J": state.Constant(-4e11),
+        "je": state.Constant(6.9e10),
+        "xi": state.Constant(0.05),
+        "b": state.Constant(72.17e-12),
+        "eta_damp": state.Constant(-0.1),
+        "eta_field": state.Constant(0.3),
         }
-#state.j = state.Tensor((1e12, 0, 0))
-state.j = state.Constant((1e12, 0, 0))
+state.j = state.Constant([1e12, 0, 0])
 
 demag          = DemagField()
 demagPBC       = DemagFieldPBC()
@@ -55,7 +55,7 @@ caniso         = CubicAnisotropyField()
 dmii           = InterfaceDMIField()
 dmib           = BulkDMIField()
 dmiD2d         = D2dDMIField()
-external       = ExternalField((0,0,1))
+external       = ExternalField(state.Constant([0,0,1]))
 st_slonczewski = SpinTorqueSlonczewski()
 st_sot         = SpinOrbitTorque()
 st_zhangli     = SpinTorqueZhangLi()

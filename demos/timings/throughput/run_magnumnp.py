@@ -2,6 +2,8 @@ from magnumnp import *
 import torch
 import argparse
 
+torch.set_default_dtype(torch.float32)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('e', type=int)
 args = parser.parse_args()
@@ -17,16 +19,16 @@ dx = (4e-9, 4e-9, 4e-9)
 mesh = Mesh(n, dx)
 
 # initialize material
-state = State(mesh, dtype=torch.float32)
+state = State(mesh)
 state.material = {
-        "Ms": 800e3,
-        "A": 13e-12,
-        "alpha": 0.01,
+        "Ms": state.Constant(800e3),
+        "A": state.Constant(13e-12),
+        "alpha": state.Constant(0.01),
         }
 
 demag    = DemagField()
 exchange = ExchangeField()
-external = ExternalField([0,0.01/constants.mu_0,0])
+external = ExternalField(state.Constant([0,0.01/constants.mu_0,0]))
 
 state.m = state.Constant([1,0,0])
 
