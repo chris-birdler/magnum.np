@@ -52,7 +52,14 @@ class LLGSolver(object):
             logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
-    def relax(self, state, maxiter = 500, rtol = 1e-6, dt = 1e-11, silent=False):
+    def solve(self, state, tt, **kwargs):
+        logging.info_blue("[LLG] solve: t0=%g  t1=%g Integrating ..." % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
+        res = self._solver.solve(state, tt, **kwargs)
+        logging.info_green("[LLG] solve: t0=%g  t1=%g Finished" % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
+        return res
+
+    @timedmethod
+    def relax(self, state, maxiter = 500, rtol = 1e-6, dt = 1e-11):
         t0 = state.t
         E0 = self.E(state)
 
