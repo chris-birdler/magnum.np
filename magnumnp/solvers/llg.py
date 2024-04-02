@@ -46,10 +46,9 @@ class LLGSolver(object):
         return sum([term.E(state) for term in self._terms])
 
     @timedmethod
-    def step(self, state, dt, silent=False, **kwargs):
+    def step(self, state, dt, **kwargs):
         self._solver.step(state, dt, **kwargs)
-        if not silent:
-            logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
+        logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod
     def solve(self, state, tt, **kwargs):
@@ -70,8 +69,7 @@ class LLGSolver(object):
             # |dm|.max()
             E = self.E(state)
             dE = torch.linalg.norm(((E - E0)/E).reshape(-1), ord = float("Inf"))
-            if not silent:
-                logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
+            logging.info_blue("[LLG] relax: t=%g dE=%g E=%g" % (state.t-t0, dE, E))
             if dE < rtol:
                 break
             E0 = E

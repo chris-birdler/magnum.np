@@ -68,7 +68,7 @@ class MinimizerBB(object):
             logging.info_blue("[MinimizerBB] Linesearch: %d, E=%g" % (j, E))
 
     @timedmethod
-    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5, silent = False):
+    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5):
         tau = tau_min
         steps = 0
         dm_max = 1e18
@@ -100,8 +100,7 @@ class MinimizerBB(object):
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
             tau = max(min(abs(tau), tau_max), tau_min) #* tau_sign
 
-            if not silent:
-                logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (steps, tau, dm_max))
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (steps, tau, dm_max))
 
             # increase step count
             steps += 1
