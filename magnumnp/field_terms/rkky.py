@@ -116,7 +116,7 @@ class RKKYField(object):
 
 
 # TODO: interface should be generalized and simplified
-class BiquadraticField(object):
+class BiquadraticRKKYField(object):
     r"""
     Biquadratic surface exchange couplong between two layers gives rise to the following energy contribution:
     .. math::
@@ -128,7 +128,7 @@ class BiquadraticField(object):
     The effective field is given by:
 
     .. math::
-        \vec{h}^\text{biquadratic} = -\frac{2 J_\text{biquadratic}} {M_s \Delta z \mu_0} \, (\vec{m}_i \cdot \vec{m}_j) \, \vec{m}_j,
+        \vec{h}^\text{biquadratic}_i = \frac{2 J_\text{biquadratic}} {M_s \Delta z \mu_0} \, (\vec{m}_i \cdot \vec{m}_j) \, \vec{m}_j,
 
     with the interlayer exchange constant :math:`J_\text{biquadratic}`.
 
