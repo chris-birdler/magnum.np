@@ -19,7 +19,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["RKKYField", "BiquadraticField"]
+__all__ = ["RKKYField", "BiquadraticRKKYField"]
 
 # TODO: interface should be generalized and simplified
 class RKKYField(object):
@@ -97,7 +97,7 @@ class RKKYField(object):
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
         h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
-        return torch.nan_to_num(h)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         m1 = state.m[:,:,(self._id1,),:]
@@ -133,41 +133,34 @@ class BiquadraticField(object):
     with the interlayer exchange constant :math:`J_\text{biquadratic}`.
 
     """
-
-    def __init__(self, J_rkky_BQ, dir, id1, id2, order=0):
+    def __init__(self, J_rkky_BQ, dir, id1, id2):
         self._J_rkky_BQ = J_rkky_BQ
         if dir != "z":
             raise ValueError("Currently only dir='z' is implemented!")
-        
         self._dir = dir 
         self._id1 = min(id1,id2)
         self._id2 = max(id1,id2)
 
-        if order != 0:
-            raise ValueError("Only order=0 is implemented!")
-
-
     @timedmethod
     def h(self, state):
-        h_BQ = state.zeros(state.mesh.n + (3,))
-
+        h = state.zeros(state.mesh.n + (3,))
 
         m1 = state.m[:,:,self._id1,:]
         m2 = state.m[:,:,self._id2,:]
 
-        h_BQ_tmp = (m1*m2).sum(axis=2, keepdim=True)
-        h_BQ[:,:,self._id1,:] = m2 * h_BQ_tmp
-        h_BQ[:,:,self._id2,:] = m1 * h_BQ_tmp
+        m12 = (m1*m2).sum(axis=-1, keepdim=True)
+        h[:,:,self._id1,:] = 2. * self._J_rkky_BQ * m12 * m2
+        h[:,:,self._id2,:] = 2. * self._J_rkky_BQ * m12 * m1
 
         #TODO: find out why there is a 2x discrepancy compared with oommf
-        h_BQ *= 2 * self._J_rkky_BQ / (state.material["Ms"] * state.mesh.dx[2] * constants.mu_0)
+        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
 
-
-        return torch.nan_to_num(h_BQ)
+        return h.nan_to_num(posinf=0, neginf=0)
     
     def E(self, state):
         m1 = state.m[:,:,self._id1,:]
         m2 = state.m[:,:,self._id2,:]
 
         E = (m1*m2).sum()**2
-        return -E * self._J_rkky_BQ / state.mesh.dx[2] 
+        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky_BQ
+        return E
