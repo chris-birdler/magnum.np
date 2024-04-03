@@ -115,7 +115,7 @@ class RKKYField(object):
 
 
 
-
+# TODO: interface should be generalized and simplified
 class BiquadraticField(object):
     r"""
     Biquadratic surface exchange couplong between two layers gives rise to the following energy contribution:
