@@ -17,6 +17,7 @@
 #
 
 import os
+import torch
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
 from xml.dom import minidom
@@ -83,17 +84,22 @@ class FieldLogger(object):
             if isinstance(field, str):
                 name = field
                 value = getattr(state, field)
-            elif hasattr(field, '__call__'):
-                try:
-                    name = field.__self__.__class__.__name__ + "." + field.__name__
-                except:
-                    name = 'unnamed'
-                value = field(state)
             elif isinstance(field, tuple) or isinstance(field, list):
                 name = field[0]
-                value = field[1](state)
+                value = field[1]
+            elif isinstance(value, torch.Tensor):
+                name = 'unnamed'
+                value = field
             else:
-                raise RuntimeError('Column type not supported.')
+                raise RuntimeError('[FieldLogger] Column type not supported!')
+
+            if hasattr(value, '__call__'):
+                if name == 'unnamed':
+                    try:
+                        name = value.__self__.__class__.__name__ + "." + value.__name__
+                    except:
+                        pass
+                value = value(state)
             values[name] = value
 
         filename = "%s_%04d" % (self._filename, self._i // self._every)

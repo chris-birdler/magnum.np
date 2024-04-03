@@ -32,9 +32,9 @@ class State(object):
         self._step = 0
         self._dt = 0.
 
-        x = torch.tensor(1.)
-        dtype_str = str(x.dtype).split('.')[1]
-        device = x.device
+        dx = mesh.dx[0] # derive dtype and device from mesh
+        dtype_str = str(dx.dtype).split('.')[1]
+        device = dx.device
 
         logging.info_green("[State] running on device: %s (dtype = %s)" % (device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
@@ -65,10 +65,10 @@ class State(object):
 
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
-            c = torch.tensor(c, dtype = dtype)
+            c = torch.tensor(c, dtype = dtype, device = self.mesh.dx[0].device)
         if c.dim() == 0 and c.dtype != torch.bool:
             c = c.reshape(1)
-        x = torch.zeros(self.mesh.n + c.shape, dtype = dtype)
+        x = torch.zeros(self.mesh.n + c.shape, dtype = dtype, device = self.mesh.dx[0].device)
         x[...] = c
         if requires_grad == True:
             x.requires_grad = requires_grad

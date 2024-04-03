@@ -56,7 +56,7 @@ class LLGSolver(object):
     def solve(self, state, tt, **kwargs):
         logging.info_blue("[LLG] solve: t0=%g  t1=%g Integrating ..." % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
         res = self._solver.solve(tt, state.m, state=state, **kwargs)
-        logging.info_green("[LLG] solve: t0=%g  t1=%g Finished" % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
+        logging.info_blue("[LLG] solve: t0=%g  t1=%g Finished" % (tt[0].cpu().numpy(), tt[-1].cpu().numpy()))
 
         state.t = tt[-1]
         state.m = res[-1]

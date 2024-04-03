@@ -51,7 +51,7 @@ class ExchangeField(LinearFieldTerm):
         dx = state.mesh.dx[0].reshape(-1,1,1,1)
         dy = state.mesh.dx[1].reshape(1,-1,1,1)
         dz = state.mesh.dx[2].reshape(1,1,-1,1)
-        h = torch.zeros(state.mesh.n + (3,))
+        h = torch.zeros_like(state.m)
 
         # x
         if state.mesh.pbc[0] == 0:

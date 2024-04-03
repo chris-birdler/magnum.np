@@ -197,9 +197,9 @@ class DemagField(LinearFieldTerm):
                              torch.stack(self._N[2], dim=-1)], dim=-1)
             return (N * state.m).sum(dim=-1)
 
-        hx = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
-        hy = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
-        hz = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype])
+        hx = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.m.device)
+        hy = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.m.device)
+        hz = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.m.device)
 
         for ax in range(3):
             m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = dim, s = s).squeeze(-1)

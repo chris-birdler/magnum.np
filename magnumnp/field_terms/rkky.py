@@ -82,7 +82,7 @@ class RKKYField(object):
 
     @timedmethod
     def h(self, state):
-        h = torch.zeros(state.mesh.n + (3,))
+        h = torch.zeros_like(state.m)
         if self._order == 0:
             m1 = state.m[:,:,(self._id1,),:]
             m2 = state.m[:,:,(self._id2,),:]
