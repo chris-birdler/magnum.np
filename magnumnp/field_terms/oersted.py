@@ -114,7 +114,7 @@ class OerstedField(FieldTerm):
 
         name = "/K_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
-            [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=torch.tensor(1.).device)
+            [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=state.device)
             logging.info("[OERSTED]: Use cached Oersted kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()
