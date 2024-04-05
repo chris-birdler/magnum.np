@@ -19,6 +19,21 @@ def test_step(simple_state, solver):
     assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
     torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
+def test_step_adjoint(simple_state):
+    demag    = DemagField()
+    exchange = ExchangeField()
+    external = ExternalField(simple_state.Constant([-24.6e-3/constants.mu_0,
+                                                    +4.3e-3/constants.mu_0,
+                                                     0.0]))
+
+    simple_state.m = simple_state.Constant([1,0,0])
+    simple_state.m[5:,:,:,0] = -1.0
+
+    llg = LLGSolver([demag, exchange, external], solver = TorchDiffEqAdjoint, adjoint_parameters = [])
+    llg.step(simple_state, 5e-11)
+    assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
+    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+
 
 @pytest.mark.parametrize("solver", [ScipyOdeint, TorchDiffEq])
 def test_solve(simple_state, solver):
@@ -32,6 +47,22 @@ def test_solve(simple_state, solver):
     simple_state.m[5:,:,:,0] = -1.0
 
     llg = LLGSolver([demag, exchange, external], solver = solver)
+    tt = torch.linspace(0., 5e-11, steps=5)
+    res = llg.solve(simple_state, tt)
+    assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
+    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+
+def test_solve_adjoint(simple_state):
+    demag    = DemagField()
+    exchange = ExchangeField()
+    external = ExternalField(simple_state.Constant([-24.6e-3/constants.mu_0,
+                                                    +4.3e-3/constants.mu_0,
+                                                     0.0]))
+
+    simple_state.m = simple_state.Constant([1,0,0])
+    simple_state.m[5:,:,:,0] = -1.0
+
+    llg = LLGSolver([demag, exchange, external], solver = TorchDiffEqAdjoint, adjoint_parameters = [])
     tt = torch.linspace(0., 5e-11, steps=5)
     res = llg.solve(simple_state, tt)
     assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
