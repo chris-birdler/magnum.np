@@ -109,7 +109,7 @@ class FieldLogger(object):
             filename += ".vtr"
         state.write_vtk(values, filename, scale = self._scale)
 
-        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t), file=os.path.basename(filename))
+        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(float(state.t)), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
             fd.flush()
