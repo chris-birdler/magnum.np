@@ -161,6 +161,6 @@ class BiquadraticRKKYField(object):
         m1 = state.m[:,:,self._id1,:]
         m2 = state.m[:,:,self._id2,:]
 
-        E = (m1*m2).sum()**2
+        E = ((m1*m2).sum(dim=-1)**2).sum()
         E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky_BQ
         return E
