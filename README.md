@@ -16,7 +16,7 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Antiferromagnetic coupling layers (RKKY)
+* Bilinear and biquadratic Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
