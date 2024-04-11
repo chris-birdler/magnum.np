@@ -4,31 +4,81 @@ import torch
 from math import pi, cos, sin
 from magnumnp import *
 
-def test_call():
+def test_simple():
+    J_rkky = -0.001
     n  = (10, 10, 2)
     dx = (1e-9, 1e-9, 1e-9)
+    L  = (n[0]*dx[0], n[1]*dx[1], n[2]*dx[2])
     mesh = Mesh(n, dx)
-    
+
     state = State(mesh)
     state.material = {"Ms":1./constants.mu_0, "A":1e-11}
     state.m = state.Constant([1,0,0])
-    
+
     domain1 = state.Constant(False, dtype=torch.bool)
     domain1[:,:,0] = True
-    
+
     domain2 = state.Constant(False, dtype=torch.bool)
     domain2[:,:,1] = True
-    
+
     exchange1 = ExchangeField(domain1)
     exchange2 = ExchangeField(domain2)
-    rkky = RKKYField(-0.002, "z", 0, 1)
-    
-    for phi in torch.linspace(0, 2*pi, 100):
-        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
-        E_rkky = rkky.E(state).detach().cpu().numpy()
-        E_ex1 = exchange1.E(state).detach().cpu().numpy()
-        E_ex2 = exchange1.E(state).detach().cpu().numpy()
-        h = rkky.h(state)
-        print("phi:", phi.cpu().numpy(), "E_rkky:", E_rkky, "E_ex1:", E_ex1, "E_ex2:", E_ex2, "E_tot:", E_rkky+E_ex1+E_ex2, "m:", state.m[:,:,:,0].mean().cpu().numpy(), state.m[:,:,:,1].mean().cpu().numpy(), state.m[:,:,:,2].mean().cpu().numpy())
-    #assert E == pytest.approx(1./6.*mesh.volume*constants.mu_0*Ms**2)
+    rkky = RKKYField(J_rkky, "z", 0, 1)
 
+    for phi in torch.linspace(0,2*pi,36):
+        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
+        h = rkky.h(state)
+
+        h1 = torch.linalg.cross(state.m[domain1].avg(), h[domain1].avg())
+        h2 = torch.linalg.cross(state.m[domain2].avg(), h[domain2].avg())
+
+        h1_analytic = torch.linalg.cross(state.m[domain1].avg(), J_rkky/dx[2]*state.m[domain2].avg())
+        h2_analytic = torch.linalg.cross(state.m[domain2].avg(), J_rkky/dx[2]*state.m[domain1].avg())
+
+        E = rkky.E(state).detach().cpu().numpy()
+        E_analytic = -J_rkky*L[0]*L[1]*cos(phi)
+
+        torch.testing.assert_close(h1, h1_analytic, atol=1e-10, rtol=1e-10)
+        torch.testing.assert_close(h2, h2_analytic, atol=1e-10, rtol=1e-10)
+        assert E == pytest.approx(E_analytic, rel=1e-10, abs=1e-25)
+
+def test_biquadratic():
+    J_rkky = 0.001
+    n  = (10, 10, 2)
+    dx = (1e-9, 1e-9, 1e-9)
+    L  = (n[0]*dx[0], n[1]*dx[1], n[2]*dx[2])
+    mesh = Mesh(n, dx)
+
+    state = State(mesh)
+    state.material = {"Ms":1./constants.mu_0, "A":1e-11}
+    state.m = state.Constant([1,0,0])
+
+    domain1 = state.Constant(False, dtype=torch.bool)
+    domain1[:,:,0] = True
+
+    domain2 = state.Constant(False, dtype=torch.bool)
+    domain2[:,:,1] = True
+
+    exchange1 = ExchangeField(domain1)
+    exchange2 = ExchangeField(domain2)
+    rkky = BiquadraticRKKYField(J_rkky, "z", 0, 1)
+
+    for phi in torch.linspace(0,2*pi,36):
+        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
+        h = rkky.h(state)
+
+        h1 = h[domain1].avg()
+        h2 = h[domain2].avg()
+
+        m1 = state.m[domain1].avg()
+        m2 = state.m[domain2].avg()
+
+        h1_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.m[domain2].avg()
+        h2_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.m[domain1].avg()
+
+        E = rkky.E(state).detach().cpu().numpy()
+        E_analytic = -J_rkky*L[0]*L[1]*cos(phi)**2
+
+        torch.testing.assert_close(h1, h1_analytic, atol=1e-10, rtol=1e-10)
+        torch.testing.assert_close(h2, h2_analytic, atol=1e-10, rtol=1e-10)
+        assert E == pytest.approx(E_analytic, rel=1e-10, abs=1e-25)

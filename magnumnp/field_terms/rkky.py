@@ -19,7 +19,7 @@
 from magnumnp.common import timedmethod, constants
 import torch
 
-__all__ = ["RKKYField"]
+__all__ = ["RKKYField", "BiquadraticRKKYField"]
 
 # TODO: interface should be generalized and simplified
 class RKKYField(object):
@@ -97,7 +97,7 @@ class RKKYField(object):
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
         h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
-        return torch.nan_to_num(h)
+        return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
         m1 = state.m[:,:,(self._id1,),:]
@@ -114,3 +114,53 @@ class RKKYField(object):
         return E
 
 
+
+# TODO: interface should be generalized and simplified
+class BiquadraticRKKYField(object):
+    r"""
+    Biquadratic surface exchange couplong between two layers gives rise to the following energy contribution:
+    .. math::
+        E^\text{biquadratic} = -\int\limits_\Gamma J_\text{biquadratic} \, (\vec{m}_i \cdot \vec{m}_j)^2 \, d\vec{A},
+
+
+    where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j` with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
+
+    The effective field is given by:
+
+    .. math::
+        \vec{h}^\text{biquadratic}_i = \frac{2 J_\text{biquadratic}} {M_s \Delta z \mu_0} \, (\vec{m}_i \cdot \vec{m}_j) \, \vec{m}_j,
+
+    with the interlayer exchange constant :math:`J_\text{biquadratic}`.
+
+    """
+    def __init__(self, J_rkky_BQ, dir, id1, id2):
+        self._J_rkky_BQ = J_rkky_BQ
+        if dir != "z":
+            raise ValueError("Currently only dir='z' is implemented!")
+        self._dir = dir 
+        self._id1 = min(id1,id2)
+        self._id2 = max(id1,id2)
+
+    @timedmethod
+    def h(self, state):
+        h = state.zeros(state.mesh.n + (3,))
+
+        m1 = state.m[:,:,self._id1,:]
+        m2 = state.m[:,:,self._id2,:]
+
+        m12 = (m1*m2).sum(axis=-1, keepdim=True)
+        h[:,:,self._id1,:] = 2. * self._J_rkky_BQ * m12 * m2
+        h[:,:,self._id2,:] = 2. * self._J_rkky_BQ * m12 * m1
+
+        #TODO: find out why there is a 2x discrepancy compared with oommf
+        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
+
+        return h.nan_to_num(posinf=0, neginf=0)
+    
+    def E(self, state):
+        m1 = state.m[:,:,self._id1,:]
+        m2 = state.m[:,:,self._id2,:]
+
+        E = ((m1*m2).sum(dim=-1)**2).sum()
+        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky_BQ
+        return E

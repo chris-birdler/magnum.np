@@ -54,3 +54,17 @@ class ScipyOdeint(object):
 
         state.m = state.Tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
         state.t = t1
+
+    def solve(self, state, tt, rtol = None, atol = None, **llg_args):
+        m0 = state.m.detach().cpu().numpy().reshape(-1, order = 'F')
+        res = odeint(self._f_wrapper,
+                     m0,
+                     tt.detach().cpu().numpy()*1e9,
+                     args = (state, llg_args),
+                     rtol = rtol or self._rtol,
+                     atol = atol or self._atol,
+                     tfirst = True)
+
+        state.m = state.Tensor(res[-1].reshape(state.mesh.n + (3,), order = "F"))
+        state.t = tt[-1]
+        return res
