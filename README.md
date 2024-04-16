@@ -40,7 +40,7 @@ The following demos are also stored on Google Colab, where they can directly be 
    * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS))
    * [Standard Problem RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo))
    * [Stochastic Integration](demos/langevin/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q))
-   * [Dispersion Calculator] (demos/dispersion_calculator.ipynb) ([Colab](https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2))
+   * [Dispersion Calculator](demos/dispersion_calculator.ipynb) ([Colab](https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2))
 
 Installation
 ------------
