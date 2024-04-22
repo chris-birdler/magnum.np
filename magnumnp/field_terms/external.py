@@ -36,12 +36,11 @@ class ExternalField(object):
         external = ExternalField([Hx, 0, 0])
 
         # homogenious, time-dependent field
-        external = ExternalField(lambda t: [Hx*t, 0, 0])
+        external = ExternalField(lambda state: [Hx*state.t, 0, 0])
 
         # inhomogenious, constant field
         x, y, z = SpatialCoordinate(state)
-        h = torch.stack([x,y,z], dim=-1)
-        external = ExternalField(h)
+        external = ExternalField(Expression([x,y,z]))
     """
     def __init__(self, h = None):
         if h != None:

@@ -125,7 +125,7 @@ To define this material parameter in a certain area of the mesh Python's slicing
 
 .. code-block:: python
 
-  x,y,z = state.SpatialCoordinate()
+  x,y,z = mesh.SpatialCoordinate()
   state.material["A"][:50,:,:,:] = 2
 
 The result will look as follows:
@@ -153,7 +153,7 @@ Furthermore, the magnetization *m* can also be defined in such a domain. In this
 
 .. code-block:: python
 
-  state.m = torch.stack([-y,x,0*z], dim=-1)
+  state.m = Expression([-y,x,0*z]) # equivalent to torch.stack([-y,x,0*z], dim=-1)
   state.m[~disk] = 0
   state.m.normalize()
   
@@ -162,18 +162,6 @@ The magnetization of the material will look as follows:
 .. image:: _static/vortex.png
   :width: 700
 
-Furthermore, the magnetization *m* can also be defined in such a domain. In this example, a vortex is initialized and the magnetization outside of the disk is set to zero.
-
-.. code-block:: python
-
-  state.m = torch.stack([-y,x,0*z], dim=-1)
-  state.m[~disk] = 0
-  state.m.normalize()
-
-The magnetization of the material will look as follows:
-
-.. image:: _static/vortex.png
-  :width: 700
 
 Set multiple material parameters at once
 ========================================
@@ -201,6 +189,6 @@ In case the material is time-dependent each parameter can be defined as a lambda
 
 .. code-block:: python
 
-  state.material["A"] = lambda t: 1. * t
+  state.material["A"] = lambda state: 1. * state.t
 
-This causes __getitem__ of the material class to be overloaded and the corresponding material at the current time state.t will be returned.
+The material getter will always return the material corresponding to the current state. In case of constant materials a trivial lambda function is created duing setting the material. 
