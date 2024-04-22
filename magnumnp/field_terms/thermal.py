@@ -31,11 +31,11 @@ class ThermalField(FieldTerm):
         super().__init__(**kwargs)
 
     @timedmethod
-    @torch.compile
+    #@torch.compile
     def h(self, state):
         if state._step != self._step: # update random field
-            self._sigma = state._normal(0., 1., size = state.m.shape)
+            self._sigma = torch.normal(0., 1., size = state.m.shape)
             self._step = state._step
 
-        h = sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volumes * state._dt))
+        h = self._sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volumes * state._dt))
         return h.nan_to_num(posinf=0, neginf=0)

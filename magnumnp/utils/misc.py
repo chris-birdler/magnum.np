@@ -17,13 +17,14 @@
 #
 
 import torch
+from ..common import normalize
 
 __all__ = ["add_noise", "nsk", "hsl_to_rgb"]
 
 def add_noise(x, dev = 1.0, mean = 0.0):
    if torch.is_tensor(x):
         x += torch.empty_like(x).normal_(mean = mean, std = dev)
-        x.normalize()
+        normalize(x)
 
 
 def nsk(state): # TODO: document and improve interface

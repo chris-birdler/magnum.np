@@ -12,7 +12,6 @@ For comparison with the paper Leliaert et al., AIP advances 7, 125010 (2017) Fig
 Since the cell are uncoupled the volume in our calculations has to be the volume of one cell and not the whole simulated material.
 """
 
-set_log_level(0)
 def run_langevin():
     Timer.enable()
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -26,25 +25,25 @@ def run_langevin():
 
     state = State(mesh)
     state.material = {
-        "Ms": Ms, # Js ~ 1.26 T for Ms = 1e6 A/m
-        "alpha": 0.1
+        "Ms": state.Constant(Ms), # Js ~ 1.26 T for Ms = 1e6 A/m
+        "alpha": state.Constant(0.1)
         }
     state.m = state.Constant([0,0,0])
     add_noise(state.m)
-    state.m.normalize()
+    normalize(state.m)
 
-    external = ExternalField([0,0,0])
+    external = ExternalField(state.Constant([0,0,0]))
     thermal = ThermalField()
     llg = LLGSolver([external, thermal], solver = RKF45)
 
     # perform stochastic integration
     for xi in [30, 91, 242, 725]:
         logger = ScalarLogger("data/log_xi%d.dat" % xi, ['t', external.h, 'm'])
-        state.T = constants.mu_0 * Ms * state.cell_volumes.max() * 1./constants.mu_0 / (constants.kb * xi)
+        state.T = constants.mu_0 * Ms * state.mesh.cell_volumes /constants.mu_0 / (constants.kb * xi)
         print(f"Running for xi = {xi} (T = {state.T})")
         for h in np.linspace(0, 0.1, num=11):
             print(f"h = {h}")
-            external.h = [h / constants.mu_0, 0, 0]
+            external.h = state.Constant([h / constants.mu_0, 0, 0])
             llg.step(state, dt = t_final)
             logger << state
     Timer.print_report()
