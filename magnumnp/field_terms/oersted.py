@@ -70,9 +70,6 @@ def oersted_g(x, y, z, dx, dy, dz, p):
     return res
 
 
-#    for k in np.rollaxis(np.indices((3,)*3), 0, 4).reshape(27, -1) - 1:
-#        r = torch.stack([(ij[ind] + k[ind])*dx[ind] for ind in perm], dim=-1)
-#        K_near[:,:,:] += np.prod(2.-3*np.abs(k)) * func_near(r) / (4.*np.pi*np.prod(dx))
 class OerstedField(FieldTerm):
     r"""
     The Oersted field created by some current density :math:`\vec{j}` can be calculated by means of the Biot-Savart law

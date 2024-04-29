@@ -47,7 +47,7 @@ def test_wire():
     h1 = h1[:,n[1]//2,n[2]//2,1]
 
     x,y,z = mesh.SpatialCoordinate()
-    h2 = dx[0]**2/(2.*torch.pi*x[:,n[1]//2,n[2]//2])
+    h2 = dx[0]**2/(2.*torch.pi*x[:,n[1]//2,n[2]//2]) # I/(2*pi*|rho|)
     h2[n[0]//2] = 0
 
     #import matplotlib.pyplot as plt
@@ -60,3 +60,34 @@ def test_wire():
     #fig.savefig("data/results.png")
 
     torch.testing.assert_close(h1[:n[0]//2-5]/h1.max(), h2[:n[0]//2-5]/h1.max(), atol=1e-3, rtol=1e-3)
+
+def test_vector_potential():
+    N = 101
+    n  = (N,N,501)
+    dx = (1e-9, 1e-9, 5e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2.,-n[1]*dx[1]/2.,-n[2]*dx[2]/2.))
+    state = State(mesh)
+    state.j = state.Constant([0,0,0])
+    state.j[N//2,N//2,:,2] = 1
+
+    vector = VectorPotential()
+    A1 = vector.A(state)
+    write_vti(A1, "data/A.vti")
+
+    A1 = A1[:,n[1]//2,n[2]//2,2]
+    x,y,z = mesh.SpatialCoordinate()
+    A2 = dx[0]**2/(2.*torch.pi)*torch.log(2.*n[0]*dx[0]/x[:,n[1]//2,n[2]//2].abs())  # mu_0*I/(2*pi)*ln(|rho|)
+#    A2 = 1./(2.*torch.pi)*torch.log(2*n[2]*dx[2]/x[:,n[1]//2,n[2]//2].abs())  # mu_0*I/(2*pi)*[ln(2*L/|rho|)]
+    A2[n[0]//2] = torch.inf
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.plot(x[:,n[1]//2,n[2]//2], A1, '--', label="magnum.np")
+    #ax2 = ax.twinx() 
+    ax.plot(x[:,n[1]//2,n[2]//2], A2, '-', label="analytic")
+#    ax.set_ylim([-2e-10, 2e-10])
+    ax.grid()
+    ax.legend()
+    fig.savefig("data/results.png")
+
+    #torch.testing.assert_close(h1[:n[0]//2-5]/h1.max(), h2[:n[0]//2-5]/h1.max(), atol=1e-3, rtol=1e-3)
