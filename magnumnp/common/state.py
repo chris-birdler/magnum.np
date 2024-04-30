@@ -39,6 +39,7 @@ class State(object):
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self.device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
 
+    # Material
     @property
     def material(self):
         return self._material
@@ -52,6 +53,7 @@ class State(object):
         else:
             raise ValueError("Dictionary needs to be provided to set material")
 
+    # Current density
     @property
     def j(self):
         return self._j(self)
@@ -62,6 +64,18 @@ class State(object):
             self._j = value
         else:
             self._j = lambda state: value
+
+    # Temperature
+    @property
+    def T(self):
+        return self._T(self)
+
+    @T.setter
+    def T(self, value):
+        if callable(value):
+            self._T = value
+        else:
+            self._T = lambda state: value
 
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
