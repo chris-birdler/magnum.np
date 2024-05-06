@@ -21,7 +21,7 @@ from .field_terms import LinearFieldTerm
 import numpy as np
 import torch
 import torch.fft
-from torch import asinh, atan, sqrt, log, abs
+from torch import asinh, atan, sqrt, log, abs, pi
 from time import time
 import os
 
@@ -67,19 +67,19 @@ def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
         - F0(func, x - dx,      y, z, dy, dY, dz, dZ) \
         - F0(func, x + dX,      y, z, dy, dY, dz, dZ) \
         + F0(func, x - dx + dX, y, z, dy, dY, dz, dZ)
-    return -res / (4.*np.pi*dx*dy*dz)
+    return -res / (4.*pi*dx*dy*dz)
 
 def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
     res[0,0,0] = 0.
-    return res * dx*dy*dz / (4.*np.pi)
+    return res * dx*dy*dz / (4.*pi)
 
 def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
     res[0,0,0] = 0.
-    return res * dx*dy*dz / (4.*np.pi)
+    return res * dx*dy*dz / (4.*pi)
 
 def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
     res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)

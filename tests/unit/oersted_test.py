@@ -52,8 +52,8 @@ def test_wire():
 
     #import matplotlib.pyplot as plt
     #fig, ax = plt.subplots()
-    #ax.plot(x[:,n[1]//2,n[2]//2], h1, '--', label="magnum.np")
     #ax.plot(x[:,n[1]//2,n[2]//2], h2, '-', label="analytic")
+    #ax.plot(x[:,n[1]//2,n[2]//2], h1, '--', label="magnum.np")
     #ax.set_ylim([-2e-10, 2e-10])
     #ax.grid()
     #ax.legend()
@@ -63,8 +63,10 @@ def test_wire():
 
 def test_vector_potential():
     N = 101
-    n  = (N,N,501)
-    dx = (1e-9, 1e-9, 5e-9)
+    n  = (N,N,101)
+    dx = (1e-9, 1e-9, 1e-9)
+    L  = (n[0]*dx[0], n[1]*dx[1], n[2]*dx[2])
+
     mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2.,-n[1]*dx[1]/2.,-n[2]*dx[2]/2.))
     state = State(mesh)
     state.j = state.Constant([0,0,0])
@@ -76,18 +78,18 @@ def test_vector_potential():
 
     A1 = A1[:,n[1]//2,n[2]//2,2]
     x,y,z = mesh.SpatialCoordinate()
-    A2 = dx[0]**2/(2.*torch.pi)*torch.log(2.*n[0]*dx[0]/x[:,n[1]//2,n[2]//2].abs())  # mu_0*I/(2*pi)*ln(|rho|)
-#    A2 = 1./(2.*torch.pi)*torch.log(2*n[2]*dx[2]/x[:,n[1]//2,n[2]//2].abs())  # mu_0*I/(2*pi)*[ln(2*L/|rho|)]
-    A2[n[0]//2] = torch.inf
+    a = L[2]
+    r = x[:,n[1]//2,n[2]//2]
+    A2 = dx[0]**2/(4.*torch.pi)*torch.log(a*(torch.sqrt(a**2+4*r**2)+a)/(2*r**2)+1)
 
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.plot(x[:,n[1]//2,n[2]//2], A1, '--', label="magnum.np")
-    #ax2 = ax.twinx() 
-    ax.plot(x[:,n[1]//2,n[2]//2], A2, '-', label="analytic")
-#    ax.set_ylim([-2e-10, 2e-10])
-    ax.grid()
-    ax.legend()
-    fig.savefig("data/results.png")
+    #import numpy as np
+    #import matplotlib.pyplot as plt
+    #A2[n[0]//2] = torch.inf
+    #fig, ax = plt.subplots()
+    #ax.plot(x[:,n[1]//2,n[2]//2], A1, '-', label="magnum.np")
+    #ax.plot(x[:,n[1]//2,n[2]//2], A2, '-', label="analytic (finite)")
+    #ax.grid()
+    #ax.legend()
+    #fig.savefig("data/results.png")
 
-    #torch.testing.assert_close(h1[:n[0]//2-5]/h1.max(), h2[:n[0]//2-5]/h1.max(), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(A1[:n[0]//2-5]/A1.max(), A2[:n[0]//2-5]/A1.max(), atol=1e-5, rtol=1e-5)
