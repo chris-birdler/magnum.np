@@ -78,7 +78,7 @@ class OerstedField(FieldTerm):
 
         \vec{h}^\text{oersted}(\vec{x}) = \frac{1}{4 \pi} \int \vec{j}(\vec{x}') \times \frac{\vec{x}-\vec{x}'}{\vert \vec{x}-\vec{x}'\vert^3} \, d\vec{x}'.
 
-    The occuring equations look very similar to those of the demag field [krueger], and the occuring convolution can be efficiently calculated by means of an FFT method.
+    The occuring equations [krueger] look very similar to those of the demag field, and the occuring convolution can be efficiently calculated by means of an FFT method.
 
     :param p: number of next neighbors for near field via Krueger's equations (default = 20)
     :type p: int, optional

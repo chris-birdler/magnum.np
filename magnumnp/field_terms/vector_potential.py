@@ -62,6 +62,15 @@ def vector_func(x, y, z, dx, dy, dz, p):
 class VectorPotential(object):
     r"""
     Vector Potential originating from current density state.j
+
+    .. math::
+
+        \vec{A}(\vec{x}) = \frac{1}{4 \pi} \int \vec{j}(\vec{x}') \; \frac{1}{\vert \vec{x}-\vec{x}'\vert} \, d\vec{x}'.
+
+    Intergrals over a cuboid source region are given in [seidov], and the occuring convolution can be efficiently calculated by means of an FFT method. The integrals are evaluated for target points in the centers of each cell.
+
+    :param p: number of next neighbors for near field via Seidov's equations (default = 20)
+    :type p: int, optional
     """
     def __init__(self, p = 20, cache_dir = None):
         self._p = p
