@@ -28,7 +28,7 @@ class State(object):
         self.mesh = mesh
 
         self._material = Material(self)
-        self.t = 0.
+        self._t = torch.tensor(0.)
         self._step = 0
         self._dt = 0.
 
@@ -38,6 +38,18 @@ class State(object):
 
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self.device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
+
+    # Time
+    @property
+    def t(self):
+        return self._t
+
+    @t.setter
+    def t(self, value):
+        if isinstance(value, (int, float)):
+            self._t = torch.tensor(float(value))
+        else:
+            self._t = value
 
     # Material
     @property
