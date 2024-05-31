@@ -32,10 +32,7 @@ class State(object):
         self._step = 0
         self._dt = 0.
 
-        dx = mesh.dx[0] # derive dtype and device from mesh
-        dtype_str = str(dx.dtype).split('.')[1]
-        self.device = dx.device
-
+        dtype_str = str(self.dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self.device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
 
@@ -89,6 +86,14 @@ class State(object):
         else:
             self._T = lambda state: value
 
+    @property
+    def dtype(self):
+        return self.mesh.dx[0].dtype
+
+    @property
+    def device(self):
+        return self.mesh.dx[0].device
+
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
             c = torch.tensor(c, dtype = dtype, device = self.device)
@@ -103,6 +108,25 @@ class State(object):
     def SpatialCoordinate(self):
         logging.warning("State.SpatialCoordinate() is deprecated! Use mesh.SpatialCoordinate() instead!")
         return self.mesh.SpatialCoordinate()
+
+    def convert_tensorfield(self, value):
+        ''' convert arbitrary input to tensor-fields '''
+        if not isinstance(value, torch.Tensor):
+            value = torch.tensor(value, dtype=self.dtype)
+
+        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
+            value = value.reshape(1)
+        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
+            shape = value.shape
+            value = value.reshape((1,1,1) + tuple(shape))
+            value = value.expand(self.mesh.n + tuple(shape))
+            #value._expanded = True # annotate expanded tensor (clone will be before individual items are modified)
+            value = value.clone()
+        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
+            value = value.unsqueeze(-1)
+        else: # otherwise assume the dimention is correct!
+            pass
+        return value
 
     def write_vtk(self, fields, filename, scale = 1.):
         if self.mesh.is_equidistant:

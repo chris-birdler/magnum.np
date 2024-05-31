@@ -17,8 +17,10 @@
 #
 
 import torch
+from magnumnp.common import logging
 
 __all__ = ["Material"]
+
 
 class Material(dict):
     def __init__(self, state):
@@ -29,12 +31,13 @@ class Material(dict):
 
     def __setitem__(self, key, value):
         if callable(value):
-            super().__setitem__(key, value)
+            if not isinstance(value(self._state), torch.Tensor):
+                logging.warning("Casting of state-dependent material parameters requires conversion in every call.")
+                logging.warning("Use state.Constant(value) inside of your function in order to prevent this.")
+            super().__setitem__(key, lambda state: self._state.convert_tensorfield(value(state)))
         else:
-            if not isinstance(value, torch.Tensor) or value.dim() < 4:
-                raise ValueError("Casting of material parameters is deprecated. Use state.Constant(value) instead.")
-            super().__setitem__(key, lambda t: value) # allow constant material parameters to be called 
-
+            t = self._state.convert_tensorfield(value)
+            super().__setitem__(key, lambda state: t) # allow constant material parameters to be called
 
     def set(self, material, domain=None):
         r"""
