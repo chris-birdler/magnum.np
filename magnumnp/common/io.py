@@ -232,7 +232,7 @@ def read_mesh(mesh, filename, scale = 1.):
 
     :Examples:
       .. code::
-        fields = read_msh(mesh, "cylinder.msh")
+        fields = read_mesh(mesh, "cylinder.msh")
     """
     # read image data and volume domains
     unstructured_mesh = pv.read(filename)
