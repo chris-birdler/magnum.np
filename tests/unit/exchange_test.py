@@ -43,7 +43,7 @@ def test_nonequi_vs_equi():
     state2 = State(mesh2)
     state2.material = {"A": state2.Constant(1.), #1.3e-11,
                       "Ms": state2.Constant(1.)} #800e3}
-    x, y, z = state1.SpatialCoordinate()
+    x, y, z = state1.mesh.SpatialCoordinate()
     state1.m = Expression([x*y, y*z, z*x])
     state2.m = Expression([x*y, y*z, z*x])
 

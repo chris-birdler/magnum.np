@@ -137,3 +137,42 @@ class State(object):
             if not filename.endswith(".vtr"):
                 filename += ".vtr"
             write_vtr(fields, filename, self, scale)
+
+
+    def avg(self, data, cell_volumes = None, dim=(0,1,2)):
+        r"""
+        Average over spatial dimensions of tensor fields.
+
+        :param data: tensor field to average
+        :type A: :class:`Tensor`
+        :param dim: dimensions to average over
+        :type dim: tuple, optional
+        :param cell_volumes: volume of each cell (required only in case of non-equidistant meshes)
+        :type cell_volumes: :class:`Tensor`, optional
+
+        :Examples:
+
+        .. code::
+            Ms_avg = avg(state.material["Ms"])
+            m_avg = avg(state.m)
+        """
+        if self.mesh.is_equidistant:
+            if data.dim() <= 1: # e.g. [0,0,1]
+                return data
+            elif data.dim() == 2: # state.m[domain]
+                return data.mean(dim=0)
+            else:                 # [nx,ny,nz,...]
+                return data.mean(dim=dim)
+        else: # non-equidistant
+            if cell_volumes == None:
+                cell_volumes = self.mesh.cell_volumes
+            if data.dim() <= 1: # e.g. [0,0,1]
+                return data
+            if data.shape[:3] != cell_volumes.shape[:3]:
+                raise ValueError("Data shape (%s) does not match cell_volumes shape (%s). When averaging over slices of non-equidistant tensors you have to provide a sliced version of state.mesh.cell_volumes!" % (str(data.shape), str(cell_volumes.shape)))
+            if data.dim() == 2: # state.m[domain]
+                return (data * cell_volumes).sum(dim=0) / cell_volumes.sum(dim=0)
+            if data.dim() == 3: # [nx,ny,nz]
+                return (data * cell_volumes.squeeze(-1)).sum(dim=dim) / cell_volumes.sum()
+            # [nx,ny,nz,...]
+            return (data * cell_volumes).sum(dim=dim) / cell_volumes.sum()
