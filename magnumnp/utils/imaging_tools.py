@@ -118,7 +118,7 @@ class LTEM(object): # TODO: document and improve interface
 
 
 class MFM(object):
-    def __init__(self, demag, height = 100e-9, Q = 1, k = 1, mm_tip = 0., dm_tip = None):
+    def __init__(self, height = 100e-9, Q = 1, k = 1, mm_tip = 0., dm_tip = None):
         r""" Calculation of the phase shift of an MFM tip.
 
         The contrast in MFM images originates from the magnetic interaction between
@@ -146,24 +146,42 @@ class MFM(object):
             state.material = {"Ms": 8e5}
             state.material["Ms"][~magnetic] = 0. # zero Ms outside of sample
 
-            x, y, z = state.SpatialCoordinate()
+            x, y, z = meste.SpatialCoordinate()
             state.m = torch.stack([y, -x, 0*z], dim=-1)
             state.m.normalize()
-           
+
             demag = DemagField()
-            mfm = MFM(demag, height=10e-9, mm_tip = 10e-9, dm_tip=20e-9)
-           
-            logger = FieldLogger("data/phi.pvd", [mfm.PhaseShift])
-            logger << state
+            mfm = MFM(height=10e-9, mm_tip = 10e-9, dm_tip=20e-9)
+
+            mfm_logger = FieldLogger("data/phi.pvd", [mfm.PhaseShift])
+            mfm_logger << mfm.extended_state
         """
         self._prefactor = Q*constants.mu_0/k
         self._mm_tip = mm_tip
         self._dm_tip = dm_tip
         self._height = height
-        self._demag = demag
+        self._xdemag = DemagField()
+
+    def extend_demag(self, state):
+        n = state.mesh.n
+        if not hasattr(self, "extended_state"):
+            dx = state.mesh.dx
+
+            nz = int(n[2] + self._height/dx[2])
+            n_new = [n[0], n[1], nz]
+
+            mesh_new = Mesh(n_new, dx)
+            self.extended_state = State(mesh_new)
+            self.extended_state.material["Ms"] = 0.
+            self.extended_state.m = self.extended_state.Constant([0.,0.,00.])
+
+        # copy data
+        self.extended_state.material["Ms"][:,:,:n[2]] = state.material["Ms"]
+        self.extended_state.m[:,:,:n[2],:] = state.m
+        return self._xdemag.h(self.extended_state)
 
     def PhaseShift(self, state, mm_tip = None, dm_tip = None):
-        h_demag = self._demag.h(state)
+        h_demag = self.extend_demag(state)
         spacing = state.mesh.dx[2]
         mm_tip = mm_tip or self._mm_tip
         dm_tip = dm_tip or self._dm_tip
