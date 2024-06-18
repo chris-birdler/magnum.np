@@ -117,41 +117,49 @@ class LTEM(object): # TODO: document and improve interface
         return phim
 
 
+#mfm = MFM()
+#mfm.PhaseShift(state)
+
+
 class MFM(object): # TODO: document and improve interface
-    def __init__(self, state, height = 100e-9, q = 1, k =1):
-        self._state = state
-        self._m = self._state.m(self._state.t)
-        self._t = self._state.t
-        self._h = height
-        self._q = q
-        self._k = k
+    def __init__(self, height = 100e-9, Q = 1, k = 1, mm_tip = 0., dm_tip = None):
+        self._prefactor = Q*constants.mu_0/k
+        self._mm_tip = mm_tip
+        self._dm_tip = dm_tip
+        self._height = height
 
-        n = self._state.mesh.n
-        dx = self._state.mesh.dx
+    def extend_demag(self, state):
+        n = state.mesh.n
+        if not hasattr(self, "_xstate"):
+            dx = state.mesh.dx
+           
+            nz = int(n[2] + self._height/dx[2])
+            n_new = [n[0], n[1], nz]
+           
+            mesh_new = Mesh(n_new, dx)
+            self._xstate = State(mesh_new)
+            self._xstate.material["Ms"] = 0.
+            self._xstate.m = self._xstate.Constant([0.,0.,00.])
+            self._xdemag = DemagField()
 
-        nz = int(n[2] + self._h/dx[2])
+        # copy data
+        self._xstate.material["Ms"][:,:,:n[2]] = state.material["Ms"]
+        self._xstate.m[:,:,:n[2],:] = state.m
+        return self._xdemag.h(self._xstate)
 
-        n_new = [n[0], n[1], nz]
+    def PhaseShift(self, state, mm_tip = None, dm_tip = None):
+        h_demag = self.extend_demag(state)
+        spacing = state.mesh.dx[2]
+        mm_tip = mm_tip or self._mm_tip
+        dm_tip = dm_tip or self._dm_tip
 
-        mesh_new = Mesh(n_new, dx)
-        self._state0 = State(mesh_new)
-        self._state0.material["Ms"] = self._state.material["Ms"]
-        self._state0.m = self._state0.Constant([0, 0, 0])
-        self._state0.m[:,:,:n[2],:] = self._m
+        # monopole
+        dHsdz = torch.gradient(h_demag, dim = [2], spacing = spacing)[0]
+        phi = mm_tip * dHsdz[:,:,:,2]
 
-    def _Hdemag(self):
-        demag = DemagField()
-        return demag.h(self._state0)
+        # dipole
+        if dm_tip != None:
+            d2Hsdz2 = torch.gradient(dHsdz, dim = [2], spacing = spacing)[0]
+            phi += (dm_tip * d2Hsdz2).sum(dim=-1)
 
-    def PhaseShift(self, mm_tip = None, dm_tip = None):
-        dHszdz = torch.gradient(self._Hdemag(), dim = [2], spacing = self._state.mesh.dx[2])[0][:,:,:,2]
-        d2Hsdz2 = torch.gradient(torch.stack(torch.gradient(self._Hdemag(), dim = [2], spacing = self._state.mesh.dx[2]), dim = -1), dim = 2, spacing = self._state.mesh.dx[2])[0]
-
-        if mm_tip is not None:
-            phi = self._q*constants.mu_0/self._k*mm_tip*dHszdz
-        elif dm_tip is not None:
-            phi = self._q*constants.mu_0/self._k*(dm_tip*d2Hsdz2).sum(dim = -1, keepdim = True).squeeze(-1)
-        else:
-            raise TypeError("Provide Monopole Moment mm_tip, or Dipolar Moment Vector dm_tip")
-
-        return phi[:,:,-1,:].unsqueeze(2)
+        return phi.unsqueeze(-1)
