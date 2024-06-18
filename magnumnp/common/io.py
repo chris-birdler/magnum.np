@@ -54,17 +54,18 @@ def write_vtr(fields, filename, state = None, scale = 1.):
 
     grid = pv.RectilinearGrid(x*scale, y*scale, z*scale)
 
-    for name, f in fields.items():
+    for key in fields.keys():
+        f = fields[key]
         if len(f.shape) == 0 or len(f.shape) == 1: # expand constant tensor to tensorfield
             f = f.expand(n + f.shape)
         if len(f.shape) == 4 and f.shape[-1] == 1: # remove dim for scalar field (nx,ny,nz,1) => (nx,ny,nz)
             f = f[: ,:, :, 0]
         if len(f.shape) == 3: # scalar data
-            grid.cell_data.set_array(f.detach().cpu().numpy().flatten('F'), name)
+            grid.cell_data.set_array(f.detach().cpu().numpy().flatten('F'), key)
         elif len(f.shape) == 4: # vector data
-            grid.cell_data.set_array(f.detach().cpu().numpy().reshape(-1,3,order='F'), name)
+            grid.cell_data.set_array(f.detach().cpu().numpy().reshape(-1,3,order='F'), key)
         else:
-            raise ValueError("write_vti: unsupported data format (", name, f.shape, ")")
+            raise ValueError("write_vti: unsupported data format (", key, f.shape, ")")
     grid.save(filename)
 
 
