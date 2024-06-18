@@ -117,38 +117,53 @@ class LTEM(object): # TODO: document and improve interface
         return phim
 
 
-#mfm = MFM()
-#mfm.PhaseShift(state)
+class MFM(object):
+    def __init__(self, demag, height = 100e-9, Q = 1, k = 1, mm_tip = 0., dm_tip = None):
+        r""" Calculation of the phase shift of an MFM tip.
 
+        The contrast in MFM images originates from the magnetic interaction between
+        the magnetic tip of an oscillating cantilever and the samples stray field.
+        As MFM is based on the stray field outside of a sample, an 'airbox' method
+        is used. The saturation magnetisation has to be set to zero outside of the sample
+        in which we wish to perform these MFM measurements.
 
-class MFM(object): # TODO: document and improve interface
-    def __init__(self, height = 100e-9, Q = 1, k = 1, mm_tip = 0., dm_tip = None):
+        The magnetic cantilever is driven to oscillate near its resonant frequency
+        when there is no stray field. In the presence of a stray magnetic field the
+        phase shift of MFM cantilever is given by
+
+        .. math::
+            \Delta \phi = \frac{Q\mu_0}{k} \left( q \frac{\partial
+                          {\bf H}_{sz}}{\partial z} + {\bf M}_t \cdot
+                          \frac{\partial^2{\bf H}_{s}}{\partial z^2} \right),
+
+        NOTE: this code is based on the MFM implementation of Ubermag
+              (see also: https://ubermag.github.io/documentation/notebooks/mag2exp/Magnetic_Force_Microscopy.html)
+
+        *Example*
+          .. code:: python
+
+            state = State(mesh)
+            state.material = {"Ms": 8e5}
+            state.material["Ms"][~magnetic] = 0. # zero Ms outside of sample
+
+            x, y, z = state.SpatialCoordinate()
+            state.m = torch.stack([y, -x, 0*z], dim=-1)
+            state.m.normalize()
+           
+            demag = DemagField()
+            mfm = MFM(demag, height=10e-9, mm_tip = 10e-9, dm_tip=20e-9)
+           
+            logger = FieldLogger("data/phi.pvd", [mfm.PhaseShift])
+            logger << state
+        """
         self._prefactor = Q*constants.mu_0/k
         self._mm_tip = mm_tip
         self._dm_tip = dm_tip
         self._height = height
-
-    def extend_demag(self, state):
-        n = state.mesh.n
-        if not hasattr(self, "_xstate"):
-            dx = state.mesh.dx
-           
-            nz = int(n[2] + self._height/dx[2])
-            n_new = [n[0], n[1], nz]
-           
-            mesh_new = Mesh(n_new, dx)
-            self._xstate = State(mesh_new)
-            self._xstate.material["Ms"] = 0.
-            self._xstate.m = self._xstate.Constant([0.,0.,00.])
-            self._xdemag = DemagField()
-
-        # copy data
-        self._xstate.material["Ms"][:,:,:n[2]] = state.material["Ms"]
-        self._xstate.m[:,:,:n[2],:] = state.m
-        return self._xdemag.h(self._xstate)
+        self._demag = demag
 
     def PhaseShift(self, state, mm_tip = None, dm_tip = None):
-        h_demag = self.extend_demag(state)
+        h_demag = self._demag.h(state)
         spacing = state.mesh.dx[2]
         mm_tip = mm_tip or self._mm_tip
         dm_tip = dm_tip or self._dm_tip

@@ -5,8 +5,7 @@ __all__ = ["MinimizerBB"]
 
 class MinimizerBB(object):
     def __init__(self, terms):
-        """
-        This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
+        """ This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
 
         .. note:: This feature is experimental.
 
