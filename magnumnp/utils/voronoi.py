@@ -24,8 +24,8 @@ __all__ = ["Voronoi"]
 class Voronoi(object):
     def __init__(self, mesh, num_points, seed_points=None):
         if seed_points == None:
-            L = torch.Tensor(mesh.dx_tuple)*torch.Tensor(mesh.n)
-            offset = torch.Tensor(mesh.origin)
+            L = torch.tensor(mesh.dx_tuple)*torch.tensor(mesh.n)
+            offset = torch.tensor(mesh.origin)
             self._points = L * torch.rand((num_points, 3)) + offset
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)
         self._mesh = mesh

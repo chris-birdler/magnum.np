@@ -49,7 +49,7 @@ while torch.sum(mat) > nx*ny*nz * (Fe_ratio):
 
 
 J = torch.zeros((3, 4))
-J[2,:] = torch.Tensor([J_FeFe] + [- float(J_funcFeFe(i*a*1e9))*1e-3 * a**2 for i in range(1,4)]) # Fe Fe
+J[2,:] = torch.tensor([J_FeFe] + [- float(J_funcFeFe(i*a*1e9))*1e-3 * a**2 for i in range(1,4)]) # Fe Fe
 
 Ms = 1500e3
 state.material = {

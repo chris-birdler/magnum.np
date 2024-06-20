@@ -48,7 +48,7 @@ dmi = D2dDMIField()
 
 # initialize magnetization that relaxes into s-state
 state.m = state.Constant([0.0, 0.0, 0.0]) 
-state.m[disk] = torch.Tensor((0.,0.,-1.))
+state.m[disk] = torch.tensor((0.,0.,-1.))
 state.m[n[0]//2-5:n[0]//2+5, n[1]//2-5:n[1]//2+5, :, 2] = 1.0
 normalize(state.m)
 write_vti(state.m, "data/m_init.vti", state)
