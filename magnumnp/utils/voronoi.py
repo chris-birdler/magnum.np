@@ -29,6 +29,9 @@ class Voronoi(object):
             self._points = L * torch.rand((num_points, 3)) + offset
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)
         self._mesh = mesh
+
+        self._points = self._points.to(dtype=torch.float32)
+        self._grid = self._grid.to(dtype=torch.float32)
         self._update_domains()
 
         logging.info_green("[Voronoi] Setup initial Tesselation (num_points = %d)" % (num_points))
@@ -42,6 +45,7 @@ class Voronoi(object):
         return self._points
 
     def _update_points(self):
+        ## orginal non-vectorized code (factor 2 slower)
         #for i in range(self._points.shape[0]):
         #    mask = self._domains == i
         #    if mask.sum() > 0:
@@ -50,25 +54,25 @@ class Voronoi(object):
 
         new_points = torch.zeros_like(self._points)
         counts = torch.zeros(self.points.shape[0])
-        
+
         # Scatter add the grid points to their corresponding centroid accumulators
-        domains = self._domains.unsqueeze(-1).expand(-1, 3)
-        new_points = new_points.scatter_add_(0, domains, self._grid)
-        
+        new_points.index_add_(0, self._domains, self._grid)
+
         # Count the number of points in each Voronoi cell
-        counts.scatter_add_(0, domains[:,0], torch.ones(self._grid.size(0)))
-        
+        ones = torch.ones(self._grid.size(0))
+        counts.index_add_(0, self._domains, ones)
+
         # Avoid division by zero
         valid_mask = counts > 0
         new_points[valid_mask] /= counts[valid_mask].unsqueeze(1)
-    
+
         self._points = new_points
 
     def _update_domains(self):
         distances = torch.cdist(self._grid, self._points)
         self._domains = distances.argmin(dim=1)
 
-    def relax(self, it = 10):
+    def relax(self, it = 5):
         for i in range(it):
             self._update_points()
             self._update_domains()
