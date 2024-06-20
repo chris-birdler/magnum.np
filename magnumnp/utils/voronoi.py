@@ -42,11 +42,27 @@ class Voronoi(object):
         return self._points
 
     def _update_points(self):
-        for i in range(self._points.shape[0]):
-            mask = self._domains == i
-            if mask.sum() > 0:
-                centroid = self._grid[mask].mean(dim=0)
-                self._points[i] = centroid
+        #for i in range(self._points.shape[0]):
+        #    mask = self._domains == i
+        #    if mask.sum() > 0:
+        #        centroid = self._grid[mask].mean(dim=0)
+        #        self._points[i] = centroid
+
+        new_points = torch.zeros_like(self._points)
+        counts = torch.zeros(self.points.shape[0])
+        
+        # Scatter add the grid points to their corresponding centroid accumulators
+        domains = self._domains.unsqueeze(-1).expand(-1, 3)
+        new_points = new_points.scatter_add_(0, domains, self._grid)
+        
+        # Count the number of points in each Voronoi cell
+        counts.scatter_add_(0, domains[:,0], torch.ones(self._grid.size(0)))
+        
+        # Avoid division by zero
+        valid_mask = counts > 0
+        new_points[valid_mask] /= counts[valid_mask].unsqueeze(1)
+    
+        self._points = new_points
 
     def _update_domains(self):
         distances = torch.cdist(self._grid, self._points)
