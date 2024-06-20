@@ -37,8 +37,8 @@ def run_slonczewski2():
     disk = (x/80e-9)**2 + (y/40e-9)**2 < 1
     write_vti(disk, "data2/domain.vti")
 
-    state.m = state.Constant([0,0,0])
-    state.m[disk] = torch.tensor([1,0,0])
+    state.m = state.Constant([0.,0.,0.])
+    state.m[disk] = torch.tensor([1.,0.,0.])
 
     # initialize field terms
     demag    = DemagField()
