@@ -17,7 +17,7 @@ def run_sot():
     
     # initialize polarization, p, and charge current amplitude
     # thickness of thin film on which the SOT acts
-    p = state.Tensor((0, -1, 0))
+    p = torch.Tensor((0, -1, 0))
     je = 6.9e10
     d = n[2] * dx[2]
     Keff = 1200e3*constants.mu_0*0.4/2./constants.mu_0

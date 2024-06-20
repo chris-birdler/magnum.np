@@ -10,9 +10,9 @@ def test_timeinterpolator():
     state.m = state.Constant([0,0,1])
 
     interpolator = TimeInterpolator(state, {
-        0.00e-9: state.Constant([0.0, 0.0, 0.0]),
-        1.00e-9: state.Constant([0.0, 0.0, 1.0]),
-        2.00e-9: state.Constant([0.0, 0.0, 3.0])})
+        0.00e-9: [0.0, 0.0, 0.0],
+        1.00e-9: [0.0, 0.0, 1.0],
+        2.00e-9: [0.0, 0.0, 3.0]})
 
     state.t = -1.0e-9
     torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,-1.0]))

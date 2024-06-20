@@ -17,12 +17,11 @@ state.material = {
         "Ms":1./constants.mu_0,
         }
 
-x,y,z = state.SpatialCoordinate()
+x,y,z = mesh.SpatialCoordinate()
 r = n[0]*dx[0]/2.
 disk = x**2 + y**2 < r**2
-state.m = torch.stack([-y,x,0*z], dim=-1)
-state.m.normalize()
-#state.m[~disk] = 0.
+state.m = Expression([-y,x,0*z])
+normalize(state.m)
 
 state.material["A"][~disk] = 0.
 state.material["Ms"][~disk] = 0.
@@ -43,13 +42,13 @@ except:
             logger << state
         write_vti({"m0":state.m}, "data/m0_vortex_cylindric.vti", state)
 
-with Timer("Calculate Eigenvectors"):
-    try:
-        res = EigenResult.load(state, "data/eigen.pt")
-    except:
-        eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
-        res = eigen.solve(k=20, tol=1e-6)
-        res.store("data/eigen.pt")
+#with Timer("Calculate Eigenvectors"):
+#    try:
+#        res = EigenResult.load(state, "data/eigen.pt")
+#    except:
+eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
+res = eigen.solve(k=20, tol=1e-6)
+res.store("data/eigen.pt")
 
 with Timer("Store evecs"):
     print("evals[GHz]:", res.freq.numpy()*1e-9)

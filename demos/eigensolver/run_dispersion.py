@@ -10,15 +10,15 @@ dx = (2.5e-9, 2.5e-9, 1e-9)
 mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {
-        "A": state.Constant(13e-12),
-        "Ms": state.Constant(800e3),
+        "A": 13e-12,
+        "Ms": 800e3,
         }
 
 state.m = state.Constant([1.,0.,0.])
 
 demag    = DemagField()
 exchange = ExchangeField()
-external = ExternalField(state.Constant([804e3,0.0,0.0]))
+external = ExternalField([804e3,0.0,0.0])
 
 # calculate groundstate
 try:

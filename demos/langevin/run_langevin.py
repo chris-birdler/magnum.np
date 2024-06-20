@@ -25,14 +25,14 @@ def run_langevin():
 
     state = State(mesh)
     state.material = {
-        "Ms": state.Constant(Ms), # Js ~ 1.26 T for Ms = 1e6 A/m
-        "alpha": state.Constant(0.1)
+        "Ms": Ms, # Js ~ 1.26 T for Ms = 1e6 A/m
+        "alpha": 0.1
         }
     state.m = state.Constant([0,0,0])
     add_noise(state.m)
     normalize(state.m)
 
-    external = ExternalField(state.Constant([0,0,0]))
+    external = ExternalField([0,0,0])
     thermal = ThermalField()
     llg = LLGSolver([external, thermal], solver = RKF45)
 
@@ -43,8 +43,8 @@ def run_langevin():
         print(f"Running for xi = {xi} (T = {state.T})")
         for h in np.linspace(0, 0.1, num=11):
             print(f"h = {h}")
-            external.h = state.Constant([h / constants.mu_0, 0, 0])
-            llg.step(state, dt = t_final)
+            external.h = [h/constants.mu_0, 0, 0]
+            llg.step(state, dt=t_final)
             logger << state
     Timer.print_report()
 
