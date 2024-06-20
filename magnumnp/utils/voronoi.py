@@ -17,34 +17,44 @@
 #
 
 import torch
+from magnumnp.common import logging
 
 __all__ = ["Voronoi"]
 
 class Voronoi(object):
-    def __init__(self, mesh, num_points=None, seed_points=None):
+    def __init__(self, mesh, num_points, seed_points=None):
         if seed_points == None:
             L = torch.Tensor(mesh.dx_tuple)*torch.Tensor(mesh.n)
             offset = torch.Tensor(mesh.origin)
             self._points = L * torch.rand((num_points, 3)) + offset
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)
         self._mesh = mesh
+        self._update_domains()
+
+        logging.info_green("[Voronoi] Setup initial Tesselation (num_points = %d)" % (num_points))
+
+    @property
+    def domains(self):
+        return self._domains.reshape(self._mesh.n)
+
+    @property
+    def points(self):
+        return self._points
 
     def _update_points(self):
-        domains = self._update_domains().reshape(-1)
         for i in range(self._points.shape[0]):
-            print("i:", i)
-            mask = domains == i
+            mask = self._domains == i
             if mask.sum() > 0:
                 centroid = self._grid[mask].mean(dim=0)
                 self._points[i] = centroid
-        return self._points
 
     def _update_domains(self):
         distances = torch.cdist(self._grid, self._points)
-        self._domains = distances.argmin(dim=1).reshape(self._mesh.n)
-        return self._domains
+        self._domains = distances.argmin(dim=1)
 
     def relax(self, it = 10):
         for i in range(it):
             self._update_points()
-        return self._update_domains()
+            self._update_domains()
+            logging.info_blue("[Voronoi] Relax Tesselation")
+        return self.domains
