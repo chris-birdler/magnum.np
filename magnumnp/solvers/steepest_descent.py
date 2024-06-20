@@ -55,7 +55,7 @@ class SD_solver(object):
 
     def _dm(self, state):
         h = sum([term.h(state) for term in self._terms])
-        return torch.cross(state.m, torch.cross(state.m, h))
+        return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
     
     def minimize(self, state):
         step = 0
@@ -67,7 +67,7 @@ class SD_solver(object):
 
         while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
             h = sum([term.h(state) for term in self._terms])
-            dm = torch.cross(state.m, torch.cross(state.m, h))
+            dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
             m_next = state.m - tau*dm
 

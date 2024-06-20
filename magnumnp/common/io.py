@@ -54,7 +54,8 @@ def write_vtr(fields, filename, state = None, scale = 1.):
 
     grid = pv.RectilinearGrid(x*scale, y*scale, z*scale)
 
-    for name, f in fields.items():
+    for name in fields:
+        f = fields[name]
         if len(f.shape) == 0 or len(f.shape) == 1: # expand constant tensor to tensorfield
             f = f.expand(n + f.shape)
         if len(f.shape) == 4 and f.shape[-1] == 1: # remove dim for scalar field (nx,ny,nz,1) => (nx,ny,nz)
@@ -232,7 +233,7 @@ def read_mesh(mesh, filename, scale = 1.):
 
     :Examples:
       .. code::
-        fields = read_msh(mesh, "cylinder.msh")
+        fields = read_mesh(mesh, "cylinder.msh")
     """
     # read image data and volume domains
     unstructured_mesh = pv.read(filename)

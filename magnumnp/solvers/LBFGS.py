@@ -14,14 +14,14 @@ class Minimizer_LBFGS(object):
 
     def _dm(self, state):
         h = sum([term.h(state) for term in self._terms])
-        return torch.cross(state.m, torch.cross(state.m, h))
+        return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
     
     def linesearch(self, state, p):
         alpha = 1.0 #initial step size
         tau = 0.5  # Reduction factor
         c = 0.1  # Sufficient decrease parameter   
         h = sum([term.h(state) for term in self._terms])
-        dm = torch.cross(state.m, torch.cross(state.m, h))
+        dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
         E = sum([term.E(state) for term in self._terms])
         m = (dm*p).sum()
         t = -c*m
@@ -53,7 +53,7 @@ class Minimizer_LBFGS(object):
         h = sum([term.h(state) for term in self._terms])
         s_vectors = [torch.zeros(state.m.size())]*memory_size
         y_vectors = [torch.zeros(state.m.size())]*memory_size
-        dm = torch.cross(state.m, torch.cross(state.m, h)) #Gradient
+        dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h)) #Gradient
 
         eps = 2.22e-16;
         eps2 = np.sqrt(eps)
@@ -104,7 +104,7 @@ class Minimizer_LBFGS(object):
             
             #update gradient
             h = sum([term.h(state) for term in self._terms])
-            dm = torch.cross(state.m, torch.cross(state.m, h))
+            dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
             dm_max = dm.max()
             if dm_max < epsr*(1+torch.abs(E)):

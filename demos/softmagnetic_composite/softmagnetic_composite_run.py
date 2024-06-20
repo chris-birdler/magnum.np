@@ -21,7 +21,7 @@ def run_softmagnetic_composite():
     mesh = Mesh((nx,ny,nz), (dx,dy,dz), pbc = (1,1,1))
     state = State(mesh)
     state.m = state.Constant([0,0,1])
-    state.material = {"alpha": state.Constant(1.0)}
+    state.material = {"alpha": 1.0}
     
     state.material["Ms"] = state.Constant([0.0001/constants.mu_0])
     state.material["Ms"][nx%Nx:,ny%Ny:,nz%Nz:] = 1.5/constants.mu_0
@@ -70,11 +70,11 @@ def run_softmagnetic_composite():
     demag    = DemagFieldPBC()
     exchange = ExchangeField()
     aniso    = UniaxialAnisotropyField()
-    external = ExternalField(TimeInterpolator(state, {0.0e-9: state.Constant([0.0, 0.0, 0.0]),
-                                                      1.0e-9: state.Constant([0.0, 0.0, 0.0]),
-                                                      3.5e-9: state.Constant([0.1/constants.mu_0, 0.0, 0.0]),
-                                                      8.5e-9: state.Constant([-0.1/constants.mu_0, 0.0, 0.0]),
-                                                     13.5e-9: state.Constant([0.1/constants.mu_0, 0.0, 0.0])}))
+    external = ExternalField(TimeInterpolator(state, {0.0e-9: [0.0, 0.0, 0.0],
+                                                      1.0e-9: [0.0, 0.0, 0.0],
+                                                      3.5e-9: [0.1/constants.mu_0, 0.0, 0.0],
+                                                      8.5e-9: [-0.1/constants.mu_0, 0.0, 0.0],
+                                                     13.5e-9: [0.1/constants.mu_0, 0.0, 0.0]}))
     
     # perform integration
     llg = LLGSolver([demag, exchange, aniso, external])

@@ -20,7 +20,7 @@ import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "avg", "normalize", "Expression"]
+__all__ = ["complex_dtype", "normalize", "Expression"]
 
 
 complex_dtype = {
@@ -28,41 +28,6 @@ complex_dtype = {
     torch.float32: torch.complex64,
     torch.float64: torch.complex128
     }
-
-
-def avg(data, cell_volumes = None, dim=(0,1,2)):
-    r"""
-    Average over spatial dimensions of tensor fields.
-
-    :param data: tensor field to average
-    :type A: :class:`Tensor`
-    :param dim: dimensions to average over
-    :type dim: tuple, optional
-    :param cell_volumes: volume of each cell (required only in case of non-equidistant meshes)
-    :type cell_volumes: :class:`Tensor`, optional
-    
-    :Examples:
-
-    .. code::
-        Ms_avg = avg(state.material["Ms"])
-        m_avg = avg(state.m)
-    """
-    if cell_volumes == None:
-        if data.dim() <= 1: # e.g. [0,0,1]
-            return data
-        elif data.dim() == 2: # state.m[domain]
-            return data.mean(dim=0)
-        else:                 # [nx,ny,nz,...]
-            return data.mean(dim=dim)
-    else: # non-equidistant
-        if data.dim() <= 1: # e.g. [0,0,1]
-            return data
-        elif data.dim() == 2: # state.m[domain]
-            return (data * cell_volumes).sum(dim=0) / cell_volumes.sum(dim=0)
-        elif data.dim() == 3: # [nx,ny,nz]
-            return (data * cell_volumes.squeeze(-1)).sum(dim=dim) / cell_volumes.sum()
-        else:                 # [nx,ny,nz,...]
-            return (data * cell_volumes).sum(dim=dim) / cell_volumes.sum()
 
 
 def normalize(data):

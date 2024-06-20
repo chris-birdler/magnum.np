@@ -76,4 +76,4 @@ def test_renamed_parameters():
     my = sin(phi - pi/4)
     mz = 0.
     state.m = state.Constant([mx, my, mz])
-    torch.testing.assert_close(avg(aniso.h(state)), torch.tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)
+    torch.testing.assert_close(state.avg(aniso.h(state)), torch.tensor([-191.01109252, -148.98001006, 0.]), atol=1e-4, rtol=1e-4)

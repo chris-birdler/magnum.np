@@ -12,8 +12,8 @@ dx = (2.5e-9, 2.5e-9, 3e-9)
 mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {
-        "A": state.Constant(lex**2*Js**2/(2.*constants.mu_0)),
-        "Ms": state.Constant(1./constants.mu_0),
+        "A": lex**2*Js**2/(2.*constants.mu_0),
+        "Ms": 1./constants.mu_0,
         }
 demag    = DemagField()
 exchange = ExchangeField()

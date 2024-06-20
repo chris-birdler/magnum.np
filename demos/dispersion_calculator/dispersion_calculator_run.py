@@ -1,6 +1,5 @@
 import torch
 from magnumnp import *
-import numpy as np
 from tqdm import tqdm
 import pathlib
 
@@ -33,9 +32,9 @@ def run_dispersion_calculator():
     mt = torch.zeros((Nt, n[0], n[1], n[2]))
     
     state.material = {
-        'Ms': state.Constant(Ms),
-        'A': state.Constant(A),
-        'alpha': state.Constant(alpha)
+        'Ms': Ms,
+        'A': A,
+        'alpha': alpha
         }
     
     state.m = state.Constant(h_bias)
@@ -52,12 +51,12 @@ def run_dispersion_calculator():
     
     omega = 2.*fc
     t0 = 50e-12
-    ht = lambda t: np.sinc(omega * (t-t0)) * h0
+    ht = lambda state: torch.sinc(omega * (state.t-t0)) * h0
     
     # initialize energy terms
     demag    = DemagField()
     exchange = ExchangeField()
-    bias     = ExternalField(state.Constant(h_bias))
+    bias     = ExternalField(h_bias)
     excite   = ExternalField(ht)
     
     # initialize LLG solver and relax state

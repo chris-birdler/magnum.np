@@ -28,16 +28,25 @@ class State(object):
         self.mesh = mesh
 
         self._material = Material(self)
-        self.t = 0.
+        self._t = torch.tensor(0.)
         self._step = 0
         self._dt = 0.
 
-        dx = mesh.dx[0] # derive dtype and device from mesh
-        dtype_str = str(dx.dtype).split('.')[1]
-        self.device = dx.device
-
+        dtype_str = str(self.dtype).split('.')[1]
         logging.info_green("[State] running on device: %s (dtype = %s)" % (self.device, dtype_str))
         logging.info_green("[Mesh] %s" % mesh)
+
+    # Time
+    @property
+    def t(self):
+        return self._t
+
+    @t.setter
+    def t(self, value):
+        if isinstance(value, (int, float)):
+            self._t = torch.tensor(float(value))
+        else:
+            self._t = value
 
     # Material
     @property
@@ -77,6 +86,14 @@ class State(object):
         else:
             self._T = lambda state: value
 
+    @property
+    def dtype(self):
+        return self.mesh.dx[0].dtype
+
+    @property
+    def device(self):
+        return self.mesh.dx[0].device
+
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
             c = torch.tensor(c, dtype = dtype, device = self.device)
@@ -92,6 +109,25 @@ class State(object):
         logging.warning("State.SpatialCoordinate() is deprecated! Use mesh.SpatialCoordinate() instead!")
         return self.mesh.SpatialCoordinate()
 
+    def convert_tensorfield(self, value):
+        ''' convert arbitrary input to tensor-fields '''
+        if not isinstance(value, torch.Tensor):
+            value = torch.tensor(value, dtype=self.dtype)
+
+        if len(value.shape) == 0: # convert dim=0 tensor into dim=1 tensor
+            value = value.reshape(1)
+        if len(value.shape) < 3: # expand homogeneous material to [nx,ny,nz,...] tensor-field
+            shape = value.shape
+            value = value.reshape((1,1,1) + tuple(shape))
+            value = value.expand(self.mesh.n + tuple(shape))
+            #value._expanded = True # annotate expanded tensor (clone will be before individual items are modified)
+            value = value.clone()
+        elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
+            value = value.unsqueeze(-1)
+        else: # otherwise assume the dimention is correct!
+            pass
+        return value
+
     def write_vtk(self, fields, filename, scale = 1.):
         if self.mesh.is_equidistant:
             if not filename.endswith(".vti"):
@@ -101,3 +137,42 @@ class State(object):
             if not filename.endswith(".vtr"):
                 filename += ".vtr"
             write_vtr(fields, filename, self, scale)
+
+
+    def avg(self, data, cell_volumes = None, dim=(0,1,2)):
+        r"""
+        Average over spatial dimensions of tensor fields.
+
+        :param data: tensor field to average
+        :type A: :class:`Tensor`
+        :param dim: dimensions to average over
+        :type dim: tuple, optional
+        :param cell_volumes: volume of each cell (required only in case of non-equidistant meshes)
+        :type cell_volumes: :class:`Tensor`, optional
+
+        :Examples:
+
+        .. code::
+            Ms_avg = avg(state.material["Ms"])
+            m_avg = avg(state.m)
+        """
+        if self.mesh.is_equidistant:
+            if data.dim() <= 1: # e.g. [0,0,1]
+                return data
+            elif data.dim() == 2: # state.m[domain]
+                return data.mean(dim=0)
+            else:                 # [nx,ny,nz,...]
+                return data.mean(dim=dim)
+        else: # non-equidistant
+            if cell_volumes == None:
+                cell_volumes = self.mesh.cell_volumes
+            if data.dim() <= 1: # e.g. [0,0,1]
+                return data
+            if data.shape[:3] != cell_volumes.shape[:3]:
+                raise ValueError("Data shape (%s) does not match cell_volumes shape (%s). When averaging over slices of non-equidistant tensors you have to provide a sliced version of state.mesh.cell_volumes!" % (str(data.shape), str(cell_volumes.shape)))
+            if data.dim() == 2: # state.m[domain]
+                return (data * cell_volumes).sum(dim=0) / cell_volumes.sum(dim=0)
+            if data.dim() == 3: # [nx,ny,nz]
+                return (data * cell_volumes.squeeze(-1)).sum(dim=dim) / cell_volumes.sum()
+            # [nx,ny,nz,...]
+            return (data * cell_volumes).sum(dim=dim) / cell_volumes.sum()

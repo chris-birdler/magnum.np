@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, normalize
 from .ode_solvers import RKF45
 import torch
 
@@ -50,6 +50,7 @@ class LLGSolver(object):
     @timedmethod
     def step(self, state, dt, **kwargs):
         state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, **kwargs)
+        normalize(state.m)
         logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
 
     @timedmethod

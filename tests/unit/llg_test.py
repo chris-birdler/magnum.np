@@ -17,7 +17,7 @@ def test_step(simple_state, solver):
     llg = LLGSolver([demag, exchange, external], solver = solver)
     llg.step(simple_state, 5e-11)
     assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
-    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 def test_step_adjoint(simple_state):
     demag    = DemagField()
@@ -32,7 +32,7 @@ def test_step_adjoint(simple_state):
     llg = LLGSolver([demag, exchange, external], solver = TorchDiffEqAdjoint, adjoint_parameters = [])
     llg.step(simple_state, 5e-11)
     assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
-    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 
 @pytest.mark.parametrize("solver", [ScipyOdeint, TorchDiffEq])
@@ -50,7 +50,7 @@ def test_solve(simple_state, solver):
     tt = torch.linspace(0., 5e-11, steps=5)
     res = llg.solve(simple_state, tt)
     assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
-    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 def test_solve_adjoint(simple_state):
     demag    = DemagField()
@@ -66,7 +66,7 @@ def test_solve_adjoint(simple_state):
     tt = torch.linspace(0., 5e-11, steps=5)
     res = llg.solve(simple_state, tt)
     assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
-    torch.testing.assert_close(avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
+    torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
@@ -91,7 +91,7 @@ def test_precession(solver):
     llg = LLGSolver([external], solver = solver, rtol = 1e-5, atol = 1e-5)
     llg.step(state, 1/f0)
 
-    assert avg(state.m)[1].cpu() == pytest.approx(0., abs=1e-4, rel=0)
+    assert state.avg(state.m)[1].cpu() == pytest.approx(0., abs=1e-4, rel=0)
 
 @pytest.mark.parametrize("solver", [RKF45, ScipyODE, ScipyOdeint, TorchDiffEq])
 def test_relax(solver):
@@ -114,7 +114,7 @@ def test_relax(solver):
     llg = LLGSolver([aniso], solver = solver)
     llg.relax(state)
 
-    torch.testing.assert_close(avg(state.m), torch.tensor([0.,0.,1.]), atol=1e-2, rtol=1e-2)
+    torch.testing.assert_close(state.avg(state.m), torch.tensor([0.,0.,1.]), atol=1e-2, rtol=1e-2)
 
 def test_stochastic():
     n  = (1, 1, 1)
