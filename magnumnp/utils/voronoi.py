@@ -22,11 +22,11 @@ from magnumnp.common import logging
 __all__ = ["Voronoi"]
 
 class Voronoi(object):
-    def __init__(self, mesh, num_points, seed_points=None):
+    def __init__(self, mesh, num_grains, seed_points=None):
         if seed_points == None:
             L = torch.tensor(mesh.dx_tuple)*torch.tensor(mesh.n)
             offset = torch.tensor(mesh.origin)
-            self._points = L * torch.rand((num_points, 3)) + offset
+            self._points = L * torch.rand((num_grains, 3)) + offset
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)
         self._mesh = mesh
 
@@ -34,7 +34,7 @@ class Voronoi(object):
         self._grid = self._grid.to(dtype=torch.float32)
         self._update_domains()
 
-        logging.info_green("[Voronoi] Setup initial Tesselation (num_points = %d)" % (num_points))
+        logging.info_green("[Voronoi] Setup initial Tesselation (num_grains = %d)" % (num_grains))
 
     @property
     def domains(self):
@@ -78,3 +78,13 @@ class Voronoi(object):
             self._update_domains()
             logging.info_blue("[Voronoi] Relax Tesselation")
         return self.domains
+
+    def add_intergrain_phase(self, n):
+        domains = self.domains
+        intergrain_id = domains.max() + 1
+        grad = domains
+
+        for i in range(n):
+            grad = torch.gradient(grad)
+            grad = grad[0].abs() + grad[1].abs() + grad[2].abs()
+            domains[grad > 1e-15] = intergrain_id
