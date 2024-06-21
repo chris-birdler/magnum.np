@@ -23,6 +23,34 @@ __all__ = ["Voronoi"]
 
 class Voronoi(object):
     def __init__(self, mesh, num_grains, seed_points=None):
+        """
+        Creates a Voronoi Tesselation with a given number of seed points.
+        The seed points will be randomly selected with a uniform distribution.
+        Optional it is possible to manually provide seed_points.
+
+        *Example*
+            .. code:: python
+
+            # create simple Voronoi tesselation
+            voi = Voronoi(mesh, 10)
+            state.write_vtk(voi.domains, "data/domains.vti")
+
+            # perform Llloyd's iteration to improve tesselation
+            domains = voi.relax()
+            state.write_vtk(domains, "data/domains.vti")
+
+            # add an intergrain phase
+            voi.add_intergrain_phase(2)
+            state.write_vtk(voi.domains, "data/test4.vti")
+
+        *Arguments*
+            mesh ([:class:`Mesh`])
+                Mesh object which should be tesselated
+            num_grains (int)
+                Number of grains to be created
+            seed_points ([:class:`torch.Tensor`])
+                User provided seed points of size (num_grains, 3)
+        """
         if seed_points == None:
             L = torch.tensor(mesh.dx_tuple)*torch.tensor(mesh.n)
             offset = torch.tensor(mesh.origin)
@@ -76,15 +104,16 @@ class Voronoi(object):
         for i in range(it):
             self._update_points()
             self._update_domains()
-            logging.info_blue("[Voronoi] Relax Tesselation")
+            logging.info_blue("[Voronoi] Relax Tesselation (Lloyd's Iteration %d)" % i)
         return self.domains
 
-    def add_intergrain_phase(self, n):
+    def add_intergrain_phase(self, thickness):
         domains = self.domains
         intergrain_id = domains.max() + 1
         grad = domains
+        dim = [i for i in range(3) if domains.shape[i] > 1]
 
-        for i in range(n):
-            grad = torch.gradient(grad)
-            grad = grad[0].abs() + grad[1].abs() + grad[2].abs()
+        for i in range(thickness):
+            grad = torch.gradient(grad, dim=dim)
+            grad = sum([g.abs() for g in grad])
             domains[grad > 1e-15] = intergrain_id

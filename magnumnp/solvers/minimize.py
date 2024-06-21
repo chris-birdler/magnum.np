@@ -18,8 +18,8 @@ class MinimizerBB(object):
             minimizer.minimize(state)
 
         *Arguments*
-          terms ([:class:`LLGTerm`])
-            List of LLG contributions to be considered for energy minimization
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for energy minimization
         """
         self._terms = terms
 
