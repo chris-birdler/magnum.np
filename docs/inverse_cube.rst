@@ -133,7 +133,7 @@ The optimization loop uses the Adam optimizer from PyTorch and the L1 loss funct
   
 Next the omptimizatin loop is entered. The loop runs over 100 epochs. In each cycle the optimizer is zeroed and the initial magnetization state *m0* is set as the state of the system. The *state.t* variable is set to 0 to start the simulation from the beginning. 
 
-.. cdoe-block:: python
+.. code-block:: python
 
   for epoch in range(100):
       print("epoch: ", epoch)
