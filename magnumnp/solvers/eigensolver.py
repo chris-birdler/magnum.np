@@ -30,6 +30,31 @@ __all__ = ["EigenSolver", "EigenResult"]
 
 class EigenSolver(object):
     def __init__(self, state, linear_terms, constant_terms, domain=Ellipsis):
+        """
+        This class implements solution of the linearized LLG in the frequncy domain [dAquino2009]_.
+        The corresponding eigenvalue problem is solved using Scipy (CPU only).
+
+        *Example*
+            .. code:: python
+
+                llg = LLGSolver([demag, exchange, external])
+                logger = Logger("data", ['t', 'm'])
+                while state.t < 1e-9-eps:
+                    llg.step(state, 1e-11)
+                    logger << state
+
+        *Arguments*
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for energy minimization
+            state ([:class:`State`])
+                the State object containing the equilibrium magnetization state.m
+            linear_terms (list)
+                list of linear field terms
+            constant_terms (list)
+                list of constant field terms
+            domain ([:class:`torch.Tensor`])
+                integrate without precession term (default: False)
+        """
         self._domain = domain
         self._linear_terms = linear_terms
         self._state = state

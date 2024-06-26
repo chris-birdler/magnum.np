@@ -53,6 +53,7 @@ List of Demos
    field_terms
    demos
    state_and_materials
+   eigensolver
    voronoi
    nonequidistant
    inverse_cube

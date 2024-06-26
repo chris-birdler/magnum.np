@@ -24,6 +24,28 @@ __all__ = ["LLGSolver"]
 
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, no_precession = False, **kwargs):
+        """
+        This class implements the LLG dm term as well as the corresponding energy. 
+        It also provides the interface for time-integration and allows switching between
+        different ODE solvers.
+
+        *Example*
+            .. code:: python
+
+            llg = LLGSolver([demag, exchange, external])
+            logger = Logger("data", ['t', 'm'])
+            while state.t < 1e-9-eps:
+                llg.step(state, 1e-11)
+                logger << state
+
+        *Arguments*
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for time integration
+            solver ([:class:`Solver`])
+                ODE solver to be used (chose one of RKF45 (default), RKF56, ScipyODE, ScipyOdeint, TorchDiffEq, TorchDiffEqAdjoint)
+            no_precession (bool)
+                integrate without precession term (default: False)
+        """
         self._terms = terms
         self._solver = solver(self.dm, **kwargs)
         self._no_precession = no_precession

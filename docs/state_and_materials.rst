@@ -122,6 +122,22 @@ The magnetization of the material will look as follows:
 .. image:: _static/vortex.png
   :width: 700
 
+For periodic structures the modulo operator allows elegant definition of the domain. For example the following code creates and 10 x 10 grid of circular nano dots:
+
+.. code-block:: python
+
+  n = (1000, 1000, 1)
+  dx = (1e-9, 1e-9, 1e-9)
+
+  mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2, -n[1]*dx[1]/2, -n[2]*dx[2]/2))
+  state = State(mesh)
+  x, y, z = mesh.SpatialCoordinate()
+
+  domain = (x%100e-9 - 50e-9)**2 + (y%100e-9 - 50e-9)**2 < 40e-9**2
+  write_vti(domain, "domain.vti", state, scale=1e9)
+
+.. image:: _static/material4.png
+  :width: 400
 
 Set multiple material parameters at once
 ========================================
@@ -143,8 +159,8 @@ To set the material in a certain domain another such dictionary *material1* need
 
   state.material.set(material1, domain1)
 
-Time-Dependent Materials
-************************
+State-Dependent Materials
+*************************
 In case the material is time-dependent each parameter can be defined as a lambda function.
 Since magnum.np 2.0.0 all lambda functions depend on the state and may therefor also depend on any state parameter like time, temperature, materials, ...
 In this example *A* is set to be linearly dependent on time *t*:
