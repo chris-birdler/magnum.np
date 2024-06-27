@@ -1,4 +1,5 @@
 .. module:: magnumnp
+
 :tocdepth: 1
 
 ###########
@@ -27,15 +28,15 @@ The following example shows how to use the EigenSolver to calculate the Spin Wav
     exchange = ExchangeField()
     external = ExternalField([804e3,0.0,0.0])
 
-# calculate groundstate
-try:
-    mesh0, fields0 = read_vti("data/m0_dispersion.vti")
-    state.m[...] = fields0["m0"]
-except:
-    with Timer("Calculate Groundstate"):
-        minimizer = MinimizerBB([demag, exchange, external])
-        minimizer.minimize(state)
-        write_vti({"m0":state.m}, "data/m0_dispersion.vti", state)
+    # calculate groundstate
+    try:
+        mesh0, fields0 = read_vti("data/m0_dispersion.vti")
+        state.m[...] = fields0["m0"]
+    except:
+        with Timer("Calculate Groundstate"):
+            minimizer = MinimizerBB([demag, exchange, external])
+            minimizer.minimize(state)
+            write_vti({"m0":state.m}, "data/m0_dispersion.vti", state)
 
 After the groundstate has been calculated the actual eigenvalue problem can be solved.
 The user has to specify the number of discrete eigenvalues that should be calculated.
