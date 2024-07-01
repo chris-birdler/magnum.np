@@ -19,6 +19,7 @@
 import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
+from magnumnp.common.utils import randomize
 
 __all__ = ["State"]
 
@@ -103,6 +104,11 @@ class State(object):
         x[...] = c
         if requires_grad == True:
             x.requires_grad = requires_grad
+        return x
+
+    def RandM(self):
+        x = self.Constant([0.,0.,0.])
+        randomize(x)
         return x
 
     def SpatialCoordinate(self):

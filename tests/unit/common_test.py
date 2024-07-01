@@ -43,3 +43,13 @@ def test_expression():
 
     Ku_axis = Expression((x,y,z))
     assert Ku_axis.shape == torch.Size([1,1,10,3])
+
+def test_randomize():
+    n  = (10,10,10)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.m = state.RandM()
+
+    state.m2 = state.Constant([0.,0.,1.])
+    randomize(state.m2)

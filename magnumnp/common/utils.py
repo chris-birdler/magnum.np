@@ -20,7 +20,7 @@ import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "normalize", "Expression"]
+__all__ = ["complex_dtype", "normalize", "randomize", "Expression"]
 
 
 complex_dtype = {
@@ -31,8 +31,26 @@ complex_dtype = {
 
 
 def normalize(data):
+    r"""
+    Helper function to normalize vectorial data inplace
+    """
     data /= torch.linalg.norm(data, dim = -1, keepdim = True)
     data[...] = torch.nan_to_num(data, posinf=0, neginf=0)
+    return data
+
+def randomize(data):
+    r"""
+    Helper function to generate uniform distibution on the unit-sphere
+    """
+    if data.shape[-1] != 3:
+        raise ValueError("Input tensor's last dimension needs to be 3 (shape='%s')" % str(data.shape))
+
+    theta = 2.*torch.pi*torch.rand(data.shape[:-1])
+    phi = torch.acos(2.*torch.rand(data.shape[:-1])-1.)
+
+    data[...,0] = torch.sin(phi) * torch.cos(theta)
+    data[...,1] = torch.sin(phi) * torch.sin(theta)
+    data[...,2] = torch.cos(phi)
     return data
 
 
