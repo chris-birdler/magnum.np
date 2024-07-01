@@ -18,6 +18,7 @@
 
 import torch
 from magnumnp.common import logging
+from scipy.spatial import KDTree
 
 __all__ = ["Voronoi"]
 
@@ -97,8 +98,13 @@ class Voronoi(object):
         self._points = new_points
 
     def _update_domains(self):
-        distances = torch.cdist(self._grid, self._points)
-        self._domains = distances.argmin(dim=1)
+        ## original vectorized code (requries N_mesh * N_points memory)
+        #distances = torch.cdist(self._grid, self._points)
+        #self._domains = distances.argmin(dim=1)
+
+        tree = KDTree(self._points.numpy())
+        dd, ii = tree.query(self._grid)
+        self._domains = torch.tensor(ii)
 
     def relax(self, it = 5):
         for i in range(it):
