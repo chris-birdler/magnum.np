@@ -52,4 +52,6 @@ def test_randomize():
     state.m = state.RandM()
 
     state.m2 = state.Constant([0.,0.,1.])
-    randomize(state.m2)
+    randomize(state.m2[:5,:,:,:])
+
+    #write_vti(state.m2, "data/random.vti", state, scale=1e9)
