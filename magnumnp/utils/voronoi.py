@@ -46,7 +46,7 @@ class Voronoi(object):
 
                 # set parameters material 
                 Ms = 8e5
-                Ms_values = torch.normal(Ms, 0.1*Ms, (101,))
+                Ms_values = torch.normal(Ms, 0.1*Ms, (11,))
                 Ms_values[-1] = 0. # set Ms=0 for intergrain phase
                 state.material['Ms'] = Ms_values.take(voi.domains)
 
