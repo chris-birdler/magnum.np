@@ -4,9 +4,10 @@ import pathlib
 
 def run_self_induction():
     Timer.enable()
+    this_dir = pathlib.Path(__file__).resolve().parent
     set_log_level(100)
 
-    with open("data/log.dat", "w") as fd:
+    with open(this_dir / "data" / "log.dat", "w") as fd:
         print("#aspect  L_analytic  L_sim1  L_sim2", file=fd)
 
         for aspect in logspace(-1, 1, num=11):
