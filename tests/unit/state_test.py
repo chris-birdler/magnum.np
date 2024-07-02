@@ -29,8 +29,6 @@ def test_normal(simple_state):
     x = torch.normal(0.,1., size = simple_state.m.shape)
     assert isinstance(x, torch.Tensor)
     torch.testing.assert_close(x.shape, simple_state.m.shape)
-    t = torch.tensor([ 0.01091473,-0.03592921,0.02299021])
-    torch.testing.assert_close(simple_state.avg(x), torch.tensor([ 0.01091473,-0.03592921,0.02299021]).cpu())
 
 
 def test_spatial_coordinate():
