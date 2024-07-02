@@ -28,8 +28,8 @@ test_demos:
        - pip install setuptools pytest
        - pip install .
        - python -m pytest demos
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 
 build-package:
