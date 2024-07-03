@@ -155,3 +155,27 @@ class MFM(object): # TODO: document and improve interface
             raise TypeError("Provide Monopole Moment mm_tip, or Dipolar Moment Vector dm_tip")
 
         return phi[:,:,-1,:].unsqueeze(2)
+
+
+def to_discretisedfield(data):
+    '''
+    Utility function to convert vector fields to Ubermag's Field object.
+
+    This allows using all sorts of post-processing features provided by Ubermag.
+    The code has been contributed by @AbsoluteVacuum (see #33 in gitlab)
+    '''
+    from discretisedfield import Field
+    from xarray import DataArray
+    xarr = DataArray(
+        data.detach().cpu().numpy(),
+        dims=["x", "y", "z", "comp"],
+        coords=dict(
+            x=torch.arange(nx).numpy()*dx,
+            y=torch.arange(ny).numpy()*dy,
+            z=torch.arange(nz).numpy()*dz,
+            comp=["x", "y", "z"],
+        ),
+        name="mag",
+        attrs=dict(cell=mesh.dx, p1=mesh.origin, p2=[a*b+c for a,b,c in zip(mesh.n, mesh.dx, mesh.origin)])
+    )
+    return Field.from_xarray(xarr)
