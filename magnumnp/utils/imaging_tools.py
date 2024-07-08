@@ -31,7 +31,7 @@ class LTEM(object): # TODO: document and improve interface
         self._state = state
         self._mesh = state.mesh
         self._Ms = self._state.material["Ms"]
-        self._m = (self._state.m(self._state.t)*self._state.material["Ms"])
+        self._M = self._state.m * self._state.material["Ms"]
         self._h = self._mesh.n[comp] * self._mesh.dx[comp]
         self._dim = [0, 1]
         self._volt = voltage
@@ -57,7 +57,7 @@ class LTEM(object): # TODO: document and improve interface
         return k, dk
 
     def _Phim(self):
-        m_int = torch.sum(self._m, dim = self._comp)*self._mesh.dx[self._comp]
+        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx[self._comp]
         Mmn = torch.fft.fftn(m_int, dim = self._dim)
 
         k, dk = self._k()
@@ -99,7 +99,7 @@ class LTEM(object): # TODO: document and improve interface
         return constants.hbar/(constants.e*self._h)*torch.stack([-dphidy, dphidx], dim = -1)
 
     def _Phim_Mansuripur(self):
-        m_int = torch.sum(self._m, dim = self._comp)*self._mesh.dx[self._comp]
+        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx[self._comp]
         Mmn = torch.fft.fftn(m_int, dim = self._dim)
         p = self._state.Tensor([0., sin(self._theta), cos(self._theta)], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
         ez = self._state.Tensor([0, 0, 1], dtype = self._dtypecompl).unsqueeze(dim=0).unsqueeze(dim=0)
