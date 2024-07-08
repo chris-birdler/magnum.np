@@ -16,7 +16,7 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Antiferromagnetic coupling layers (RKKY)
+* Bilinear and biquadratic Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * Sophisticated domain handling, e.g. for spatially varying material parameters
@@ -40,7 +40,7 @@ The following demos are also stored on Google Colab, where they can directly be 
    * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS))
    * [Standard Problem RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo))
    * [Stochastic Integration](demos/langevin/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q))
-   * [Dispersion Calculator] (demos/dispersion_calculator.ipynb) ([Colab](https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2))
+   * [Dispersion Calculator](demos/dispersion_calculator.ipynb) ([Colab](https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2))
 
 Installation
 ------------

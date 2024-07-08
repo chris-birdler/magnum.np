@@ -105,6 +105,11 @@ RKKYField
 *********
 .. autoclass:: RKKYField
 
+BiquadraticField
+****************
+.. autoclass:: BiquadraticField
+
+
 SpinOrbitTorque
 ***************
 .. autoclass:: SpinOrbitTorque
