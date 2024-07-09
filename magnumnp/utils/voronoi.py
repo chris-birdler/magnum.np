@@ -108,8 +108,8 @@ class Voronoi(object):
         #distances = torch.cdist(self._grid, self._points)
         #self._domains = distances.argmin(dim=1)
 
-        tree = KDTree(self._points.numpy())
-        dd, ii = tree.query(self._grid)
+        tree = KDTree(self._points.cpu().numpy())
+        dd, ii = tree.query(self._grid.cpu().numpy())
         self._domains = torch.tensor(ii)
 
     def relax(self, it = 5):

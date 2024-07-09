@@ -21,7 +21,7 @@ def test_MFM():
     x, y, z = mesh.SpatialCoordinate()
 
     state.m = torch.stack([y, -x, 0*z], dim=-1)
-    state.m.normalize()
+    normalize(state.m)
 
     demag = DemagField()
     mfm = MFM(height=10e-9, mm_tip = 10e-9, dm_tip=20e-9)
