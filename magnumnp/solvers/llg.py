@@ -36,9 +36,11 @@ class LLGSolver(object):
 
         h = sum([term.h(state) for term in self._terms])
 
-        dm = -alpha_prime * torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
+        cross_m_h = torch.linalg.cross(state.m, h)
+
+        dm = -alpha_prime * torch.linalg.cross(state.m, cross_m_h)
         if not self._no_precession:
-            dm -= gamma_prime * torch.linalg.cross(state.m, h)
+            dm -= gamma_prime * cross_m_h
 
         return dm
 
