@@ -34,7 +34,8 @@ class ThermalField(FieldTerm):
     #@torch.compile
     def h(self, state):
         if state._step != self._step: # update random field
-            self._sigma = torch.normal(0., 1., size = state.m.shape)
+            #self._sigma = torch.normal(0., 1., size = state.m.shape) # creates tensor on CPU by default
+            self._sigma = torch.normal(0., 1., size = state.m.shape).to(state.device)
             self._step = state._step
 
         h = self._sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volumes * state._dt))

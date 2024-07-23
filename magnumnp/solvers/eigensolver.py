@@ -137,7 +137,7 @@ class EigenResult(object):
 
     @staticmethod
     def load(state, filename):
-        stored = torch.load(filename)
+        stored = torch.load(filename, map_location=state.device)
         m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
         state.m = m0
 
