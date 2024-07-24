@@ -20,7 +20,7 @@ import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "normalize", "randomize", "Expression"]
+__all__ = ["complex_dtype", "normalize", "randM", "Expression"]
 
 
 complex_dtype = {
@@ -38,7 +38,7 @@ def normalize(data):
     data[...] = torch.nan_to_num(data, posinf=0, neginf=0)
     return data
 
-def randomize(data):
+def randM(data):
     r"""
     Helper function to generate uniform distibution on the unit-sphere
     """

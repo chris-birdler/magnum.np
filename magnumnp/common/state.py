@@ -19,7 +19,7 @@
 import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
-from magnumnp.common.utils import randomize
+from magnumnp.common.utils import randM
 
 __all__ = ["State"]
 
@@ -108,7 +108,7 @@ class State(object):
 
     def RandM(self):
         x = self.Constant([0.,0.,0.])
-        randomize(x)
+        randM(x)
         return x
 
     def SpatialCoordinate(self):
