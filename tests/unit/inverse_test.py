@@ -42,7 +42,7 @@ def test_hext(simple_state):
                                        BulkDMIField(),
                                        D2dDMIField()])
 def test_linear_fieldterms(simple_state, fieldterm):
-    cell_volume = simple_state.mesh.dx_tuple[0] * simple_state.mesh.dx_tuple[1] * simple_state.mesh.dx_tuple[2]
+    cell_volume = simple_state.mesh.dx[0] * simple_state.mesh.dx[1] * simple_state.mesh.dx[2]
     x,y,z = simple_state.mesh.SpatialCoordinate()
     m0 = Expression([x,2*x,y])
     m0.requires_grad = True

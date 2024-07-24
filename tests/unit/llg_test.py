@@ -16,7 +16,7 @@ def test_step(simple_state, solver):
 
     llg = LLGSolver([demag, exchange, external], solver = solver)
     llg.step(simple_state, 5e-11)
-    assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
+    assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
     torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 def test_step_adjoint(simple_state):
@@ -31,7 +31,7 @@ def test_step_adjoint(simple_state):
 
     llg = LLGSolver([demag, exchange, external], solver = TorchDiffEqAdjoint, adjoint_parameters = [])
     llg.step(simple_state, 5e-11)
-    assert simple_state.t == pytest.approx(5e-11, abs=0, rel=1e-6)
+    assert simple_state.t.cpu() == pytest.approx(5e-11, abs=0, rel=1e-6)
     torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([-0.8912,0.1284,0.0115]), atol=1e-3, rtol=1e-3)
 
 
