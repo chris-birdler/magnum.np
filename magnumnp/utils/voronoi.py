@@ -59,7 +59,7 @@ class Voronoi(object):
                 User provided seed points of size (num_grains, 3)
         """
         if seed_points == None:
-            L = torch.tensor(mesh.dx_tuple)*torch.tensor(mesh.n)
+            L = torch.tensor(mesh.dx)*torch.tensor(mesh.n)
             offset = torch.tensor(mesh.origin)
             self._points = L * torch.rand((num_grains, 3)) + offset
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)

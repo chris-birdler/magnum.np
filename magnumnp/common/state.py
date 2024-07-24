@@ -89,11 +89,11 @@ class State(object):
 
     @property
     def dtype(self):
-        return self.mesh.dx[0].dtype
+        return self.mesh.dx_tensor[0].dtype
 
     @property
     def device(self):
-        return self.mesh.dx[0].device
+        return self.mesh.dx_tensor[0].device
 
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):

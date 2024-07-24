@@ -26,7 +26,7 @@ class OhmSolver(object):
         self._dirichlet_bc_nodes = dirichlet_bc_nodes
 
     def u(self, state, **kwargs):
-        dx = state.mesh.dx_tuple
+        dx = state.mesh.dx
         sigma = state.material["sigma"]
         rhs = state.Constant(0.)
         u0 = state.u.clone()

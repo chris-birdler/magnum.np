@@ -24,12 +24,12 @@ __all__ = ["Mesh"]
 class Mesh(object):
     def __init__(self, n, dx, origin=(0,0,0), pbc=(0,0,0)):
         self.n = tuple(n)
-        self.dx_tuple = tuple(dx)
+        self.dx = tuple(dx)
         self.origin = tuple(origin)
         self.pbc = tuple(pbc)
 
         self.is_equidistant = all([isinstance(dx, (float, int)) for dx in dx])
-        self.dx = [torch.tensor(dx).expand(n) for n, dx in zip(n, dx)]
+        self.dx_tensor = [torch.tensor(dx).expand(n) for n, dx in zip(n, dx)]
 
         # compute cell_volumes
         if self.is_equidistant:
@@ -39,7 +39,7 @@ class Mesh(object):
             self.cell_volumes = (dx*dy*dz).expand(self.n).unsqueeze(-1)
 
     def __str__(self):
-        str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx_tuple]
+        str_dx = ["%g" % dx if isinstance(dx, (int,float)) else "XX" for dx in self.dx]
         if self.pbc[0] != 0 or self.pbc[1] != 0 or self.pbc[2] != 0:
             str_pbc = ", pbc=[%d,%d,%d])" % self.pbc
         else:
@@ -47,9 +47,9 @@ class Mesh(object):
         return "%dx%dx%d (dx= %s x %s x %s%s" % (*self.n, *str_dx, str_pbc)
 
     def SpatialCoordinate(self):
-        x = self.dx[0].cumsum(0) - self.dx[0]/2. + self.origin[0]
-        y = self.dx[1].cumsum(0) - self.dx[1]/2. + self.origin[1]
-        z = self.dx[2].cumsum(0) - self.dx[2]/2. + self.origin[2]
+        x = self.dx_tensor[0].cumsum(0) - self.dx_tensor[0]/2. + self.origin[0]
+        y = self.dx_tensor[1].cumsum(0) - self.dx_tensor[1]/2. + self.origin[1]
+        z = self.dx_tensor[2].cumsum(0) - self.dx_tensor[2]/2. + self.origin[2]
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ

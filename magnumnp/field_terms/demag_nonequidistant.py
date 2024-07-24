@@ -60,10 +60,10 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
     def _init_N_component(self, state, i_dst, i_src, perm, func):
         # rescale dx to avoid NaNs when using single precision
         # TODO: add scale to state and rescale like in DemagField
-        dx = state.mesh.dx_tuple
-        z = (torch.cumsum(state.mesh.dx[2], dim=0) - state.mesh.dx[2][0])
-        dx_dst = torch.tensor([[dx[0], dx[1], state.mesh.dx[2][i_dst]][ind] for ind in perm])
-        dx_src = torch.tensor([[dx[0], dx[1], state.mesh.dx[2][i_src]][ind] for ind in perm])
+        dx = state.mesh.dx
+        z = (torch.cumsum(state.mesh.dx_tensor[2], dim=0) - state.mesh.dx_tensor[2][0])
+        dx_dst = torch.tensor([[dx[0], dx[1], state.mesh.dx_tensor[2][i_dst]][ind] for ind in perm])
+        dx_src = torch.tensor([[dx[0], dx[1], state.mesh.dx_tensor[2][i_src]][ind] for ind in perm])
 
         shape = self._shape(state)
         ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
@@ -71,7 +71,7 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [[ij[0]*dx[0], ij[1]*dx[1], ij[2].clone()][ind] for ind in perm]
 
-        Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], torch.cumsum(state.mesh.dx[2], dim=0)[-1]]
+        Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], torch.cumsum(state.mesh.dx_tensor[2], dim=0)[-1]]
         Lx = [Lx[ind] for ind in perm]
 
         offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
@@ -87,9 +87,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         return Nc # .real.clone()
 
     def _init_N(self, state):
-        if isinstance(state.mesh.dx_tuple[2], float):
+        if isinstance(state.mesh.dx[2], float):
             logging.warning("mesh.dx[2] should not be constant when using DemagFieldNonEquidistant! Use the equidistant DemagField otherwise!")
-        if not all([isinstance(dx, float) for dx in state.mesh.dx_tuple[:2]]):
+        if not all([isinstance(dx, float) for dx in state.mesh.dx[:2]]):
             raise ValueError("Demag field only implemented for non-equidistant z-spacings. mesh.dx[0] and mesh.dx[1] need to be constant!")
 
         dtype = torch.get_default_dtype()

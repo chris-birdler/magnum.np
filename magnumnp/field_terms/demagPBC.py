@@ -27,7 +27,7 @@ class DemagFieldPBC(LinearFieldTerm):
     @timedmethod
     def h(self, state):
         m_fft = torch.fft.fftn(state.material["Ms"] * state.m, dim = [i for i in range(3) if state.mesh.n[i] > 1]).squeeze(-1) #TODO: use rfftn -> kz should be size N//2+1
-        dx, dy, dz = state.mesh.dx_tuple
+        dx, dy, dz = state.mesh.dx
 
         kx = (2. * pi * torch.arange(state.mesh.n[0]) / state.mesh.n[0]).reshape(-1,1,1)
         ky = (2. * pi * torch.arange(state.mesh.n[1]) / state.mesh.n[1]).reshape(1,-1,1)

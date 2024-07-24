@@ -89,7 +89,7 @@ class OerstedField(FieldTerm):
 
     def _init_K_component(self, state, perm, func):
         # dipole far-field
-        dx = np.array(state.mesh.dx_tuple)
+        dx = np.array(state.mesh.dx)
 
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
