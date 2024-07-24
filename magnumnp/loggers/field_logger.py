@@ -80,10 +80,24 @@ class FieldLogger(object):
             return
 
         values = {}
+        n_unnamed = 0
         for field in self._fields:
             if isinstance(field, str):
                 name = field
                 value = getattr(state, field)
+            elif hasattr(field, '__call__'):
+                if hasattr(field, '__self__') and hasattr(field.__self__, '__name__'):
+                    name = field.__self__.__class__.__name__ + "." + field.__name__
+                elif hasattr(field, '__name__'):
+                    name = field.__name__
+                else:
+                    name = 'unnamed'
+
+                if name == 'unnamed' or name == '<lambda>':
+                    name = 'unnamed%04d' % n_unnamed
+                    n_unnamed += 1
+
+                value = field(state)
             elif isinstance(field, tuple) or isinstance(field, list):
                 name = field[0]
                 value = field[1]
