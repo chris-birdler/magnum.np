@@ -9,6 +9,7 @@ def test_timeinterpolator():
     state = State(mesh)
     state.m = state.Constant([0,0,1])
 
+    # order = 1
     interpolator = TimeInterpolator(state, {
         0.00e-9: [0.0, 0.0, 0.0],
         1.00e-9: [0.0, 0.0, 1.0],
@@ -31,6 +32,25 @@ def test_timeinterpolator():
 
     external = ExternalField(interpolator)
     torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([0.0,0.0,0.7]), atol=1e-6, rtol=1e-6)
+
+    # order = 0
+    interpolator = TimeInterpolator(state, {
+        0.00e-9: [0.0, 0.0, 0.0],
+        1.00e-9: [0.0, 0.0, 1.0],
+        2.00e-9: [0.0, 0.0, 3.0]}, order = 0)
+
+    state.t = -1.0e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,0.0]))
+    state.t = 0.0e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,0.0]))
+    state.t = 0.5e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,0.0]))
+    state.t = 1.1e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,1.0]))
+    state.t = 1.5e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,1.0]))
+    state.t = 2.5e-9
+    torch.testing.assert_close(interpolator(state), state.Constant([0.0,0.0,3.0]))
 
 def test_expression():
     n  = (1, 1, 10)

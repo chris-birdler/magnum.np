@@ -23,17 +23,24 @@ from scipy import interpolate
 __all__ = ["TimeInterpolator"]
 
 class TimeInterpolator(object):
-    def __init__(self, state, points):
+    def __init__(self, state, points, order = 1):
         self._tp = torch.tensor(list(points.keys()))
         self._fp = [state.convert_tensorfield(f) for f in points.values()]
         self._state = state
+        self._order = order
 
     def __call__(self, state):
         i = torch.searchsorted(self._tp, state.t) # upper index
-        i = torch.clamp(i, min=1, max=len(self._tp)-1) # extrapolate on bounds
         tp = self._tp
         fp = self._fp
-        return fp[i-1] + (state.t-tp[i-1]) / (tp[i]-tp[i-1]) * (fp[i] - fp[i-1])
+        if self._order == 0:
+            i = torch.clamp(i, min=1, max=len(self._tp)) # extrapolate only on lower bound
+            return fp[i-1]
+        elif self._order == 1:
+            i = torch.clamp(i, min=1, max=len(self._tp)-1) # extrapolate on bounds
+            return fp[i-1] + (state.t-tp[i-1]) / (tp[i]-tp[i-1]) * (fp[i] - fp[i-1])
+        else:
+            raise ValueError("Order must be 0 or 1(default)")
 
     @property
     def final_time(self):
