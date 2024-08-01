@@ -32,7 +32,7 @@ class LTEM(object): # TODO: document and improve interface
         self._mesh = state.mesh
         self._Ms = self._state.material["Ms"]
         self._M = self._state.m * self._state.material["Ms"]
-        self._h = self._mesh.n[comp] * self._mesh.dx_tuple[comp]
+        self._h = self._mesh.n[comp] * self._mesh.dx[comp]
         self._dim = [0, 1]
         self._volt = voltage
         self._kcx, self._kcy = kcx, kcy
@@ -46,14 +46,14 @@ class LTEM(object): # TODO: document and improve interface
     def _k(self):
         dim = [ni for ni in self._mesh.n]
         dim[self._comp] = 1
-        ij = [torch.fft.fftshift(torch.fft.fftfreq(dim[ind], self._mesh.dx_tuple[ind])) for ind in [0,1,2]]
+        ij = [torch.fft.fftshift(torch.fft.fftfreq(dim[ind], self._mesh.dx[ind])) for ind in [0,1,2]]
         dk = [abs(ij[0][1]-ij[0][0]), abs(ij[1][1]-ij[1][0])]
         ij = torch.meshgrid(*ij, indexing = 'ij')
         k = torch.stack(ij, dim = -1).squeeze(dim = 2).to(dtype = complex_dtype[self._state.dtype])
         return k, dk
 
     def _Phim(self):
-        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx_tuple[self._comp]
+        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx[self._comp]
         Mmn = torch.fft.fftn(m_int, dim = self._dim)
 
         k, dk = self._k()
@@ -90,12 +90,12 @@ class LTEM(object): # TODO: document and improve interface
             phim = self._Phim_Mansuripur()
         else:
             phim = self._Phim()
-        dphidx = torch.gradient(phim, dim = 0, spacing = self._mesh.dx_tuple[0])[0]
-        dphidy = torch.gradient(phim, dim = 1, spacing = self._mesh.dx_tuple[1])[0]
+        dphidx = torch.gradient(phim, dim = 0, spacing = self._mesh.dx[0])[0]
+        dphidy = torch.gradient(phim, dim = 1, spacing = self._mesh.dx[1])[0]
         return constants.hbar/(constants.e*self._h)*torch.stack([-dphidy, dphidx], dim = -1)
 
     def _Phim_Mansuripur(self):
-        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx_tuple[self._comp]
+        m_int = torch.sum(self._M, dim = self._comp)*self._mesh.dx[self._comp]
         Mmn = torch.fft.fftn(m_int, dim = self._dim)
         p = torch.tensor([0., sin(self._theta), cos(self._theta)], dtype = complex_dtype[state.dtype]).unsqueeze(dim=0).unsqueeze(dim=0)
         ez = torch.tensor([0.,0.,1.], dtype = complex_dtype[state.dtype]).unsqueeze(dim=0).unsqueeze(dim=0)
@@ -161,7 +161,7 @@ class MFM(object):
     def extend_demag(self, state):
         n = state.mesh.n
         if not hasattr(self, "extended_state"):
-            dx = state.mesh.dx_tuple
+            dx = state.mesh.dx
 
             nz = int(n[2] + self._height/dx[2])
             n_new = [n[0], n[1], nz]
@@ -178,7 +178,7 @@ class MFM(object):
 
     def PhaseShift(self, state, mm_tip = None, dm_tip = None):
         h_demag = self.extend_demag(state)
-        spacing = state.mesh.dx_tuple[2]
+        spacing = state.mesh.dx[2]
         mm_tip = mm_tip or self._mm_tip
         dm_tip = dm_tip or self._dm_tip
 
@@ -213,6 +213,6 @@ def to_discretisedfield(data):
             comp=["x", "y", "z"],
         ),
         name="mag",
-        attrs=dict(cell=mesh.dx_tuple, p1=mesh.origin, p2=[a*b+c for a,b,c in zip(mesh.n, mesh.dx_tuple, mesh.origin)])
+        attrs=dict(cell=mesh.dx, p1=mesh.origin, p2=[a*b+c for a,b,c in zip(mesh.n, mesh.dx, mesh.origin)])
     )
     return Field.from_xarray(xarr)

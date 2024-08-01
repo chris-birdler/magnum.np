@@ -44,7 +44,7 @@ class ScipyOdeint(object):
         t1 = t + dt
         x1 = odeint(self._f_wrapper,
                     x0,
-                    [(t*1e9), (t1*1e9)],
+                    [(t*1e9).detach().cpu(), (t1*1e9).detach().cpu()],
                     args = (kwargs,),
                     rtol = rtol or self._rtol,
                     atol = atol or self._atol,

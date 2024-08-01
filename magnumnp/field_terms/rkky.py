@@ -96,7 +96,7 @@ class RKKYField(object):
         h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
-        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx_tuple[2]
+        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
         return h.nan_to_num(posinf=0, neginf=0)
 
     def E(self, state):
@@ -110,7 +110,7 @@ class RKKYField(object):
             m2 += 0.25 * (3*state.m[:,:,(self._id2,),:] - 4*state.m[:,:,(self._id2+1,),:] + state.m[:,:,(self._id2+2,),:])
 
         E = (m2*m1).sum()
-        E *= -state.mesh.dx_tuple[0] * state.mesh.dx_tuple[1] * self._J_rkky
+        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky
         return E
 
 
@@ -153,7 +153,7 @@ class BiquadraticRKKYField(object):
         h[:,:,self._id2,:] = 2. * self._J_rkky_BQ * m12 * m1
 
         #TODO: find out why there is a 2x discrepancy compared with oommf
-        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx_tuple[2]
+        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
 
         return h.nan_to_num(posinf=0, neginf=0)
     
@@ -162,5 +162,5 @@ class BiquadraticRKKYField(object):
         m2 = state.m[:,:,self._id2,:]
 
         E = ((m1*m2).sum(dim=-1)**2).sum()
-        E *= -state.mesh.dx_tuple[0] * state.mesh.dx_tuple[1] * self._J_rkky_BQ
+        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky_BQ
         return E

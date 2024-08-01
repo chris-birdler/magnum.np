@@ -66,7 +66,7 @@ class SpinTorqueZhangLi(object):
     @torch.compile
     def h(self, state):
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
-        dx = [state.mesh.dx_tuple[i] for i in range(3) if state.mesh.n[i] > 1]
+        dx = [state.mesh.dx[i] for i in range(3) if state.mesh.n[i] > 1]
 
         j = state.j # (state.t) TODO: allow time-dependent j
         jgradm = torch.einsum('...a,...ba-> ...b', j[...,dim], torch.stack(torch.gradient(state.m, spacing=dx, dim=dim), dim=-1)) # matmult

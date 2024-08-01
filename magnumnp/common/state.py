@@ -19,7 +19,7 @@
 import torch
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
-from magnumnp.common.utils import randomize
+from magnumnp.common.utils import randM
 
 __all__ = ["State"]
 
@@ -89,11 +89,11 @@ class State(object):
 
     @property
     def dtype(self):
-        return self.mesh.dx[0].dtype
+        return self.mesh.dx_tensor[0].dtype
 
     @property
     def device(self):
-        return self.mesh.dx[0].device
+        return self.mesh.dx_tensor[0].device
 
     def Constant(self, c, dtype = None, requires_grad = False):
         if not isinstance(c, torch.Tensor):
@@ -108,7 +108,7 @@ class State(object):
 
     def RandM(self):
         x = self.Constant([0.,0.,0.])
-        randomize(x)
+        randM(x)
         return x
 
     def SpatialCoordinate(self):

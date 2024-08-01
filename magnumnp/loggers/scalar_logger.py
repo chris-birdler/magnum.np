@@ -25,7 +25,7 @@ from magnumnp.common import logging
 __all__ = ["ScalarLogger"]
 
 class ScalarLogger(object):
-    def __init__(self, filename, columns, every = 1):
+    def __init__(self, filename, columns, every = 1, fsync_every = 1):
         """
         Simple logger class to log scalar values into a tab separated file.
 
@@ -36,6 +36,8 @@ class ScalarLogger(object):
                 The columns to be written to the log file
             every (:class:`int`)
                 Write row to log file every nth call
+            fsync_every (:class:`int`)
+                Call fsync every nth write to empty OS buffer
 
         *Example*
             .. code-block:: python
@@ -65,6 +67,7 @@ class ScalarLogger(object):
         self._filename = filename
         self._file     = None
         self._every    = every
+        self._fsync_every = fsync_every * every
         self._i        = 0
         self._columns  = columns
 
@@ -106,6 +109,8 @@ class ScalarLogger(object):
             self._write_header(values)
 
         self._write_row(values)
+        if ((self._i - 1) % self._fsync_every == 0):
+            os.fsync(self._file.fileno())
 
     def __lshift__(self, state):
         self.log(state)

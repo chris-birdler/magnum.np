@@ -44,3 +44,16 @@ def test_LTEM():
     ltem.InductionMap()
     ltem.Defocus(1., 1.)
     ltem.MagneticPhaseShift()
+
+def test_nsk():
+    n  = (100, 100, 3)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2.,-n[1]*dx[1]/2.,-n[2]*dx[2]/2.))
+    state = State(mesh)
+    state.material["Ms"] = 1.
+    x, y, z = mesh.SpatialCoordinate()
+    state.m = Expression([-y, x, 1e-3+0*z])
+    normalize(state.m)
+
+    x = nsk(state)
+    torch.testing.assert_close(x, torch.tensor(7.9577e-10), atol=0, rtol=1e-4)

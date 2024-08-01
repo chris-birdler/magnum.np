@@ -64,7 +64,7 @@ def test_expression():
     Ku_axis = Expression((x,y,z))
     assert Ku_axis.shape == torch.Size([1,1,10,3])
 
-def test_randomize():
+def test_randM():
     n  = (10,10,10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
@@ -72,6 +72,6 @@ def test_randomize():
     state.m = state.RandM()
 
     state.m2 = state.Constant([0.,0.,1.])
-    randomize(state.m2[:5,:,:,:])
+    randM(state.m2[:5,:,:,:])
 
     #write_vti(state.m2, "data/random.vti", state, scale=1e9)

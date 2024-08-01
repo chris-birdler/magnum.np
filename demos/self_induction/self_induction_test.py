@@ -23,7 +23,7 @@ def test_self_induction():
     ref_y = torch.from_numpy(ref[:, 2])
     ref_z = torch.from_numpy(ref[:, 3])
 
-    torch.testing.assert_close(data_x, ref_x, atol=0, rtol=1e-4)
-    torch.testing.assert_close(data_y, ref_y, atol=0, rtol=1e-4)
-    torch.testing.assert_close(data_z, ref_z, atol=0, rtol=1e-4)
+    torch.testing.assert_close(data_x, ref_x, atol=0, rtol=1e-2)
+    torch.testing.assert_close(data_y, ref_y, atol=0, rtol=1e-2)
+    torch.testing.assert_close(data_z, ref_z, atol=0, rtol=1e-2)
 

@@ -77,7 +77,7 @@ class VectorPotential(object):
         self._cache_dir = cache_dir
 
     def _init_A_component(self, state):
-        dx = np.array(state.mesh.dx_tuple)
+        dx = np.array(state.mesh.dx)
 
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices

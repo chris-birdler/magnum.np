@@ -49,7 +49,7 @@ def run_self_induction():
             d = dx[0]
             L0 = constants.mu_0 / pi * (-2.*(W+H) + 2.*sqrt(H**2.+W**2.) - H*log( (H+sqrt(H**2.+W**2.)) /W) - W*log( (W+sqrt(H**2.+W**2.)) /H) + H*log(2.*H/(d/2.)) + W*log(2.*W/(d/2.)))
 
-            print(aspect, L0, L1.numpy(), L2.numpy(), file=fd)
+            print(aspect, L0, L1.cpu().numpy(), L2.cpu().numpy(), file=fd)
 
     Timer.print_report()
 
