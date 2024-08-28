@@ -44,15 +44,15 @@ The following demos are also stored on Google Colab, where they can directly be 
 
 Installation
 ------------
-
-### from Python Package Index (PyPi)
-For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np the available python environment)
+For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
     mkdir venv
     python -m venv venv
     source venv/bin/activate
 
-Finally install a release versions of magnum.np by means of pip:
+
+### from Python Package Index (PyPi)
+In order to install a release versions of magnum.np one simple uses:
 
     pip install magnumnp
 
@@ -65,8 +65,7 @@ You can also easily install different versions from private repositories. E.g. u
 More advanced users can also install magnum.np from source code.
 It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
-After activating the virtual environment magnum.np can be simply installed using pip. For example
-installing with the -e option also allows to modify the source code:
+After activating the virtual environment magnum.np can be installed using the pip -e option which allows to easily modify the source code:
 
     pip install -e .
 
