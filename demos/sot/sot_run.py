@@ -17,7 +17,7 @@ def run_sot():
     
     # initialize polarization, p, and charge current amplitude
     # thickness of thin film on which the SOT acts
-    p = state.Tensor((0, -1, 0))
+    p = torch.tensor([0.,-1.,0.])
     je = 6.9e10
     d = n[2] * dx[2]
     Keff = 1200e3*constants.mu_0*0.4/2./constants.mu_0
@@ -26,7 +26,7 @@ def run_sot():
         "Ms": 1200e3,
         "A": 15e-12,
         "Ku": Keff,
-        "Ku_axis": [0, 0, 1],
+        "Ku_axis": [0., 0., 1.],
         "gamma": 2.211e5,
         "alpha": 0.048,
         "eta_damp": -0.1, # both eta with opposite sign as magnum.af, same as magnum.pi
@@ -41,7 +41,7 @@ def run_sot():
     torque = SpinOrbitTorque()
     
     # initialize magnetization that relaxes into s-state
-    state.m = state.Constant([0,0,1])
+    state.m = state.Constant([0.,0.,1.])
     
     # relax without external field
     minimizer = MinimizerBB([exchange, aniso])

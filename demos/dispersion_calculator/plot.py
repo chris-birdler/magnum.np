@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-mt = torch.load("data/mt_saved.pt")
+mt = torch.load("data/mt_saved.pt").cpu()
 k = 0.2
 f = 100
 

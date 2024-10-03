@@ -36,29 +36,30 @@ class ExternalField(object):
         external = ExternalField([Hx, 0, 0])
 
         # homogenious, time-dependent field
-        external = ExternalField(lambda t: [Hx*t, 0, 0])
+        external = ExternalField(lambda state: [Hx*state.t, 0, 0])
 
         # inhomogenious, constant field
         x, y, z = SpatialCoordinate(state)
-        h = torch.stack([x,y,z], dim=-1)
-        external = ExternalField(h)
+        external = ExternalField(Expression([x,y,z]))
     """
-    def __init__(self, h):
-        self._h = h
+    def __init__(self, h = None):
+        if h != None:
+            self.__setattr__("h", h)
 
     @timedmethod
     def h(self, state):
-        h = state.Tensor(self._h)(state.t)
-        if len(h.shape) == 1:
-            h = h.expand(state.m.shape)
-        return h
+        h = self._h(state)
+        return state.convert_tensorfield(h)
 
     def __setattr__(self, name, value):
         if name == "h":
-            self._h = value
+            if callable(value):
+                self._h = value
+            else:
+                self._h = lambda state: value
         else:
             super().__setattr__(name, value)
 
     def E(self, state, domain = Ellipsis):
-        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.cell_volumes
+        E = - constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
         return E[domain].sum()

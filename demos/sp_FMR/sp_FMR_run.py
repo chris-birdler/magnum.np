@@ -18,25 +18,23 @@ def run_sp_FMR():
     # initialize state
     state = State(mesh)
     state.material = {
-        "alpha": 1.,
-        "Ms": 800e3,
-        "A": 13e-12
+        "alpha": state.Constant(0.008),
+        "Ms": state.Constant(800e3),
+        "A": state.Constant(13e-12)
         }
     state.m = state.Constant([0, 0, 1])
 
     # initialize field terms
     demag    = DemagField()
     exchange = ExchangeField()
-    bias     = ExternalField(80e3*state.Tensor([1., 0.715, 0]).normalize())
+    bias     = ExternalField(80e3*normalize(state.Constant([1., 0.715, 0])))
 
     #relax state
     minimizer = MinimizerBB([demag, exchange, bias])
     minimizer.minimize(state)
 
     #integrate
-    state.t = 0.0
-    state.material["alpha"] = 0.008
-    bias = ExternalField(80e3*state.Tensor([1., 0.7, 0]).normalize())
+    bias = ExternalField(80e3*normalize(state.Constant([1., 0.7, 0])))
 
     llg = LLGSolver([demag, exchange, bias])
     logger = Logger(this_dir / "data", ['t', 'm'])

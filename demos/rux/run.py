@@ -34,7 +34,7 @@ phi = 1.0
 # initialize mesh
 n  = (nx, ny, nz)
 mesh = Mesh(n, dx)
-state = State(mesh, device = "cpu")
+state = State(mesh)
 
 J_FeFe = 7.e-21
 J_CoCo = 6.e-21
@@ -48,8 +48,8 @@ while torch.sum(mat) > nx*ny*nz * (Fe_ratio):
         np.random.randint(0,n[2])] = 0
 
 
-J = state.zeros((3, 4))
-J[2,:] = state.Tensor([J_FeFe] + [- float(J_funcFeFe(i*a*1e9))*1e-3 * a**2 for i in range(1,4)]) # Fe Fe
+J = torch.zeros((3, 4))
+J[2,:] = torch.tensor([J_FeFe] + [- float(J_funcFeFe(i*a*1e9))*1e-3 * a**2 for i in range(1,4)]) # Fe Fe
 
 Ms = 1500e3
 state.material = {
@@ -61,14 +61,14 @@ state.material = {
 
 
 # initialize mag with 90 degree angle
-x,y,z = state.SpatialCoordinate()
+x,y,z = mesh.SpatialCoordinate()
 rux = (mat.squeeze(-1) == 0)
 magnetic = (mat.squeeze(-1) == 1)
 
 state.m = state.Constant([0,0,0])
 state.m += torch.rand((nx, ny, nz, 3))
 state.m[~magnetic] = 0.
-state.m.normalize()
+normalize(state.m)
 
 h = 2. / constants.mu_0
 

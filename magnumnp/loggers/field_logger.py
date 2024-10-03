@@ -17,15 +17,15 @@
 #
 
 import os
+import torch
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
 from xml.dom import minidom
-from magnumnp.common.io import write_vti
 
 __all__ = ["FieldLogger"]
 
 class FieldLogger(object):
-    def __init__(self, filename, fields, every = 1):
+    def __init__(self, filename, fields, every = 1, scale = 1.):
         """
         Logger class for fields
 
@@ -36,6 +36,8 @@ class FieldLogger(object):
                 The columns to be written to the log file
             every (:class:`int`)
                 Write row to log file every nth call
+            scale (:class:`float`)
+                Scale factor for dimentions (e.g. 1e9 for nm-units)
 
         *Example*
             .. code-block:: python
@@ -61,6 +63,7 @@ class FieldLogger(object):
             raise NameError("Only .pvd extention allowed")
         self._filename = filename
         self._every = every
+        self._scale = scale
         if isinstance(fields, str):
             fields = [fields]
         self._fields = fields
@@ -97,19 +100,30 @@ class FieldLogger(object):
                 value = field(state)
             elif isinstance(field, tuple) or isinstance(field, list):
                 name = field[0]
-                value = field[1](state)
+                value = field[1]
+            elif isinstance(value, torch.Tensor):
+                name = 'unnamed'
+                value = field
             else:
-                raise RuntimeError('Column type not supported.')
+                raise RuntimeError('[FieldLogger] Column type not supported!')
+
+            if hasattr(value, '__call__'):
+                if name == 'unnamed':
+                    try:
+                        name = value.__self__.__class__.__name__ + "." + value.__name__
+                    except:
+                        pass
+                value = value(state)
             values[name] = value
 
         filename = "%s_%04d" % (self._filename, self._i // self._every)
-        state.write_vtk(values, filename)
-
-        if state._is_equidistant:
+        if state.mesh.is_equidistant:
             filename += ".vti"
         else:
             filename += ".vtr"
-        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(state.t.tolist()), file=os.path.basename(filename))
+        state.write_vtk(values, filename, scale = self._scale)
+
+        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(float(state.t)), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
             fd.flush()

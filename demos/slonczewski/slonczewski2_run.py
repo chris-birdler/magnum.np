@@ -28,17 +28,17 @@ def run_slonczewski2():
         "P": 0.5669,
         "Lambda": 1,
         "epsilon_prime": 0,
-        "mp": state.Tensor((np.cos(np.radians(20)), np.sin(np.radians(20)), 0)),
+        "mp": [np.cos(np.radians(20)), np.sin(np.radians(20)), 0],
         "d": L[2],
         "J": -8e11,
         }
 
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     disk = (x/80e-9)**2 + (y/40e-9)**2 < 1
     write_vti(disk, "data2/domain.vti")
 
-    state.m = state.Constant([0,0,0])
-    state.m[disk] = state.Tensor([1,0,0])
+    state.m = state.Constant([0.,0.,0.])
+    state.m[disk] = torch.tensor([1.,0.,0.])
 
     # initialize field terms
     demag    = DemagField()

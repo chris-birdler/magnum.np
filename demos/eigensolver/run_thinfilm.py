@@ -12,12 +12,12 @@ dx = (2.5e-9, 2.5e-9, 3e-9)
 mesh = Mesh(n, dx)
 state = State(mesh)
 state.material = {
-        "A":lex**2*Js**2/(2.*constants.mu_0),
-        "Ms":1./constants.mu_0,
+        "A": lex**2*Js**2/(2.*constants.mu_0),
+        "Ms": 1./constants.mu_0,
         }
 demag    = DemagField()
 exchange = ExchangeField()
-external = ExternalField([0.,0.,1.2/constants.mu_0])
+external = ExternalField(state.Constant([0.,0.,1.2/constants.mu_0]))
 
 state.m = state.Constant([0.,0.,1.])
 eigen = EigenSolver(state, [demag, exchange], [external])

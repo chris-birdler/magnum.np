@@ -29,6 +29,7 @@ from magnumnp.field_terms.rkky import *
 from magnumnp.field_terms.rux import *
 from magnumnp.field_terms.spintorque import *
 from magnumnp.field_terms.thermal import *
+from magnumnp.field_terms.vector_potential import *
 
 __all__ = (anisotropy.__all__ +
            demag.__all__ +
@@ -42,4 +43,5 @@ __all__ = (anisotropy.__all__ +
            rux.__all__ +
            rkky.__all__ +
            spintorque.__all__ +
-           thermal.__all__)
+           thermal.__all__ +
+           vector_potential.__all__)

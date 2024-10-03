@@ -49,7 +49,7 @@ The initial magnetization *m* is defined using torch.Tensor. The elements of the
   state.m[20,20,:,1] = 0.
   state.m[20,20,:,2] = 1.
 
-  state.j = state.Tensor([1e12, 0, 0])
+  state.j = state.Constant([1e12, 0, 0])
 
 In the following step the field terms are initialized. Here the demagnetization field, the exchange field and spin torque are defined.
 
