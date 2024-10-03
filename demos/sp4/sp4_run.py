@@ -15,7 +15,7 @@ def run_sp4():
     
     state.material = {
         "Ms": 8e5,
-        "A": state.Constant([1.3e-11]),
+        "A": 1.3e-11,
         "alpha": 0.02
         }
     
@@ -34,7 +34,7 @@ def run_sp4():
     # relax without external field
     minimizer = MinimizerBB([demag, exchange])
     minimizer.minimize(state)
-    write_vti(state.m, "data/m0.vti", state)
+    state.write_vtk(state.m, "data/m0")
     
     # perform integration with external field
     llg = LLGSolver([demag, exchange, external])

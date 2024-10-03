@@ -14,13 +14,15 @@ do
 done
 
 # cleanup summary
-cat out_N10 | grep names | cut -f 2- > tmp
+cat out_N10 | grep names | sed -e "s/names: *N=[\t 0-9]*/N /g" > tmp
 cat timings_setup.dat >> tmp
 cat tmp | column -t > timings_setup.dat
 
-cat out_N10 | grep names | cut -f 2- > tmp
+cat out_N10 | grep names | sed -e "s/names: *N=[\t 0-9]*/N /g" > tmp
 cat timings_eval.dat >> tmp
 cat tmp | column -t > timings_eval.dat
 
 rm tmp
 
+# plot results
+python plot.py

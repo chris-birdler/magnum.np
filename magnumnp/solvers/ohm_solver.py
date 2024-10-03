@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, DecoratedTensor
+from magnumnp.common import logging, timedmethod, constants
 import torch
 
 __all__ = ["OhmSolver"]
@@ -26,8 +26,9 @@ class OhmSolver(object):
         self._dirichlet_bc_nodes = dirichlet_bc_nodes
 
     def u(self, state, **kwargs):
-        sigma = state.material["sigma"].squeeze(-1)
-        rhs = state.zeros(state.mesh.n)
+        dx = state.mesh.dx
+        sigma = state.material["sigma"]
+        rhs = state.Constant(0.)
         u0 = state.u.clone()
 
         def _M(u):
@@ -52,22 +53,22 @@ class OhmSolver(object):
             sigma_avg = 2. * sigma[1:,:,:] * sigma[:-1,:,:] / (sigma[1:,:,:] + sigma[:-1,:,:])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[1:,:,:] - u[:-1,:,:]
-            du *= sigma_avg / state.mesh.dx[0]
-            res[1:-1,:,:] += (du[1:,:,:] - du[:-1,:,:]) / state.mesh.dx[0]
+            du *= sigma_avg / dx[0]
+            res[1:-1,:,:] += (du[1:,:,:] - du[:-1,:,:]) / dx[0]
 
             # y
             sigma_avg = 2. * sigma[:,1:,:] * sigma[:,:-1,:] / (sigma[:,1:,:] + sigma[:,:-1,:])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[:,1:,:] - u[:,:-1,:]
-            du *= sigma_avg / state.mesh.dx[1]
-            res[:,1:-1,:] += (du[:,1:,:] - du[:,:-1,:]) / state.mesh.dx[1]
+            du *= sigma_avg / dx[1]
+            res[:,1:-1,:] += (du[:,1:,:] - du[:,:-1,:]) / dx[1]
 
             # z
             sigma_avg = 2. * sigma[:,:,1:] * sigma[:,:,:-1] / (sigma[:,:,1:] + sigma[:,:,:-1])
             sigma_avg = sigma_avg.nan_to_num(posinf=0, neginf=0)
             du = u[:,:,1:] - u[:,:,:-1]
-            du *= sigma_avg / state.mesh.dx[2]
-            res[:,:,1:-1] += (du[:,:,1:] - du[:,:,:-1]) / state.mesh.dx[2]
+            du *= sigma_avg / dx[2]
+            res[:,:,1:-1] += (du[:,:,1:] - du[:,:,:-1]) / dx[2]
 
             return res
 
@@ -76,7 +77,8 @@ class OhmSolver(object):
 
     def j(self, state, **kwargs):
         sigma = state.material["sigma"]
-        grad = [torch.gradient(self.u(state, **kwargs), dim=i)[0] if state.mesh.n[i] > 2 else torch.zeros_like(sigma[:,:,:,0]) for i in range(3)]
+        u = self.u(state, **kwargs).squeeze(-1)
+        grad = [torch.gradient(u, dim=i)[0] if state.mesh.n[i] > 2 else torch.zeros_like(u) for i in range(3)]
         return -sigma * torch.stack(grad, dim=-1)
 
 def conjugate_gradient(A, x, b, tol=1e-6, max_iter=1000):

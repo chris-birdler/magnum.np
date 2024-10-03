@@ -20,7 +20,7 @@ def run_softmagnetic_composite():
     
     mesh = Mesh((nx,ny,nz), (dx,dy,dz), pbc = (1,1,1))
     state = State(mesh)
-    state.m = state.Constant((0,0,1))
+    state.m = state.Constant([0,0,1])
     state.material = {"alpha": 1.0}
     
     state.material["Ms"] = state.Constant([0.0001/constants.mu_0])
@@ -32,7 +32,7 @@ def run_softmagnetic_composite():
     state.material["Ku"] = state.Constant([0.])
     state.material["Ku"][nx%Nx:,ny%Ny:,nz%Nz:] = 8e3
     
-    k_dir = state.Tensor(((1.688281290426342229e-01, -7.18775080428410873e-01, 6.744326850020654351e-01),
+    k_dir = torch.tensor(((1.688281290426342229e-01, -7.18775080428410873e-01, 6.744326850020654351e-01),
                           (-1.24488794472133734e-02, 8.827421556265807601e-01, 4.696927847862328309e-01),
                           (4.360199027887372986e-02, 9.960452028850761419e-01, -7.74133079860866157e-02),
                           (3.749512630383480816e-01, 6.881354883832631053e-01, -6.21193287128471327e-01),
