@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, normalize
 from .ode_solvers import RKF45
 from .llg import LLGSolver
 import torch
@@ -79,8 +79,8 @@ class StringSolver(object):
             w = (((Epath[i] + Epath[i-1])/2. - Emin) / (Emax - Emin) + 1.)**self._omega
             dm = torch.linalg.norm(images[i] - images[i-1])
             x_source.append(w * dm + x_source[-1])
-        x_source = state._tensor(x_source)
-        x_target = state.linspace(x_source[0], x_source[-1], self._num_images)
+        x_source = torch.tensor(x_source)
+        x_target = torch.linspace(x_source[0], x_source[-1], self._num_images)
 
         # start interpolation
         try:
@@ -90,7 +90,7 @@ class StringSolver(object):
 
         for i in range(self._num_images):
             state.m = target_data[:,:,:,:, i]
-            state.m.normalize()
+            normalize(state.m)
             target_data[:,:,:,:,i] = state.m
 
         return target_data

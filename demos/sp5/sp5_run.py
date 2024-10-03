@@ -27,7 +27,7 @@ def run_sp5():
     state.m[20,20,:,1] = 0.
     state.m[20,20,:,2] = 1.
     
-    state.j = state.Tensor([1e12, 0, 0])
+    state.j = state.Constant([1e12, 0, 0])
     
     # initialize field terms
     demag    = DemagField()
@@ -35,8 +35,8 @@ def run_sp5():
     torque   = SpinTorqueZhangLi()
     
     # initialize sstate
-    llg = LLGSolver([demag, exchange])
-    llg.relax(state)
+    minimizer = MinimizerBB([demag, exchange])
+    minimizer.minimize(state)
     write_vti(state.m, "data/m0.vti", state)
     
     # perform integration with spin torque

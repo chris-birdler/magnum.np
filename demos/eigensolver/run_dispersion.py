@@ -26,11 +26,8 @@ try:
     state.m[...] = fields0["m0"]
 except:
     with Timer("Calculate Groundstate"):
-        llg = LLGSolver([demag, exchange, external])
-        logger = ScalarLogger("data/m0_dispersion.dat", ['t', 'm'])
-        while state.t < 5e-9:
-            llg.step(state, 1e-11, alpha=1.)
-            logger << state
+        minimizer = MinimizerBB([demag, exchange, external])
+        minimizer.minimize(state)
         write_vti({"m0":state.m}, "data/m0_dispersion.vti", state)
 
 # calculate eigenmodes
@@ -72,4 +69,3 @@ with Timer("Calculate Dispersion"):
     fig.savefig("data/dispersion.png")
 
 Timer.print_report()
-

@@ -2,14 +2,15 @@ import pytest
 import torch
 from magnumnp import *
 from helpers import *
+import numpy as np
 
 def test_call():
     n  = (2, 3, 4)
     dx = (1, 2, 5)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"A": 1.3e-11,
-                      "Ms": 800e3}
+    state.material = {"A": state.Constant(1.3e-11),
+                      "Ms": state.Constant(800e3)}
     state.m = state.Constant([1,0,0])
     exchange = ExchangeField()
     exchange.h(state)
@@ -18,10 +19,10 @@ def test_call():
 def test_PBC():
     n  = (100, 25, 1)
     dx = (5e-9, 5e-9, 3e-9)
-    mesh = Mesh(n, dx, pbc="xyz")
+    mesh = Mesh(n, dx, pbc=(1,1,1))
     state = State(mesh)
-    state.material = {"A": 1.3e-11,
-                      "Ms": 800e3}
+    state.material = {"A": state.Constant(1.3e-11),
+                      "Ms": state.Constant(800e3)}
     exchange = ExchangeField()
     state.m = state.Constant([0,0,1])
     state.m[:50,:,:,2] = -1
@@ -34,17 +35,17 @@ def test_nonequi_vs_equi():
     dx1 = (1e-9, 2e-9, 5e-9)
     mesh1 = Mesh(n, dx1)
     state1 = State(mesh1)
-    state1.material = {"A": 1., #1.3e-11,
-                      "Ms": 1.} #800e3}
+    state1.material = {"A": state1.Constant(1.), #1.3e-11,
+                      "Ms": state1.Constant(1.)} #800e3}
 
-    dx2 = (torch.ones(n[0]) * 1e-9, 2e-9, 5e-9)
+    dx2 = (np.ones(n[0]) * 1e-9, 2e-9, 5e-9)
     mesh2 = Mesh(n, dx2)
     state2 = State(mesh2)
-    state2.material = {"A": 1., #1.3e-11,
-                      "Ms": 1.} #800e3}
-    x, y, z = state1.SpatialCoordinate()
-    state1.m = torch.stack([x*y, y*z, z*x], dim=-1)
-    state2.m = torch.stack([x*y, y*z, z*x], dim=-1)
+    state2.material = {"A": state2.Constant(1.), #1.3e-11,
+                      "Ms": state2.Constant(1.)} #800e3}
+    x, y, z = state1.mesh.SpatialCoordinate()
+    state1.m = Expression([x*y, y*z, z*x])
+    state2.m = Expression([x*y, y*z, z*x])
 
     exchange = ExchangeField()
     h1 = exchange.h(state1).cpu()
@@ -53,14 +54,14 @@ def test_nonequi_vs_equi():
 
 def test_nonequidistant():
     n  = (9, 2, 3)
-    dx0 = torch.ones(n[0]) * 1e-9
+    dx0 = np.ones(n[0]) * 1e-9
     dx0[4:] = 2e-9
 
     dx = (dx0, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"A": 1.3e-11,
-                      "Ms": 800e3}
+    state.material = {"A": state.Constant(1.3e-11),
+                      "Ms": state.Constant(800e3)}
     state.m = state.Constant([1,0,0])
     state.m[3:6,:,:,2] = -1
 

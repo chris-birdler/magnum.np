@@ -5,8 +5,7 @@ __all__ = ["MinimizerBB"]
 
 class MinimizerBB(object):
     def __init__(self, terms):
-        """
-        This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
+        """ This class implements the direct energy minimizing algorithm introduced in [Exl2014]_.
 
         .. note:: This feature is experimental.
 
@@ -18,8 +17,8 @@ class MinimizerBB(object):
             minimizer.minimize(state)
 
         *Arguments*
-          terms ([:class:`LLGTerm`])
-            List of LLG contributions to be considered for energy minimization
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for energy minimization
         """
         self._terms = terms
 
@@ -30,7 +29,7 @@ class MinimizerBB(object):
         return sum([term.h(state) for term in self._terms])
 
     def dm(self, state, h):
-        return torch.cross(state.m, torch.cross(state.m, h))
+        return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
     def _midpoint(self, m, h, tau):
         """
@@ -40,7 +39,7 @@ class MinimizerBB(object):
         see "Abert, 'Efficient Energyminimization in Finite-Difference Micromagnetics', 2014"
         see "Goldfarb, 'A Curvilinear Search Method for p-Harmonic Flows on Spheres', 2009"
         """
-        mxh = torch.cross(m, h)
+        mxh = torch.linalg.cross(m, h)
         mx, my, mz = m.unbind(-1)
         mxh_x, mxh_y, mxh_z = mxh.unbind(-1)
 
@@ -55,7 +54,7 @@ class MinimizerBB(object):
     def _linesearch(self, state, m0, h0, dm0, tau):
         r = 0.5  # Reduction factor
         c = 0.5  # Sufficient decrease parameter
-        m = -(constants.mu_0*state.material["Ms"]*state.cell_volumes*dm0*dm0).sum()
+        m = -(constants.mu_0*state.material["Ms"]*state.mesh.cell_volumes*dm0*dm0).sum()
         t = -c*m
         E0 = self.E(state)
 
@@ -68,7 +67,7 @@ class MinimizerBB(object):
             logging.info_blue("[MinimizerBB] Linesearch: %d, E=%g" % (j, E))
 
     @timedmethod
-    def minimize(self, state, maxiter = 2000, dm_tol = 1e-4, tau_min = 1e-13, tau_max = 1e-5):
+    def minimize(self, state, maxiter = 2000, dm_tol = 1., tau_min = 1e-13, tau_max = 1e-5):
         tau = tau_min
         steps = 0
         dm_max = 1e18
@@ -85,7 +84,7 @@ class MinimizerBB(object):
             m_diff = state.m - m0
 
             # compute y^n-1 for step-size control
-            dm = torch.cross(state.m, torch.cross(state.m, h))
+            dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
             dm_diff = dm - dm0
 
             # compute dm_max as convergence indicator

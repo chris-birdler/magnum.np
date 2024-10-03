@@ -93,7 +93,7 @@ class RKF56(object):
         t0, t1 = state.t, state.t + dt
         while state.t < t1:
             _m1, _t1, err = self._try_step(state, **llg_args)
-            dt_opt = state._tensor(self._optimal_stepsize(err, atol or self._atol))
+            dt_opt = torch.tensor(self._optimal_stepsize(err, atol or self._atol))
             if self._dt > dt_opt or self._dt > t1 - state.t:
                 # step size was too large, retry with optimal stepsize
                 # also rescale the thermal field accordingly

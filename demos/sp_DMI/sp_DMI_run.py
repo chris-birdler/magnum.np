@@ -13,30 +13,27 @@ def run_sp_DMI():
 
     mesh = Mesh(n, dx, origin)
     state = State(mesh)
-    state.material = {
+    state.material.set({
         "alpha": 1.,
         "A": 13e-12,
         "Ms": 800e3,
         "Di": -3e-3,
         "Ku": 0.4e6,
-        }
-    state.material['Ku_axis'] = [0,0,1]
-    x, y, z = state.SpatialCoordinate()
+        })
+    state.material['Ku_axis'] = state.Constant([0,0,1])
+    x, y, z = mesh.SpatialCoordinate()
 
-    write_vti(state.material, "data/material.vti", state)
+    state.write_vtk(state.material, "data/material")
 
     state.m = state.Constant([-0.1, 0.0, 0.9])
-    state.m.normalize()
+    normalize(state.m)
 
     exchange = ExchangeField()
     aniso    = UniaxialAnisotropyField()
     dmi      = InterfaceDMIField()
 
-    llg = LLGSolver([exchange, aniso, dmi])
-    logger = ScalarLogger("data/m_relax.dat", ['t', 'm'])
-    while state.t <= 5e-9:
-        logger << state
-        llg.step(state, 1e-12)
+    minimizer = MinimizerBB([exchange, aniso, dmi])
+    minimizer.minimize(state)
     np.savetxt(this_dir / "data" / "m0_magnumnp.dat", torch.concat((x[:,0,0,None], state.m[:,0,0,:]), axis=1).cpu().numpy())
 
     Timer.print_report()

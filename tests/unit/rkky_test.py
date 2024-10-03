@@ -12,7 +12,8 @@ def test_simple():
     mesh = Mesh(n, dx)
 
     state = State(mesh)
-    state.material = {"Ms":1./constants.mu_0, "A":1e-11}
+    state.material = {"Ms": state.Constant(1./constants.mu_0),
+                      "A": state.Constant(1e-11)}
     state.m = state.Constant([1,0,0])
 
     domain1 = state.Constant(False, dtype=torch.bool)
@@ -26,14 +27,14 @@ def test_simple():
     rkky = RKKYField(J_rkky, "z", 0, 1)
 
     for phi in torch.linspace(0,2*pi,36):
-        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
+        state.m[domain2] = torch.tensor([cos(phi), sin(phi), 0])
         h = rkky.h(state)
 
-        h1 = torch.linalg.cross(state.m[domain1].avg(), h[domain1].avg())
-        h2 = torch.linalg.cross(state.m[domain2].avg(), h[domain2].avg())
+        h1 = torch.linalg.cross(state.avg(state.m[domain1]), state.avg(h[domain1]))
+        h2 = torch.linalg.cross(state.avg(state.m[domain2]), state.avg(h[domain2]))
 
-        h1_analytic = torch.linalg.cross(state.m[domain1].avg(), J_rkky/dx[2]*state.m[domain2].avg())
-        h2_analytic = torch.linalg.cross(state.m[domain2].avg(), J_rkky/dx[2]*state.m[domain1].avg())
+        h1_analytic = torch.linalg.cross(state.avg(state.m[domain1]), J_rkky/dx[2]*state.avg(state.m[domain2]))
+        h2_analytic = torch.linalg.cross(state.avg(state.m[domain2]), J_rkky/dx[2]*state.avg(state.m[domain1]))
 
         E = rkky.E(state).detach().cpu().numpy()
         E_analytic = -J_rkky*L[0]*L[1]*cos(phi)
@@ -64,17 +65,17 @@ def test_biquadratic():
     rkky = BiquadraticRKKYField(J_rkky, "z", 0, 1)
 
     for phi in torch.linspace(0,2*pi,36):
-        state.m[domain2] = state.Tensor([cos(phi), sin(phi), 0])
+        state.m[domain2] = torch.tensor([cos(phi), sin(phi), 0])
         h = rkky.h(state)
 
-        h1 = h[domain1].avg()
-        h2 = h[domain2].avg()
+        h1 = state.avg(h[domain1])
+        h2 = state.avg(h[domain2])
 
-        m1 = state.m[domain1].avg()
-        m2 = state.m[domain2].avg()
+        m1 = state.avg(state.m[domain1])
+        m2 = state.avg(state.m[domain2])
 
-        h1_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.m[domain2].avg()
-        h2_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.m[domain1].avg()
+        h1_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.avg(state.m[domain2])
+        h2_analytic = 2.*J_rkky/dx[2]*(m1*m2).sum()*state.avg(state.m[domain1])
 
         E = rkky.E(state).detach().cpu().numpy()
         E_analytic = -J_rkky*L[0]*L[1]*cos(phi)**2
