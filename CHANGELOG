@@ -1,3 +1,10 @@
+2.0.0 [2024-10-03]
+- remove DecoratedTensor and simplify internal structure
+- all lambda functions now depend on full State instead of time
+- added VectorPotential
+- added scale option to FieldLogger and write_vti
+- added Voronoi Tesselation code
+
 1.1.6 [2024-04-11]
 - added biquadratic RKKY interaction
 

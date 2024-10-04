@@ -119,19 +119,20 @@ class RKKYField(object):
 class BiquadraticRKKYField(object):
     r"""
     Biquadratic surface exchange couplong between two layers gives rise to the following energy contribution:
-    .. math::
-        E^\text{biquadratic} = -\int\limits_\Gamma J_\text{biquadratic} \, (\vec{m}_i \cdot \vec{m}_j)^2 \, d\vec{A},
 
+    .. math::
+
+        E^\text{biquadratic} = -\int\limits_\Gamma J_\text{biquadratic} \, (\vec{m}_i \cdot \vec{m}_j)^2 \, d\vec{A},
 
     where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j` with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
 
     The effective field is given by:
 
     .. math::
+
         \vec{h}^\text{biquadratic}_i = \frac{2 J_\text{biquadratic}} {M_s \Delta z \mu_0} \, (\vec{m}_i \cdot \vec{m}_j) \, \vec{m}_j,
 
     with the interlayer exchange constant :math:`J_\text{biquadratic}`.
-
     """
     def __init__(self, J_rkky_BQ, dir, id1, id2):
         self._J_rkky_BQ = J_rkky_BQ

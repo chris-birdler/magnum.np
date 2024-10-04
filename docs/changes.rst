@@ -1,5 +1,3 @@
-.. module:: magnumnp
-
 :tocdepth: 1
 
 ########################
@@ -14,6 +12,7 @@ During the first major refactoring of the `magnum.np` code the following problem
 
 The following design changes have been performed to address these issues:
 
+
 ************************
 Remove Decorated Tensors
 ************************
@@ -26,6 +25,17 @@ In order to remove the ``DecoratedTensor`` the following features have been re-i
 * ``DecoratedTensor.avg()`` method has been moved to ``State.avg(tensor)``. This is necessary because averaging on non-equidistant meshes requires the knowledge of the cell volumes, in order to use correct weights. 
 * ``DecoratedTensor.__call__()`` was originally used to generalize ``lambda`` functions and constant tensors. Internaly all material parameters could be used as if they were ``lambda`` functions. In case of the ``DecoratedTensor`` its call function simply returned the tensor itself. In `magnum.np 2.0` this mechanism has been re-implemented in the Material setter. When a constant material is set, a dummy lambda function is created which returns the constant tensor. Similar checks have to be done for ``State.j`` and ``ExternalField.h``.
 
+.. code-block:: python
+
+    # old code
+    state.m.normalize()
+    state.m.avg()
+
+    # new code
+    normalize(state.m)
+    state.avg(state.m)
+
+
 **********************
 Non-Equidistant Meshes
 **********************
@@ -35,10 +45,35 @@ The most important change is the handling of slices. In previous versions each t
 
 In `magnum.np 2.0` the average method has been moved to the ``State``. In case of a equidistant mesh is calculate a simple algebraic mean. In case of non-equidistant meshes it checks whether a full-tensor or a slice is provided. In case of a slice the user needs to provice the sliced ``cell_volumes`` as additional parameter. Otherwise an Exception will be raised. In this way the traditional logging of full tensors directly works and the user gets a proper error message for more complicated scenarios.
 
+
 ************************
 Setting Device and dtype
 ************************
 In `magnum.np 2.0` the `device` and `dtype` are set by changing the PyTorch defaults (an optional State parameter is no longer supported). This allows to remove the wrapper functions for Pytorch generator functions like ``arange`` or ``linspace`` inside of the ``State``. The user can directly use pytorch functions and the tensors will be created on the correct `device` with the correct `dtype`.
+
+.. code-block:: python
+
+    # old code
+    state = State(mesh, dtype=torch.float32, device=mydevice)
+
+    # new code
+    torch.set_default_dtype(torch.float32)
+    torch.set_default_device(mydevice)
+
+
+**************
+Create Tensors
+**************
+Due to the use of `torch` defaults for the sections of `device` and `dtype` one can now directly use
+`torch` functions to create new tensors on the correct device and with the correct type. 
+
+.. code-block:: python
+
+    # old code
+    h = state.linspace(0., 1., 10)
+
+    # new code
+    h = torch.linspace(0., 1., 10)
 
 
 ****************
@@ -53,5 +88,3 @@ All lambda functions are now depending on the ``State`` and no longer only on th
 
     # new code
     h_ext = ExternalField(lambda state: [0, 0, state.t])
-
-
