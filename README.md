@@ -21,8 +21,9 @@ Features
 * Bilinear and biquadratic Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
+* [Eigenmode Solver](docs/eigensolver.rst) for efficient calculation of normal modes
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* efficient Voronoi Code for 2D and 3D problems (including intergrain phase)
+* efficient [Voronoi Code](docs/voronoi.rst) for 2D and 3D problems (including intergrain phase)
 * Seamless VTK import / export via [pyvista](https://docs.pyvista.org/)
 * Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
 
@@ -33,7 +34,7 @@ Demo scripts for various applications are available in the [demo](demos/README.m
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [Slonczewski Spin Torque](demos/slonczewski/run2.ipynb) ([Colab]())
+   * [Slonczewski Spin Torque](demos/slonczewski/run2.ipynb) ([Colab](https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH))
    * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir))
    * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8))
    * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu))

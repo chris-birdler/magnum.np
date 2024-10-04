@@ -37,8 +37,9 @@ Features
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
+* `Eigenmode Solver <eigensolver.rst>`__ for efficient calculation of normal modes
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* efficient Voronoi Code for 2D and 3D problems (including intergrain phase)
+* efficient `Voronoi Code <voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
 * Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
@@ -46,7 +47,7 @@ Features
 *************
 List of Demos
 *************
-* `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <>`__)
+* `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
 * `RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
 * `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
@@ -74,9 +75,6 @@ List of Demos
    nonequidistant
    inverse_cube
    logging
-
-
-
 
 
 ********
