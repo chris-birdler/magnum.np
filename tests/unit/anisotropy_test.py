@@ -5,7 +5,7 @@ from magnumnp import *
 
 def test_cubic_energy():
     n  = (1, 1, 1)
-    dx = (1, 2, 5)
+    dx = (1., 2., 5.)
     cell_volume = dx[0] * dx[1] * dx[2]
     mesh = Mesh(n, dx)
     state = State(mesh)
@@ -30,6 +30,39 @@ def test_cubic_energy():
 
         torch.testing.assert_close(h_sim[0,0,0,0], hx_analytic[0,0,0,0], atol=1e-4, rtol=1e-4)
         torch.testing.assert_close(E_sim, E_analytic, atol=1e-4, rtol=1e-4)
+
+def test_cubic2():
+    n  = (1, 1, 1)
+    dx = (1, 2, 5)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"Kc_alpha": state.Constant(0.),
+                      "Kc_beta":  state.Constant(0.),
+                      "Kc_gamma": state.Constant(0.),
+                      "Kc_axis1": state.Constant([1,0,0]),
+                      "Kc_axis2": state.Constant([0,1,0]),
+                      "Kc_axis3": state.Constant([0,0,1]),
+                      "Kc1": state.Constant(1e3),
+                      "Kc2": state.Constant(1e2),
+                      "Kc3": state.Constant(0.),
+                      "Ms": state.Constant(800e3)}
+    aniso = CubicAnisotropyField()
+    aniso2 = CubicAnisotropyField2()
+
+    for phi in torch.linspace(0., pi, steps=10):
+        mx = cos(phi)
+        my = sin(phi)
+        mz = 0.
+        state.m = state.Constant([mx, my, mz])
+
+        h_sim1 = aniso.h(state)
+        h_sim2 = aniso2.h(state)
+
+        E_sim1 = aniso.E(state)
+        E_sim2 = aniso2.E(state)
+
+        torch.testing.assert_close(h_sim1, h_sim2, atol=1e-4, rtol=1e-4)
+        torch.testing.assert_close(E_sim1, E_sim2, atol=1e-4, rtol=1e-4)
 
 def test_cubic_energy_rotated():
     n  = (1, 1, 1)

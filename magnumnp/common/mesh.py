@@ -29,7 +29,7 @@ class Mesh(object):
         self.pbc = tuple(pbc)
 
         self.is_equidistant = all([isinstance(dx, (float, int)) for dx in dx])
-        self.dx_tensor = [torch.tensor(dx).expand(n) for n, dx in zip(n, dx)]
+        self.dx_tensor = [torch.tensor(dx, dtype=torch.get_default_dtype()).expand(n) for n, dx in zip(n, dx)]
 
         # compute cell_volumes
         if self.is_equidistant:

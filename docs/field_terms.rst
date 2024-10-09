@@ -56,6 +56,11 @@ CubicAnisotropyField
 .. autoclass:: CubicAnisotropyField
    :show-inheritance:
 
+CubicAnisotropyField2
+*********************
+.. autoclass:: CubicAnisotropyField2
+   :show-inheritance:
+
 DemagField
 **********
 .. autoclass:: DemagField

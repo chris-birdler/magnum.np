@@ -26,8 +26,12 @@ state.material = {
         "Kc_alpha": state.Constant(0.),
         "Kc_beta": state.Constant(0.),
         "Kc_gamma": state.Constant(0.),
+        "Kc_axis1": state.Constant([1.,0.,0.]),
+        "Kc_axis2": state.Constant([0.,1.,0.]),
+        "Kc_axis3": state.Constant([0.,0.,1.]),
         "Kc1": state.Constant(1e3),
         "Kc2": state.Constant(0.),
+        "Kc3": state.Constant(0.),
         "Di": state.Constant(3e-3),
         "Db": state.Constant(3e-3),
         "DD2d": state.Constant(3e-3),
@@ -52,6 +56,7 @@ oersted        = OerstedField()
 exchange       = ExchangeField()
 aniso          = UniaxialAnisotropyField()
 caniso         = CubicAnisotropyField()
+caniso2        = CubicAnisotropyField2()
 dmii           = InterfaceDMIField()
 dmib           = BulkDMIField()
 dmiD2d         = D2dDMIField()
@@ -85,6 +90,7 @@ benchmark_fieldterm(oersted, NN = 1000)
 benchmark_fieldterm(exchange)
 benchmark_fieldterm(aniso)
 benchmark_fieldterm(caniso)
+benchmark_fieldterm(caniso2)
 benchmark_fieldterm(dmii)
 benchmark_fieldterm(dmib)
 benchmark_fieldterm(dmiD2d)

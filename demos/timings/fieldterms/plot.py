@@ -20,15 +20,15 @@ for n, i in enumerate([1, 2, 3]): #  'DemagField.h', 'DemagFieldPBC.h', 'Oersted
     ax[0].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 ax[0].loglog(ref_mumax[:,0]**3, ref_mumax[:,1]/10000, "--", color = "black", label = "DemagField (MuMax3)")
 
-for n, i in enumerate([4, 7, 8, 9]): # 'ExchangeField.h', 'InterfaceDMIField.h', 'BulkDMIField.h', 'D2dDMIField.h'
+for n, i in enumerate([4, 8, 9, 10]): # 'ExchangeField.h', 'InterfaceDMIField.h', 'BulkDMIField.h', 'D2dDMIField.h'
     ax[1].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[1].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.2)
 
-for n, i in enumerate([11, 12, 13]): # 'SpinTorqueSlonczewski.h', 'SpinOrbitTorque.h', 'SpinTorqueZhangLi.h'
+for n, i in enumerate([12, 13, 14]): # 'SpinTorqueSlonczewski.h', 'SpinOrbitTorque.h', 'SpinTorqueZhangLi.h'
     ax[2].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[2].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 
-for n, i in enumerate([5, 6, 10]): # 'UniaxialAnisotropyField.h', 'CubicAnisotropyField.h', 'ExternalField.h'
+for n, i in enumerate([5, 6, 7, 11]): # 'UniaxialAnisotropyField.h', 'CubicAnisotropyField.h', 'CubicAnisotropyField2.h', 'ExternalField.h'
     ax[3].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[3].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 
@@ -53,15 +53,15 @@ for n, i in enumerate([1, 2, 3]): #  'DemagField.h', 'DemagFieldPBC.h', 'Oersted
     ax[0].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[0].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 
-for n, i in enumerate([4, 7, 8, 9]): # 'ExchangeField.h', 'InterfaceDMIField.h', 'BulkDMIField.h', 'D2dDMIField.h'
+for n, i in enumerate([4, 8, 9, 10]): # 'ExchangeField.h', 'InterfaceDMIField.h', 'BulkDMIField.h', 'D2dDMIField.h'
     ax[1].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[1].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.2)
 
-for n, i in enumerate([11, 12, 13]): # 'SpinTorqueSlonczewski.h', 'SpinOrbitTorque.h', 'SpinTorqueZhangLi.h'
+for n, i in enumerate([12, 13, 14]): # 'SpinTorqueSlonczewski.h', 'SpinOrbitTorque.h', 'SpinTorqueZhangLi.h'
     ax[2].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[2].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 
-for n, i in enumerate([5, 6, 10]): # 'UniaxialAnisotropyField.h', 'CubicAnisotropyField.h', 'ExternalField.h'
+for n, i in enumerate([5, 6, 7, 11]): # 'UniaxialAnisotropyField.h', 'CubicAnisotropyField.h', 'CubicAnisotropyField2.h', 'ExternalField.h'
     ax[3].loglog(data[:,0]**3, data[:,i], color = cycle[n], label = names[i])
     ax[3].loglog(ref[:,0]**3, ref[:,i], '-', color = cycle[n], linewidth = 6, alpha = 0.4)
 
