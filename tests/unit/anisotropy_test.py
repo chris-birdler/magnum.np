@@ -41,7 +41,6 @@ def test_cubic2():
                       "Kc_gamma": state.Constant(0.),
                       "Kc_axis1": state.Constant([1,0,0]),
                       "Kc_axis2": state.Constant([0,1,0]),
-                      "Kc_axis3": state.Constant([0,0,1]),
                       "Kc1": state.Constant(1e3),
                       "Kc2": state.Constant(1e2),
                       "Kc3": state.Constant(0.),

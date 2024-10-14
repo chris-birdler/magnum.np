@@ -168,7 +168,7 @@ class CubicAnisotropyField2(FieldTerm):
 
         Kc_axis1 = state.material[self.Kc_axis1]
         Kc_axis2 = state.material[self.Kc_axis2]
-        Kc_axis3 = state.material[self.Kc_axis3]
+        Kc_axis3 = torch.linalg.cross(Kc_axis1, Kc_axis2)
 
         c1m = (Kc_axis1 * state.m).sum(axis=-1, keepdims=True)
         c2m = (Kc_axis2 * state.m).sum(axis=-1, keepdims=True)
@@ -194,7 +194,7 @@ class CubicAnisotropyField2(FieldTerm):
 
         Kc_axis1 = state.material[self.Kc_axis1]
         Kc_axis2 = state.material[self.Kc_axis2]
-        Kc_axis3 = state.material[self.Kc_axis3]
+        Kc_axis3 = torch.linalg.cross(Kc_axis1, Kc_axis2)
 
         c1m = (Kc_axis1 * state.m).sum(axis=-1, keepdims=True)
         c2m = (Kc_axis2 * state.m).sum(axis=-1, keepdims=True)
