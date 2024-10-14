@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import timedmethod, constants
+from magnumnp.common import timedmethod, constants, logging
 import torch
 from .field_terms import FieldTerm, LinearFieldTerm
 from torch import sin, cos
@@ -89,6 +89,9 @@ class CubicAnisotropyField(FieldTerm):
     :type Kc_gamma: str, optional
     """
     parameters = ["Kc1", "Kc2", "Kc_alpha", "Kc_beta", "Kc_gamma"]
+    def __init__(self, **kwargs):
+        logging.warning("[CubicAnisotropyField] This field Term is deprecated due to bad performance (and will be removed in future versions. Use CubicAnisotropyField2() and provide an orthonormal set of axes instead of Euler angles.")
+        super().__init__(**kwargs)
 
     def _R(self, state):
         a = state.material[self.Kc_alpha]
