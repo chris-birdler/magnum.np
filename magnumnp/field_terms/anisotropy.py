@@ -154,10 +154,8 @@ class CubicAnisotropyField2(FieldTerm):
     :type Kc_axis1: str, optional
     :param Kc_axis2: Name of the material parameter for the 2. axis
     :type Kc_axis2: str, optional
-    :param Kc_axis3: Name of the material parameter for the 3. axis
-    :type Kc_axis3: str, optional
     """
-    parameters = ["Kc1", "Kc2", "Kc3", "Kc_axis1", "Kc_axis2", "Kc_axis3"]
+    parameters = ["Kc1", "Kc2", "Kc3", "Kc_axis1", "Kc_axis2"]
 
     @timedmethod
     @torch.compile
