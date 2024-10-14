@@ -90,7 +90,7 @@ class CubicAnisotropyField(FieldTerm):
     """
     parameters = ["Kc1", "Kc2", "Kc_alpha", "Kc_beta", "Kc_gamma"]
     def __init__(self, **kwargs):
-        logging.warning("[CubicAnisotropyField] This field Term is deprecated due to bad performance (and will be removed in future versions. Use CubicAnisotropyField2() and provide an orthonormal set of axes instead of Euler angles.")
+        logging.warning("[CubicAnisotropyField] This field Term is deprecated due to bad performance (and will be removed in future versions). Use CubicAnisotropyField2() and provide an orthonormal set of axes instead of Euler angles.")
         super().__init__(**kwargs)
 
     def _R(self, state):
