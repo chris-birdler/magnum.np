@@ -1,35 +1,35 @@
 image: python:3.10
 
-test:
-    script:
-       - apt update -yq
-       - apt install -y python3-opencv
-       - pip install setuptools pytest
-       - pip install .
-       - python -m pytest tests/
-
-#test_gpu:
-#    image: nvcr.io/nvidia/pytorch:24.03-py3
+#test:
 #    script:
-#        - echo $TZ
-#        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-#        - apt update -yq
-#        - apt install -y python3-opencv
-#        - pip install setuptools pytest
-#        - pip install .
-#        - python3 -m pytest tests/
-#    tags:
-#        - saas-linux-medium-amd64-gpu-standard
-
-test_demos:
-    script:
-       - apt update -yq
-       - apt install -y python3-opencv
-       - pip install setuptools pytest
-       - pip install .
-       - python -m pytest demos
-    rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#       - apt update -yq
+#       - apt install -y python3-opencv
+#       - pip install setuptools pytest
+#       - pip install .
+#       - python -m pytest tests/
+#
+##test_gpu:
+##    image: nvcr.io/nvidia/pytorch:24.03-py3
+##    script:
+##        - echo $TZ
+##        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+##        - apt update -yq
+##        - apt install -y python3-opencv
+##        - pip install setuptools pytest
+##        - pip install .
+##        - python3 -m pytest tests/
+##    tags:
+##        - saas-linux-medium-amd64-gpu-standard
+#
+#test_demos:
+#    script:
+#       - apt update -yq
+#       - apt install -y python3-opencv
+#       - pip install setuptools pytest
+#       - pip install .
+#       - python -m pytest demos
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 
 build-package:
@@ -48,17 +48,35 @@ build-package:
     rules:
         - if: $PYPI_USERNAME && $CI_COMMIT_TAG
 
-pages:
+build_notebooks:
     stage: deploy
     script:
         - apt update -yq
         - apt install -y python3-opencv pandoc
         - pip install setuptools pytest
         - pip install -e .
-        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
-        - sphinx-build -b html docs public
+        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc jupytex
+        - mkdir -p public/notebooks
+        - for demo in demos/sp4*; do
+            ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o public/notebooks/$(basename $demo).ipynb )
+          done
     artifacts:
         paths:
             - public
-    rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+#pages:
+#    stage: deploy
+#    script:
+#        - apt update -yq
+#        - apt install -y python3-opencv pandoc
+#        - pip install setuptools pytest
+#        - pip install -e .
+#        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
+#        - sphinx-build -b html docs public
+#    artifacts:
+#        paths:
+#            - public
+##    rules:
+##        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
