@@ -81,8 +81,12 @@ class RKKYField(object):
         self._order = order
 
     @timedmethod
+    @torch.compile
     def h(self, state):
         h = torch.zeros_like(state.m)
+        dz = state.mesh.dx_tensor[2].reshape(1,1,-1,1)
+        if self._order != 0 and not state.mesh.is_equidistant:
+            raise ValueError("[RKKYField] higher order RKKY is only implemented for equidistant fields! (use order=0)")
         if self._order == 0:
             m1 = state.m[:,:,(self._id1,),:]
             m2 = state.m[:,:,(self._id2,),:]
@@ -96,12 +100,15 @@ class RKKYField(object):
         h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
         h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
-        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
+        h /= constants.mu_0 * state.material["Ms"] * dz
         return h.nan_to_num(posinf=0, neginf=0)
 
+    @torch.compile
     def E(self, state):
         m1 = state.m[:,:,(self._id1,),:]
         m2 = state.m[:,:,(self._id2,),:]
+        dx = state.mesh.dx_tensor[0].reshape(-1,1,1,1)
+        dy = state.mesh.dx_tensor[1].reshape(1,-1,1,1)
         if self._order == 1:
             m1 += 0.5 * ( state.m[:,:,(self._id1,),:] - state.m[:,:,(self._id1-1,),:])
             m2 += 0.5 * (-state.m[:,:,(self._id2,),:] + state.m[:,:,(self._id2+1,),:])
@@ -109,8 +116,7 @@ class RKKYField(object):
             m1 += 0.25 * (3*state.m[:,:,(self._id1,),:] - 4*state.m[:,:,(self._id1-1,),:] + state.m[:,:,(self._id1-2,),:])
             m2 += 0.25 * (3*state.m[:,:,(self._id2,),:] - 4*state.m[:,:,(self._id2+1,),:] + state.m[:,:,(self._id2+2,),:])
 
-        E = (m2*m1).sum()
-        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky
+        E = -(dx * dy * self._J_rkky * m1 * m2).sum()
         return E
 
 
@@ -143,8 +149,10 @@ class BiquadraticRKKYField(object):
         self._id2 = max(id1,id2)
 
     @timedmethod
+    @torch.compile
     def h(self, state):
         h = torch.zeros(state.mesh.n + (3,))
+        dz = state.mesh.dx_tensor[2].reshape(1,1,-1,1)
 
         m1 = state.m[:,:,self._id1,:]
         m2 = state.m[:,:,self._id2,:]
@@ -154,14 +162,16 @@ class BiquadraticRKKYField(object):
         h[:,:,self._id2,:] = 2. * self._J_rkky_BQ * m12 * m1
 
         #TODO: find out why there is a 2x discrepancy compared with oommf
-        h /= constants.mu_0 * state.material["Ms"] * state.mesh.dx[2]
+        h /= constants.mu_0 * state.material["Ms"] * dz
 
         return h.nan_to_num(posinf=0, neginf=0)
     
+    @torch.compile
     def E(self, state):
         m1 = state.m[:,:,self._id1,:]
         m2 = state.m[:,:,self._id2,:]
+        dx = state.mesh.dx_tensor[0].reshape(-1,1,1)
+        dy = state.mesh.dx_tensor[1].reshape(1,-1,1)
 
-        E = ((m1*m2).sum(dim=-1)**2).sum()
-        E *= -state.mesh.dx[0] * state.mesh.dx[1] * self._J_rkky_BQ
-        return E
+        E = -dx * dy * self._J_rkky_BQ * (m1*m2).sum(dim=-1,keepdim=True)**2
+        return E.sum()
