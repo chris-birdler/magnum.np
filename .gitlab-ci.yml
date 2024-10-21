@@ -57,10 +57,10 @@ build_notebooks:
         - pip install -e .
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
-        - for demo in demos/sp4*
+        - for demo in demos/sp4* ;
           do
-              ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb )
-              mv $demo/$(basename $demo).ipynb public/notebooks
+              ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
+              mv $demo/$(basename $demo).ipynb public/notebooks;
           done
     artifacts:
         paths:
