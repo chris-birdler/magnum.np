@@ -83,8 +83,9 @@ You can also easily install different versions from private repositories. E.g. u
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
-### from source code (gitlab.com)
----------------------------------
+-----------------------------
+from source code (gitlab.com)
+-----------------------------
 More advanced users can also install magnum.np from source code.
 It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
@@ -94,8 +95,10 @@ After activating the virtual environment magnum.np can be installed using the pi
 
 Note that a default version of [pytorch](http://www.pytorch.org) is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
 
-### run remotely via Google Colab
----------------------------------
+
+-----------------------------
+run remotely via Google Colab
+-----------------------------
 Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](https://drive.google.com/drive/folders/1Ymvx9bi0qQqW-zlOws0ahFJqoE3JCFd9?usp=share_link). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
 Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
