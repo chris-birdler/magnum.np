@@ -17,7 +17,7 @@ inverse problems without significant modifications of the code. This manual is m
 both a quick start and a reference to magnum.np.
 
 **Version 2.0:** The magnum.np interface slightly changed since version 2.0.
-Find more details about the necessary changes and the motivation `here <changes.rst>`__.
+Find more details about the necessary changes and the motivation `here <docs/changes.rst>`__.
 The following table summarizes the most important syntax changes:
 
 
@@ -37,9 +37,9 @@ Features
 * Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
-* `Eigenmode Solver <eigensolver.rst>`__ for efficient calculation of normal modes
+* `Eigenmode Solver <docs/eigensolver.rst>`__ for efficient calculation of normal modes
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* efficient `Voronoi Code <voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
+* efficient `Voronoi Code <docs/voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
 * Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
