@@ -47,7 +47,7 @@ Features
 *************
 List of Demos
 *************
-Demo scripts for various applications are available in the `demo <demos/README.md>`__ directory.
+Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
