@@ -1,7 +1,21 @@
+# %% [markdown]
+# # MuMag Standard Problem #4
+#
+# This jupyter-notebook has be created with 'jupytext'
+
+# %% [markdown]
+# ## Run Simulation
+
+# %%
 from magnumnp import *
 import torch
+import pathlib
 
 Timer.enable()
+try:
+    this_dir = pathlib.Path(__file__).resolve().parent
+except:
+    this_dir = pathlib.Path().resolve()
 
 # initialize mesh
 eps = 1e-15
@@ -28,18 +42,16 @@ state.m = state.Constant([0,0,0])
 state.m[1:-1,:,:,0]   = 1.0
 state.m[(-1,0),:,:,1] = 1.0
 
-logger = Logger("data", ['t', 'm'], ["m"], fields_every=10)
-if not logger.is_resumable():
-    # relax without external field
-    minimizer = MinimizerBB([demag, exchange])
-    minimizer.minimize(state)
-    state.write_vtk(state.m, "data/m0")
+# relax without external field
+minimizer = MinimizerBB([demag, exchange])
+minimizer.minimize(state)
+state.write_vtk(state.m, "data/m0")
 
 # perform integration with external field
-logger.resume(state)
 llg = LLGSolver([demag, exchange, external])
+logger = Logger(this_dir / "data", ['t', 'm'])
 while state.t < 1e-9-eps:
-    logger << state
     llg.step(state, 1e-11)
+    logger << state
 
 Timer.print_report()

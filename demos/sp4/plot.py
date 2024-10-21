@@ -1,3 +1,7 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -14,7 +18,6 @@ ax.plot(ref[:,0]*1e9, ref[:,2], '-', color = cycle[1], linewidth = 6, alpha = 0.
 
 ax.plot(data[:,0]*1e9, data[:,3], '-', color = cycle[2], label = "magnum.np - z")
 ax.plot(ref[:,0]*1e9, ref[:,3], '-', color = cycle[2], linewidth = 6, alpha = 0.4, label = "reference - z")
-
 
 ax.set_xlim([0,1])
 ax.set_xlabel("Time t[ns]")
