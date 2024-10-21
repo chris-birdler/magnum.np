@@ -53,9 +53,8 @@ build_notebooks:
     script:
         - apt update -yq
         - apt install -y python3-opencv pandoc
-        - pip install setuptools pytest
+        - pip install setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc jupytext
         - pip install -e .
-        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc jupytex
         - mkdir -p public/notebooks
         - for demo in demos/sp4*; do
             ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o public/notebooks/$(basename $demo).ipynb )
