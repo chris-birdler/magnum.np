@@ -68,6 +68,8 @@ Installation
 ************
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
+.. code-block:: [python]
+
     mkdir venv
     python -m venv venv
     source venv/bin/activate
@@ -76,9 +78,13 @@ For a clean and independent system, we start with a clean virtual python environ
 ### from Python Package Index (PyPi)
 In order to install a release versions of magnum.np one simple uses:
 
+.. code-block:: [python]
+
     pip install magnumnp
 
 You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+.. code-block:: [python]
 
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
@@ -90,6 +96,8 @@ More advanced users can also install magnum.np from source code.
 It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
 After activating the virtual environment magnum.np can be installed using the pip -e option which allows to easily modify the source code:
+
+.. code-block:: [python]
 
     pip install -e .
 
@@ -109,7 +117,7 @@ Example
 *******
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
-.. code:: [pyhton]
+.. code-block:: [python]
 
     from magnumnp import *
     import torch
@@ -163,6 +171,8 @@ Documentation
 *************
 The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
 For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
+
+.. code-block:: [python]
 
     sphinx-build -b html docs public
 
