@@ -47,7 +47,7 @@ Features
 *************
 List of Demos
 *************
-Demo scripts for various applications are available in the [demo](demos/README.md) directory.
+Demo scripts for various applications are available in the `demo <demos/README.md>`__ directory.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
@@ -68,8 +68,6 @@ Installation
 ************
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
-.. code-block:: [python]
-
     mkdir venv
     python -m venv venv
     source venv/bin/activate
@@ -78,13 +76,9 @@ For a clean and independent system, we start with a clean virtual python environ
 ### from Python Package Index (PyPi)
 In order to install a release versions of magnum.np one simple uses:
 
-.. code-block:: [python]
-
     pip install magnumnp
 
 You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
-
-.. code-block:: [python]
 
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
@@ -97,11 +91,9 @@ It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
 After activating the virtual environment magnum.np can be installed using the pip -e option which allows to easily modify the source code:
 
-.. code-block:: [python]
-
     pip install -e .
 
-Note that a default version of [pytorch](http://www.pytorch.org) is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
+Note that a default version of http://www.pytorch.org is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
 
 
 -----------------------------
@@ -109,7 +101,7 @@ run remotely via Google Colab
 -----------------------------
 Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](https://drive.google.com/drive/folders/1Ymvx9bi0qQqW-zlOws0ahFJqoE3JCFd9?usp=share_link). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
-Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
+Some jupyter-notebook examples are included in the `demo <demos/README.md>`__ directory, which also include links to Colab, where they can directly be run without any local installation.
 
 
 *******
@@ -117,7 +109,7 @@ Example
 *******
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
-.. code-block:: [python]
+.. code:: [pyhton]
 
     from magnumnp import *
     import torch
@@ -169,14 +161,12 @@ The following demo code shows the solution of the muMAG Standard Problem #5 and 
 *************
 Documentation
 *************
-The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
+The documentation is located in the doc directory and can be built using `sphinx <https://www.sphinx-doc.org>`__.
 For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
-
-.. code-block:: [python]
 
     sphinx-build -b html docs public
 
-Alternatively, the latest version of the documentation is always available on [https://magnum.np.gitlab.io/magnum.np/](https://magnum.np.gitlab.io/magnum.np/)
+Alternatively, the latest version of the documentation is always available on https://magnum.np.gitlab.io/magnum.np/
 
 ********
 Citation
