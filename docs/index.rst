@@ -47,14 +47,14 @@ Features
 *************
 List of Demos
 *************
-Demo scripts for various applications are available in the [demo](demos/README.md) directory.
+Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
 * `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
 * `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
-* `Standard Problem #4 <demos/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
+* `Standard Problem #4 <https://florian98765.gitlab.io/magnum.np/demos/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
 * `Standard Problem #5 <demos/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
 * `Standard Problem DMI <demos/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
 * `Standard Problem Domainwall Pinning <demos/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
