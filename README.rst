@@ -1,13 +1,29 @@
-![magnum.np](logo.png)
+.. image:: ./logo.png
+  :width: 400
+  :alt: magnum.np Logo
 
+#####################################
 magnum.np 2.0.1
-===============
-magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference method. It implements state-of-the-art algorithms and is based on [pytorch](http://www.pytorch.org/), which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in Python which leads to very readable yet flexible code. Due to [pytorch](http://www.pytorch.org/) integration, extensive postprocessing can be done directly in the simulations scripts. Furthermore [pytorch](http://www.paraview.org/)'s autograd feature makes it possible to solve inverse problems without significant modifications of the code. This manual is meant to give you both a quick start and a reference to magnum.np.
+#####################################
 
-**Version 2.0:** The magnum.np interface slightly changed since version 2.0. Find more details about the necessary changes and the motivation [here](docs/changes.rst).
+magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference
+method. It implements state-of-the-art algorithms and is based on `pytorch <http://www.pytorch.org/>`__,
+which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in
+Python which leads to very readable yet flexible code. Due to `pytorch <http://www.pytorch.org/>`__
+integration, extensive postprocessing can be done directly in the simulations scripts. Alternatively,
+results can be written to PVD files and postprocessed with `Paraview <http://www.paraview.org/>`__.
+Furthermore `pytorch <http://www.paraview.org/>`__'s autograd feature makes it possible to solve
+inverse problems without significant modifications of the code. This manual is meant to give you
+both a quick start and a reference to magnum.np.
 
+**Version 2.0:** The magnum.np interface slightly changed since version 2.0.
+Find more details about the necessary changes and the motivation `here <changes.rst>`__.
+The following table summarizes the most important syntax changes:
+
+
+********
 Features
---------
+********
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
@@ -18,36 +34,38 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Bilinear and biquadratic Antiferromagnetic coupling layers (RKKY)
+* Antiferromagnetic coupling layers (RKKY)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
-* [Eigenmode Solver](docs/eigensolver.rst) for efficient calculation of normal modes
+* `Eigenmode Solver <eigensolver.rst>`__ for efficient calculation of normal modes
 * Sophisticated domain handling, e.g. for spatially varying material parameters
-* efficient [Voronoi Code](docs/voronoi.rst) for 2D and 3D problems (including intergrain phase)
-* Seamless VTK import / export via [pyvista](https://docs.pyvista.org/)
-* Inverse Problems via [pytorch](http://www.pytorch.org/)'s autograd feature
+* efficient `Voronoi Code <voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
+* Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
+* Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
 
-Documented Demos:
------------------
+*************
+List of Demos
+*************
 Demo scripts for various applications are available in the [demo](demos/README.md) directory.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-   * [Slonczewski Spin Torque](demos/slonczewski/run2.ipynb) ([Colab](https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH))
-   * [Softmagnetic Composite](demos/softmagnetic_composite/run.ipynb) ([Colab](https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir))
-   * [Spin Orbit Torque](demos/sot/run.ipynb) ([Colab](https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8))
-   * [Standard Problem #4](demos/sp4/run.ipynb) ([Colab](https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu))
-   * [Standard Problem #5](demos/sp5/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk))
-   * [Standard Problem Domainwall Pinning](demos/sp_domainwall_pinning/run.ipynb) ([Colab](https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB))
-   * [Standard Problem DMI](demos/sp_DMI/run.ipynb) ([Colab](https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W))
-   * [Standard Problem FMR](demos/sp_FMR/run.ipynb) ([Colab](https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS))
-   * [Standard Problem RKKY](demos/rkky/run.ipynb) ([Colab](https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo))
-   * [Stochastic Integration](demos/langevin/run.ipynb) ([Colab](https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q))
-   * [Dispersion Calculator](demos/dispersion_calculator.ipynb) ([Colab](https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2))
+* `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
+* `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
+* `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
+* `Standard Problem #4 <demos/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
+* `Standard Problem #5 <demos/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
+* `Standard Problem DMI <demos/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
+* `Standard Problem Domainwall Pinning <demos/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
+* `Standard Problem FMR <demos/sp_FMR.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS>`__)
+* `Standard Problem RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
+* `Stochastic Integration <demos/langevin.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q>`__)
+* `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
+************
 Installation
-------------
+************
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
     mkdir venv
@@ -66,6 +84,7 @@ You can also easily install different versions from private repositories. E.g. u
 
 
 ### from source code (gitlab.com)
+---------------------------------
 More advanced users can also install magnum.np from source code.
 It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
@@ -82,8 +101,9 @@ Magnum.np could also be used without any hardware by executing it remotely on re
 Some jupyter-notebook examples are included in the [demo](demos/README.md) directory, which also include links to Colab, where they can directly be run without any local installation.
 
 
+*******
 Example
--------
+*******
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
 ```python
@@ -135,8 +155,9 @@ while state.t < 5e-9:
 Timer.print_report()
 ```
 
+*************
 Documentation
--------------
+*************
 The documentation is located in the doc directory and can be built using [sphinx](https://www.sphinx-doc.org).
 For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
 
@@ -144,17 +165,18 @@ For example the following commands build an HTML documentation of the actual sou
 
 Alternatively, the latest version of the documentation is always available on [https://magnum.np.gitlab.io/magnum.np/](https://magnum.np.gitlab.io/magnum.np/)
 
-
+********
 Citation
---------
+********
 If you use magnum.np in your work or publication, please cite the following reference:
 
-[1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", to be published (2023).
+[1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", Scientific Reports volume 13, 12054 (2023).
 
 
+************
 Contributing
-------------
+************
 Contributions are gratefully accepted.
-The source code is hosted on [www.gitlab.com/magnum.np/magnum.np](www.gitlab.com/magnum.np/magnum.np).
+The source code is hosted on `www.gitlab.com/magnum.np/magnum.np <http://www.gitlab.com/magnum.np/magnum.np>`__.
 If you have any issues or question, just open an issue via gitlab.com.
 To contribute code, fork our repository on gitlab.com and create a corresponding merge request.

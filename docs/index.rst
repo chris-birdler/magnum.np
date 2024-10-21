@@ -47,6 +47,10 @@ Features
 *************
 List of Demos
 *************
+Demo scripts for various applications are available in the [demo](demos/README.md) directory.
+
+The following demos are also stored on Google Colab, where they can directly be run without any local installation:
+
 * `Slonczewski Spin Torque <demos/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
 * `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
