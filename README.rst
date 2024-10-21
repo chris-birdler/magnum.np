@@ -73,7 +73,9 @@ For a clean and independent system, we start with a clean virtual python environ
     source venv/bin/activate
 
 
-### from Python Package Index (PyPi)
+--------------------------------
+from Python Package Index (PyPi)
+--------------------------------
 In order to install a release versions of magnum.np one simple uses:
 
     pip install magnumnp
