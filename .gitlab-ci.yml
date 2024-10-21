@@ -58,7 +58,7 @@ build_notebooks:
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
         - for demo in demos/sp4*; do
-            ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o public/notebooks/$(basename $demo).ipynb )
+            ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o ../public/notebooks/$(basename $demo).ipynb )
           done
     artifacts:
         paths:
