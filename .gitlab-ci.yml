@@ -64,7 +64,7 @@ build_notebooks:
           done
     artifacts:
         paths:
-            - public
+            - public/notebooks
 #    rules:
 #        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
