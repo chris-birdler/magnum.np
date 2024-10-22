@@ -68,17 +68,17 @@ build_notebooks:
 #    rules:
 #        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
-#pages:
-#    stage: deploy
-#    script:
-#        - apt update -yq
-#        - apt install -y python3-opencv pandoc
-#        - pip install setuptools pytest
-#        - pip install -e .
-#        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
-#        - sphinx-build -b html docs public
-#    artifacts:
-#        paths:
-#            - public
-##    rules:
-##        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+pages:
+    stage: deploy
+    script:
+        - apt update -yq
+        - apt install -y python3-opencv pandoc
+        - pip install setuptools pytest
+        - pip install -e .
+        - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
+        - sphinx-build -b html docs public
+    artifacts:
+        paths:
+            - public
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

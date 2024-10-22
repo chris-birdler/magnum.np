@@ -10,6 +10,7 @@
 from magnumnp import *
 import torch
 import pathlib
+from tqdm import tqdm
 
 Timer.enable()
 try:
@@ -18,7 +19,7 @@ except:
     this_dir = pathlib.Path().resolve()
 
 # initialize mesh
-eps = 1e-15
+dt = 1e-11
 n  = (100, 25, 1)
 dx = (5e-9, 5e-9, 3e-9)
 mesh = Mesh(n, dx)
@@ -31,6 +32,7 @@ state.material = {
     }
 
 # initialize field terms
+set_log_level(100)
 demag    = DemagField()
 exchange = ExchangeField()
 external = ExternalField([-24.6e-3/constants.mu_0,
@@ -50,8 +52,10 @@ state.write_vtk(state.m, "data/m0")
 # perform integration with external field
 llg = LLGSolver([demag, exchange, external])
 logger = Logger(this_dir / "data", ['t', 'm'])
-while state.t < 1e-9-eps:
+
+for i in tqdm(torch.arange(0, 1e-9, dt)):
     llg.step(state, 1e-11)
     logger << state
 
+set_log_level(30)
 Timer.print_report()
