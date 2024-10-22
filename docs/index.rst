@@ -54,7 +54,7 @@ The following demos are also stored on Google Colab, where they can directly be 
 * `Slonczewski Spin Torque <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
 * `Softmagnetic Composite <https://florian98765.gitlab.io/magnum.np/notebooks/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
 * `Spin Orbit Torque <https://florian98765.gitlab.io/magnum.np/notebooks/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
-* `Standard Problem #4 <https://florian98765.gitlab.io/magnum.np/notebooks/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
+* `Standard Problem #4 <notebooks/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
 * `Standard Problem #5 <https://florian98765.gitlab.io/magnum.np/notebooks/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
 * `Standard Problem DMI <https://florian98765.gitlab.io/magnum.np/notebooks/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
 * `Standard Problem Domainwall Pinning <https://florian98765.gitlab.io/magnum.np/notebooks/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
