@@ -85,11 +85,17 @@ def get_gpu_with_least_memory():
     pynvml.nvmlInit()
     num_gpus = pynvml.nvmlDeviceGetCount()
 
-    gpu_memory = []
-    for i in range(num_gpus):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-        mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        gpu_memory.append(mem_info.used)
 
-    pynvml.nvmlShutdown()
-    return gpu_memory.index(min(gpu_memory))
+    if num_gpus == 1:
+        pynvml.nvmlShutdown()
+        return 0
+    
+    else:
+        gpu_memory = []
+        for i in range(num_gpus):
+            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            gpu_memory.append(mem_info.used)
+
+        pynvml.nvmlShutdown()
+        return gpu_memory.index(min(gpu_memory))
