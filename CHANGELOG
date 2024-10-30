@@ -1,3 +1,6 @@
+2.0.1 [2024-10-16]
+- added CubicAnisotropyField2 (takes axes instead of Euler angles and is much faster)
+
 2.0.0 [2024-10-03]
 - remove DecoratedTensor and simplify internal structure
 - all lambda functions now depend on full State instead of time
