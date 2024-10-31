@@ -53,7 +53,8 @@ notebooks:
     script:
         # build notebooks
         - apt update -yq
-        - apt install -y --upgrade pip python3-opencv pandoc setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc ipython jupyter jupytext ipykernel
+        - apt install -y python3-opencv pandoc 
+        - pip install --upgrade pip setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc ipython jupyter jupytext ipykernel
         - pip install -e .
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
