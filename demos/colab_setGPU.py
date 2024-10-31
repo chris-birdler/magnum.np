@@ -6,8 +6,9 @@ def set_gpu_runtime(notebook_path):
         notebook = json.load(f)
     
     # Add Colab GPU runtime metadata
-    notebook['metadata']['colab'] = notebook.get('metadata', {}).get('colab', {})
-    notebook['metadata']['colab']['hardwareAccelerator'] = 'GPU'
+    notebook["metadata"]["colab"] = notebook.get("metadata", {}).get("colab", {})
+    notebook["metadata"]["colab"]["gpuType"] = "T4"
+    notebook["metadata"]["accelerator"] = "GPU"
     
     # Save the notebook with updated metadata
     with open(notebook_path, "w") as f:
