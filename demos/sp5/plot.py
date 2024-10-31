@@ -1,10 +1,14 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
 data = np.loadtxt("data/log.dat")
 ref = np.loadtxt("ref/m.dat")
 
-fig, ax = plt.subplots(figsize=(10,5))
+fig, ax = plt.subplots(figsize=(15,5))
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 ax.plot(data[:,0]*1e9, data[:,1], '-', color = cycle[0], label = "magnum.np - x")

@@ -1,13 +1,11 @@
 import pytest
 import torch
 from magnumnp import *
-from sp5_run import run_sp5
+import run
 import numpy as np
 import pathlib
 
 def test_sp5():
-    run_sp5()
-
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "m_test.dat"
