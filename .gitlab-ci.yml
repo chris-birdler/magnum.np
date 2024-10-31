@@ -48,9 +48,10 @@ deploy_pypi:
     rules:
         - if: $PYPI_USERNAME && $CI_COMMIT_TAG
 
-build_notebooks:
+notebooks:
     stage: build
     script:
+        # build notebooks
         - apt update -yq
         - apt install -y python3-opencv pandoc
         - pip install setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc ipython jupyter jupytext ipykernel 
@@ -62,6 +63,15 @@ build_notebooks:
               ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
               mv $demo/$(basename $demo).ipynb public/notebooks;
           done
+        # deploy to github (in order to be accessible via Colab
+        - git config --global user.email "magnumnp.micromagnetic@gmail.com"
+        - git config --global user.name "magnum.np GitLab CI"
+        - git clone https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
+        - cp public/notebooks/* magnumnp_demos
+        - cd magnumnp_demos
+        - git add .
+        - git commit -m "Add generated .ipynb file"
+        - git push https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
     artifacts:
         paths:
             - public/notebooks
