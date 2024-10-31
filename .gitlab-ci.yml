@@ -60,7 +60,7 @@ notebooks:
         - mkdir -p public/notebooks
         - for demo in demos/sp4* ;
           do
-              ( cd $demo; cat run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
+              ( cd $demo; cat ../colab_header.py run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
               mv $demo/$(basename $demo).ipynb public/notebooks;
           done
         # deploy to github (in order to be accessible via Colab
