@@ -63,6 +63,8 @@ notebooks:
               ( cd $demo; cat ../colab_header.py run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
               mv $demo/$(basename $demo).ipynb public/notebooks;
           done
+        - python demos/colab_setGPU.py public/notebooks/*.ipynb
+
         # deploy to github (in order to be accessible via Colab
         - git config --global user.email "magnumnp.micromagnetic@gmail.com"
         - git config --global user.name "magnum.np GitLab CI"
