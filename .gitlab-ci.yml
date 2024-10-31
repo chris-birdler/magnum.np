@@ -62,7 +62,7 @@ notebooks:
         - for demo in sp4* ;
           do
               ( cd $demo; cat ../colab_header.py run.py plot.py | sed -e "s/DEMO/$demo/g" | jupytext --to notebook --execute -o $demo.ipynb );
-              mv $demo.ipynb ../public/notebooks;
+              mv $demo/$demo.ipynb ../public/notebooks;
           done
         - python colab_setGPU.py ../public/notebooks/*.ipynb
 
