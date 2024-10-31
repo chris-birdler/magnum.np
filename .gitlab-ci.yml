@@ -58,18 +58,19 @@ notebooks:
         - pip install -e .
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
-        - for demo in demos/sp4* ;
+        - cd demos
+        - for demo in sp4* ;
           do
-              ( cd $demo; cat ../colab_header.py run.py plot.py | jupytext --to notebook --execute -o $(basename $demo).ipynb );
-              mv $demo/$(basename $demo).ipynb public/notebooks;
+              cat ../colab_header.py run.py plot.py | sed -e "s/DEMO/$demo" | jupytext --to notebook --execute -o $demo.ipynb;
+              mv $demo.ipynb ../public/notebooks;
           done
-        - python demos/colab_setGPU.py public/notebooks/*.ipynb
+        - python colab_setGPU.py ../public/notebooks/*.ipynb
 
         # deploy to github (in order to be accessible via Colab
         - git config --global user.email "magnumnp.micromagnetic@gmail.com"
         - git config --global user.name "magnum.np GitLab CI"
         - git clone https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
-        - cp public/notebooks/* magnumnp_demos
+        - cp ../public/notebooks/* magnumnp_demos
         - cd magnumnp_demos
         - git add .
         - git commit -m "Add generated .ipynb file"
