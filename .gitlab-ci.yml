@@ -88,7 +88,7 @@ pages:
         - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
         - sphinx-build -b html docs public
     dependencies:
-        - build_notebooks
+        - notebooks
     artifacts:
         paths:
             - public
