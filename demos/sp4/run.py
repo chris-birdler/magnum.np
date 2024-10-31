@@ -1,7 +1,5 @@
 # %% [markdown]
 # # MuMag Standard Problem #4
-#
-# This jupyter-notebook has be created with 'jupytext'
 
 # %% [markdown]
 # ## Run Simulation
