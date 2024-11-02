@@ -20,6 +20,11 @@ import logging
 
 __all__ = ["set_log_level", "debug", "warning", "error", "info", "info_green", "info_blue"]
 
+INFO_GREEN = logging.INFO+5
+INFO_BLUE = logging.INFO
+logging.addLevelName(INFO_GREEN, "INFO")
+logging.addLevelName(INFO_BLUE, "INFO")
+
 # create magnum.fe logger
 logger = logging.getLogger('magnum.np')
 
@@ -47,10 +52,10 @@ def error(message, *args, **kwargs):
     logger.error(RED % message, *args, **kwargs)
 
 def info_green(message, *args, **kwargs):
-    logger.log(logging.INFO+5, GREEN % message, *args, **kwargs)
+    logger.log(INFO_GREEN, GREEN % message, *args, **kwargs)
 
 def info_blue(message, *args, **kwargs):
-    logger.log(logging.INFO, BLUE % message, *args, **kwargs)
+    logger.log(INFO_BLUE, BLUE % message, *args, **kwargs)
 
 def set_log_level(level):
     """
