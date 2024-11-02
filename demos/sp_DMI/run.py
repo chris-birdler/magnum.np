@@ -11,6 +11,7 @@ import torch
 import numpy as np
 import pathlib
 
+set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent

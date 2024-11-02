@@ -29,8 +29,6 @@ logger.addHandler(handler)
 
 logger.setLevel(logging.INFO)
 
-info = logger.info
-
 RED = "\033[1;37;31m%s\033[0m"
 BLUE = "\033[1;37;34m%s\033[0m"
 GREEN = "\033[1;37;32m%s\033[0m"
@@ -47,10 +45,10 @@ def error(message, *args, **kwargs):
     logger.error(RED % message, *args, **kwargs)
 
 def info_green(message, *args, **kwargs):
-    info(GREEN % message, *args, **kwargs)
+    logger.log(logging.INFO+5, GREEN % message, *args, **kwargs)
 
 def info_blue(message, *args, **kwargs):
-    info(BLUE % message, *args, **kwargs)
+    logger.log(logging.INFO, BLUE % message, *args, **kwargs)
 
 def set_log_level(level):
     """
