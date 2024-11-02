@@ -29,6 +29,8 @@ logger.addHandler(handler)
 
 logger.setLevel(logging.INFO)
 
+info = logger.info
+
 RED = "\033[1;37;31m%s\033[0m"
 BLUE = "\033[1;37;34m%s\033[0m"
 GREEN = "\033[1;37;32m%s\033[0m"

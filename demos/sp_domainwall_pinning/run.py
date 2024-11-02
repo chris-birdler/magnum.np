@@ -8,7 +8,9 @@
 from magnumnp import *
 import numpy as np
 import pathlib
+from tqdm import tqdm
 
+set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -57,7 +59,7 @@ external = ExternalField(state.Constant([0, 0, 0]))
 
 minimizer = MinimizerBB([exchange, aniso, external])
 logger = ScalarLogger(this_dir / "data" / "m.dat", ['t', external.h, 'm'])
-for h in torch.linspace(Hextmin, Hextmax, steps=100):
+for h in tqdm(torch.linspace(Hextmin, Hextmax, steps=100)):
     external.h = state.Constant([0, h, 0])
     minimizer.minimize(state)
     logger << state

@@ -10,6 +10,7 @@ import torch
 import pathlib
 from tqdm import tqdm
 
+set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -32,7 +33,6 @@ state.material = {
     }
 
 # initialize field terms
-set_log_level(100)
 demag    = DemagField()
 exchange = ExchangeField()
 torque   = SpinTorqueZhangLi()
@@ -59,5 +59,4 @@ for i in tqdm(torch.arange(0, 5e-9, dt)):
     llg.step(state, dt)
     logger << state
 
-set_log_level(30)
 Timer.print_report()
