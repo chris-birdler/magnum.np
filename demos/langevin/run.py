@@ -1,24 +1,22 @@
 # %% [markdown]
-# # Langevin Demo
+# # Stochastic Time-Integration Demo
+#
+# based on Leliaert et al., "Adaptively time stepping the stochastic Landau-Lifshitz-Gilbert equation at nonzero temperature:
+#                            Implementation and validation in MuMax 3", AIP advances 7, 125010 (2017)
+#
+# For comparison with the paper Leliaert et al., AIP advances 7, 125010 (2017) Figure 5 we need to simulate a 2**18 (64**3) of uncoupled cells.
+# Since the cell are uncoupled the volume in our calculations has to be the volume of one cell and not the whole simulated material.
 
 # %% [markdown]
 # ## Run Simulation
 
 # %%
 from magnumnp import *
-import numpy as np
+import torch
 import pathlib
+from tqdm import tqdm
 
-"""
-Stochastic Time-Integration Demo
-
-based on Leliaert et al., "Adaptively time stepping the stochastic Landau-Lifshitz-Gilbert equation at nonzero temperature:
-                           Implementation and validation in MuMax 3", AIP advances 7, 125010 (2017)
-
-For comparison with the paper Leliaert et al., AIP advances 7, 125010 (2017) Figure 5 we need to simulate a 2**18 (64**3) of uncoupled cells.
-Since the cell are uncoupled the volume in our calculations has to be the volume of one cell and not the whole simulated material.
-"""
-
+set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -56,4 +54,5 @@ for xi in [30, 91, 242, 725]:
         external.h = [h/constants.mu_0, 0, 0]
         llg.step(state, dt=t_final)
         logger << state
+
 Timer.print_report()
