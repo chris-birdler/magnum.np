@@ -1,7 +1,11 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(15,5))
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 for i, xi in enumerate([30, 91, 242, 725]):
@@ -23,4 +27,3 @@ ax.set_ylabel("Average Magnetization $m_z$")
 ax.legend()
 ax.grid()
 fig.savefig("data/results.png")
-
