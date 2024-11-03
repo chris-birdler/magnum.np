@@ -1,13 +1,11 @@
 import pytest
 import torch
 from magnumnp import *
-from sot_run import run_sot
+import run
 import numpy as np
 import pathlib
 
 def test_sot():    
-    run_sot()
-    
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "ref_test.dat"
@@ -22,4 +20,4 @@ def test_sot():
     ref_y = torch.from_numpy(ref[:,2])
     
     torch.testing.assert_close(data_x, ref_x, atol=1e-3, rtol=1e-3)
-    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-3) 
+    torch.testing.assert_close(data_y, ref_y, atol=1e-3, rtol=1e-3)
