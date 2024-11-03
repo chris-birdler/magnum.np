@@ -1,15 +1,13 @@
 import pytest
 import torch
 from magnumnp import *
-from slonczewski2_run import run_slonczewski2
+import run
 import numpy as np
 import pathlib
 
 def test_slonczewski2():
-    run_slonczewski2()
-
     this_dir = pathlib.Path(__file__).resolve().parent
-    data_path = this_dir / "data2" / "log.dat"
+    data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "log2.dat"
 
     data = np.loadtxt(data_path)
