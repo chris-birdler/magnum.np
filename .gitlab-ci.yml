@@ -55,6 +55,9 @@ notebooks:
     tags:
         - saas-linux-medium-amd64-gpu-standard
     script:
+        # work around for 
+        - echo $TZ
+        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
         # build notebooks
         - apt update -yq
         - apt install -y python3-opencv pandoc 
