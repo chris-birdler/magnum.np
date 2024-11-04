@@ -50,6 +50,7 @@ deploy_pypi:
 
 notebooks:
     stage: build
+    timeout: 4h
     script:
         # build notebooks
         - apt update -yq
