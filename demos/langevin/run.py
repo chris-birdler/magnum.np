@@ -30,7 +30,7 @@ dx = (10e-9, 10e-9, 10e-9)
 mesh = Mesh(n, dx)
 
 Ms = 1e6
-t_final = 2e-8
+t_final = 10e-9
 
 state = State(mesh)
 state.material = {

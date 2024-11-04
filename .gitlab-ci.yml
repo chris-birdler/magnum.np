@@ -49,6 +49,9 @@ deploy_pypi:
         - if: $PYPI_USERNAME && $CI_COMMIT_TAG
 
 notebooks:
+    image: nvcr.io/nvidia/pytorch:24.03-py3
+    tags:
+        - saas-linux-medium-amd64-gpu-standard
     stage: build
     timeout: 4h
     script:
@@ -60,7 +63,7 @@ notebooks:
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
         - cd demos
-        - for demo in langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR;
+        - for demo in inverse_demag langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR;
           do
               ( cd $demo; cat ../colab_header.py run.py plot.py | sed -e "s/DEMO/$demo/g" | jupytext --to notebook --execute -o $demo.ipynb );
               mv $demo/$demo.ipynb ../public/notebooks;
