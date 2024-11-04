@@ -33,6 +33,6 @@ J.backward()
 state.write_vtk(Ms.grad, this_dir / "data" / "m_grad.vti")
 m_opt = Ms.grad > 0.
 state.write_vtk(m_opt, this_dir / "data" / "m_opt.vti")
-torch.save([Ms.grad, torch.tensor(n), torch.tensor(dx)], "data/grad.pt")
+torch.save([torch.tensor(n), torch.tensor(dx), Ms.grad], "data/grad.pt")
 
 Timer.print_report()
