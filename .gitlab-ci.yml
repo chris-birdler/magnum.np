@@ -53,7 +53,7 @@ notebooks:
     tags:
         - saas-linux-medium-amd64-gpu-standard
     stage: build
-    timeout: 4h
+    #timeout: 4h
     script:
         # build notebooks
         - apt update -yq
