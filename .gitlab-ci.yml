@@ -66,12 +66,8 @@ notebooks:
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
         - cd demos
-        - for demo in inverse_demag langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR;
-          do
-              ( cd $demo; cat ../colab_header.py run.py plot.py | sed -e "s/DEMO/$demo/g" | jupytext --to notebook --execute -o $demo.ipynb );
-              mv $demo/$demo.ipynb ../public/notebooks;
-          done
-        - python colab_setGPU.py ../public/notebooks/*.ipynb
+        - ./create_notebook.sh inverse_demag langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
+        - mv $(find . -name "*.ipynb") ../public/notebooks
 
         # deploy to github (in order to be accessible via Colab
         - git config --global user.email "magnumnp.micromagnetic@gmail.com"
