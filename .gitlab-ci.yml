@@ -50,8 +50,6 @@ deploy_pypi:
 
 notebooks:
     image: nvcr.io/nvidia/pytorch:24.03-py3
-    tags:
-        - saas-linux-medium-amd64-gpu-standard
     stage: build
     #timeout: 4h
     script:
@@ -82,6 +80,8 @@ notebooks:
     artifacts:
         paths:
             - public/notebooks
+    tags:
+        - saas-linux-medium-amd64-gpu-standard
 #    rules:
 #        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
