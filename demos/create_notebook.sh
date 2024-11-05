@@ -1,6 +1,6 @@
 #!/bin/bash
 
-demos=$1
+demos=$@
 for demo in $demos
 do
     (
