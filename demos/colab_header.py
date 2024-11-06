@@ -6,6 +6,14 @@
 # %% [markdown]
 # ## Install magnum.np and fetch reference data (required for Colab)
 
+# ---
+# jupyter:
+#   metadata:
+#     colab:
+#       gpuType: T4
+#     accelerator: GPU
+# ---
+
 # %%
 !pip install -q triton magnumnp
 from os import path
