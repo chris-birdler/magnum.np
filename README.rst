@@ -44,10 +44,11 @@ Features
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 
 
-*************
-List of Demos
-*************
+**************
+Selected Demos
+**************
 Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
+See also `https://florian98765.gitlab.io/magnum.np/demos.html <http://florian98765.gitlab.io/magnum.np/demos.html>`__ for a full list of available demos.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
