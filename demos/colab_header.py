@@ -1,11 +1,3 @@
-# %% [markdown]
-# This jupyter-notebook has be created with 'jupytext'.
-#
-# Use this [Link](https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/DEMO.ipynb) to directly open the Notebook in Google Colab.
-
-# %% [markdown]
-# ## Install magnum.np and fetch reference data (required for Colab)
-
 # ---
 # jupyter:
 #   metadata:
@@ -13,6 +5,15 @@
 #       gpuType: T4
 #     accelerator: GPU
 # ---
+
+
+# %% [markdown]
+# This jupyter-notebook has be created with 'jupytext'.
+#
+# Use this [Link](https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/DEMO.ipynb) to directly open the Notebook in Google Colab.
+
+# %% [markdown]
+# ## Install magnum.np and fetch reference data (required for Colab)
 
 # %%
 !pip install -q triton magnumnp
