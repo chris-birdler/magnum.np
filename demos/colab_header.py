@@ -1,9 +1,8 @@
 # ---
 # jupyter:
-#   metadata:
-#     colab:
-#       gpuType: T4
-#     accelerator: GPU
+#   colab:
+#     gpuType: T4
+#   accelerator: GPU
 # ---
 
 
