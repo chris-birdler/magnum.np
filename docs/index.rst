@@ -75,6 +75,7 @@ List of Demos
    nonequidistant
    inverse_cube
    logging
+   auto_examples
 
 
 ********
