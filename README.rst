@@ -70,6 +70,8 @@ Installation
 ************
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
+.. code::
+
     mkdir venv
     python -m venv venv
     source venv/bin/activate
@@ -80,9 +82,13 @@ from Python Package Index (PyPi)
 --------------------------------
 In order to install a release versions of magnum.np one simple uses:
 
+.. code::
+
     pip install magnumnp
 
 You can also easily install different versions from private repositories. E.g. use the following command to install the latest version of the main branch:
+
+.. code::
 
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
@@ -95,6 +101,8 @@ It can be downloaded from https://gitlab.com/magnum.np/magnum.np .
 
 After activating the virtual environment magnum.np can be installed using the pip -e option which allows to easily modify the source code:
 
+.. code::
+
     pip install -e .
 
 Note that a default version of http://www.pytorch.org is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
@@ -103,7 +111,7 @@ Note that a default version of http://www.pytorch.org is included in magnum.np's
 -----------------------------
 run remotely via Google Colab
 -----------------------------
-Magnum.np could also be used without any hardware by executing it remotely on resources provided by [Google Colab](https://drive.google.com/drive/folders/1Ymvx9bi0qQqW-zlOws0ahFJqoE3JCFd9?usp=share_link). The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
+Magnum.np could also be used without any hardware by executing it remotely on resources provided by Google Colab. The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
 Some jupyter-notebook examples are included in the `demo <demos/README.md>`__ directory, which also include links to Colab, where they can directly be run without any local installation.
 
@@ -113,7 +121,7 @@ Example
 *******
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
-.. code:: [pyhton]
+.. code:: [python]
 
     from magnumnp import *
     import torch
