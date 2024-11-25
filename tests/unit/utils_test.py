@@ -12,6 +12,22 @@ def test_voronoi():
     voi.add_intergrain_phase(2)
     assert voi.domains.unique().size() == torch.Size([11])
 
+def test_voronoi2D():
+    n  = (100, 100, 100)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2.,-n[1]*dx[1]/2.,-n[2]*dx[2]/2.))
+    state = State(mesh)
+
+    num_grains = 10
+    L = torch.tensor(mesh.dx)*torch.tensor(mesh.n)
+    offset = torch.tensor(mesh.origin)
+    seed_points = L * torch.rand((num_grains, 3)) + offset
+    seed_points[:,2] = 0
+
+    voi = Voronoi(mesh, seed_points = seed_points)
+    domains = voi.relax()
+    assert voi.domains.unique().size() == torch.Size([10])
+
 def test_MFM():
     n = (100, 20, 10)
     dx = (1e-9, 2e-9, 5e-9)
