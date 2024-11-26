@@ -63,7 +63,7 @@ state.material["Ku_axis"][cube2] = torch.tensor([0.04902541, 0.0919583, 0.994555
 state.material["Ku_axis"][cube3] = torch.tensor([-0.07325518, 0.0437713, 0.99635222])
 state.material["Ku_axis"][cube4] = torch.tensor([0.02283161, -0.08166655, 0.99639816])
 
-state.write_vtk(state.material, "data/m0")
+write_vti(state.material, "data/material.vti", state)
 
 # initialize field terms
 demag    = DemagField()
@@ -80,8 +80,8 @@ minimizer = MinimizerBB([exchange, aniso, external])
 m_magnetic = lambda state: state.m[magnetic].sum() / magnetic.sum()
 logger = Logger(this_dir / "data", [external.h, 'm', m_magnetic])
 
-for i in tqdm(range(4000)):
-    external.h = [0.0, 0.0, -i * 1e-3 / constants.mu_0]
+for hz in tqdm(torch.linspace(2.5, 3.0, steps=500)):
+    external.h = [0.0, 0.0, -hz / constants.mu_0]
     steps = minimizer.minimize(state)
     logger << state
 
