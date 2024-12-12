@@ -97,7 +97,7 @@ class LLGSolver(object):
             dm = self.dm(state.t, state.m, state=state, alpha = 1.0).abs().max() / constants.gamma # use same scaling as within minimizer
             logging.info_blue("[LLG] relax: t=%g |dm|=%g" % (state.t-t0, dm))
             if dm < dm_tol:
-                logging.info_blue("[LLG] relax: Succesfully relaxed system (dm_tol = %g)" %dm_tol)
+                logging.info_blue("[LLG] relax: Successfully relaxed system (dm_tol = %g)" %dm_tol)
                 state.t = t0
                 return True
 
