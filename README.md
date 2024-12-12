@@ -6,6 +6,8 @@ magnum.np is a Python library for the solution of micromagnetic problems with th
 
 **Version 2.0:** The magnum.np interface slightly changed since version 2.0. Find more details about the necessary changes and the motivation [here](docs/changes.rst).
 
+My branch of ´magnum.np´
+
 Features
 --------
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
