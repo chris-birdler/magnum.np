@@ -215,3 +215,7 @@ class DemagField(LinearFieldTerm):
         return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                             hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                             hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+
+    def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
+        E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
+        return E[domain].sum()
