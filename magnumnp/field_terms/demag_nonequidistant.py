@@ -124,10 +124,14 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         shape = self._shape(state)
         s = [shape[i] for i in dim]
 
-        m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
-        hx = torch.zeros_like(m_pad_fft[...,0])
-        hy = torch.zeros_like(m_pad_fft[...,0])
-        hz = torch.zeros_like(m_pad_fft[...,0])
+        if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
+            m_pad_fft = state.material["Ms"] * state.m
+        else:
+            m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
+
+        hx = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
+        hy = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
+        hz = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
 
         for i_dst in range(state.mesh.n[2]):
             for i_src in range(state.mesh.n[2]):
@@ -136,9 +140,14 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
                     hy[:,:,i_src] += self._N[i_src][i_dst][1][ax][:,:,0]*m_pad_fft[:,:,i_dst,ax]
                     hz[:,:,i_src] += self._N[i_src][i_dst][2][ax][:,:,0]*m_pad_fft[:,:,i_dst,ax]
 
-        hx = torch.fft.irfftn(hx, dim = dim)
-        hy = torch.fft.irfftn(hy, dim = dim)
-        hz = torch.fft.irfftn(hz, dim = dim)
+        if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
+            hx = hx.real.clone()
+            hy = hy.real.clone()
+            hz = hz.real.clone()
+        else:
+            hx = torch.fft.irfftn(hx, dim = dim)
+            hy = torch.fft.irfftn(hy, dim = dim)
+            hz = torch.fft.irfftn(hz, dim = dim)
 
         return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                             hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
