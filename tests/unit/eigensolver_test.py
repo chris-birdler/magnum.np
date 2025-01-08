@@ -17,8 +17,7 @@ def test_singlespin_hext():
 
     eigen = EigenSolver(state, [], [external])
     res = eigen.solve(k=20)
-
-    print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*Ms).numpy())
+    print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*hext).numpy())
     torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*hext), atol=1e-10, rtol=1e-10)
 
 def test_singlespin_exchange():
@@ -37,7 +36,7 @@ def test_singlespin_exchange():
     eigen = EigenSolver(state, [exchange], [external])
     res = eigen.solve(k=20)
 
-    print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*Ms).numpy())
+    print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*hext).numpy())
     torch.testing.assert_close(res.omega[0].abs(), torch.tensor(constants.gamma*hext), atol=0, rtol=1e-6)
 
 # this test only succeeds if ran as a single test (seems to depend on the random initial value of eigs)
@@ -58,7 +57,7 @@ def test_singlespin_aniso():
 
     eigen = EigenSolver(state, [aniso], [])
     res = eigen.solve(k=20)
-#    print("omega:", res.omega)
+
     print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*Ms).numpy())
     torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*Ms), atol=1e-10, rtol=1e-10)
 
