@@ -36,7 +36,7 @@ def test_write_vti(tmp_path):
 
     for f in [tmp_path / "m.vti", tmp_path / "data" / "m.vti"]:
         mesh, fields = read_vti(f)
-        assert len(ields) == 1
+        assert len(fields) == 1
         assert fields['m'].shape == (2, 2, 2, 3)
 
 def test_read_image():
