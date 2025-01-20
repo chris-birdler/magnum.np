@@ -43,10 +43,7 @@ def test_read_image():
     """
     Reads in a greyscale image ("init_mag_greyscale.png", 8bit). Calls the read_image function,
     which should be tested. The values between 0 and 256 are changed to only -1 and 1 values. The
-    array is taken as initial mz magnetization. Then a 20mT external field is applied. The
-    simulated time is 20ns.
-
-    This test asserts that the initial and final average mz magnetization have defined values!
+    array is taken as initial mz magnetization.
     """
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "stripe_domains.png"
