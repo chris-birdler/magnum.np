@@ -4,11 +4,11 @@
 Getting Started
 ###############
 
-The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex. Google Colab allows to run magnum.np demos without local installation on CPUs as well as on GPUs.
+The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex. Google Colab allows to run *magnum.np* demos without local installation on CPUs as well as on GPUs.
 
 Standard Problem #5
 *******************
-As magnum.np is a Python library this simulation script is a Python script meaning magnum.np first needs to be imported with
+As *magnum.np* is a Python library this simulation script is a Python script meaning *magnum.np* first needs to be imported with
 
 .. code-block:: python
 
@@ -82,7 +82,7 @@ Once the initial magnetic vortex pattern is found the LLG solver is reapplied, t
 
   Timer.print_report()
 
-Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through magnum.np, in order to catch mistakes in the code when new features are added.
+Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through *magnum.np*, in order to catch mistakes in the code when new features are added.
 
 .. code-block:: python
 

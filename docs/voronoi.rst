@@ -21,7 +21,7 @@ In order to accurately model the microstructure of magnetic materials one often 
 .. image:: _static/voronoi_simple.png
   :width: 400
 
-By default `magnum.np` uses equally distributed `seed_points`, but the user can also provide selected `seed_points` as a parameter.
+By default *magnum.np* uses equally distributed `seed_points`, but the user can also provide selected `seed_points` as a parameter.
 (e.g. `seed_points` could be chosen in a 2D plane in order to create quasi-2D grains). Since a simple Voronoi Tesselation leads to rather irregular grains, 
 one can use Llyod's Method to improve the grain regularity. After an initial Voronoi Tesselation the center of each grain is calculated and those centers are
 used as `seed_points` for the next iteration. E.g. the following code performes 10 iterations and yields a much more regular grain structure:

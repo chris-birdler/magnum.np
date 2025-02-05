@@ -6,7 +6,7 @@ Logging
 #######
 
 
-Within magnum.np you are provided with three Loggers in order to log the simulation state. These are the :class:`.ScalarLogger`, the :class:`.FieldLogger` and the :class:`.Logger`. The :class:`.ScalarLogger` is useful to log scalar values such as the time and the averaged magnetization. The :class:`.FieldLogger` is used to log arbitrary scalar and vector fields alongside the simulation time. Lastly, :class:`.Logger` logs both scalar and field values by using both the :class:`.ScalarLogger` and the :class:`.FieldLogger`. Furthermore, magnum.np includes a resume function which enables the user to restart a simulation from the last logged state.
+Within *magnum.np* you are provided with three Loggers in order to log the simulation state. These are the :class:`.ScalarLogger`, the :class:`.FieldLogger` and the :class:`.Logger`. The :class:`.ScalarLogger` is useful to log scalar values such as the time and the averaged magnetization. The :class:`.FieldLogger` is used to log arbitrary scalar and vector fields alongside the simulation time. Lastly, :class:`.Logger` logs both scalar and field values by using both the :class:`.ScalarLogger` and the :class:`.FieldLogger`. Furthermore, *magnum.np* includes a resume function which enables the user to restart a simulation from the last logged state.
 
 Logger
 ######

@@ -49,3 +49,7 @@ class DemagFieldPBC(LinearFieldTerm):
 
         h = torch.fft.ifftn(h_fft, dim = [i for i in range(3) if state.mesh.n[i] > 1])
         return h.real
+
+    def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
+        E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
+        return E[domain].sum()
