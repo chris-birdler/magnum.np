@@ -22,7 +22,7 @@ Set Floating Point Precision
 
 Torch Global
 ============
-Since magnum.np 2.0.0 the floating point precission is modified by setting PyTorch defaults. E.g.:
+Since *magnum.np* 2.0 the floating point precission is modified by setting PyTorch defaults. E.g.:
 
 .. code-block:: python
 
@@ -139,6 +139,13 @@ For periodic structures the modulo operator allows elegant definition of the dom
 .. image:: _static/material4.png
   :width: 400
 
+Read data from Image
+====================
+In order to set location dependent material parameters it is convenient to use images as an input. 
+*magnum.np* provides a simple helper function with reads image data, applies a proper coordinate transformation and finally converts it into a torch tensor.
+
+
+
 Set multiple material parameters at once
 ========================================
 In order to set several material parameters at once you can create a dictionary as follows:
@@ -162,7 +169,7 @@ To set the material in a certain domain another such dictionary *material1* need
 State-Dependent Materials
 *************************
 In case the material is time-dependent each parameter can be defined as a lambda function.
-Since magnum.np 2.0.0 all lambda functions depend on the state and may therefor also depend on any state parameter like time, temperature, materials, ...
+Since *magnum.np* 2.0 all lambda functions depend on the state and may therefor also depend on any state parameter like time, temperature, materials, ...
 In this example *A* is set to be linearly dependent on time *t*:
 
 .. code-block:: python

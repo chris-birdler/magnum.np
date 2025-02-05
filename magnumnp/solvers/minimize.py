@@ -90,21 +90,21 @@ class MinimizerBB(object):
             # compute dm_max as convergence indicator
             dm_max = dm.abs().max()
             if dm_max < dm_tol:
-                break
+                logging.info_green("[MinimizerBB] Successfully converged (iter=%d, dm_tol = %g)" % (i, dm_tol))
+                return True
 
             # next stepsize (alternate tau1 and tau2)
-            if (steps % 2 == 0):
+            if (i % 2 == 0):
                 tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
             else:
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
             tau = max(min(abs(tau), tau_max), tau_min) #* tau_sign
 
-            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (steps, tau, dm_max))
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (i, tau, dm_max))
 
-            # increase step count
-            steps += 1
             m0 = state.m.clone()
             h0 = h.clone()
             dm0 = dm.clone()
 
-        return steps
+        logging.warning("[MinimizerBB] Terminated after maxiter = %d (dm = %g, dm_tol = %g)" % (maxiter, dm_max, dm_tol))
+        return False

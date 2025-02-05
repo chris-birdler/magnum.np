@@ -39,3 +39,20 @@ def test_write_vti(tmp_path):
         assert len(fields) == 1
         assert fields['m'].shape == (2, 2, 2, 3)
 
+def test_read_image():
+    """
+    Reads in a greyscale image ("init_mag_greyscale.png", 8bit). Calls the read_image function,
+    which should be tested. The values between 0 and 256 are changed to only -1 and 1 values. The
+    array is taken as initial mz magnetization.
+    """
+    this_dir = pathlib.Path(__file__).resolve().parent
+    filename = this_dir / "ref" / "stripe_domains.png"
+    n  = (256, 256, 1)
+    dx = (16e-9, 16e-9, 1e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    field = read_image(mesh, filename, fix_aspect_ratio = True)
+
+    state.m = state.Constant([0,0,0])
+    state.m[:,:,:,2] = Expression((field > 100)*2. - 1.)
+    torch.testing.assert_close(state.avg(state.m), torch.tensor([0.,0.,0.42355347]), rtol=1e-7, atol=1e-7)

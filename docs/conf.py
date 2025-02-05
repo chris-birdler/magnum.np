@@ -198,6 +198,11 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+nbgallery_conf = {
+    'path_to_gallery': '../demos_gallery',    # Path to your notebook directory
+    'thumbnail_images': True,          # Generate thumbnails for each notebook (optional)
+}
+
 
 
 # -- Options for Latex output ------------------------------------------------

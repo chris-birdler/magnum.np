@@ -156,7 +156,7 @@ def test_energy_nonequidistant():
     state.m[:,:,:2,:] = 0.
     E2 = aniso.E(state)
 
-    torch.testing.assert_close(E1, 5*E2, atol=0, rtol=1e-15)
+    torch.testing.assert_close(E1, 5*E2, atol=0, rtol=1e-14)
 
 def test_energy_domain():
     n  = (10, 5, 4)

@@ -175,11 +175,13 @@ class State(object):
                 cell_volumes = self.mesh.cell_volumes
             if data.dim() <= 1: # e.g. [0,0,1]
                 return data
-            if data.shape[:3] != cell_volumes.shape[:3]:
-                raise ValueError("Data shape (%s) does not match cell_volumes shape (%s). When averaging over slices of non-equidistant tensors you have to provide a sliced version of state.mesh.cell_volumes!" % (str(data.shape), str(cell_volumes.shape)))
             if data.dim() == 2: # state.m[domain]
+                if data.shape[0] != cell_volumes.shape[0]:
+                    raise ValueError("Data shape (%s) does not match cell_volumes shape (%s). When averaging over slices of non-equidistant tensors you have to provide a sliced version of state.mesh.cell_volumes!" % (str(data.shape), str(cell_volumes.shape)))
                 return (data * cell_volumes).sum(dim=0) / cell_volumes.sum(dim=0)
             if data.dim() == 3: # [nx,ny,nz]
+                if data.shape[:3] != cell_volumes.shape[:3]:
+                    raise ValueError("Data shape (%s) does not match cell_volumes shape (%s). When averaging over slices of non-equidistant tensors you have to provide a sliced version of state.mesh.cell_volumes!" % (str(data.shape), str(cell_volumes.shape)))
                 return (data * cell_volumes.squeeze(-1)).sum(dim=dim) / cell_volumes.sum()
             # [nx,ny,nz,...]
             return (data * cell_volumes).sum(dim=dim) / cell_volumes.sum()

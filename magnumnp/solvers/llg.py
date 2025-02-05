@@ -95,8 +95,12 @@ class LLGSolver(object):
             state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
             dm = self.dm(state.t, state.m, state=state, alpha = 1.0).abs().max() / constants.gamma # use same scaling as within minimizer
-            logging.info_blue("[LLG] relax: t=%g |dm|=%g" % (state.t-t0, dm))
+            logging.info_blue("[LLG] relax: i=%d t=%g |dm|=%g" % (i, state.t-t0, dm))
             if dm < dm_tol:
-                break
+                logging.info_green("[LLG] relax: Successfully converged (iter=%d, dm_tol = %g)" % (i, dm_tol))
+                state.t = t0
+                return True
 
+        logging.warning("[LLG] relax: Terminated after maxiter = %d (dm = %g, dm_tol = %g)" % (maxiter, dm, dm_tol))
         state.t = t0
+        return False

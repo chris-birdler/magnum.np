@@ -220,7 +220,8 @@ def read_image(mesh, filename, Lx = None, Ly = None, pos_x = None, pos_y = None,
     y = np.arange(mesh.n[1]) * mesh.dx[1] + mesh.dx[1]/2. + mesh.origin[1]
     xx, yy = np.meshgrid(x, y, indexing = "ij")
 
-    return scipy.interpolate.griddata((xx_image, yy_image), data, (xx, yy), fill_value=-1)
+    data = scipy.interpolate.griddata((xx_image, yy_image), data, (xx, yy), fill_value=-1)
+    return torch.tensor(data)
 
 
 

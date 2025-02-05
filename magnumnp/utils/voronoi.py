@@ -23,7 +23,7 @@ from scipy.spatial import KDTree
 __all__ = ["Voronoi"]
 
 class Voronoi(object):
-    def __init__(self, mesh, num_grains, seed_points=None):
+    def __init__(self, mesh, num_grains=None, seed_points=None):
         """
         Creates a Voronoi Tesselation with a given number of seed points.
         The seed points will be randomly selected with a uniform distribution.
@@ -58,10 +58,16 @@ class Voronoi(object):
             seed_points ([:class:`torch.Tensor`])
                 User provided seed points of size (num_grains, 3)
         """
-        if seed_points == None:
+        if num_grains != None and seed_points == None:
             L = torch.tensor(mesh.dx)*torch.tensor(mesh.n)
             offset = torch.tensor(mesh.origin)
             self._points = L * torch.rand((num_grains, 3)) + offset
+        elif num_grains == None and seed_points != None:
+            self._points = seed_points
+            num_grains = int(seed_points.shape[0])
+        else:
+            raise ValueError("Either 'num_grains' or 'seed_points' need to be specified!")
+
         self._grid = torch.stack(mesh.SpatialCoordinate(),dim=-1).reshape(-1, 3)
         self._mesh = mesh
 
