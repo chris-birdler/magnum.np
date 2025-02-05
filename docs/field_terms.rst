@@ -6,7 +6,7 @@
 Field Terms
 ###########
 
-The effective field can be comprised of many different fields such as the quantum mechanical exchange interaction or an anisotropy field due to spin orbit coupling. :class:`FieldTerm` is a class representing the possible field terms. magnum.np comes with a number of predefined field term classes that cover a variety of use cases. In most applications a list of :class:`FieldTerm` objects is usually passed to the solver in order to solve micromagnetic problems under the influence of different effects. Furthermore, each :class:`FieldTerm` object has methods to compute the corresponding effective field and energy for a given State object.
+The effective field can be comprised of many different fields such as the quantum mechanical exchange interaction or an anisotropy field due to spin orbit coupling. :class:`FieldTerm` is a class representing the possible field terms. *magnum.np* comes with a number of predefined field term classes that cover a variety of use cases. In most applications a list of :class:`FieldTerm` objects is usually passed to the solver in order to solve micromagnetic problems under the influence of different effects. Furthermore, each :class:`FieldTerm` object has methods to compute the corresponding effective field and energy for a given State object.
 
 Here is an examples on how to use the field term classes:
 
