@@ -1,3 +1,7 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
@@ -8,7 +12,7 @@ ref = np.loadtxt("ref/log.dat")
 
 Hk = 2 * 1e5 / 1.
 
-fig, ax = plt.subplots(figsize=(10,5))
+fig, ax = plt.subplots(figsize=(15,5))
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 ax.plot(data[:,6]/Hk, data[:,3], '-', color = cycle[2], label = "magnum.np")

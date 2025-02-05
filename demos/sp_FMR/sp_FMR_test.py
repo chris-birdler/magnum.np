@@ -1,7 +1,7 @@
 import pytest
 import torch
 from magnumnp import *
-from sp_FMR_run import run_sp_FMR
+import run
 import numpy as np
 import pathlib
 

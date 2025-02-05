@@ -1,10 +1,24 @@
+# %% [markdown]
+# # MuMag Standard Problem #4
+
+# %% [markdown]
+# ## Run Simulation
+
+# %%
 from magnumnp import *
 import torch
+import pathlib
+from tqdm import tqdm
 
+set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
+try:
+    this_dir = pathlib.Path(__file__).resolve().parent
+except:
+    this_dir = pathlib.Path().resolve()
 
-# initialize mesh
-eps = 1e-15
+# initialize state
+dt = 1e-11
 n  = (100, 25, 1)
 dx = (5e-9, 5e-9, 3e-9)
 mesh = Mesh(n, dx)
@@ -28,18 +42,17 @@ state.m = state.Constant([0,0,0])
 state.m[1:-1,:,:,0]   = 1.0
 state.m[(-1,0),:,:,1] = 1.0
 
-logger = Logger("data", ['t', 'm'], ["m"], fields_every=10)
-if not logger.is_resumable():
-    # relax without external field
-    minimizer = MinimizerBB([demag, exchange])
-    minimizer.minimize(state)
-    state.write_vtk(state.m, "data/m0")
+# relax without external field
+minimizer = MinimizerBB([demag, exchange])
+minimizer.minimize(state)
+state.write_vtk(state.m, "data/m0")
 
 # perform integration with external field
-logger.resume(state)
 llg = LLGSolver([demag, exchange, external])
-while state.t < 1e-9-eps:
+logger = Logger(this_dir / "data", ['t', 'm'])
+
+for i in tqdm(torch.arange(0, 1e-9, dt)):
+    llg.step(state, dt)
     logger << state
-    llg.step(state, 1e-11)
 
 Timer.print_report()

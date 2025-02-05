@@ -1,10 +1,14 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
 data = np.loadtxt("data/m.dat")
 ref = np.loadtxt("ref/m_ref.dat")
 
-fig, ax = plt.subplots(figsize=(7,5))
+fig, ax = plt.subplots(figsize=(15,5))
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 ax.plot(data[:,1]*4*np.pi*1e-7, data[:,4], '-', color = cycle[2], label = "magnum.np")

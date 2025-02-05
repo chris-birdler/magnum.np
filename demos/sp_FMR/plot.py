@@ -1,3 +1,7 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -39,4 +43,3 @@ ax1.set_xlim(0, 20)
 ax1.grid()
 fig.tight_layout()
 fig.savefig("data/results.png")
-
