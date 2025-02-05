@@ -5,7 +5,6 @@
 #   accelerator: GPU
 # ---
 
-
 # %% [markdown]
 # This jupyter-notebook has be created with 'jupytext'.
 #

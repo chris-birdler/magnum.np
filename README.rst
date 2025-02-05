@@ -63,7 +63,7 @@ The following demos are also stored on Google Colab, where they can directly be 
 * `Standard Problem FMR <https://florian98765.gitlab.io/magnum.np/notebooks/sp_FMR.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
 * `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
 * `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Dispersion Calculator <>`__  (`Colab <>`__)
+* `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
 ************
 Installation
