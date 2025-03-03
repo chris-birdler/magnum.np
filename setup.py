@@ -35,7 +35,7 @@ setup(name='magnumnp',
       project_urls = {'Documentation': 'https://magnum.np.gitlab.io/magnum.np/',
                       'Changelog': 'https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG'
       },
-      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
+      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.linear_elasticity', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
       install_requires = [
             'numpy',
             'pyvista',

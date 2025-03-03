@@ -16,22 +16,18 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.solvers.eigensolver import *
-from magnumnp.solvers.llg import *
-from magnumnp.solvers.llg_with_le_solver import *
-from magnumnp.solvers.ode_solvers import *
-from magnumnp.solvers.ohm_solver import *
-from magnumnp.solvers.string import *
-from magnumnp.solvers.minimize import *
-from magnumnp.solvers.steepest_descent import *
-from magnumnp.solvers.LBFGS import *
+from magnumnp.linear_elasticity.bcs import *
+from magnumnp.linear_elasticity.deriv_term_compiler import *
+from magnumnp.linear_elasticity.strain import *
+from magnumnp.linear_elasticity.stress import *
+from magnumnp.linear_elasticity.stiffness_matrices import *
+from magnumnp.linear_elasticity.utils import *
 
-__all__ = (eigensolver.__all__ +
-           llg.__all__ +
-           llg_with_le_solver.__all__ +
-           ode_solvers.__all__ +
-           ohm_solver.__all__ +
-           string.__all__ +
-           minimize.__all__ +
-           steepest_descent.__all__ +
-           LBFGS.__all__)
+__all__ = (
+        bcs.__all__ +
+        deriv_term_compiler.__all__ +
+        strain.__all__ +
+        stress.__all__ +
+        stiffness_matrices.__all__ +
+        utils.__all__
+        )

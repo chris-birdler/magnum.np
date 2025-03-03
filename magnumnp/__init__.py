@@ -36,6 +36,7 @@ try:
 
     from magnumnp.common import *
     from magnumnp.field_terms import *
+    from magnumnp.linear_elasticity import *
     from magnumnp.solvers import *
     from magnumnp.loggers import *
     from magnumnp.utils import *

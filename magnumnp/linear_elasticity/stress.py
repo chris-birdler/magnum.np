@@ -16,22 +16,20 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.solvers.eigensolver import *
-from magnumnp.solvers.llg import *
-from magnumnp.solvers.llg_with_le_solver import *
-from magnumnp.solvers.ode_solvers import *
-from magnumnp.solvers.ohm_solver import *
-from magnumnp.solvers.string import *
-from magnumnp.solvers.minimize import *
-from magnumnp.solvers.steepest_descent import *
-from magnumnp.solvers.LBFGS import *
+import torch 
 
-__all__ = (eigensolver.__all__ +
-           llg.__all__ +
-           llg_with_le_solver.__all__ +
-           ode_solvers.__all__ +
-           ohm_solver.__all__ +
-           string.__all__ +
-           minimize.__all__ +
-           steepest_descent.__all__ +
-           LBFGS.__all__)
+__all__ = ["sigma"]
+
+@torch.compile
+def sigma(state, eps):
+    C = state.material["C"]
+
+    #n = state.mesh.n
+    #sig = state.zeros((n[0], n[1], n[2], 6))
+    #for i in range(6):
+    #    for j in range(6):
+    #        sig[:,:,:,i] += C[:,:,:,i,j]*eps[:,:,:,j]
+
+    sig = (C @ eps.unsqueeze(-1)).squeeze(-1)
+
+    return sig
