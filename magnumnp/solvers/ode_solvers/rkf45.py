@@ -34,7 +34,7 @@ class RKF45(object):
         self._minscale = 0.2
         self._maxscale = 10.
         self._atol = atol
-        self._rtol = rtol # currently rtol is ignored since m is normalized!
+        self._rtol = rtol
         logging.info_green("[LLGSolver] using RKF45 solver (atol = %g)" % atol)
 
     def _try_step(self, t, x, **kwargs):
@@ -51,8 +51,8 @@ class RKF45(object):
         rk_error = dx - (25./216.*k1 + 1408./2565.*k3 + 2197./4104.*k4 - 1./5.*k5)
         return x+dx, t+dt, rk_error
 
-    def _optimal_stepsize(self, rk_error, atol):
-        norm = torch.linalg.norm(rk_error.flatten() / atol, torch.inf)
+    def _optimal_stepsize(self, x, err, atol, rtol):
+        norm = torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)
         if torch.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
@@ -81,7 +81,9 @@ class RKF45(object):
         t1 = t + dt
         while t < t1:
             _x1, _t1, err = self._try_step(t, x, **kwargs)
-            dt_opt = self._optimal_stepsize(err, atol or self._atol)
+            if atol == None:
+                atol = self._atol
+            dt_opt = self._optimal_stepsize(x, err, atol, rtol or self._rtol)
             if self._dt > dt_opt or self._dt > t1 - t:
                 # step size was too large, retry with optimal stepsize
                 self._dt = min(dt_opt, t1 - t)

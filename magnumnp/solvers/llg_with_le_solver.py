@@ -907,9 +907,14 @@ class LLGWithLESolver(LLGSolver):
     """
 
     @timedmethod
-    def step(self, state, dt, rtol = 1e-5, atol = (1e-5, 1e-5, 1e-5, 1e-15, 1e-15, 1e-15, 1e-2, 1e-2, 1e-2), **kwargs):
+    def step(self, state, dt, rtol = 1e-5, atol = None, atol_m = 1e-5, atol_ud = 1e-15, atol_pd = 1e-2, **kwargs):
         self._update_neumann_bcs(state)
         v_in = self._get_solution_variables(state)
+
+        if not isinstance(atol, torch.Tensor):
+            atol = tuple(3*[atol_m] + 3*[atol_ud] + 3*[atol_pd])
+            atol = torch.tensor(atol)[None,None,None,:]
+
         state.t, v_out = self._solver.step(state.t, v_in, dt, state=state, rtol=rtol, atol=atol, **kwargs)
         self._set_solution_variables(state, v_out)
         logging.info_blue("[LLG + LE] step: dt= %g  t=%g" % (dt, state.t))
