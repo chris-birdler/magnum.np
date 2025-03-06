@@ -83,8 +83,7 @@ notebooks:
         paths:
             - public/notebooks
     rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-        - if: $GITHUB_TOKEN != null
+        - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
 
 pages:
     stage: deploy
