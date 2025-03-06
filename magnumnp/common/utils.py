@@ -81,21 +81,16 @@ def get_gpu_with_least_memory():
     if not torch.cuda.is_available():
         return -1
 
-    import pynvml
-    pynvml.nvmlInit()
-    num_gpus = pynvml.nvmlDeviceGetCount()
+    num_gpus = torch.cuda.device_count()
 
 
     if num_gpus == 1:
-        pynvml.nvmlShutdown()
         return 0
     
     else:
         gpu_memory = []
         for i in range(num_gpus):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            gpu_memory.append(mem_info.used)
+            mem_info = torch.cuda.memory_allocated(i)
+            gpu_memory.append(mem_info)
 
-        pynvml.nvmlShutdown()
         return gpu_memory.index(min(gpu_memory))
