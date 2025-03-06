@@ -1,35 +1,35 @@
 image: python:3.10
 
-#test:
+test:
+    script:
+       - apt update -yq
+       - apt install -y python3-opencv
+       - pip install setuptools pytest
+       - pip install .
+       - python -m pytest tests/
+
+#test_gpu:
+#    image: nvcr.io/nvidia/pytorch:24.03-py3
 #    script:
-#       - apt update -yq
-#       - apt install -y python3-opencv
-#       - pip install setuptools pytest
-#       - pip install .
-#       - python -m pytest tests/
-#
-##test_gpu:
-##    image: nvcr.io/nvidia/pytorch:24.03-py3
-##    script:
-##        - echo $TZ
-##        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-##        - apt update -yq
-##        - apt install -y python3-opencv
-##        - pip install setuptools pytest
-##        - pip install .
-##        - python3 -m pytest tests/
-##    tags:
-##        - saas-linux-medium-amd64-gpu-standard
-#
-#test_demos:
-#    script:
-#       - apt update -yq
-#       - apt install -y python3-opencv
-#       - pip install setuptools pytest
-#       - pip install .
-#       - python -m pytest demos
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#        - echo $TZ
+#        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+#        - apt update -yq
+#        - apt install -y python3-opencv
+#        - pip install setuptools pytest
+#        - pip install .
+#        - python3 -m pytest tests/
+#    tags:
+#        - saas-linux-medium-amd64-gpu-standard
+
+test_demos:
+    script:
+       - apt update -yq
+       - apt install -y python3-opencv
+       - pip install setuptools pytest
+       - pip install .
+       - python -m pytest demos
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 
 deploy_pypi:
@@ -82,8 +82,9 @@ notebooks:
     artifacts:
         paths:
             - public/notebooks
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+        - if: $GITHUB_TOKEN != null
 
 pages:
     stage: deploy
@@ -99,5 +100,5 @@ pages:
     artifacts:
         paths:
             - public
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
