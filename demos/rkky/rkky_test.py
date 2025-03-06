@@ -6,8 +6,6 @@ import numpy as np
 import pathlib
 
 def test_rkky():    
-    run_rkky()
-    
     Hk = 2 * 1e5 / 1.
     
     this_dir = pathlib.Path(__file__).resolve().parent
