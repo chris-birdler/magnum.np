@@ -6,6 +6,7 @@ import magnumnp.common.logging as logging
 from magnumnp.common.utils import get_gpu_with_least_memory
 import torch
 import os
+import sys
 
 # set default device and dtype
 torch.set_default_dtype(torch.float64)
@@ -29,10 +30,9 @@ except Exception as e:
     torch.compile = fake_compile
     logging.warning(e)
 
-
 try:
     import setproctitle
-    setproctitle.setproctitle("magnumnp")
+    setproctitle.setproctitle("magnumnp %s" % sys.argv[0])
 
     from magnumnp.common import *
     from magnumnp.field_terms import *
@@ -40,7 +40,7 @@ try:
     from magnumnp.loggers import *
     from magnumnp.utils import *
 
-    logging.info_green("magnum.np %s" % __version__)
+    logging.info_green("magnum.np %s (%s)" % (__version__, (" ".join(sys.argv))))
 
 except Exception as e:
     import magnumnp.common.logging as logging
