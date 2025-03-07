@@ -25,12 +25,11 @@ test_demos:
     script:
        - apt update -yq
        - apt install -y python3-opencv
-       - pip install setuptools pytest
+       - pip install setuptools pytest pytest-forked
        - pip install .
        - python -m pytest -s demos
     rules:
         - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-
 
 deploy_pypi:
     stage: deploy

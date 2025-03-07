@@ -1,8 +1,12 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
 data = np.loadtxt("data/log.dat")
-ref = np.loadtxt("data/ref.dat")
+ref = np.loadtxt("ref/log.dat")
 
 fig, ax = plt.subplots(figsize=(10, 5))
 cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
