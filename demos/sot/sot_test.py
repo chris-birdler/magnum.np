@@ -1,9 +1,12 @@
 import pytest
 import torch
 from magnumnp import *
-import run
 import numpy as np
 import pathlib
+
+import sys
+sys.modules.pop("run", None)
+import run
 
 def test_sot():    
     this_dir = pathlib.Path(__file__).resolve().parent

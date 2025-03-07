@@ -1,13 +1,14 @@
 import pytest
 import torch
 from magnumnp import *
-from self_induction_run import run_self_induction
 import numpy as np
 import pathlib
 
-def test_self_induction():
-    run_self_induction()
+import sys
+sys.modules.pop("run", None)
+import run
 
+def test_self_induction():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "data" / "ref.dat"

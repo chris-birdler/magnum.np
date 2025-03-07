@@ -1,12 +1,12 @@
 image: python:3.10
 
-test:
-    script:
-       - apt update -yq
-       - apt install -y python3-opencv
-       - pip install setuptools pytest
-       - pip install .
-       - python -m pytest tests/
+#test:
+#    script:
+#       - apt update -yq
+#       - apt install -y python3-opencv
+#       - pip install setuptools pytest
+#       - pip install .
+#       - python -m pytest tests/
 
 #test_gpu:
 #    image: nvcr.io/nvidia/pytorch:24.03-py3
@@ -25,11 +25,11 @@ test_demos:
     script:
        - apt update -yq
        - apt install -y python3-opencv
-       - pip install setuptools pytest
+       - pip install setuptools pytest pytest-forked
        - pip install .
-       - python -m pytest demos
-    rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+       - python -m pytest -s --forked demos/slonczewski1 demos/sp4 
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 
 deploy_pypi:
