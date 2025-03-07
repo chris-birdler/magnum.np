@@ -11,7 +11,7 @@ import run
 def test_self_induction():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
-    ref_path = this_dir / "data" / "ref.dat"
+    ref_path = this_dir / "ref" / "m.dat"
 
     data = np.loadtxt(data_path)
     ref = np.loadtxt(ref_path)
