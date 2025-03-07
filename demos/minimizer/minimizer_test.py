@@ -1,11 +1,14 @@
 import pytest
 import torch
 from magnumnp import *
-import run
 import numpy as np
 import pathlib
 
-def test_sp4():
+import sys
+sys.modules.pop("run", None)
+import run
+
+def test_minimizer():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "log.dat"

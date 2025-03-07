@@ -22,6 +22,8 @@ try:
 except:
     this_dir = pathlib.Path().resolve()
 
+print(this_dir)
+
 # initialize state
 dt = 5e-12
 n = (64, 32, 1)

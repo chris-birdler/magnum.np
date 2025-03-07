@@ -23,7 +23,6 @@ import torch
 import pathlib
 from tqdm import tqdm
 
-set_log_level(25) # show info_green, but hide info_blue
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent
@@ -80,6 +79,7 @@ minimizer = MinimizerBB([exchange, aniso, external])
 m_magnetic = lambda state: state.m[magnetic].sum() / magnetic.sum()
 logger = Logger(this_dir / "data", [external.h, 'm', m_magnetic])
 
+set_log_level(30) # hide info
 for hz in tqdm(torch.linspace(2.5, 3.0, steps=500)):
     external.h = [0.0, 0.0, -hz / constants.mu_0]
     steps = minimizer.minimize(state)

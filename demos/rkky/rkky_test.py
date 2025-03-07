@@ -1,9 +1,12 @@
 import pytest
 import torch
 from magnumnp import *
-import run
 import numpy as np
 import pathlib
+
+import sys
+sys.modules.pop("run", None)
+import run
 
 def test_rkky():    
     Hk = 2 * 1e5 / 1.
