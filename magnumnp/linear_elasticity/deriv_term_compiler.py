@@ -17,6 +17,7 @@
 #
 
 import torch 
+import torch._dynamo 
 
 __all__ = ["DerivTermCompiler",
            "EpsTerm",
@@ -25,6 +26,9 @@ __all__ = ["DerivTermCompiler",
            "SigMTerm",
            "ForceMComponentTerm",
            "ForceComponentTerm"]
+
+# TODO: replace torch.compile by torch.jit.trace(f, example_tensor)
+torch._dynamo.config.cache_size_limit = 1024
 
 class DerivTermCompiler:
     # this object maps stress and force terms on lambda functions that return the given term as torch.tensor

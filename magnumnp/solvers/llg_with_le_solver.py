@@ -72,18 +72,19 @@ class LLGWithLESolver(LLGSolver):
         self.slice_m = tuple([slice(ix0, ix1), slice(iy0, iy1), slice(iz0, iz1)])
 
         # mask for the stiffness matrix
-        if C_sym is None:
+        if isinstance(C_sym, str):
+            if C_sym == "cubic" or C_sym == "isotropic":
+                self._C_mask = [[1, 1, 1, 0, 0, 0],
+                                [1, 1, 1, 0, 0, 0],
+                                [1, 1, 1, 0, 0, 0],
+                                [0, 0, 0, 1, 0, 0],
+                                [0, 0, 0, 0, 1, 0],
+                                [0, 0, 0, 0, 0, 1]]
+        elif C_sym is None:
             self._C_mask = []
             self._C_mask.append(6*[1])
             for i in range(5):
                 self._C_mask.append(self._C_mask[-1])
-        elif C_sym == "cubic" or C_sym == "isotropic":
-            self._C_mask = [[1, 1, 1, 0, 0, 0],
-                            [1, 1, 1, 0, 0, 0],
-                            [1, 1, 1, 0, 0, 0],
-                            [0, 0, 0, 1, 0, 0],
-                            [0, 0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 0, 1]]
         else:
             self._C_mask = C_sym
 
