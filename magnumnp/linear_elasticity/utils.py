@@ -95,7 +95,7 @@ def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=Non
         elif ((mesh.pbc[d] == 0) or (fs.shape[d] != f.shape[d])):
             g = first_derivative_with_jump_conditions(fs, C[i][slices], Bl[i][slices], Br[i][slices], dx_exp[d], d)
             
-            if (mesh.n[d] > 2):
+            if (n_f[d] > 2):
                 dx_s = dx_exp[d]
                 if (d == 0):
                     f0 = fs[0]
