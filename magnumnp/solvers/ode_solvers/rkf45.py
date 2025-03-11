@@ -81,9 +81,7 @@ class RKF45(object):
         t1 = t + dt
         while t < t1:
             _x1, _t1, err = self._try_step(t, x, **kwargs)
-            if atol == None:
-                atol = self._atol
-            dt_opt = self._optimal_stepsize(x, err, atol, rtol or self._rtol)
+            dt_opt = self._optimal_stepsize(x, err, atol or self._atol, rtol or self._rtol)
             if self._dt > dt_opt or self._dt > t1 - t:
                 # step size was too large, retry with optimal stepsize
                 self._dt = min(dt_opt, t1 - t)
