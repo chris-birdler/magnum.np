@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from magnumnp.common import constants
 from magnumnp.utils.logging_helpers import LogDt
 from magnumnp.field_terms import OerstedField, VectorPotential
 
