@@ -88,9 +88,5 @@ def get_gpu_with_least_memory():
         return 0
     
     else:
-        gpu_memory = []
-        for i in range(num_gpus):
-            mem_info = torch.cuda.memory_allocated(i)
-            gpu_memory.append(mem_info)
-
+        gpu_memory = [torch.cuda.mem_get_info(i)[0] for i in range(num_gpus)]
         return gpu_memory.index(min(gpu_memory))
