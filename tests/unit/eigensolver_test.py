@@ -3,7 +3,6 @@ import torch
 from math import sqrt
 from magnumnp import *
 
-## this test fails on sabris machine (needs to be fixed)
 def test_singlespin_hext():
     hext = 1./constants.mu_0
     n  = (10, 10, 10)
@@ -39,7 +38,6 @@ def test_singlespin_exchange():
     print("omega:", res.omega[0].abs().numpy(), torch.tensor(constants.gamma*hext).numpy())
     torch.testing.assert_close(res.omega[0].abs(), torch.tensor(constants.gamma*hext), atol=0, rtol=1e-6)
 
-# this test only succeeds if ran as a single test (seems to depend on the random initial value of eigs)
 def test_singlespin_aniso():
     Ms = 1./constants.mu_0
     n  = (10, 10, 10)

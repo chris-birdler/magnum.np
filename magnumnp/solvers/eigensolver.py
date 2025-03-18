@@ -107,7 +107,7 @@ class EigenSolver(object):
         N = np.prod(self._m0[self._domain].shape[:-1])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
-        evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
+        evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = np.ones(2*N))
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
 
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
