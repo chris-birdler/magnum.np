@@ -34,7 +34,7 @@ class LogDt():
             f0 = 0
             t0 = 0
         self._f = self._func(state)
-        self._t = state.t
+        self._t = float(state.t)
         return (self._f - f0) / (self._t - t0)
 
 class LogMovingAverage():
