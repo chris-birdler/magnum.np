@@ -53,7 +53,7 @@ notebooks:
     script:
         # build notebooks
         - apt update -yq
-        - apt install -y python3-opencv pandoc 
+        - apt install -y python3-opencv pandoc
         - pip install --upgrade pip setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc ipython jupyter jupytext ipykernel
         - pip install -e .
         - python -m ipykernel install --user --name=python3
@@ -88,7 +88,7 @@ pages:
         - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
         - ls notebooks
         - sphinx-build -b html docs public
-    dependencies:
+    needs:
         - notebooks
     artifacts:
         paths:
