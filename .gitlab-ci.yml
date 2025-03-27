@@ -1,51 +1,55 @@
 image: python:3.10
 
-#test:
+test:
+    script:
+       - apt update -yq
+       - apt install -y python3-opencv
+       - pip install setuptools pytest
+       - pip install .
+       - python -m pytest tests/
+
+
+#test_gpu:
+#    image: nvcr.io/nvidia/pytorch:24.03-py3
 #    script:
-#       - apt update -yq
-#       - apt install -y python3-opencv
-#       - pip install setuptools pytest
-#       - pip install .
-#       - python -m pytest tests/
-#
-##test_gpu:
-##    image: nvcr.io/nvidia/pytorch:24.03-py3
-##    script:
-##        - echo $TZ
-##        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-##        - apt update -yq
-##        - apt install -y python3-opencv
-##        - pip install setuptools pytest
-##        - pip install .
-##        - python3 -m pytest tests/
-##    tags:
-##        - saas-linux-medium-amd64-gpu-standard
-#
-#test_demos:
-#    script:
-#       - apt update -yq
-#       - apt install -y python3-opencv
-#       - pip install setuptools pytest
-#       - pip install .
-#       - python -m pytest -s demos
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-#
-#deploy_pypi:
-#    stage: deploy
-#    before_script:
-#        - python -m pip install --upgrade twine
-#        - python -m pip install --upgrade build
-#        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
-#        - cat setup.py
-#    variables:
-#        TWINE_USERNAME: $PYPI_USERNAME
-#        TWINE_PASSWORD: $PYPI_PASSWORD
-#    script:
-#        - python -m build
-#        - python -m twine upload dist/*
-#    rules:
-#        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
+#        - echo $TZ
+#        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+#        - apt update -yq
+#        - apt install -y python3-opencv
+#        - pip install setuptools pytest
+#        - pip install .
+#        - python3 -m pytest tests/
+#    tags:
+#        - saas-linux-medium-amd64-gpu-standard
+
+
+test_demos:
+    script:
+       - apt update -yq
+       - apt install -y python3-opencv
+       - pip install setuptools pytest
+       - pip install .
+       - python -m pytest -s demos
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+
+deploy_pypi:
+    stage: deploy
+    before_script:
+        - python -m pip install --upgrade twine
+        - python -m pip install --upgrade build
+        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
+        - cat setup.py
+    variables:
+        TWINE_USERNAME: $PYPI_USERNAME
+        TWINE_PASSWORD: $PYPI_PASSWORD
+    script:
+        - python -m build
+        - python -m twine upload dist/*
+    rules:
+        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
+
 
 notebooks:
     stage: deploy
@@ -63,20 +67,21 @@ notebooks:
         - ./create_notebook.sh dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
         - mv $(find . -name "*.ipynb") ../public/notebooks
 
-#        # deploy to github (in order to be accessible via Colab
-#        - git config --global user.email "magnumnp.micromagnetic@gmail.com"
-#        - git config --global user.name "magnum.np GitLab CI"
-#        - git clone https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
-#        - cp ../public/notebooks/* magnumnp_demos
-#        - cd magnumnp_demos
-#        - git add .
-#        - git commit -m "Add generated .ipynb file"
-#        - git push https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
+        # deploy to github (in order to be accessible via Colab
+        - git config --global user.email "magnumnp.micromagnetic@gmail.com"
+        - git config --global user.name "magnum.np GitLab CI"
+        - git clone https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
+        - cp ../public/notebooks/* magnumnp_demos
+        - cd magnumnp_demos
+        - git add .
+        - git commit -m "Add generated .ipynb file"
+        - git push https://oauth2:${GITHUB_TOKEN}@github.com/magnumnp/magnumnp_demos.git
     artifacts:
         paths:
             - public/notebooks
-#    rules:
-#        - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
+    rules:
+        - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
+
 
 pages:
     stage: deploy
@@ -92,5 +97,5 @@ pages:
     artifacts:
         paths:
             - public
-#    rules:
-#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+    rules:
+        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
