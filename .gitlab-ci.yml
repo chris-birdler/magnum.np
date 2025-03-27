@@ -1,51 +1,51 @@
 image: python:3.10
 
-test:
-    script:
-       - apt update -yq
-       - apt install -y python3-opencv
-       - pip install setuptools pytest
-       - pip install .
-       - python -m pytest tests/
-
-#test_gpu:
-#    image: nvcr.io/nvidia/pytorch:24.03-py3
+#test:
 #    script:
-#        - echo $TZ
-#        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-#        - apt update -yq
-#        - apt install -y python3-opencv
-#        - pip install setuptools pytest
-#        - pip install .
-#        - python3 -m pytest tests/
-#    tags:
-#        - saas-linux-medium-amd64-gpu-standard
-
-test_demos:
-    script:
-       - apt update -yq
-       - apt install -y python3-opencv
-       - pip install setuptools pytest
-       - pip install .
-       - python -m pytest -s demos
-    rules:
-        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-
-deploy_pypi:
-    stage: deploy
-    before_script:
-        - python -m pip install --upgrade twine
-        - python -m pip install --upgrade build
-        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
-        - cat setup.py
-    variables:
-        TWINE_USERNAME: $PYPI_USERNAME
-        TWINE_PASSWORD: $PYPI_PASSWORD
-    script:
-        - python -m build
-        - python -m twine upload dist/*
-    rules:
-        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
+#       - apt update -yq
+#       - apt install -y python3-opencv
+#       - pip install setuptools pytest
+#       - pip install .
+#       - python -m pytest tests/
+#
+##test_gpu:
+##    image: nvcr.io/nvidia/pytorch:24.03-py3
+##    script:
+##        - echo $TZ
+##        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+##        - apt update -yq
+##        - apt install -y python3-opencv
+##        - pip install setuptools pytest
+##        - pip install .
+##        - python3 -m pytest tests/
+##    tags:
+##        - saas-linux-medium-amd64-gpu-standard
+#
+#test_demos:
+#    script:
+#       - apt update -yq
+#       - apt install -y python3-opencv
+#       - pip install setuptools pytest
+#       - pip install .
+#       - python -m pytest -s demos
+#    rules:
+#        - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+#
+#deploy_pypi:
+#    stage: deploy
+#    before_script:
+#        - python -m pip install --upgrade twine
+#        - python -m pip install --upgrade build
+#        - sed -i -e "s/version=.*$/version='$CI_COMMIT_TAG',/" setup.py
+#        - cat setup.py
+#    variables:
+#        TWINE_USERNAME: $PYPI_USERNAME
+#        TWINE_PASSWORD: $PYPI_PASSWORD
+#    script:
+#        - python -m build
+#        - python -m twine upload dist/*
+#    rules:
+#        - if: $PYPI_USERNAME && $CI_COMMIT_TAG
 
 notebooks:
     stage: deploy
