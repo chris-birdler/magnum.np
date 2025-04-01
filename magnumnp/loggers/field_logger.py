@@ -118,7 +118,7 @@ class FieldLogger(object):
             filename += ".vti"
         else:
             filename += ".vtr"
-        state.write_vtk(values, filename, scale = state._scale)
+        state.write_vtk(values, filename)
 
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(float(state.t)), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
