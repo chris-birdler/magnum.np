@@ -26,6 +26,15 @@ __all__ = ["State"]
 
 class State(object):
     def __init__(self, mesh, scale=1.):
+        """
+        State class
+
+        *Arguments*
+            mesh (:class:`Mest`)
+                global mesh object
+            scale (:class:`float`)
+                scale factor used to state.write_vtk (e.g. 1e9 for nm-units)
+        """
         self.mesh = mesh
         self._scale = scale
 

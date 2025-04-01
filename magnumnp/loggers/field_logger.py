@@ -25,7 +25,7 @@ from xml.dom import minidom
 __all__ = ["FieldLogger"]
 
 class FieldLogger(object):
-    def __init__(self, filename, fields, every = 1, scale = 1.):
+    def __init__(self, filename, fields, every = 1):
         """
         Logger class for fields
 
@@ -36,8 +36,6 @@ class FieldLogger(object):
                 The columns to be written to the log file
             every (:class:`int`)
                 Write row to log file every nth call
-            scale (:class:`float`)
-                Scale factor for dimentions (e.g. 1e9 for nm-units)
 
         *Example*
             .. code-block:: python
@@ -63,7 +61,6 @@ class FieldLogger(object):
             raise NameError("Only .pvd extention allowed")
         self._filename = filename
         self._every = every
-        self._scale = scale
         if isinstance(fields, str):
             fields = [fields]
         self._fields = fields
@@ -121,7 +118,7 @@ class FieldLogger(object):
             filename += ".vti"
         else:
             filename += ".vtr"
-        state.write_vtk(values, filename, scale = self._scale)
+        state.write_vtk(values, filename, scale = state._scale)
 
         cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(float(state.t)), file=os.path.basename(filename))
         with open(self._filename + ".pvd", 'w') as fd:
