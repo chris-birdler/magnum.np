@@ -25,8 +25,9 @@ __all__ = ["State"]
 
 
 class State(object):
-    def __init__(self, mesh):
+    def __init__(self, mesh, scale=1.):
         self.mesh = mesh
+        self._scale = scale
 
         self._material = Material(self)
         self._t = torch.tensor(0.)
@@ -134,16 +135,16 @@ class State(object):
             pass
         return value
 
-    def write_vtk(self, fields, filename, scale = 1.):
+    def write_vtk(self, fields, filename):
         filename = str(filename)
         if self.mesh.is_equidistant:
             if not filename.endswith(".vti"):
                 filename += ".vti"
-            write_vti(fields, filename, self, scale)
+            write_vti(fields, filename, self, self._scale)
         else:
             if not filename.endswith(".vtr"):
                 filename += ".vtr"
-            write_vtr(fields, filename, self, scale)
+            write_vtr(fields, filename, self, self._scale)
 
 
     def avg(self, data, cell_volumes = None, dim=(0,1,2)):
