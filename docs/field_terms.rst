@@ -116,3 +116,7 @@ SpinTorqueSlonczewski
 OerstedField
 ************
 .. autoclass:: OerstedField
+
+ThermalField
+************
+.. autoclass:: ThermalField

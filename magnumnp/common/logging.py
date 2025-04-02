@@ -17,13 +17,17 @@
 #
 
 import logging
+import os
+import sys
 
-__all__ = ["set_log_level", "debug", "warning", "error", "info", "info_green", "info_blue"]
+__all__ = ["logger", "set_log_level", "set_log_file", "set_log_script", "debug", "warning", "error", "info", "default", "info_green", "info_blue"]
 
 INFO_GREEN = logging.INFO+5
 INFO_BLUE = logging.INFO
+DEFAULT = logging.CRITICAL
 logging.addLevelName(INFO_GREEN, "INFO")
 logging.addLevelName(INFO_BLUE, "INFO")
+logging.addLevelName(DEFAULT, "")
 
 # create magnum.fe logger
 logger = logging.getLogger('magnum.np')
@@ -41,6 +45,8 @@ BLUE = "\033[1;37;34m%s\033[0m"
 GREEN = "\033[1;37;32m%s\033[0m"
 CYAN = "\033[1;37;36m%s\033[0m"
 
+def default(message, *args, **kwargs):
+    logger.log(DEFAULT, message, *args, **kwargs)
 
 def debug(message, *args, **kwargs):
     logger.debug(CYAN % message, *args, **kwargs)
@@ -68,3 +74,39 @@ def set_log_level(level):
     """
     logger.setLevel(level)
 
+def set_log_file(filename):
+    """
+    Store logging output to specified file.
+
+    *Arguments*
+        filename (:class:`str`)
+    """
+    # create directory if not existent
+    if not os.path.dirname(filename) == '' and \
+         not os.path.exists(os.path.dirname(filename)):
+        try:
+            os.makedirs(os.path.dirname(filename))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
+    handler = logging.FileHandler(filename, mode='w')
+    handler.setFormatter(logging.Formatter(fmt="%(asctime)s  %(name)s:%(levelname)s %(message)s", datefmt='%Y-%m-%d %H:%M:%S'))
+    logger.addHandler(handler)
+
+def set_log_script(filename):
+    """
+    Copy run script to specified path
+
+    *Arguments*
+        filename (:class:`str`)
+    """
+    # create directory if not existent
+    if not os.path.dirname(filename) == '' and \
+         not os.path.exists(os.path.dirname(filename)):
+        try:
+            os.makedirs(os.path.dirname(filename))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+    open(filename, 'wb').write(open(sys.argv[0], 'rb').read())
