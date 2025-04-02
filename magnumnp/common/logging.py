@@ -20,12 +20,14 @@ import logging
 import os
 import sys
 
-__all__ = ["logger", "set_log_level", "set_log_file", "set_log_script", "debug", "warning", "error", "info", "info_green", "info_blue"]
+__all__ = ["logger", "set_log_level", "set_log_file", "set_log_script", "debug", "warning", "error", "info", "print", "info_green", "info_blue"]
 
 INFO_GREEN = logging.INFO+5
 INFO_BLUE = logging.INFO
+NORMAL = logging.CRITICAL
 logging.addLevelName(INFO_GREEN, "INFO")
 logging.addLevelName(INFO_BLUE, "INFO")
+logging.addLevelName(NORMAL, "")
 
 # create magnum.fe logger
 logger = logging.getLogger('magnum.np')
@@ -42,6 +44,9 @@ RED = "\033[1;37;31m%s\033[0m"
 BLUE = "\033[1;37;34m%s\033[0m"
 GREEN = "\033[1;37;32m%s\033[0m"
 CYAN = "\033[1;37;36m%s\033[0m"
+
+def print(message, *args, **kwargs):
+    logger.log(NORMAL, message, *args, **kwargs)
 
 def debug(message, *args, **kwargs):
     logger.debug(CYAN % message, *args, **kwargs)
