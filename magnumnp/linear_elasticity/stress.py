@@ -30,6 +30,8 @@ def sigma(state, eps):
     #    for j in range(6):
     #        sig[:,:,:,i] += C[:,:,:,i,j]*eps[:,:,:,j]
 
-    sig = (C @ eps.unsqueeze(-1)).squeeze(-1)
+    sig = torch.einsum("...ij,...j->...i", C, eps)
+
+    #sig = (C @ eps.unsqueeze(-1)).squeeze(-1)
 
     return sig

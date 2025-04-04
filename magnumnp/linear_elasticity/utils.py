@@ -88,7 +88,7 @@ def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=Non
     for i in range(len(dims)):
         d = dims[i]
         # if there is only one data point in this dimension, the first derivative is 0
-        if (n_f[d]) == 0:
+        if (n_f[d]) < 2:
             output.append(torch.zeros(n_f))
         # case no pbc: boundary node order is 1, obtained from forward and backward difference
         # this method is also used when the slice limits the input to within the mesh

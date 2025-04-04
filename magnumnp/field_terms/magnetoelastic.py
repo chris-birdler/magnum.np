@@ -25,7 +25,22 @@ __all__ = ["LinearMagnetoElasticField", "MagnetoElasticField"]
 
 class LinearMagnetoElasticField(LinearFieldTerm):
     r"""
-    Magnetoelastic Field
+    Magnetoelastic Field:
+
+    This field terms is obtained from the magnetoelastic energy 
+
+    .. math::
+        E = \int \left( \frac{1}{2}\epsilon^m :C:\epsilon^m - \epsilon :C:\epsilon^m \right) \text{d}\bm{x}
+
+    (C.Y. Liang et al., Nanotechnology 25 (2014) 435701 (10pp), doi:10.1088/0957-4484/25/43/43570
+    and Y.C. Shu et al., Mechanics of Materials 36 (2004) 975-997, doi:10.1016/j.mechmat.2003.04.004) 
+
+    :param ud: Displacement. If neither this nor 'mechanical_strain' are set, state.ud is used
+    :type ud: :class:`torch.Tensor` or function, optional
+    :param mechanical_strain: Strain in Voight notation (mesh.n + (6,))
+    :type mechanical_strain: :class:`torch.Tensor` or function, optional
+
+    The parameters 'ud' and 'mechanical_strain' are mutualy exclusive.
     """
 
     def __init__(self, ud = None, mechanical_strain = None, **kwargs):
@@ -81,7 +96,17 @@ class LinearMagnetoElasticField(LinearFieldTerm):
 
 class MagnetoElasticField(object):
     r"""
-    Magnetoelastic Field
+    Magnetoelastic Field:
+
+    This field terms is obtained only from the terms in magnetoelastic energy that are quadratic in :math:`\vec{m}`
+
+    .. math::
+        E = -\int \epsilon :C:\epsilon^m \text{d}\bm{x}
+
+    :param ud: Displacement. If neither this nor 'mechanical_strain' are set, state.ud is used
+    :type ud: :class:`torch.Tensor` or function
+    :param mechanical_strain: Strain in Voight notation (mesh.n + (6,))
+    :type mechanical_strain: :class:`torch.Tensor` or function
     """
 
     def __init__(self, ud = None, mechanical_strain = None, **kwargs):

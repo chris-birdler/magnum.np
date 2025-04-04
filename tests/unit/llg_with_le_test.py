@@ -5,6 +5,28 @@ import numpy as np
 
 from magnumnp import *
 
+def test_C_mask():
+    mask_iso = np.zeros((6,6), dtype=int)
+    mask_iso[:3,:3] = 1
+    for i in range(3):
+        mask_iso[-i-1,-i-1] = 1
+    
+    llg_plain = LLGWithLESolver([])
+    assert(np.all(llg_plain._C_mask == np.ones((6,6))))
+
+    llg_str = LLGWithLESolver([], C_sym="isotropic")
+    llg_np = LLGWithLESolver([], C_sym=mask_iso)
+    llg_torch = LLGWithLESolver([], C_sym=torch.tensor(mask_iso))
+
+    assert(np.all(llg_str._C_mask == mask_iso))
+    assert(np.all(llg_np._C_mask == mask_iso))
+    assert(np.all(llg_torch._C_mask == mask_iso))
+
+    with pytest.raises(Exception):
+        llg = LLGWithLESolver([], C_sym="invalid")
+    with pytest.raises(Exception):
+        llg = LLGWithLESolver([], C_sym=np.ones((3,4)))
+
 def test_bcs():
     n = (10,11,12)
     dx0 = 3e-9

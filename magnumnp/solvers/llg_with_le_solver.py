@@ -16,20 +16,62 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod
+from magnumnp.common import logging, timedmethod, constants, normalize
 from . import LLGSolver
 from magnumnp.linear_elasticity.bcs import Plane, PlaneBC
 from magnumnp.linear_elasticity.deriv_term_compiler import *
-from magnumnp.linear_elasticity.strain import epsilon, epsilon_el, epsilon_m
+from magnumnp.linear_elasticity.strain import epsilon, epsilon_el, epsilon_m, _get_jump_conditions
 from magnumnp.linear_elasticity.stress import sigma
 from magnumnp.linear_elasticity.utils import gradient_with_pbc, _get_diff_slices
 
 from .ode_solvers import RKF45
 import torch
+import numpy as np
 
 __all__ = ["LLGWithLESolver"]
 
 class LLGWithLESolver(LLGSolver):
+    """
+        Extension of the LLGSolver class, that also yields the rate of change of the mechanical displacement and momentum density.
+        If used with the magnetoelastic field, this allows for the self-consistent time-integration of the magnetization dynamics and elastodynamics.
+
+        *Example*
+            .. code:: python
+
+            # Standard
+            llg = LLGWithLESolver([magnetoelastic, demag, exchange, external])
+            logger = Logger("data", fields=['m', 'ud', 'pd'])
+            while state.t < 1e-9-eps:
+                llg.step(state, 1e-11)
+                logger << state
+
+            # Setups for speedup and lower memory load:
+            # 1) Setup for a cubic material with a magnetic film in the 3rd x-layer
+            llg = LLGWithLESolver([magnetoelastic, demag, exchange, external], C_sym="cubic", magnetic_x_limits=[3,4])
+            
+            # 2) Setup for a materials with a magnetic domain on [:, 3:, :4]
+            llg = LLGWithLESolver([magnetoelastic, demag, exchange, external], magnetic_y_limits=[3,None] , magnetic_z_limits=[0,4])
+
+        *Arguments*
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for time integration
+            solver ([:class:`Solver`])
+                ODE solver to be used (chose one of RKF45 (default), RKF56, ScipyODE, ScipyOdeint, TorchDiffEq, TorchDiffEqAdjoint)
+            no_precession (bool)
+                integrate without precession term (default: False)
+            mask_elastic (:class:'troch.tensor')
+                boolean or integer mask of shape mesh.n that restricts the region on which the elastodynamic properties are updated  (default: None)
+            C_sym (:class:'numpy.ndarray')
+                boolean or intger mask of shape (6,6) that restricts consideration of the stiffness tensor elements.  (default: None).
+                or: string, "isotropic", "cubic" to include only C11, C12, C13, C22, C23, C33, C44, C55 and C66
+            magnetic_x_limits (list)
+                list of length 2, giving the start and stop indices for slicing in the x direction to restrict the magnetic domain.
+            magnetic_y_limits (list)
+                list of length 2, giving the start and stop indices for slicing in the y direction to restrict the magnetic domain.
+            magnetic_z_limits (list)
+                list of length 2, giving the start and stop indices for slicing in the z direction to restrict the magnetic domain.
+        """
+
     def __init__(self, 
                  terms,                     # magnetic field terms
                  solver = RKF45,            # used solver
@@ -80,13 +122,22 @@ class LLGWithLESolver(LLGSolver):
                                 [0, 0, 0, 1, 0, 0],
                                 [0, 0, 0, 0, 1, 0],
                                 [0, 0, 0, 0, 0, 1]]
+            else:
+                raise Exception(self.__class__.__name__ + ": C_sym '" + C_sym + "' is unknown. C_sym can be 'isotropic' 'cubic' or a mask of shape (6,6)")
         elif C_sym is None:
             self._C_mask = []
             self._C_mask.append(6*[1])
             for i in range(5):
                 self._C_mask.append(self._C_mask[-1])
         else:
+            if isinstance(C_sym, torch.Tensor):
+                C_sym = C_sym.detach().cpu().numpy()
+            if isinstance(C_sym, (list, np.ndarray)):
+                C_sym = np.array(C_sym)
+            if not isinstance(C_sym, np.ndarray) or C_sym.shape != (6, 6):
+                raise Exception(self.__class__.__name__+": C_sym was not successfully converted into a (6,6) array")
             self._C_mask = C_sym
+
 
         # neumann bcs
         self._neumann_bcs = []
@@ -141,13 +192,6 @@ class LLGWithLESolver(LLGSolver):
     # ------------------------------
     # Definition of the problem area
     # ------------------------------
-    
-    def _get_mask_magnetic(self, state):
-        if self._mask_magnetic == None:
-            return torch.ones(state.mesh.n)
-        else:
-            return self._mask_magnetic
-    
 
     def _get_mask_elastic(self, state):
         mask = self._additional_mask_elastic
@@ -205,7 +249,7 @@ class LLGWithLESolver(LLGSolver):
             terms_m = []
             for j in range(6):
                 # if the user informed the solver about the symmetry of the problem, exclude terms with a zero-valued stiffness tensor component
-                if self._C_mask[i][j] != 1:
+                if self._C_mask[i][j] == 0:
                     logging.info_green("Warning: due to the selected symmetry of C, a term with C_{"+str(i)+","+str(j)+"} was excluded!")
                 else:
                     terms_m.append(eps_m[j].multiply_Cij(i,j))
@@ -348,11 +392,20 @@ class LLGWithLESolver(LLGSolver):
         m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
         m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
 
-        eps_m1 = epsilon_m(state, m1)[...,ij_C[1]]
-        eps_m2 = epsilon_m(state, m2)[...,ij_C[1]]
+        #eps_m1 = epsilon_m(state, m1)[...,ij_C[1]]
+        #eps_m2 = epsilon_m(state, m2)[...,ij_C[1]]
 
-        jump = (C[slice_0]*eps_m2[slice_0] - C[slice_1]*eps_m1[slice_1]) / C_denom
+        #jump = (C[slice_0]*eps_m2[slice_0] - C[slice_1]*eps_m1[slice_1]) / C_denom
+        #jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
+
+        eps_m1 = epsilon_m(state, m1)
+        eps_m2 = epsilon_m(state, m2)
+        sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
+        sig_m2 = sigma(state, eps_m2)[...,ij_C[0]]
+
+        jump = (sig_m2[slice_0] - sig_m1[slice_1]) / C_denom
         jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
+        
 
         diff = state.ud[slice_1+(i_u,)] - state.ud[slice_0+(i_u,)] 
 
@@ -410,12 +463,20 @@ class LLGWithLESolver(LLGSolver):
         m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
         m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
 
-        s1 = -epsilon_m(state, m1)[...,ij_C[1]]
-        s2 = -epsilon_m(state, m2)[...,ij_C[1]]
+        #s1 = -epsilon_m(state, m1)[...,ij_C[1]]
+        #s2 = -epsilon_m(state, m2)[...,ij_C[1]]
+        
+        #jump = (torch.roll(C, -1, i_x)*torch.roll(s1, -1, i_x) - C*s2) / C_denom
+        #jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
 
-        jump = (torch.roll(C, -1, i_x)*torch.roll(s1, -1, i_x) - C*s2) / C_denom
+        eps_m1 = epsilon_m(state, m1)
+        eps_m2 = epsilon_m(state, m2)
+        sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
+        sig_m2 = sigma(state, eps_m2)[...,ij_C[0]]
+
+        jump = (torch.roll(sig_m1, -1, i_x) - sig_m2) / C_denom
         jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
-
+        
         a += torch.roll(dx, -1, i_x)*C*jump 
         a += torch.roll(dx, +1, i_x)*C*torch.roll(jump, +1, i_x)
 
@@ -479,25 +540,14 @@ class LLGWithLESolver(LLGSolver):
 
         diff_data.set_gradient_m(grad_mx, grad_my, grad_mz)
 
+        """
+        TODO:
+        There is a problem with jump conditions here, that only comes into player for symmetry below cubic:
+        It is necessary to collect all derivatives in the force components f_ij that share a deriviative before applying the jump condition
+        i.e. partial_x (C11 + C16) partial_x u_x needs to be added together before applying the sigma_m_xx jump condition
+        """
+
         """ get 2nd order 1st derivatives of u """
-        C = state.material["C"]
-        C11 = C[...,0,0]
-        C22 = C[...,1,1]
-        C33 = C[...,2,2]
-        C44 = C[...,3,3]
-        C55 = C[...,4,4]
-        C66 = C[...,5,5]
-
-        C15 = C[...,0,4]
-        C16 = C[...,0,5]
-        C24 = C[...,1,3]
-        C26 = C[...,1,5]
-        C35 = C[...,2,4]
-        C34 = C[...,2,3]
-        C45 = C[...,3,4]
-        C46 = C[...,3,5]
-        C56 = C[...,4,5]
-
         mxl = torch.clone(state.m)
         mxr = torch.clone(state.m)
         myl = torch.clone(state.m)
@@ -535,78 +585,11 @@ class LLGWithLESolver(LLGSolver):
         mzl -= 0.5*dmdz*dz_exp
         mzr += 0.5*dmdz*dz_exp
 
-        # for x derivatives
-        Cxx = C11+C15+C16
-        Cyx = C16+C66+C56
-        Czx = C15+C56+C55
+        C, Bl, Br = _get_jump_conditions(state, mxl, mxr, myl, myr, mzl, mzr)
 
-        eps_m = epsilon_m(state, mxl)
-        epsMXX = eps_m[...,0]
-        epsMXY = eps_m[...,5]
-        epsMXZ = eps_m[...,4]
-        
-        Bxx_xl = C11*epsMXX + C15*epsMXZ + C16*epsMXY
-        Byx_xl = C16*epsMXX + C66*epsMXY + C56*epsMXZ
-        Bzx_xl = C15*epsMXX + C56*epsMXY + C55*epsMXZ
-
-        eps_m = epsilon_m(state, mxr)
-        epsMXX = eps_m[...,0]
-        epsMXY = eps_m[...,5]
-        epsMXZ = eps_m[...,4]
-
-        Bxx_xr = C11*epsMXX + C15*epsMXZ + C16*epsMXY
-        Byx_xr = C16*epsMXX + C66*epsMXY + C56*epsMXZ
-        Bzx_xr = C15*epsMXX + C56*epsMXY + C55*epsMXZ
-
-        # for y derivatives
-        Cxy = C66+C26+C46
-        Cyy = C26+C22+C24
-        Czy = C46+C24+C44
-
-        eps_m = epsilon_m(state, myl)
-        epsMYY = eps_m[...,1]
-        epsMXY = eps_m[...,5]
-        epsMYZ = eps_m[...,3] 
-
-        Bxy_yl = C66*epsMXY + C26*epsMYY + C46*epsMYZ
-        Byy_yl = C26*epsMXY + C22*epsMYY + C24*epsMYZ
-        Bzy_yl = C46*epsMXY + C24*epsMYY + C44*epsMYZ
-
-        eps_m = epsilon_m(state, myr)
-        epsMYY = eps_m[...,1]
-        epsMXY = eps_m[...,5]
-        epsMYZ = eps_m[...,3] 
-
-        Bxy_yr = C66*epsMXY + C26*epsMYY + C46*epsMYZ
-        Byy_yr = C26*epsMXY + C22*epsMYY + C24*epsMYZ
-        Bzy_yr = C46*epsMXY + C24*epsMYY + C44*epsMYZ
-
-        # for z derivatives
-        Cxz = C55+C45+C35
-        Cyz = C45+C44+C34
-        Czz = C35+C34+C33
-
-        eps_m = epsilon_m(state, mzl)
-        epsMZZ = eps_m[...,2]
-        epsMXZ = eps_m[...,4]
-        epsMYZ = eps_m[...,3] 
-
-        Bxz_zl = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
-        Byz_zl = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
-        Bzz_zl = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
-
-        eps_m = epsilon_m(state, mzr)
-        epsMZZ = eps_m[...,2]
-        epsMXZ = eps_m[...,4]
-        epsMYZ = eps_m[...,3] 
-
-        Bxz_zr = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
-        Byz_zr = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
-        Bzz_zr = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
-
-        grad_ux = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], [Cxx, Cxy, Cxz], [-Bxx_xl, -Bxy_yl, -Bxz_zl], [-Bxx_xr, -Bxy_yr, -Bxz_zr])
-        grad_uy = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], [Cyx, Cyy, Cyz], [-Byx_xl, -Byy_yl, -Byz_zl], [-Byx_xr, -Byy_yr, -Byz_zr])
-        grad_uz = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], [Czx, Czy, Czz], [-Bzx_xl, -Bzy_yl, -Bzz_zl], [-Bzx_xr, -Bzy_yr, -Bzz_zr])
+        grad_ux = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0])
+        grad_uy = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1])
+        grad_uz = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2])
 
         diff_data.set_gradient_ud(grad_ux, grad_uy, grad_uz)
 
@@ -918,4 +901,44 @@ class LLGWithLESolver(LLGSolver):
 
         state.t, v_out = self._solver.step(state.t, v_in, dt, state=state, rtol=rtol, atol=atol, **kwargs)
         self._set_solution_variables(state, v_out)
+        normalize(state.m)
         logging.info_blue("[LLG + LE] step: dt= %g  t=%g" % (dt, state.t))
+
+    @timedmethod
+    def relax(self, state, maxiter = 500, dm_tol = 1e2, dud_tol = 1e-4, dt = 1e-11, rtol=1e-5, atol_m = 1e-5, atol_ud = 1e-15, atol_pd = 1e-2):
+        t0 = state.t
+
+        eta_in = state.material["eta"]
+        state.material["eta"] = state.Constant(1e10)
+
+        atol = tuple(3*[atol_m] + 3*[atol_ud] + 3*[atol_pd])
+        atol = torch.tensor(atol)[None,None,None,:]
+
+        self._update_neumann_bcs(state)
+        for i in range(maxiter):
+            # step
+            v_in = self._get_solution_variables(state)
+            state.t, v_out = self._solver.step(state.t, v_in, dt, state=state, rtol=rtol, atol=atol, alpha = 1.0)
+            self._set_solution_variables(state, v_out)
+
+            # determine rate of change of m
+            dm = self.dm(state.t, state.m, state=state, alpha = 1.0)
+            dm = dm[self.slice_m + (slice(None,3),)].abs().max() / constants.gamma # use same scaling as within minimizer
+
+            # determine rate of change of ud
+            dud = state.pd / state.material["rho"]
+            dud = dud[self._get_mask_elastic(state)].nan_to_num(posinf=0, neginf=0).abs().max()
+            
+            logging.info_blue("[LLG+LE] relax: i=%d t=%g |dm|=%g, |dud|=%g" % (i, state.t-t0, dm, dud))
+            if dm < dm_tol and dud < dud_tol:
+                logging.info_green("[LLG+LE] relax: Successfully converged (iter=%d, dm_tol = %g, dud_tol = %g)" % (i, dm_tol, dud_tol))
+                state.t = t0
+                state.material["eta"] = eta_in
+                state.pd = state.Constant((0.,0.,0.))
+                return True
+
+        logging.warning("[LLG+LE] relax: Terminated after maxiter = %d (dm = %g, dm_tol = %g, dud = %g, dud_tol = %g)" % (maxiter, dm, dm_tol,  dud, dud_tol))
+        state.t = t0
+        state.material["eta"] = eta_in
+        state.pd = state.Constant((0.,0.,0.))
+        return False

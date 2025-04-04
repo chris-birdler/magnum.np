@@ -19,8 +19,9 @@
 import torch 
 import numpy as np 
 from magnumnp.linear_elasticity.utils import gradient_with_pbc
+from magnumnp.linear_elasticity.stress import sigma
 
-__all__ = ["epsilon", "epsilon_m", "epsilon_el"]
+__all__ = ["epsilon", "epsilon_m", "epsilon_el", "_get_jump_conditions"]
 
 #@torch.compile
 def epsilon(state, ud=None):
@@ -28,24 +29,6 @@ def epsilon(state, ud=None):
         ud = state.ud
     else:
         assert isinstance(ud, torch.Tensor) and ud.shape == state.mesh.n + (3,)
-
-    C = state.material["C"]
-    C11 = C[...,0,0]
-    C22 = C[...,1,1]
-    C33 = C[...,2,2]
-    C44 = C[...,3,3]
-    C55 = C[...,4,4]
-    C66 = C[...,5,5]
-
-    C15 = C[...,0,4]
-    C16 = C[...,0,5]
-    C24 = C[...,1,3]
-    C26 = C[...,1,5]
-    C35 = C[...,2,4]
-    C34 = C[...,2,3]
-    C45 = C[...,3,4]
-    C46 = C[...,3,5]
-    C56 = C[...,4,5]
 
     mxl = torch.clone(state.m)
     mxr = torch.clone(state.m)
@@ -86,78 +69,11 @@ def epsilon(state, ud=None):
     mzl -= 0.5*dmdz*dz_exp
     mzr += 0.5*dmdz*dz_exp
 
-    # for x derivatives
-    Cxx = C11+C15+C16
-    Cyx = C16+C66+C56
-    Czx = C15+C56+C55
+    C, Bl, Br = _get_jump_conditions(state, mxl, mxr, myl, myr, mzl, mzr)
 
-    eps_m = epsilon_m(state, mxl)
-    epsMXX = eps_m[...,0]
-    epsMXY = eps_m[...,5]
-    epsMXZ = eps_m[...,4]
-    
-    Bxx_xl = C11*epsMXX + C15*epsMXZ + C16*epsMXY
-    Byx_xl = C16*epsMXX + C66*epsMXY + C56*epsMXZ
-    Bzx_xl = C15*epsMXX + C56*epsMXY + C55*epsMXZ
-
-    eps_m = epsilon_m(state, mxr)
-    epsMXX = eps_m[...,0]
-    epsMXY = eps_m[...,5]
-    epsMXZ = eps_m[...,4]
-
-    Bxx_xr = C11*epsMXX + C15*epsMXZ + C16*epsMXY
-    Byx_xr = C16*epsMXX + C66*epsMXY + C56*epsMXZ
-    Bzx_xr = C15*epsMXX + C56*epsMXY + C55*epsMXZ
-
-    # for y derivatives
-    Cxy = C66+C26+C46
-    Cyy = C26+C22+C24
-    Czy = C46+C24+C44
-
-    eps_m = epsilon_m(state, myl)
-    epsMYY = eps_m[...,1]
-    epsMXY = eps_m[...,5]
-    epsMYZ = eps_m[...,3] 
-
-    Bxy_yl = C66*epsMXY + C26*epsMYY + C46*epsMYZ
-    Byy_yl = C26*epsMXY + C22*epsMYY + C24*epsMYZ
-    Bzy_yl = C46*epsMXY + C24*epsMYY + C44*epsMYZ
-
-    eps_m = epsilon_m(state, myr)
-    epsMYY = eps_m[...,1]
-    epsMXY = eps_m[...,5]
-    epsMYZ = eps_m[...,3] 
-
-    Bxy_yr = C66*epsMXY + C26*epsMYY + C46*epsMYZ
-    Byy_yr = C26*epsMXY + C22*epsMYY + C24*epsMYZ
-    Bzy_yr = C46*epsMXY + C24*epsMYY + C44*epsMYZ
-
-    # for z derivatives
-    Cxz = C55+C45+C35
-    Cyz = C45+C44+C34
-    Czz = C35+C34+C33
-
-    eps_m = epsilon_m(state, mzl)
-    epsMZZ = eps_m[...,2]
-    epsMXZ = eps_m[...,4]
-    epsMYZ = eps_m[...,3] 
-
-    Bxz_zl = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
-    Byz_zl = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
-    Bzz_zl = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
-
-    eps_m = epsilon_m(state, mzr)
-    epsMZZ = eps_m[...,2]
-    epsMXZ = eps_m[...,4]
-    epsMYZ = eps_m[...,3] 
-
-    Bxz_zr = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
-    Byz_zr = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
-    Bzz_zr = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
-
-    grad_ud_x = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], [Cxx, Cxy, Cxz], [-Bxx_xl, -Bxy_yl, -Bxz_zl], [-Bxx_xr, -Bxy_yr, -Bxz_zr])
-    grad_ud_y = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], [Cyx, Cyy, Cyz], [-Byx_xl, -Byy_yl, -Byz_zl], [-Byx_xr, -Byy_yr, -Byz_zr])
-    grad_ud_z = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], [Czx, Czy, Czz], [-Bzx_xl, -Bzy_yl, -Bzz_zl], [-Bzx_xr, -Bzy_yr, -Bzz_zr])
+    grad_ud_x = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0])
+    grad_ud_y = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1])
+    grad_ud_z = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2])
 
     n = state.mesh.n
     eps = torch.zeros(n+(6,))
@@ -192,3 +108,140 @@ def epsilon_m(state, m=None):
 
 def epsilon_el(state, ud=None, m=None):
     return epsilon(state, ud) - epsilon_m(state, m)
+
+
+def _get_jump_conditions(state, mxl, mxr, myl, myr, mzl, mzr):
+    C = state.material["C"]
+    C11 = C[...,0,0]
+    C22 = C[...,1,1]
+    C33 = C[...,2,2]
+    C44 = C[...,3,3]
+    C55 = C[...,4,4]
+    C66 = C[...,5,5]
+
+    C15 = C[...,0,4]
+    C16 = C[...,0,5]
+    C24 = C[...,1,3]
+    C26 = C[...,1,5]
+    C35 = C[...,2,4]
+    C34 = C[...,2,3]
+    C45 = C[...,3,4]
+    C46 = C[...,3,5]
+    C56 = C[...,4,5]
+
+    # for x derivatives
+    Cxx = C11+C15+C16
+    Cyx = C16+C66+C56
+    Czx = C15+C56+C55
+
+    eps_m = epsilon_m(state, mxl)
+    sig_m = sigma(state,eps_m)
+    # B_xl = sig_m[...,0] + sig_m[...,5] + sig_m[...,4]
+    Bx_xl = sig_m[...,0]
+    By_xl = sig_m[...,5]
+    Bz_xl = sig_m[...,4]
+    """
+    epsMXX = eps_m[...,0]
+    epsMXY = eps_m[...,5]
+    epsMXZ = eps_m[...,4]
+    
+    Bx_xl = C11*epsMXX + C15*epsMXZ + C16*epsMXY
+    By_xl = C16*epsMXX + C66*epsMXY + C56*epsMXZ
+    Bz_xl = C15*epsMXX + C56*epsMXY + C55*epsMXZ
+    """
+
+    eps_m = epsilon_m(state, mxr)
+    sig_m = sigma(state,eps_m)
+    #B_xr = sig_m[...,0] + sig_m[...,5] + sig_m[...,4]
+    Bx_xr = sig_m[...,0]
+    By_xr = sig_m[...,5]
+    Bz_xr = sig_m[...,4]
+    """
+    epsMXX = eps_m[...,0]
+    epsMXY = eps_m[...,5]
+    epsMXZ = eps_m[...,4]
+
+    Bx_xr = C11*epsMXX + C15*epsMXZ + C16*epsMXY
+    By_xr = C16*epsMXX + C66*epsMXY + C56*epsMXZ
+    Bz_xr = C15*epsMXX + C56*epsMXY + C55*epsMXZ
+    """
+
+    # for y derivatives
+    Cxy = C66+C26+C46
+    Cyy = C26+C22+C24
+    Czy = C46+C24+C44
+
+    eps_m = epsilon_m(state, myl)
+    sig_m = sigma(state,eps_m)
+    #B_yl = sig_m[...,1] + sig_m[...,5] + sig_m[...,3]
+    Bx_yl = sig_m[...,5]
+    By_yl = sig_m[...,1]
+    Bz_yl = sig_m[...,4]
+    """
+    epsMYY = eps_m[...,1]
+    epsMXY = eps_m[...,5]
+    epsMYZ = eps_m[...,3] 
+
+    Bx_yl = C66*epsMXY + C26*epsMYY + C46*epsMYZ
+    By_yl = C26*epsMXY + C22*epsMYY + C24*epsMYZ
+    Bz_yl = C46*epsMXY + C24*epsMYY + C44*epsMYZ
+    """
+
+    eps_m = epsilon_m(state, myr)
+    sig_m = sigma(state,eps_m)
+    #B_yr = sig_m[...,1] + sig_m[...,5] + sig_m[...,3]
+    Bx_yr = sig_m[...,5]
+    By_yr = sig_m[...,1]
+    Bz_yr = sig_m[...,4]
+    """
+    epsMYY = eps_m[...,1]
+    epsMXY = eps_m[...,5]
+    epsMYZ = eps_m[...,3] 
+
+    Bx_yr = C66*epsMXY + C26*epsMYY + C46*epsMYZ
+    By_yr = C26*epsMXY + C22*epsMYY + C24*epsMYZ
+    Bz_yr = C46*epsMXY + C24*epsMYY + C44*epsMYZ
+    """
+
+    # for z derivatives
+    Cxz = C55+C45+C35
+    Cyz = C45+C44+C34
+    Czz = C35+C34+C33
+
+    eps_m = epsilon_m(state, mzl)
+    sig_m = sigma(state,eps_m)
+    #B_zl = sig_m[...,2] + sig_m[...,4] + sig_m[...,3]
+    Bx_zl = sig_m[...,4]
+    By_zl = sig_m[...,3]
+    Bz_zl = sig_m[...,2]
+    """
+    epsMZZ = eps_m[...,2]
+    epsMXZ = eps_m[...,4]
+    epsMYZ = eps_m[...,3] 
+
+    Bx_zl = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
+    By_zl = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
+    Bz_zl = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
+    """
+
+    eps_m = epsilon_m(state, mzr)
+    sig_m = sigma(state,eps_m)
+    #B_zr = sig_m[...,2] + sig_m[...,4] + sig_m[...,3]
+    Bx_zr = sig_m[...,4]
+    By_zr = sig_m[...,3]
+    Bz_zr = sig_m[...,2]
+    """
+    epsMZZ = eps_m[...,2]
+    epsMXZ = eps_m[...,4]
+    epsMYZ = eps_m[...,3] 
+
+    Bx_zr = C55*epsMXZ + C45*epsMYZ + C35*epsMZZ
+    By_zr = C45*epsMXZ + C44*epsMYZ + C34*epsMZZ
+    Bz_zr = C35*epsMXZ + C34*epsMYZ + C33*epsMZZ
+    """
+
+    C = [[Cxx, Cxy, Cxz], [Cyx, Cyy, Cyz], [Czx, Czy, Czz]]
+    Bl = [[-Bx_xl, -Bx_yl, -Bx_zl], [-By_xl, -By_yl, -By_zl], [-Bz_xl, -Bz_yl, -Bz_zl]]
+    Br = [[-Bx_xr, -Bx_yr, -Bx_zr], [-By_xr, -By_yr, -By_zr], [-Bz_xr, -Bz_yr, -Bz_zr]]
+    
+    return C, Bl, Br
