@@ -30,6 +30,13 @@ __all__ = ["DerivTermCompiler",
 # TODO: replace torch.compile by torch.jit.trace(f, example_tensor)
 torch._dynamo.config.cache_size_limit = 1024
 
+"""
+TODO:
+There is a problem with jump conditions here, that only comes into player for symmetry below cubic:
+It is necessary to collect all derivatives in the force components f_ij that share a deriviative before applying the jump condition
+i.e. partial_x (C11 + C16) partial_x u_x needs to be added together before applying the sigma_m_xx jump condition
+"""
+
 class DerivTermCompiler:
     # this object maps stress and force terms on lambda functions that return the given term as torch.tensor
 

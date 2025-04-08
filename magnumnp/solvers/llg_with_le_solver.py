@@ -20,7 +20,7 @@ from magnumnp.common import logging, timedmethod, constants, normalize
 from . import LLGSolver
 from magnumnp.linear_elasticity.bcs import Plane, PlaneBC
 from magnumnp.linear_elasticity.deriv_term_compiler import *
-from magnumnp.linear_elasticity.strain import epsilon, epsilon_el, epsilon_m, _get_jump_conditions
+from magnumnp.linear_elasticity.strain import epsilon, epsilon_el, epsilon_m, _get_C_jump_conditions, _get_B_jump_conditions, _get_sigM_jump_conditions
 from magnumnp.linear_elasticity.stress import sigma
 from magnumnp.linear_elasticity.utils import gradient_with_pbc, _get_diff_slices
 
@@ -81,6 +81,7 @@ class LLGWithLESolver(LLGSolver):
                  magnetic_x_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in x-direction
                  magnetic_y_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in y-direction
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
+                 iteration_depht = 1,
                  **kwargs):
 
         # field terms for llg time integration
@@ -138,6 +139,7 @@ class LLGWithLESolver(LLGSolver):
                 raise Exception(self.__class__.__name__+": C_sym was not successfully converted into a (6,6) array")
             self._C_mask = C_sym
 
+        self.iteration_depht = iteration_depht
 
         # neumann bcs
         self._neumann_bcs = []
@@ -346,6 +348,10 @@ class LLGWithLESolver(LLGSolver):
 
             self._gradient_m = data
 
+        def set_B_jump_conditions(self, Bl, Br):
+            self._Bl_jump_conditions = Bl
+            self._Br_jump_conditions = Br
+
         @property
         def gradient_ud(self):
             return self._gradient_ud
@@ -367,12 +373,6 @@ class LLGWithLESolver(LLGSolver):
         dx = self.diff_data.dx_epx[i_x]
 
         slice_0, slice_1 = _get_diff_slices(3, i_x)
-        slice_0 = [slice(None)] * 3
-        slice_1 = [slice(None)] * 3
-        slice_0[i_x] = slice(0, -1)
-        slice_1[i_x] = slice(1, None)
-        slice_0 = tuple(slice_0)
-        slice_1 = tuple(slice_1)
 
         C = state.material["C"][:,:,:,ij_C[0],ij_C[1]]
 
@@ -380,6 +380,7 @@ class LLGWithLESolver(LLGSolver):
         C_avg = 2.*C[slice_0]*C[slice_1] / C_denom
         C_avg = torch.nan_to_num(C_avg) # C could be 0 if not proper C_mask is set
 
+        """
         slc_m = self.slice_m
         m1 = torch.clone(state.m)
         m2 = torch.clone(state.m)
@@ -392,12 +393,6 @@ class LLGWithLESolver(LLGSolver):
         m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
         m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
 
-        #eps_m1 = epsilon_m(state, m1)[...,ij_C[1]]
-        #eps_m2 = epsilon_m(state, m2)[...,ij_C[1]]
-
-        #jump = (C[slice_0]*eps_m2[slice_0] - C[slice_1]*eps_m1[slice_1]) / C_denom
-        #jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
-
         eps_m1 = epsilon_m(state, m1)
         eps_m2 = epsilon_m(state, m2)
         sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
@@ -405,7 +400,13 @@ class LLGWithLESolver(LLGSolver):
 
         jump = (sig_m2[slice_0] - sig_m1[slice_1]) / C_denom
         jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
-        
+        """
+
+        # Look up: [Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]
+        Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
+        Br = self.diff_data._Br_jump_conditions[i_u][i_x]
+        jump = -(Br[slice_0] - Bl[slice_1]) / C_denom
+        jump = torch.nan_to_num(jump)
 
         diff = state.ud[slice_1+(i_u,)] - state.ud[slice_0+(i_u,)] 
 
@@ -451,6 +452,7 @@ class LLGWithLESolver(LLGSolver):
         a += C_avg * diff
         a -= torch.roll(a, +1, i_x)
 
+        """
         slc_m = self.slice_m
         m1 = torch.clone(state.m)
         m2 = torch.clone(state.m)
@@ -463,18 +465,17 @@ class LLGWithLESolver(LLGSolver):
         m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
         m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
 
-        #s1 = -epsilon_m(state, m1)[...,ij_C[1]]
-        #s2 = -epsilon_m(state, m2)[...,ij_C[1]]
-        
-        #jump = (torch.roll(C, -1, i_x)*torch.roll(s1, -1, i_x) - C*s2) / C_denom
-        #jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
-
         eps_m1 = epsilon_m(state, m1)
         eps_m2 = epsilon_m(state, m2)
         sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
         sig_m2 = sigma(state, eps_m2)[...,ij_C[0]]
+        """
 
-        jump = (torch.roll(sig_m1, -1, i_x) - sig_m2) / C_denom
+        # Look up: [Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]
+        Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
+        Br = self.diff_data._Br_jump_conditions[i_u][i_x]
+
+        jump = -(torch.roll(Bl, -1, i_x) - Br) / C_denom
         jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
         
         a += torch.roll(dx, -1, i_x)*C*jump 
@@ -585,13 +586,40 @@ class LLGWithLESolver(LLGSolver):
         mzl -= 0.5*dmdz*dz_exp
         mzr += 0.5*dmdz*dz_exp
 
-        C, Bl, Br = _get_jump_conditions(state, mxl, mxr, myl, myr, mzl, mzr)
+        m_data = [mxl, mxr], [myl, myr], [mzl, mzr]
+        C = _get_C_jump_conditions(state)
+        Bl_sigM, Br_sigM = _get_sigM_jump_conditions(state, m_data)
 
-        grad_ux = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0])
-        grad_uy = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1])
-        grad_uz = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2])
+        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0])
+        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1])
+        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2])
 
-        diff_data.set_gradient_ud(grad_ux, grad_uy, grad_uz)
+        diff_data.set_B_jump_conditions(Bl_sigM, Br_sigM)
+
+        if (self.iteration_depht > 0):
+            for iter in range(self.iteration_depht):
+                gradient_data = grad_ud_x, grad_ud_y, grad_ud_z
+
+                Bl_eps, Br_eps = _get_B_jump_conditions(state, gradient_data)
+
+                Bxl = [Bl_eps[0][0] + Bl_sigM[0][0], Bl_eps[0][1] + Bl_sigM[0][1], Bl_eps[0][2] + Bl_sigM[0][2]]
+                Byl = [Bl_eps[1][0] + Bl_sigM[1][0], Bl_eps[1][1] + Bl_sigM[1][1], Bl_eps[1][2] + Bl_sigM[1][2]]
+                Bzl = [Bl_eps[2][0] + Bl_sigM[2][0], Bl_eps[2][1] + Bl_sigM[2][1], Bl_eps[2][2] + Bl_sigM[2][2]]
+
+                Bxr = [Br_eps[0][0] + Br_sigM[0][0], Br_eps[0][1] + Br_sigM[0][1], Br_eps[0][2] + Br_sigM[0][2]]
+                Byr = [Br_eps[1][0] + Br_sigM[1][0], Br_eps[1][1] + Br_sigM[1][1], Br_eps[1][2] + Br_sigM[1][2]]
+                Bzr = [Br_eps[2][0] + Br_sigM[2][0], Br_eps[2][1] + Br_sigM[2][1], Br_eps[2][2] + Br_sigM[2][2]]
+
+                Bl = Bxl, Byl, Bzl 
+                Br = Bxr, Byr, Bzr 
+
+                grad_ud_x[:] = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0])[:]
+                grad_ud_y[:] = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1])[:]
+                grad_ud_z[:] = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2])[:]
+                
+                diff_data.set_B_jump_conditions(Bl, Br)
+
+        diff_data.set_gradient_ud(grad_ud_x, grad_ud_y, grad_ud_z)
 
         self.diff_data = diff_data
 
