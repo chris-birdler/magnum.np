@@ -206,7 +206,7 @@ def _get_sigM_jump_conditions(state, m_data):
 
 def _get_B_jump_conditions(state, gradient_data):
     gux, guy, guz = gradient_data
-
+    
     dyux_xl = 0.5*(gux[1] + torch.roll(gux[1], -1, 0))
     dzux_xl = 0.5*(gux[2] + torch.roll(gux[2], -1, 0))
     dxux_yl = 0.5*(gux[0] + torch.roll(gux[0], -1, 1))
@@ -236,6 +236,38 @@ def _get_B_jump_conditions(state, gradient_data):
     dyuz_zr = torch.roll(dyuz_zl, -1, 2)
     dzuz_xr = torch.roll(dzuz_xl, -1, 0)
     dzuz_yr = torch.roll(dzuz_yl, -1, 1)
+
+    """
+    dyux_xl = gux[1]
+    dzux_xl = gux[2]
+    dxux_yl = gux[0]
+    dxux_zl = gux[0]
+
+    dxuy_yl = guy[0]
+    dzuy_yl = guy[2]
+    dyuy_xl = guy[1]
+    dyuy_zl = guy[1]
+
+    dxuz_zl = guz[0]
+    dyuz_zl = guz[1]
+    dzuz_xl = guz[2]
+    dzuz_yl = guz[2]
+
+    dyux_xr = dyux_xl
+    dzux_xr = dzux_xl
+    dxux_yr = dxux_yl
+    dxux_zr = dxux_zl
+
+    dxuy_yr = dxuy_yl
+    dzuy_yr = dzuy_yl
+    dyuy_xr = dyuy_xl
+    dyuy_zr = dyuy_zl
+
+    dxuz_zr = dxuz_zl
+    dyuz_zr = dyuz_zl
+    dzuz_xr = dzuz_xl
+    dzuz_yr = dzuz_yl
+    """
 
     C = state.material["C"]
     

@@ -378,7 +378,7 @@ class LLGWithLESolver(LLGSolver):
 
         C_denom = (dx[slice_0]*C[slice_1] + dx[slice_1]*C[slice_0])
         C_avg = 2.*C[slice_0]*C[slice_1] / C_denom
-        C_avg = torch.nan_to_num(C_avg) # C could be 0 if not proper C_mask is set
+        C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
 
         """
         slc_m = self.slice_m
@@ -406,7 +406,7 @@ class LLGWithLESolver(LLGSolver):
         Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
         jump = -(Br[slice_0] - Bl[slice_1]) / C_denom
-        jump = torch.nan_to_num(jump)
+        jump.nan_to_num(posinf=0, neginf=0)
 
         diff = state.ud[slice_1+(i_u,)] - state.ud[slice_0+(i_u,)] 
 
@@ -432,7 +432,7 @@ class LLGWithLESolver(LLGSolver):
         dx_denom[set_slices] += 0.5 * (dx[l_slices]+dx[r_slices])
         dx_denom[set_slices] /= 2.
         
-        return a/dx_denom
+        return (a/dx_denom).nan_to_num(posinf=0, neginf=0)
 
     #@torch.compile
     def _2nd_derivative_with_pbc(self, state, i_u, i_x, ij_C):
@@ -446,7 +446,7 @@ class LLGWithLESolver(LLGSolver):
         dx_next = torch.roll(dx, -1, dims=i_x) # positive shift, to align with the definition of the forward differences
         C_denom = (C_next*dx + C*dx_next) # at 0: C_1*dx_0 + C_0*dx_1, at N: C_0*dx_N + C_N*dx_0
         C_avg = 2.*C_next * C / C_denom
-        C_avg = torch.nan_to_num(C_avg) # C could be 0 if not proper C_mask is set
+        C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
 
         diff = torch.roll(state.ud[...,i_u],-1,i_x) - state.ud[...,i_u]
         a += C_avg * diff
@@ -475,24 +475,24 @@ class LLGWithLESolver(LLGSolver):
         Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
 
-        jump = -(torch.roll(Bl, -1, i_x) - Br) / C_denom
-        jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
+        jump = -(Br - torch.roll(Bl, -1, i_x)) / C_denom
+        jump.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
         
         a += torch.roll(dx, -1, i_x)*C*jump 
         a += torch.roll(dx, +1, i_x)*C*torch.roll(jump, +1, i_x)
-
+        
         dx_denom = torch.clone(dx)
         dx_denom += 0.5*(torch.roll(dx, +1, i_x) + torch.roll(dx, -1, i_x))
         dx_denom /= 2.
 
-        return a/dx_denom
+        return (a/dx_denom).nan_to_num(posinf=0, neginf=0)
     
     #@torch.compile
     def _mixed_derivative(self, state, i_u, i_x1, i_x2, ij_C):
         diff_1st = self.diff_data.gradient_ud[i_u][i_x1]
         C = state.material["C"][:,:,:,ij_C[0],ij_C[1]]
 
-        a = gradient_with_pbc(C*diff_1st, state.mesh, dim=i_x2)[0]
+        a = gradient_with_pbc(C*diff_1st, state.mesh, dim=i_x2, C=[C])[0]
 
         return a
     
@@ -590,9 +590,9 @@ class LLGWithLESolver(LLGSolver):
         C = _get_C_jump_conditions(state)
         Bl_sigM, Br_sigM = _get_sigM_jump_conditions(state, m_data)
 
-        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0])
-        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1])
-        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2])
+        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0])#, Bl_sigM[0], Br_sigM[0])
+        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1])#, Bl_sigM[1], Br_sigM[1])
+        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2])#, Bl_sigM[2], Br_sigM[2])
 
         diff_data.set_B_jump_conditions(Bl_sigM, Br_sigM)
 
