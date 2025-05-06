@@ -29,6 +29,7 @@ __all__ = ["DerivTermCompiler",
 
 # TODO: replace torch.compile by torch.jit.trace(f, example_tensor)
 torch._dynamo.config.cache_size_limit = 1024
+torch._dynamo.config.suppress_errors = True
 
 """
 TODO:

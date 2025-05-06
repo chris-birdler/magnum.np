@@ -81,6 +81,7 @@ class LLGWithLESolver(LLGSolver):
                  magnetic_x_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in x-direction
                  magnetic_y_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in y-direction
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
+                 second_order_bcs = False,
                  iteration_depht = 1,
                  **kwargs):
 
@@ -140,6 +141,7 @@ class LLGWithLESolver(LLGSolver):
             self._C_mask = C_sym
 
         self.iteration_depht = iteration_depht
+        self._use_2nd_order_bcs = second_order_bcs
 
         # neumann bcs
         self._neumann_bcs = []
@@ -380,28 +382,6 @@ class LLGWithLESolver(LLGSolver):
         C_avg = 2.*C[slice_0]*C[slice_1] / C_denom
         C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
 
-        """
-        slc_m = self.slice_m
-        m1 = torch.clone(state.m)
-        m2 = torch.clone(state.m)
-
-        m1[slc_m+(0,)] -= 0.5*self.diff_data.gradient_m[0][i_x]*dx[slc_m]
-        m1[slc_m+(1,)] -= 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
-        m1[slc_m+(2,)] -= 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
-
-        m2[slc_m+(0,)] += 0.5*self.diff_data.gradient_m[0][i_x]*dx[slc_m]
-        m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
-        m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
-
-        eps_m1 = epsilon_m(state, m1)
-        eps_m2 = epsilon_m(state, m2)
-        sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
-        sig_m2 = sigma(state, eps_m2)[...,ij_C[0]]
-
-        jump = (sig_m2[slice_0] - sig_m1[slice_1]) / C_denom
-        jump = torch.nan_to_num(jump) # C could be 0 if not proper C_mask is set
-        """
-
         # Look up: [Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]
         Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
@@ -452,25 +432,6 @@ class LLGWithLESolver(LLGSolver):
         a += C_avg * diff
         a -= torch.roll(a, +1, i_x)
 
-        """
-        slc_m = self.slice_m
-        m1 = torch.clone(state.m)
-        m2 = torch.clone(state.m)
-
-        m1[slc_m+(0,)] -= 0.5*self.diff_data.gradient_m[0][i_x]*dx[slc_m]
-        m1[slc_m+(1,)] -= 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
-        m1[slc_m+(2,)] -= 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
-
-        m2[slc_m+(0,)] += 0.5*self.diff_data.gradient_m[0][i_x]*dx[slc_m]
-        m2[slc_m+(1,)] += 0.5*self.diff_data.gradient_m[1][i_x]*dx[slc_m]
-        m2[slc_m+(2,)] += 0.5*self.diff_data.gradient_m[2][i_x]*dx[slc_m]
-
-        eps_m1 = epsilon_m(state, m1)
-        eps_m2 = epsilon_m(state, m2)
-        sig_m1 = sigma(state, eps_m1)[...,ij_C[0]]
-        sig_m2 = sigma(state, eps_m2)[...,ij_C[0]]
-        """
-
         # Look up: [Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]
         Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
@@ -492,6 +453,7 @@ class LLGWithLESolver(LLGSolver):
         diff_1st = self.diff_data.gradient_ud[i_u][i_x1]
         C = state.material["C"][:,:,:,ij_C[0],ij_C[1]]
 
+        # Note: using C jump conditions here allows to handle jumps to vaccum correctly
         a = gradient_with_pbc(C*diff_1st, state.mesh, dim=i_x2, C=[C])[0]
 
         return a
@@ -590,9 +552,9 @@ class LLGWithLESolver(LLGSolver):
         C = _get_C_jump_conditions(state)
         Bl_sigM, Br_sigM = _get_sigM_jump_conditions(state, m_data)
 
-        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0])#, Bl_sigM[0], Br_sigM[0])
-        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1])#, Bl_sigM[1], Br_sigM[1])
-        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2])#, Bl_sigM[2], Br_sigM[2])
+        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0])
+        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1])
+        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2])
 
         diff_data.set_B_jump_conditions(Bl_sigM, Br_sigM)
 
@@ -644,9 +606,16 @@ class LLGWithLESolver(LLGSolver):
                     f_m[slice_m+(i,j)] += term(state)
         return f_m
     
-    def _get_boundary_f(self, t0, s1, s2, hl, hr):
-        f_bdr = (s2-s1)*hl**2. + (s1-t0)*hr**2
-        f_bdr /= hl*hr*(hl+hr)
+    #def _get_boundary_f(self, t0, s1, s2, hl, hr): 
+    #    # this is actually the midpoint, since the boundary value is outside the node grid
+    #    f_bdr = (s2-s1)*hl**2. + (s1-t0)*hr**2
+    #    f_bdr /= hl*hr*(hl+hr)
+    #    return f_bdr
+    
+    def _get_boundary_f(self, t0, s1, s2, hl, hr): 
+        # this is actually the midpoint, since the boundary value is outside the node grid
+        f_bdr = s2*hl**2. - t0*hr**2. + (hr**2.-hl**2.)*s1
+        f_bdr /= hr*hl**2. + hl*hr**2.
         return f_bdr
 
     #@timedmethod
@@ -674,6 +643,7 @@ class LLGWithLESolver(LLGSolver):
             for sig_term in self._sig_terms[i][i]:
                 sig_ii[:,:,:,i] += sig_term(state)
 
+        
         sig_ij = torch.zeros(n + (3,))
         for sig_term in self._sig_terms[1][2]:
             sig_ij[:,:,:,0] += sig_term(state)
@@ -702,7 +672,7 @@ class LLGWithLESolver(LLGSolver):
             t_val = t_bc.condition(state)
             t_slc = t_bc.plane.slices
 
-            if n[t_dim] > 1:
+            if self._use_2nd_order_bcs and n[t_dim] > 1:
                 hl = 0.5*dx_exp[t_dim][t_slc] # distance to from s1 to boundary
                 hr = hl + 0.5*(torch.roll(dx_exp[t_dim], t_sign, dims=t_dim)[t_slc]) # distance between s1 and s2
 
@@ -739,9 +709,10 @@ class LLGWithLESolver(LLGSolver):
                 # t bc: remaining out of plane derivatives
                 s_bdr = sig_ij[t_slc+(t_trans_dim2,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
                 g_j = t_sign*(t_val[:,:,t_trans_dim1] - s_bdr)/h
-
+                
                 s_bdr = sig_ij[t_slc+(t_trans_dim1,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
                 g_k = t_sign*(t_val[:,:,t_trans_dim2] - s_bdr)/h
+
 
             ft[t_slc+(t_dim, t_dim)] += g_i 
             ft[t_slc+(t_trans_dim1, t_dim)] += g_j 
@@ -756,7 +727,7 @@ class LLGWithLESolver(LLGSolver):
 
         """ set boundary conditions """
         bc_mask = ft_weigth > 0 
-        f_ij[bc_mask] = ft[bc_mask] / ft_weigth[bc_mask]
+        f_ij[bc_mask] = ft[bc_mask] #/ ft_weigth[bc_mask]
 
         """ add up all force contributions """
         f_el = f_ij.sum(dim=-1)
@@ -768,7 +739,7 @@ class LLGWithLESolver(LLGSolver):
     def dud(self, state):
         rho = state.material["rho"]
 
-        return state.pd * self._get_mask_elastic(state) / rho
+        return (state.pd / rho) * self._get_mask_elastic(state) 
 
     def dv(self, t, v, state, alpha = None):
         
@@ -814,7 +785,7 @@ class LLGWithLESolver(LLGSolver):
 
     def T_el(self, state):
         T = 0.5 * state.pd**2. / state.material["rho"]
-        return (T*state.mesh.cell_volumes).sum()
+        return (T*state.mesh.cell_volumes*self._get_mask_elastic(state)).sum()
     
     def _update_neumann_bcs(self, state):
         self._neumann_bcs = []
