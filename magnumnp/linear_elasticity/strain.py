@@ -206,7 +206,50 @@ def _get_sigM_jump_conditions(state, m_data):
 
 def _get_B_jump_conditions(state, gradient_data):
     gux, guy, guz = gradient_data
+
+    C = state.material["C"]
+    C12 = C[...,0,1]
+    C13 = C[...,0,2]
+    C23 = C[...,1,2]
+    C44 = C[...,3,3]
+    C55 = C[...,4,4]
+    C66 = C[...,5,5]
+
+    def harmonic_mean(g, C, shift, dim):
+        a = C*g
+        return (a+torch.roll(a, shift, dim)) / (C + torch.roll(C, shift, dim))
     
+    dyux_xl = harmonic_mean(gux[1], C66, 1, 0)
+    dzux_xl = harmonic_mean(gux[2], C55, 1, 0)
+    dxux_yl = harmonic_mean(gux[0], C12, 1, 1)
+    dxux_zl = harmonic_mean(gux[0], C13, 1, 2)
+
+    dxuy_yl = harmonic_mean(guy[0], C66, 1, 1)
+    dzuy_yl = harmonic_mean(guy[2], C44, 1, 1)
+    dyuy_xl = harmonic_mean(guy[1], C12, 1, 0)
+    dyuy_zl = harmonic_mean(guy[1], C23, 1, 2)
+
+    dxuz_zl = harmonic_mean(guz[0], C55, 1, 2)
+    dyuz_zl = harmonic_mean(guz[1], C44, 1, 2)
+    dzuz_xl = harmonic_mean(guz[2], C13, 1, 0)
+    dzuz_yl = harmonic_mean(guz[2], C23, 1, 1)
+
+    dyux_xr = torch.roll(dyux_xl, -1, 0)
+    dzux_xr = torch.roll(dzux_xl, -1, 0)
+    dxux_yr = torch.roll(dxux_yl, -1, 1)
+    dxux_zr = torch.roll(dxux_zl, -1, 2)
+
+    dxuy_yr = torch.roll(dxuy_yl, -1, 1)
+    dzuy_yr = torch.roll(dzuy_yl, -1, 1)
+    dyuy_xr = torch.roll(dyuy_xl, -1, 0)
+    dyuy_zr = torch.roll(dyuy_zl, -1, 2)
+
+    dxuz_zr = torch.roll(dxuz_zl, -1, 2)
+    dyuz_zr = torch.roll(dyuz_zl, -1, 2)
+    dzuz_xr = torch.roll(dzuz_xl, -1, 0)
+    dzuz_yr = torch.roll(dzuz_yl, -1, 1)
+
+    """
     dyux_xl = 0.5*(gux[1] + torch.roll(gux[1], -1, 0))
     dzux_xl = 0.5*(gux[2] + torch.roll(gux[2], -1, 0))
     dxux_yl = 0.5*(gux[0] + torch.roll(gux[0], -1, 1))
@@ -236,67 +279,34 @@ def _get_B_jump_conditions(state, gradient_data):
     dyuz_zr = torch.roll(dyuz_zl, -1, 2)
     dzuz_xr = torch.roll(dzuz_xl, -1, 0)
     dzuz_yr = torch.roll(dzuz_yl, -1, 1)
-
     """
-    dyux_xl = gux[1]
-    dzux_xl = gux[2]
-    dxux_yl = gux[0]
-    dxux_zl = gux[0]
-
-    dxuy_yl = guy[0]
-    dzuy_yl = guy[2]
-    dyuy_xl = guy[1]
-    dyuy_zl = guy[1]
-
-    dxuz_zl = guz[0]
-    dyuz_zl = guz[1]
-    dzuz_xl = guz[2]
-    dzuz_yl = guz[2]
-
-    dyux_xr = dyux_xl
-    dzux_xr = dzux_xl
-    dxux_yr = dxux_yl
-    dxux_zr = dxux_zl
-
-    dxuy_yr = dxuy_yl
-    dzuy_yr = dzuy_yl
-    dyuy_xr = dyuy_xl
-    dyuy_zr = dyuy_zl
-
-    dxuz_zr = dxuz_zl
-    dyuz_zr = dyuz_zl
-    dzuz_xr = dzuz_xl
-    dzuz_yr = dzuz_yl
-    """
-
-    C = state.material["C"]
     
     # for x derivatives
-    Bx_xl = C[...,0,1]*dyuy_xl + C[...,0,2]*dzuz_xl
-    By_xl = C[...,5,5]*dyux_xl
-    Bz_xl = C[...,4,4]*dzux_xl
+    Bx_xl = C12*dyuy_xl + C13*dzuz_xl
+    By_xl = C66*dyux_xl
+    Bz_xl = C55*dzux_xl
 
-    Bx_xr = C[...,0,1]*dyuy_xr + C[...,0,2]*dzuz_xr
-    By_xr = C[...,5,5]*dyux_xr
-    Bz_xr = C[...,4,4]*dzux_xr
+    Bx_xr = C12*dyuy_xr + C13*dzuz_xr
+    By_xr = C66*dyux_xr
+    Bz_xr = C55*dzux_xr
 
     # for y derivatives
-    Bx_yl = C[...,5,5]*dxuy_yl
-    By_yl = C[...,1,0]*dxux_yl + C[...,1,2]*dzuz_yl
-    Bz_yl = C[...,3,3]*dzuy_yl
+    Bx_yl = C66*dxuy_yl
+    By_yl = C12*dxux_yl + C23*dzuz_yl
+    Bz_yl = C44*dzuy_yl
 
-    Bx_yr = C[...,5,5]*dxuy_yr
-    By_yr = C[...,1,0]*dxux_yr + C[...,1,2]*dzuz_yr
-    Bz_yr = C[...,3,3]*dzuy_yr
+    Bx_yr = C66*dxuy_yr
+    By_yr = C12*dxux_yr + C23*dzuz_yr
+    Bz_yr = C44*dzuy_yr
 
     # for z derivatives
-    Bx_zl = C[...,4,4]*dxuz_zl
-    By_zl = C[...,3,3]*dyuz_zl
-    Bz_zl = C[...,2,0]*dxux_zl + C[...,2,1]*dyuy_zl
+    Bx_zl = C55*dxuz_zl
+    By_zl = C44*dyuz_zl
+    Bz_zl = C13*dxux_zl + C23*dyuy_zl
 
-    Bx_zr = C[...,4,4]*dxuz_zr
-    By_zr = C[...,3,3]*dyuz_zr
-    Bz_zr = C[...,2,0]*dxux_zr + C[...,2,1]*dyuy_zr
+    Bx_zr = C55*dxuz_zr
+    By_zr = C44*dyuz_zr
+    Bz_zr = C13*dxux_zr + C23*dyuy_zr
 
     Bl = [[Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]]
     Br = [[Bx_xr, Bx_yr, Bx_zr], [By_xr, By_yr, By_zr], [Bz_xr, Bz_yr, Bz_zr]]
