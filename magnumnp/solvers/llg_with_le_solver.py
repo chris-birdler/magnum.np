@@ -81,7 +81,7 @@ class LLGWithLESolver(LLGSolver):
                  magnetic_x_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in x-direction
                  magnetic_y_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in y-direction
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
-                 second_order_bcs = False,
+                 boundary_nodes = 1,
                  iteration_depht = 1,
                  **kwargs):
 
@@ -141,7 +141,11 @@ class LLGWithLESolver(LLGSolver):
             self._C_mask = C_sym
 
         self.iteration_depht = iteration_depht
-        self._use_2nd_order_bcs = second_order_bcs
+
+        if (boundary_nodes < 1) or (boundary_nodes > 3):
+            raise Exception(self.__class__.__name__ + ": boundary_nodes must be 1, 2 or 3.")
+        self._gradient_second_order_boundary = boundary_nodes > 2 
+        self._bc_second_order = boundary_nodes > 1
 
         # neumann bcs
         self._neumann_bcs = []
@@ -454,7 +458,7 @@ class LLGWithLESolver(LLGSolver):
         C = state.material["C"][:,:,:,ij_C[0],ij_C[1]]
 
         # Note: using C jump conditions here allows to handle jumps to vaccum correctly
-        a = gradient_with_pbc(C*diff_1st, state.mesh, dim=i_x2, C=[C])[0]
+        a = gradient_with_pbc(C*diff_1st, state.mesh, dim=i_x2, C=[C], second_order_boundary=self._gradient_second_order_boundary)[0]
 
         return a
     
@@ -497,9 +501,9 @@ class LLGWithLESolver(LLGSolver):
         A = state.material["A"][...,0]
 
         slc_m = self.slice_m
-        grad_mx = gradient_with_pbc(state.m[...,0], state.mesh, [0,1,2], [A, A, A], slices=slc_m)
-        grad_my = gradient_with_pbc(state.m[...,1], state.mesh, [0,1,2], [A, A, A], slices=slc_m)
-        grad_mz = gradient_with_pbc(state.m[...,2], state.mesh, [0,1,2], [A, A, A], slices=slc_m)
+        grad_mx = gradient_with_pbc(state.m[...,0], state.mesh, [0,1,2], [A, A, A], slices=slc_m, second_order_boundary=self._gradient_second_order_boundary)
+        grad_my = gradient_with_pbc(state.m[...,1], state.mesh, [0,1,2], [A, A, A], slices=slc_m, second_order_boundary=self._gradient_second_order_boundary)
+        grad_mz = gradient_with_pbc(state.m[...,2], state.mesh, [0,1,2], [A, A, A], slices=slc_m, second_order_boundary=self._gradient_second_order_boundary)
 
         diff_data.set_gradient_m(grad_mx, grad_my, grad_mz)
 
@@ -552,9 +556,9 @@ class LLGWithLESolver(LLGSolver):
         C = _get_C_jump_conditions(state)
         Bl_sigM, Br_sigM = _get_sigM_jump_conditions(state, m_data)
 
-        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0])
-        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1])
-        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2])
+        grad_ud_x = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0], second_order_boundary=self._gradient_second_order_boundary)
+        grad_ud_y = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1], second_order_boundary=self._gradient_second_order_boundary)
+        grad_ud_z = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2], second_order_boundary=self._gradient_second_order_boundary)
 
         diff_data.set_B_jump_conditions(Bl_sigM, Br_sigM)
 
@@ -575,9 +579,9 @@ class LLGWithLESolver(LLGSolver):
                 Bl = Bxl, Byl, Bzl 
                 Br = Bxr, Byr, Bzr 
 
-                grad_ud_x[:] = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0])[:]
-                grad_ud_y[:] = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1])[:]
-                grad_ud_z[:] = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2])[:]
+                grad_ud_x[:] = gradient_with_pbc(state.ud[...,0], state.mesh, [0,1,2], C[0], Bl[0], Br[0], second_order_boundary=self._gradient_second_order_boundary)[:]
+                grad_ud_y[:] = gradient_with_pbc(state.ud[...,1], state.mesh, [0,1,2], C[1], Bl[1], Br[1], second_order_boundary=self._gradient_second_order_boundary)[:]
+                grad_ud_z[:] = gradient_with_pbc(state.ud[...,2], state.mesh, [0,1,2], C[2], Bl[2], Br[2], second_order_boundary=self._gradient_second_order_boundary)[:]
                 
                 diff_data.set_B_jump_conditions(Bl, Br)
 
@@ -605,12 +609,6 @@ class LLGWithLESolver(LLGSolver):
                 for term in self._fm_terms[i][j]:
                     f_m[slice_m+(i,j)] += term(state)
         return f_m
-    
-    #def _get_boundary_f(self, t0, s1, s2, hl, hr): 
-    #    # this is actually the midpoint, since the boundary value is outside the node grid
-    #    f_bdr = (s2-s1)*hl**2. + (s1-t0)*hr**2
-    #    f_bdr /= hl*hr*(hl+hr)
-    #    return f_bdr
     
     def _get_boundary_f(self, t0, s1, s2, hl, hr): 
         # this is actually the midpoint, since the boundary value is outside the node grid
@@ -672,7 +670,7 @@ class LLGWithLESolver(LLGSolver):
             t_val = t_bc.condition(state)
             t_slc = t_bc.plane.slices
 
-            if self._use_2nd_order_bcs and n[t_dim] > 1:
+            if self._bc_second_order and n[t_dim] > 1:
                 hl = 0.5*dx_exp[t_dim][t_slc] # distance to from s1 to boundary
                 hr = hl + 0.5*(torch.roll(dx_exp[t_dim], t_sign, dims=t_dim)[t_slc]) # distance between s1 and s2
 

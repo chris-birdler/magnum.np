@@ -24,7 +24,7 @@ from magnumnp.linear_elasticity.stress import sigma
 __all__ = ["epsilon", "epsilon_m", "epsilon_el", "_get_C_jump_conditions", "_get_sigM_jump_conditions", "_get_B_jump_conditions"]
 
 #@torch.compile
-def epsilon(state, ud=None, iteration_depht = 1):
+def epsilon(state, ud=None, iteration_depht = 1, second_order_boundary = False):
     if ud is None:
         ud = state.ud
     else:
@@ -42,9 +42,9 @@ def epsilon(state, ud=None, iteration_depht = 1):
     dz_exp = state.mesh.dx_tensor[2].reshape(1,1,-1,1)
 
     A = state.material["A"][...,0]
-    grad_mx = gradient_with_pbc(state.m[...,0], state.mesh, [0,1,2], [A, A, A])
-    grad_my = gradient_with_pbc(state.m[...,1], state.mesh, [0,1,2], [A, A, A])
-    grad_mz = gradient_with_pbc(state.m[...,2], state.mesh, [0,1,2], [A, A, A])
+    grad_mx = gradient_with_pbc(state.m[...,0], state.mesh, [0,1,2], [A, A, A], second_order_boundary=second_order_boundary)
+    grad_my = gradient_with_pbc(state.m[...,1], state.mesh, [0,1,2], [A, A, A], second_order_boundary=second_order_boundary)
+    grad_mz = gradient_with_pbc(state.m[...,2], state.mesh, [0,1,2], [A, A, A], second_order_boundary=second_order_boundary)
 
     n = state.mesh.n
     dmdx = torch.zeros(n+(3,))
@@ -73,9 +73,9 @@ def epsilon(state, ud=None, iteration_depht = 1):
     C = _get_C_jump_conditions(state)
     Bl_sigM, Br_sigM = _get_sigM_jump_conditions(state, m_data)
 
-    grad_ud_x = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0])
-    grad_ud_y = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1])
-    grad_ud_z = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2])
+    grad_ud_x = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], C[0], Bl_sigM[0], Br_sigM[0], second_order_boundary=second_order_boundary)
+    grad_ud_y = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], C[1], Bl_sigM[1], Br_sigM[1], second_order_boundary=second_order_boundary)
+    grad_ud_z = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], C[2], Bl_sigM[2], Br_sigM[2], second_order_boundary=second_order_boundary)
 
     if (iteration_depht > 0):
         for iter in range(iteration_depht):
@@ -91,9 +91,9 @@ def epsilon(state, ud=None, iteration_depht = 1):
             Byr = [Br_eps[1][0] + Br_sigM[1][0], Br_eps[1][1] + Br_sigM[1][1], Br_eps[1][2] + Br_sigM[1][2]]
             Bzr = [Br_eps[2][0] + Br_sigM[2][0], Br_eps[2][1] + Br_sigM[2][1], Br_eps[2][2] + Br_sigM[2][2]]
 
-            grad_ud_x[:] = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], C[0], Bxl, Bxr)[:]
-            grad_ud_y[:] = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], C[1], Byl, Byr)[:]
-            grad_ud_z[:] = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], C[2], Bzl, Bzr)[:]
+            grad_ud_x[:] = gradient_with_pbc(ud[...,0], state.mesh, [0,1,2], C[0], Bxl, Bxr, second_order_boundary=second_order_boundary)[:]
+            grad_ud_y[:] = gradient_with_pbc(ud[...,1], state.mesh, [0,1,2], C[1], Byl, Byr, second_order_boundary=second_order_boundary)[:]
+            grad_ud_z[:] = gradient_with_pbc(ud[...,2], state.mesh, [0,1,2], C[2], Bzl, Bzr, second_order_boundary=second_order_boundary)[:]
 
     n = state.mesh.n
     eps = torch.zeros(n+(6,))

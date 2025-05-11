@@ -33,12 +33,12 @@ def _get_diff_slices(ndim, xdim):
 
     return slice_0, slice_1
 
-def _get_derivative_on_boundary(f0,f1,f2,h0,h1):
+def _get_derivative_on_boundary(f0,f1,f2,h1,h0):
     g_bdr = -f2*h0**2. + f1*(h0+h1)**2. - f0*h1*(2*h0+h1)
     g_bdr /= h0*h1*(h0 + h1)
     return g_bdr
 
-def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=None):
+def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=None, second_order_boundary=False):
     """
     f      ... the gradient of this tensor is calculated 
     C,B    ... assumed to be constants on cells, gives jump conditions of the type
@@ -95,7 +95,7 @@ def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=Non
         elif ((mesh.pbc[d] == 0) or (fs.shape[d] != f.shape[d])):
             g = first_derivative_with_jump_conditions(fs, C[i][slices], Bl[i][slices], Br[i][slices], dx_exp[d], d)
             
-            if (n_f[d] > 2):
+            if (n_f[d] > 2) and second_order_boundary:
                 dx_s = dx_exp[d]
                 if (d == 0):
                     f0 = fs[0]
