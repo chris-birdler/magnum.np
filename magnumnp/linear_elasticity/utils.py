@@ -33,7 +33,7 @@ def _get_diff_slices(ndim, xdim):
 
     return slice_0, slice_1
 
-def _get_derivative_on_boundary(f0,f1,f2,h1,h0):
+def _get_derivative_on_boundary(f0,f1,f2,h0,h1):
     g_bdr = -f2*h0**2. + f1*(h0+h1)**2. - f0*h1*(2*h0+h1)
     g_bdr /= h0*h1*(h0 + h1)
     return g_bdr
@@ -141,7 +141,7 @@ def gradient_with_pbc(f, mesh, dim=[0,1,2], C=None, Bl=None, Br=None, slices=Non
                     h0 = 0.5*(dx_s[:,:,-1]+dx_s[:,:,-2])
                     h1 = 0.5*(dx_s[:,:,-2]+dx_s[:,:,-3])
                     g[:,:,-1] = -_get_derivative_on_boundary(f0, f1, f2, h0, h1)
-            
+
             output.append(g)
         # case pbc
         else:

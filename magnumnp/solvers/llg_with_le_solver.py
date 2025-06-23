@@ -83,6 +83,7 @@ class LLGWithLESolver(LLGSolver):
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
                  boundary_nodes = 1,
                  iteration_depht = 1,
+                 ignore_rho_jumps = True,
                  **kwargs):
 
         # field terms for llg time integration
@@ -146,6 +147,11 @@ class LLGWithLESolver(LLGSolver):
             raise Exception(self.__class__.__name__ + ": boundary_nodes must be 1, 2 or 3.")
         self._gradient_second_order_boundary = boundary_nodes > 2 
         self._bc_second_order = boundary_nodes > 1
+
+        # calculation of second derivatives
+        self._ignore_rho_jumps = ignore_rho_jumps
+        if not ignore_rho_jumps:
+            logging.warning("Warning: jump conditions for rho are only valid for horizontal shear modes")
 
         # neumann bcs
         self._neumann_bcs = []
@@ -416,8 +422,8 @@ class LLGWithLESolver(LLGSolver):
         dx_denom[set_slices] += 0.5 * (dx[l_slices]+dx[r_slices])
         dx_denom[set_slices] /= 2.
         
-        return (a/dx_denom).nan_to_num(posinf=0, neginf=0)
-
+        return (a/(dx_denom)).nan_to_num(posinf=0, neginf=0)
+    
     #@torch.compile
     def _2nd_derivative_with_pbc(self, state, i_u, i_x, ij_C):
         # second order accurate for regular and only first order accurate for irregular grids
@@ -628,14 +634,7 @@ class LLGWithLESolver(LLGSolver):
         eps_m = epsilon_m(state)
         sig_m = sigma(state, eps_m)
 
-        """ get bulk forces """
-        f_ij = torch.zeros(n + (3,3))
-        for i in range(3):
-            for j in range(3):
-                for term in self._f_terms[i][j]:
-                    f_ij[:,:,:,i,j] += term(state)
-
-        """ get forces and set boundary conditions """
+        """ get stress """
         sig_ii = torch.zeros(n + (3,))
         for i in range(3):
             for sig_term in self._sig_terms[i][i]:
@@ -654,12 +653,115 @@ class LLGWithLESolver(LLGSolver):
 
         sig_ii -= sig_m[...,:3]
         sig_ij -= sig_m[...,3:]
-        
+
+        """ get bulk forces """
+        f_ij = torch.zeros(n + (3,3))
+
+        if self._ignore_rho_jumps:
+            # this method ingores jump conditions that keep the f/rho continuous
+            for i in range(3):
+                for j in range(3):
+                    for term in self._f_terms[i][j]:
+                        f_ij[:,:,:,i,j] += term(state)
+
+        else:
+            rho = state.material["rho"][...,0]
+            # this method keeps f/rho continuous, but is most likely of lower order
+            fxx = gradient_with_pbc(sig_ii[...,0], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fxy = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fxz = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+            fyx = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fyy = gradient_with_pbc(sig_ii[...,1], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+            fzx = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fzy = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+            fzz = gradient_with_pbc(sig_ii[...,2], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+            if (self.iteration_depht > 0):
+                
+                def harmonic_mean(g, C, shift, dim):
+                    a = C*g
+                    mean = (a+torch.roll(a, shift, dim)) / (C + torch.roll(C, shift, dim))
+                    return mean.nan_to_num(posinf=0, neginf=0)
+                
+                C = state.material["C"]
+                C44 = C[...,3,3]
+                C55 = C[...,4,4]
+                C66 = C[...,5,5]
+                
+                for iter in range(self.iteration_depht):
+                    C66 = state.material["C"][...,5,5]
+                    epsXY = epsilon(state, iteration_depht=self.iteration_depht, second_order_boundary=self._gradient_second_order_boundary)[...,5]
+
+                    Bfyz_l = harmonic_mean(epsXY, C66, 1, 2)
+                    Bfyz_r = torch.roll(Bfyz_l, -1, 2)
+
+                    Bfyz_l = gradient_with_pbc(C66*Bfyz_l, state.mesh, dim=[0], second_order_boundary=True)[0]
+                    Bfyz_r = gradient_with_pbc(C66*Bfyz_r, state.mesh, dim=[0], second_order_boundary=True)[0]
+
+                    fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+                    """
+                    I = torch.ones(state.mesh.n)
+                    Bfxx_l = harmonic_mean(fxy, C66, 1, 0) + harmonic_mean(fxz, C55, 1, 0)
+                    Bfxy_l = harmonic_mean(fxx, I, 1, 1) + harmonic_mean(fxz, C55, 1, 1)
+                    Bfxz_l = harmonic_mean(fxx, I, 1, 2) + harmonic_mean(fxy, C66, 1, 2)
+
+                    Bfyx_l = harmonic_mean(fyy, I, 1, 0) + harmonic_mean(fyz, C44, 1, 0)
+                    Bfyy_l = harmonic_mean(fyx, C66, 1, 1) + harmonic_mean(fyz, C44, 1, 1)
+                    Bfyz_l = harmonic_mean(fyx, C66, 1, 2) #+ harmonic_mean(fyy, I, 1, 2)
+
+                    Bfzx_l = harmonic_mean(fzy, C66, 1, 0) + harmonic_mean(fzz, I, 1, 0)
+                    Bfzy_l = harmonic_mean(fzx, C55, 1, 1) + harmonic_mean(fzz, I, 1, 1)
+                    Bfzz_l = harmonic_mean(fzx, C55, 1, 2) + harmonic_mean(fzy, C55, 1, 2)
+                    
+                    Bfxx_r = torch.roll(Bfxx_l, -1, 0)
+                    Bfxy_r = torch.roll(Bfxy_l, -1, 1)
+                    Bfxz_r = torch.roll(Bfxz_l, -1, 2)
+
+                    Bfyx_r = torch.roll(Bfyx_l, -1, 0)
+                    Bfyy_r = torch.roll(Bfyy_l, -1, 1)
+                    Bfyz_r = torch.roll(Bfyz_l, -1, 2)
+
+                    Bfzx_r = torch.roll(Bfzx_l, -1, 0)
+                    Bfzy_r = torch.roll(Bfzy_l, -1, 1)
+                    Bfzz_r = torch.roll(Bfzz_l, -1, 2)
+
+                    fxx = gradient_with_pbc(sig_ii[...,0], state.mesh, dim=[0], C=[1/rho], Bl=[Bfxx_l/rho], Br=[Bfxx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fxy = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[1], C=[1/rho], Bl=[Bfxy_l/rho], Br=[Bfxy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fxz = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[2], C=[1/rho], Bl=[Bfxz_l/rho], Br=[Bfxz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+                    fyx = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[0], C=[1/rho], Bl=[Bfyx_l/rho], Br=[Bfyx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fyy = gradient_with_pbc(sig_ii[...,1], state.mesh, dim=[1], C=[1/rho], Bl=[Bfyy_l/rho], Br=[Bfyy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+
+                    fzx = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[0], C=[1/rho], Bl=[Bfzx_l/rho], Br=[Bfzx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fzy = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[1], C=[1/rho], Bl=[Bfzy_l/rho], Br=[Bfzy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    fzz = gradient_with_pbc(sig_ii[...,2], state.mesh, dim=[2], C=[1/rho], Bl=[Bfzz_l/rho], Br=[Bfzz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
+                    """
+
+
+            f_ij[...,0,0] = fxx
+            f_ij[...,0,1] = fxy
+            f_ij[...,0,2] = fxz 
+
+            f_ij[...,1,0] = fyx
+            f_ij[...,1,1] = fyy
+            f_ij[...,1,2] = fyz 
+            
+            f_ij[...,2,0] = fzx
+            f_ij[...,2,1] = fzy
+            f_ij[...,2,2] = fzz 
+
+        """ get expanded dx """
         dx1_exp =  state.mesh.dx_tensor[0].unsqueeze(1).unsqueeze(2).expand_as(state.ud[...,0])
         dx2_exp =  state.mesh.dx_tensor[1].unsqueeze(0).unsqueeze(2).expand_as(state.ud[...,0])
         dx3_exp =  state.mesh.dx_tensor[2].unsqueeze(0).unsqueeze(0).expand_as(state.ud[...,0])
         dx_exp = dx1_exp, dx2_exp, dx3_exp
 
+        """ set boundary conditions """
         ft = torch.zeros(state.mesh.n + (3,3))
         ft_weigth = torch.zeros(state.mesh.n + (3,3), dtype=int)
         for t_bc in self._neumann_bcs:
@@ -671,34 +773,52 @@ class LLGWithLESolver(LLGSolver):
             t_slc = t_bc.plane.slices
 
             if self._bc_second_order and n[t_dim] > 1:
-                hl = 0.5*dx_exp[t_dim][t_slc] # distance to from s1 to boundary
-                hr = hl + 0.5*(torch.roll(dx_exp[t_dim], t_sign, dims=t_dim)[t_slc]) # distance between s1 and s2
+                if self._gradient_second_order_boundary:
+                    hl = 0.5*dx_exp[t_dim][t_slc] # distance to from s1 to boundary
+                    hr = hl + 0.5*(torch.roll(dx_exp[t_dim], t_sign, dims=t_dim)[t_slc]) # distance between s1 and s2
 
-                # t bc: main diagonal
-                t0 = t_val[...,t_dim]
-                s1 = sig_ii[t_slc+(t_dim,)] # sig value on node
-                s2 = torch.roll(sig_ii[...,t_dim], t_sign, dims=t_dim)[t_slc] # sig value on next node            
+                    # t bc: main diagonal
+                    t0 = t_val[...,t_dim]
+                    s1 = sig_ii[t_slc+(t_dim,)] # sig value on node
+                    s2 = torch.roll(sig_ii[...,t_dim], t_sign, dims=t_dim)[t_slc] # sig value on next node            
 
-                g_i = self._get_boundary_f(t0, s1, s2, hl, hr)
-                g_i *= -t_sign
-                
-                # t bc: remaining out of plane derivatives
-                t0 = t_val[...,t_trans_dim1]
-                s1 = sig_ij[t_slc+(t_trans_dim2,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
-                s2 = torch.roll(sig_ij[...,t_trans_dim2], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    g_i = self._get_boundary_f(t0, s1, s2, hl, hr)
+                    g_i *= -t_sign
+                    
+                    # t bc: remaining out of plane derivatives
+                    t0 = t_val[...,t_trans_dim1]
+                    s1 = sig_ij[t_slc+(t_trans_dim2,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    s2 = torch.roll(sig_ij[...,t_trans_dim2], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
 
-                g_j = self._get_boundary_f(t0, s1, s2, hl, hr)
-                g_j *= -t_sign
+                    g_j = self._get_boundary_f(t0, s1, s2, hl, hr)
+                    g_j *= -t_sign
 
-                t0 = t_val[...,t_trans_dim2]
-                s1 = sig_ij[t_slc+(t_trans_dim1,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
-                s2 = torch.roll(sig_ij[...,t_trans_dim1], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    t0 = t_val[...,t_trans_dim2]
+                    s1 = sig_ij[t_slc+(t_trans_dim1,)] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    s2 = torch.roll(sig_ij[...,t_trans_dim1], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
 
-                g_k = self._get_boundary_f(t0, s1, s2, hl, hr)
-                g_k *= -t_sign
+                    g_k = self._get_boundary_f(t0, s1, s2, hl, hr)
+                    g_k *= -t_sign
+
+                else:
+                    h = dx_exp[t_dim][t_slc] + 0.5*(torch.roll(dx_exp[t_dim], t_sign, dims=t_dim)[t_slc])
+
+                    # t bc: main diagonal
+                    s_bdr = torch.roll(sig_ii[...,t_dim], t_sign, dims=t_dim)[t_slc]
+                    g_i = t_sign*(t_val[:,:,t_dim] - s_bdr)/h # compute value
+                    
+                    # t bc: remaining out of plane derivatives
+                    s_bdr = torch.roll(sig_ij[...,t_trans_dim2], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    g_j = t_sign*(t_val[:,:,t_trans_dim1] - s_bdr)/h
+                    
+                    s_bdr = torch.roll(sig_ij[...,t_trans_dim1], t_sign, dims=t_dim)[t_slc] # Note: sig_ij is counted "inverse", as yz, xz, xy 
+                    g_k = t_sign*(t_val[:,:,t_trans_dim2] - s_bdr)/h
 
             else:
-                h = 0.5*dx_exp[t_dim][t_slc] # get distance to the boundary
+                # Note: When forward and backward difference are used in this scheme for the boundary values of sig
+                # They are better estimates for the value at the cell boundary (Mean value theorem). 
+                # Thus, h is the full cell width dx here
+                h = dx_exp[t_dim][t_slc]
 
                 # t bc: main diagonal
                 s_bdr = sig_ii[t_slc+(t_dim,)] # sig value on node
@@ -721,13 +841,15 @@ class LLGWithLESolver(LLGSolver):
             ft_weigth[t_slc+(t_trans_dim2, t_dim)] += 1
         
         """ get forces due to magnetic strain """
-        f_ij -= self.get_fm(state)
+        if (self._ignore_rho_jumps):
+            f_ij -= self.get_fm(state)
 
         """ set boundary conditions """
         bc_mask = ft_weigth > 0 
         f_ij[bc_mask] = ft[bc_mask] #/ ft_weigth[bc_mask]
 
         """ add up all force contributions """
+        self.f_ij = f_ij
         f_el = f_ij.sum(dim=-1)
 
         eta = state.material["eta"]
@@ -764,7 +886,8 @@ class LLGWithLESolver(LLGSolver):
         return sum([term.E(state) for term in self._terms])
     
     def U_el(self, state):
-        eps_el = epsilon_el(state)
+        eps = epsilon(state, second_order_boundary=self._gradient_second_order_boundary)
+        eps_el = eps - epsilon_m(state)
         sig_el = sigma(state, eps_el)
 
         zeta = 0.5*eps_el*sig_el
@@ -773,7 +896,7 @@ class LLGWithLESolver(LLGSolver):
         return E_el.sum()
     
     def U(self, state):
-        eps = epsilon(state)
+        eps = epsilon(state, second_order_boundary=self._gradient_second_order_boundary)
         sig = sigma(state, eps)
 
         zeta = 0.5*eps*sig
@@ -912,6 +1035,7 @@ class LLGWithLESolver(LLGSolver):
         atol = torch.tensor(atol)[None,None,None,:]
 
         self._update_neumann_bcs(state)
+
         for i in range(maxiter):
             # step
             v_in = self._get_solution_variables(state)
@@ -925,7 +1049,7 @@ class LLGWithLESolver(LLGSolver):
             # determine rate of change of ud
             dud = state.pd / state.material["rho"]
             dud = dud[self._get_mask_elastic(state)].nan_to_num(posinf=0, neginf=0).abs().max()
-            
+
             logging.info_blue("[LLG+LE] relax: i=%d t=%g |dm|=%g, |dud|=%g" % (i, state.t-t0, dm, dud))
             if dm < dm_tol and dud < dud_tol:
                 logging.info_green("[LLG+LE] relax: Successfully converged (iter=%d, dm_tol = %g, dud_tol = %g)" % (i, dm_tol, dud_tol))

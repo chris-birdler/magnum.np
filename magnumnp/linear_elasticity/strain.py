@@ -115,7 +115,7 @@ def epsilon_m(state, m=None):
     lambda_111 = state.material["lambda_111"][:,:,:,0]
 
     n = state.mesh.n
-    eps_m = torch.zeros((n[0], n[1], n[2], 6), device=m.device)
+    eps_m = torch.zeros(n+(6,))
 
     eps_m[:,:,:,0] = (3./2.)*lambda_100*(m[:,:,:,0]**2. - 1./3.)
     eps_m[:,:,:,1] = (3./2.)*lambda_100*(m[:,:,:,1]**2. - 1./3.)
@@ -217,7 +217,8 @@ def _get_B_jump_conditions(state, gradient_data):
 
     def harmonic_mean(g, C, shift, dim):
         a = C*g
-        return (a+torch.roll(a, shift, dim)) / (C + torch.roll(C, shift, dim))
+        mean = (a+torch.roll(a, shift, dim)) / (C + torch.roll(C, shift, dim))
+        return mean.nan_to_num(posinf=0, neginf=0)
     
     dyux_xl = harmonic_mean(gux[1], C66, 1, 0)
     dzux_xl = harmonic_mean(gux[2], C55, 1, 0)
