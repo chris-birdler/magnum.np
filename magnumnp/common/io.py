@@ -92,7 +92,7 @@ def write_vti(fields, filename, state = None, scale = 1.):
         write_vti([state.m, h], "list.vti")
         write_vti({'m':state.m, 'h':h}, "dict.vti")
     """
-    if filename[-4:] != ".vti":
+    if str(filename)[-4:] != ".vti":
         logging.warning("[write_vti] Extention '.vti' should be used on equidistant grids!")
 
     dirname = os.path.dirname(filename)
