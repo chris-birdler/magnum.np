@@ -17,11 +17,12 @@
 #
 
 from magnumnp.common import timedmethod, constants
+from magnumnp.field_terms import LinearFieldTerm
 import torch
 
 __all__ = ["IntergrainExchangeField", "RKKYField", "BiquadraticRKKYField"]
 
-class IntergrainExchangeField(object):
+class IntergrainExchangeField(LinearFieldTerm):
     r"""
     Intergrain - Exchange interaction between two domains gives rise to the following energy contribution:
 
@@ -53,7 +54,7 @@ class IntergrainExchangeField(object):
         # without interface layer, two seperate exchange fields need to be defined
         exchange1 = ExchangeField(Aex1, domain1)
         exchange2 = ExchangeField(Aex2, domain2)
-        iex = IntergrainExchangeField(Jiex, domain1, domain2)
+        iex = IntergrainExchangeField(domain1, domain2)
     """
     def __init__(self, domain1, domain2):
         self._domain1 = domain1
