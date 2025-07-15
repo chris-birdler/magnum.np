@@ -50,19 +50,23 @@ def test_regression():
     dx = (1e-9, 2e-9, 5e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"alpha":    state.Constant(0.02),
-                      "Ms":       state.Constant(8e5),
-                      "A":        state.Constant(1.3e-11),
-                      "Ku":       state.Constant(1e5),
-                      "Ku_axis":  state.Constant([0,1,0]),
-                      "Kc1":      state.Constant(1e3),
-                      "Kc2":      state.Constant(1e4),
-                      "Kc_alpha": state.Constant(0.1),
-                      "Kc_beta":  state.Constant(0.2),
-                      "Kc_gamma": state.Constant(0.3),
-                      "Di":       state.Constant(1.),
-                      "Db":       state.Constant(1.),
-                      "DD2d":     state.Constant(1.)}
+    state.material = {"alpha":    0.02,
+                      "Ms":       8e5,
+                      "A":        1.3e-11,
+                      "Ku":       1e5,
+                      "Ku2":      1e4,
+                      "Ku_axis":  [0,1,0],
+                      "Kc1":      1e3,
+                      "Kc2":      1e4,
+                      "Kc3":      1e3,
+                      "Kc_alpha": 0.1,
+                      "Kc_beta":  0.2,
+                      "Kc_gamma": 0.3,
+                      "Kc_axis1": [0,0,1],
+                      "Kc_axis2": [0,1,0],
+                      "Di":       1.,
+                      "Db":       1.,
+                      "DD2d":     1.}
 
     x, y, z = mesh.SpatialCoordinate()
     state.m = Expression([x*y, y*z, z*x])
@@ -73,7 +77,9 @@ def test_regression():
     dmi_D2d      = D2dDMIField()
     exchange     = ExchangeField()
     aniso        = UniaxialAnisotropyField()
+    aniso2       = UniaxialAnisotropyField2()
     aniso_cubic  = CubicAnisotropyField()
+    aniso_cubic2  = CubicAnisotropyField2()
 
     m = state.m
     h = exchange.h(state)
@@ -84,7 +90,9 @@ def test_regression():
     h_dmi_D2d      = dmi_D2d.h(state)
     h_exchange     = exchange.h(state)
     h_aniso        = aniso.h(state)
+    h_aniso2       = aniso2.h(state)
     h_aniso_cubic  = aniso_cubic.h(state)
+    h_aniso_cubic2  = aniso_cubic2.h(state)
 
     this_dir = pathlib.Path(__file__).resolve().parent
     filename = this_dir / "ref" / "h_regression.vti"
@@ -96,7 +104,9 @@ def test_regression():
     #           "h_dmi_D2d":h_dmi_D2d,
     #           "h_exchange":h_exchange,
     #           "h_aniso":h_aniso,
-    #           "h_aniso_cubic":h_aniso_cubic},
+    #           "h_aniso2":h_aniso2,
+    #           "h_aniso_cubic":h_aniso_cubic,
+    #           "h_aniso_cubic2":h_aniso_cubic2},
     #           filename)
     mesh, ref = read_vti(filename)
 
@@ -107,7 +117,9 @@ def test_regression():
     torch.testing.assert_close(torch.linalg.cross(m, h_dmi_D2d      / ref["h_dmi_D2d"].max()),      torch.linalg.cross(m, ref["h_dmi_D2d"]      / ref["h_dmi_D2d"].max()),       atol=1e-15, rtol=1e-6)
     torch.testing.assert_close(torch.linalg.cross(m, h_exchange     / ref["h_exchange"].max()),     torch.linalg.cross(m, ref["h_exchange"]     / ref["h_exchange"].max()),      atol=1e-15, rtol=1e-6)
     torch.testing.assert_close(torch.linalg.cross(m, h_aniso        / ref["h_aniso"].max()),        torch.linalg.cross(m, ref["h_aniso"]        / ref["h_aniso"].max()),         atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_aniso2       / ref["h_aniso2"].max()),       torch.linalg.cross(m, ref["h_aniso2"]       / ref["h_aniso2"].max()),        atol=1e-15, rtol=1e-6)
     torch.testing.assert_close(torch.linalg.cross(m, h_aniso_cubic  / ref["h_aniso_cubic"].max()),  torch.linalg.cross(m, ref["h_aniso_cubic"]  / ref["h_aniso_cubic"].max()),   atol=1e-15, rtol=1e-6)
+    torch.testing.assert_close(torch.linalg.cross(m, h_aniso_cubic2 / ref["h_aniso_cubic2"].max()), torch.linalg.cross(m, ref["h_aniso_cubic2"] / ref["h_aniso_cubic2"].max()),  atol=1e-15, rtol=1e-6)
 
 @pytest.mark.parametrize("field_term", [DemagFieldNonEquidistant(), ExchangeField(), UniaxialAnisotropyField()])
 def test_nonequidistant(field_term):

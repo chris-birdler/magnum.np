@@ -21,11 +21,11 @@ import torch
 from .field_terms import FieldTerm, LinearFieldTerm
 from torch import sin, cos
 
-__all__ = ["UniaxialAnisotropyField", "CubicAnisotropyField", "CubicAnisotropyField2"]
+__all__ = ["UniaxialAnisotropyField", "UniaxialAnisotropyField2", "CubicAnisotropyField", "CubicAnisotropyField2"]
 
 class UniaxialAnisotropyField(LinearFieldTerm):
     r"""
-    Uniaxial Anisotropy Field:
+    Lowest-order Uniaxial Anisotropy Field:
 
     .. math::
 
@@ -50,9 +50,44 @@ class UniaxialAnisotropyField(LinearFieldTerm):
         return torch.nan_to_num(h, posinf=0, neginf=0)
 
 
+class UniaxialAnisotropyField2(FieldTerm):
+    r"""
+    Second-order Uniaxial Anisotropy Field:
+
+    .. math::
+
+        \vec{h}^\text{u2} = \frac{4 K_\text{u2}}{\mu_0 \, M_s} \; \vec{e}_\text{u} \; (\vec{e}_\text{u} \cdot \vec{m})^3,
+
+    with the anisotropy constant :math:`K_\text{u}` given in units of :math:`\text{J/m}^3`.
+
+    :param Ku2: Name of the material parameter for the second-order anisotropy constant :math:`K_\text{u2}`, defaults to "Ku2"
+    :type Ku2: str, optional
+    :param Ku_axis: Name of the material parameter for the anisotropy axis :math:`\vec{e}_\text{u}`, defaults to "Ku_axis"
+    :type Ku_axis: str, optional
+    """
+    parameters = ["Ku2", "Ku_axis"]
+
+    @timedmethod
+    @torch.compile
+    def h(self, state):
+        Ku2 = state.material[self.Ku2]
+        Ku_axis = state.material[self.Ku_axis]
+
+        h = 4. * Ku2 * Ku_axis / (constants.mu_0 * state.material["Ms"]) * torch.sum(Ku_axis * state.m, dim=3, keepdim=True)**3
+        return torch.nan_to_num(h, posinf=0, neginf=0)
+
+    @torch.compile
+    def E(self, state, domain = Ellipsis):
+        Ku2 = state.material[self.Ku2]
+        Ku_axis = state.material[self.Ku_axis]
+
+        E = -Ku2 * torch.sum(Ku_axis * state.m, dim=3, keepdim=True)**4 * state.mesh.cell_volumes
+        return E[domain].sum()
+
+
 class CubicAnisotropyField(FieldTerm):
     r"""
-    Cubic Anisotropy Field:
+    Cubic Anisotropy Field (Euler angle formulation):
 
     .. math::
 
@@ -128,7 +163,7 @@ class CubicAnisotropyField(FieldTerm):
 
 class CubicAnisotropyField2(FieldTerm):
     r"""
-    Cubic Anisotropy Field (alternative definition):
+    Cubic Anisotropy Field (Cartesian definition):
 
     .. math::
 

@@ -17,6 +17,8 @@
 #
 
 import torch
+import sys
+import subprocess
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
@@ -78,15 +80,27 @@ def Expression(comps):
 
 
 def get_gpu_with_least_memory():
-    if not torch.cuda.is_available():
-        return -1
+    code = """
+           import torch
+           def get_gpu_with_least_memory():
+               if not torch.cuda.is_available():
+                   print(-1)
+                   return
+               num_gpus = torch.cuda.device_count()
+               if num_gpus == 1:
+                   print(0)
+                   return
+               gpu_memory = [torch.cuda.mem_get_info(i)[0] for i in range(num_gpus)]
+               print(gpu_memory.index(max(gpu_memory)))
+           get_gpu_with_least_memory()
+           """
 
-    num_gpus = torch.cuda.device_count()
+    # unindent code
+    lines = code.splitlines()
+    non_empty = [line for line in lines if line.strip()]
+    min_indent = min((len(line) - len(line.lstrip()) for line in non_empty), default=0)
+    code = "\n".join(line[min_indent:] for line in lines)
 
-
-    if num_gpus == 1:
-        return 0
-    
-    else:
-        gpu_memory = [torch.cuda.mem_get_info(i)[0] for i in range(num_gpus)]
-        return gpu_memory.index(min(gpu_memory))
+    # run in seperate process in order to prevent nvidia-smi show the process on all GPUs
+    result = subprocess.check_output([sys.executable, "-c", code])
+    return int(result.decode().strip())
