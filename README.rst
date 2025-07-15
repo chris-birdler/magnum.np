@@ -34,7 +34,7 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Antiferromagnetic coupling layers (RKKY)
+* Antiferromagnetic coupling layers (RKKY, IntergrainExchange)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * `Eigenmode Solver <docs/eigensolver.rst>`__ for efficient calculation of normal modes
