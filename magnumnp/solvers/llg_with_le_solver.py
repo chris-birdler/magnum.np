@@ -703,6 +703,8 @@ class LLGWithLESolver(LLGSolver):
 
                     fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
 
+
+
                     """
                     I = torch.ones(state.mesh.n)
                     Bfxx_l = harmonic_mean(fxy, C66, 1, 0) + harmonic_mean(fxz, C55, 1, 0)
