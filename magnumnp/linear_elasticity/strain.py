@@ -139,19 +139,19 @@ def _get_C_jump_conditions(state):
     C66 = C[...,5,5]
 
     # for x derivatives
-    Cxx = C11#+C15+C16
-    Cyx = C66#+C16+C56
-    Czx = C55#+C15+C56
+    Cxx = C11
+    Cyx = C66
+    Czx = C55
 
     # for y derivatives
-    Cxy = C66#+C26+C46
-    Cyy = C22#+C26+C24
-    Czy = C44#+C46+C24
+    Cxy = C66
+    Cyy = C22
+    Czy = C44
 
     # for z derivatives
-    Cxz = C55#+C45+C35
-    Cyz = C44#+C45+C34
-    Czz = C33#+C35+C34
+    Cxz = C55
+    Cyz = C44
+    Czz = C33
 
     return [Cxx, Cxy, Cxz], [Cyx, Cyy, Cyz], [Czx, Czy, Czz]
 
@@ -250,38 +250,6 @@ def _get_B_jump_conditions(state, gradient_data):
     dzuz_xr = torch.roll(dzuz_xl, -1, 0)
     dzuz_yr = torch.roll(dzuz_yl, -1, 1)
 
-    """
-    dyux_xl = 0.5*(gux[1] + torch.roll(gux[1], -1, 0))
-    dzux_xl = 0.5*(gux[2] + torch.roll(gux[2], -1, 0))
-    dxux_yl = 0.5*(gux[0] + torch.roll(gux[0], -1, 1))
-    dxux_zl = 0.5*(gux[0] + torch.roll(gux[0], -1, 2))
-
-    dxuy_yl = 0.5*(guy[0] + torch.roll(guy[0], -1, 1))
-    dzuy_yl = 0.5*(guy[2] + torch.roll(guy[2], -1, 1))
-    dyuy_xl = 0.5*(guy[1] + torch.roll(guy[1], -1, 0))
-    dyuy_zl = 0.5*(guy[1] + torch.roll(guy[1], -1, 2))
-
-    dxuz_zl = 0.5*(guz[0] + torch.roll(guz[0], -1, 2))
-    dyuz_zl = 0.5*(guz[1] + torch.roll(guz[1], -1, 2))
-    dzuz_xl = 0.5*(guz[2] + torch.roll(guz[2], -1, 0))
-    dzuz_yl = 0.5*(guz[2] + torch.roll(guz[2], -1, 1))
-
-    dyux_xr = torch.roll(dyux_xl, -1, 0)
-    dzux_xr = torch.roll(dzux_xl, -1, 0)
-    dxux_yr = torch.roll(dxux_yl, -1, 1)
-    dxux_zr = torch.roll(dxux_zl, -1, 2)
-
-    dxuy_yr = torch.roll(dxuy_yl, -1, 1)
-    dzuy_yr = torch.roll(dzuy_yl, -1, 1)
-    dyuy_xr = torch.roll(dyuy_xl, -1, 0)
-    dyuy_zr = torch.roll(dyuy_zl, -1, 2)
-
-    dxuz_zr = torch.roll(dxuz_zl, -1, 2)
-    dyuz_zr = torch.roll(dyuz_zl, -1, 2)
-    dzuz_xr = torch.roll(dzuz_xl, -1, 0)
-    dzuz_yr = torch.roll(dzuz_yl, -1, 1)
-    """
-    
     # for x derivatives
     Bx_xl = C12*dyuy_xl + C13*dzuz_xl
     By_xl = C66*dyux_xl

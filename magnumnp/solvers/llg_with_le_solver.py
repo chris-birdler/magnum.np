@@ -20,7 +20,7 @@ from magnumnp.common import logging, timedmethod, constants, normalize
 from . import LLGSolver
 from magnumnp.linear_elasticity.bcs import Plane, PlaneBC
 from magnumnp.linear_elasticity.deriv_term_compiler import *
-from magnumnp.linear_elasticity.strain import epsilon, epsilon_el, epsilon_m, _get_C_jump_conditions, _get_B_jump_conditions, _get_sigM_jump_conditions
+from magnumnp.linear_elasticity.strain import epsilon, epsilon_m, _get_C_jump_conditions, _get_B_jump_conditions, _get_sigM_jump_conditions
 from magnumnp.linear_elasticity.stress import sigma
 from magnumnp.linear_elasticity.utils import gradient_with_pbc, _get_diff_slices
 
@@ -31,59 +31,104 @@ import numpy as np
 __all__ = ["LLGWithLESolver"]
 
 class LLGWithLESolver(LLGSolver):
-    """
-        Extension of the LLGSolver class, that also yields the rate of change of the mechanical displacement and momentum density.
-        If used with the magnetoelastic field, this allows for the self-consistent time-integration of the magnetization dynamics and elastodynamics.
+    r"""
+    Extension of the ``LLGSolver`` class that also yields the rate of change of 
+    mechanical displacement and momentum density.
 
-        *Example*
-            .. code:: python
+    When used with the magnetoelastic field, this solver enables self-consistent 
+    time integration of magnetization dynamics and elastodynamics.
 
-            # Standard
+    Examples
+    --------
+    Standard usage:
+
+        .. code:: python
+
             llg = LLGWithLESolver([magnetoelastic, demag, exchange, external])
             logger = Logger("data", fields=['m', 'ud', 'pd'])
-            while state.t < 1e-9-eps:
+            while state.t < 1e-9 - eps:
                 llg.step(state, 1e-11)
                 logger << state
 
-            # Setups for speedup and lower memory load:
-            # 1) Setup for a cubic material with a magnetic film in the 3rd x-layer
-            llg = LLGWithLESolver([magnetoelastic, demag, exchange, external], C_sym="cubic", magnetic_x_limits=[3,4])
-            
-            # 2) Setup for a materials with a magnetic domain on [:, 3:, :4]
-            llg = LLGWithLESolver([magnetoelastic, demag, exchange, external], magnetic_y_limits=[3,None] , magnetic_z_limits=[0,4])
+    Optimizations for speed and lower memory usage:
 
-        *Arguments*
-            terms ([:class:`LLGTerm`])
-                List of LLG contributions to be considered for time integration
-            solver ([:class:`Solver`])
-                ODE solver to be used (chose one of RKF45 (default), RKF56, ScipyODE, ScipyOdeint, TorchDiffEq, TorchDiffEqAdjoint)
-            no_precession (bool)
-                integrate without precession term (default: False)
-            mask_elastic (:class:'troch.tensor')
-                boolean or integer mask of shape mesh.n that restricts the region on which the elastodynamic properties are updated  (default: None)
-            C_sym (:class:'numpy.ndarray')
-                boolean or intger mask of shape (6,6) that restricts consideration of the stiffness tensor elements.  (default: None).
-                or: string, "isotropic", "cubic" to include only C11, C12, C13, C22, C23, C33, C44, C55 and C66
-            magnetic_x_limits (list)
-                list of length 2, giving the start and stop indices for slicing in the x direction to restrict the magnetic domain.
-            magnetic_y_limits (list)
-                list of length 2, giving the start and stop indices for slicing in the y direction to restrict the magnetic domain.
-            magnetic_z_limits (list)
-                list of length 2, giving the start and stop indices for slicing in the z direction to restrict the magnetic domain.
-        """
+    1. Cubic material with a magnetic film in the 3rd x-layer:
+
+        .. code:: python
+
+            llg = LLGWithLESolver(
+                [magnetoelastic, anisotropy, demag, exchange, external],
+                C_sym="cubic",
+                magnetic_x_limits=[3, 4]
+            )
+
+    2. Material with a magnetic domain on [:, 2:, :4]:
+
+        .. code:: python
+
+            llg = LLGWithLESolver(
+                [magnetoelastic, demag, exchange, external],
+                magnetic_y_limits=[3, None],
+                magnetic_z_limits=[0, 4],
+                boundary_nodes=2
+            )
+
+    3. 1D setup with pbcs:
+
+        .. code:: python
+
+            llg = LLGWithLESolver(
+                [magnetoelastic, anisotropy, exchange, external],
+                iteration_depth = 0
+            )
+
+    Parameters
+    ----------
+    terms : list of :class:`LLGTerm`
+        List of LLG contributions to be considered for time integration.
+    solver : :class:`Solver`, optional
+        ODE solver to use. Choose one of: ``RKF45`` (default), ``RKF56``, 
+        ``ScipyODE``, ``ScipyOdeint``, ``TorchDiffEq``, or ``TorchDiffEqAdjoint``.
+    no_precession : bool, optional
+        If ``True``, integrates without the precession term (default: ``False``).
+    mask_elastic : torch.Tensor, optional
+        Boolean or integer mask of shape ``mesh.n`` restricting the region where 
+        elastodynamic properties are updated (default: ``None``).
+    C_sym : numpy.ndarray or str, optional
+        Boolean or integer mask of shape ``(6, 6)`` restricting which stiffness 
+        tensor elements are considered (default: ``None``). Can also be a string 
+        (``"isotropic"`` or ``"cubic"``) to include only C11, C12, C13, C22, C23, 
+        C33, C44, C55, and C66.
+    magnetic_x_limits : list of int, optional
+        Two-element list giving start and stop indices for slicing the x-direction 
+        of the magnetic domain (default: ``None``).
+    magnetic_y_limits : list of int, optional
+        Two-element list giving start and stop indices for slicing the y-direction 
+        of the magnetic domain (default: ``None``).
+    magnetic_z_limits : list of int, optional
+        Two-element list giving start and stop indices for slicing the z-direction 
+        of the magnetic domain (default: ``None``).
+    boundary_nodes : int, optional
+        Number of boundary nodes for boundary value computations (default: ``1``). 
+        Can be 1, 2, or 3. In setups with multiple material domains, this value 
+        cannot exceed the number of boundary cells in the same domain, counting 
+        from the interface for each interface individually.
+    iteration_depth : int, optional
+        Iteration depth for the strain jump conditions (default: ``1``).
+    """
 
     def __init__(self, 
                  terms,                     # magnetic field terms
                  solver = RKF45,            # used solver
-                 no_precession = False,
+                 no_precession = False,     # remove the precessional term from the LLG
                  mask_elastic = None,       # torch.tensor (bool), indicates where ud and pd are updated
                  C_sym = None,              # 2D list, 6 times 6, entries of 1 indicate that the corresponding stiffness tensor component is non-zero. 0 indicates that it is zero.
                  magnetic_x_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in x-direction
                  magnetic_y_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in y-direction
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
-                 boundary_nodes = 1,
-                 iteration_depht = 1,
-                 ignore_rho_jumps = True,
+                 boundary_nodes = 1,        # number of boundary nodes used for boundary value computations
+                 iteration_depth = 1,       # iteration depth for strain jump conditions
+                 ySH_mode_scheme = True,    # experimental: SH y-mode setup
                  **kwargs):
 
         # field terms for llg time integration
@@ -141,7 +186,7 @@ class LLGWithLESolver(LLGSolver):
                 raise Exception(self.__class__.__name__+": C_sym was not successfully converted into a (6,6) array")
             self._C_mask = C_sym
 
-        self.iteration_depht = iteration_depht
+        self.iteration_depth = iteration_depth
 
         if (boundary_nodes < 1) or (boundary_nodes > 3):
             raise Exception(self.__class__.__name__ + ": boundary_nodes must be 1, 2 or 3.")
@@ -149,21 +194,24 @@ class LLGWithLESolver(LLGSolver):
         self._bc_second_order = boundary_nodes > 1
 
         # calculation of second derivatives
-        self._ignore_rho_jumps = ignore_rho_jumps
-        if not ignore_rho_jumps:
+        self._ignore_rho_jumps = ySH_mode_scheme
+        if not ySH_mode_scheme:
             logging.warning("Warning: jump conditions for rho are only valid for horizontal shear modes")
 
         # neumann bcs
         self._neumann_bcs = []
 
         # obtain the individual terms that make up the stress matrix and the force components
-        # the former is orgainized as a 3 dimensional list:
-        #       the first two dimensions being the matrix component of the stress matrix
-        #       the last dimension contains the indiviudal terms making up the corresponding stress component (lambda functions)
+        # the former is organized as a 3-dimensional list:
+        #       the first two dimensions being the matrix components of the stress matrix
+        #       the last dimension contains the individual terms making up the corresponding stress component (lambda functions)
         # the latter is organized as follows: 
-        #       the first dimension are the components of the force i.e. 0 = x, 1 = y, 2 = z such that terms that contribute to fx are found in self._f_terms[0]
-        #       the second dimension seperates the components by their second derivative i.e. 0 = terms with second derivative in x-direction (e.g. Dx[C[0,1]*Dy[u[1]]]), ...
+        #       the first dimension contains the components of the force, i.e. 0 = x, 1 = y, 2 = z,
+        #       such that terms that contribute to fx are found in self._f_terms[0]
+        #       the second dimension separates the components by their second derivative, 
+        #       i.e. 0 = terms with second derivative in x-direction (e.g. Dx[C[0,1]*Dy[u[1]]]), ...
         #       the last dimension contains the individual terms (lambda functions)
+
         self._sig_terms, self._f_terms, self._fm_terms = self._compile_terms()
 
     # -----------------------------------
@@ -234,10 +282,10 @@ class LLGWithLESolver(LLGSolver):
         compiler = DerivTermCompiler()
 
         # -------------
-        # collect terms
+        # Collect terms
         # -------------
 
-        # initialize all strain terms
+        # Initialize all strain terms
         # ... in Voigt notation
         eps = []
         eps.append([EpsTerm(i_u=0, i_x=0)])
@@ -273,7 +321,7 @@ class LLGWithLESolver(LLGSolver):
             sig_v.append(terms)
             sig_m_v.append(terms_m)
 
-        # rearange the stress terms from Voight notation into matrix form
+        # rearrange the stress terms from Voigt notation into matrix form
         sig = []
         sig.append([sig_v[0], sig_v[5], sig_v[4]])
         sig.append([sig_v[5], sig_v[1], sig_v[3]])
@@ -303,12 +351,12 @@ class LLGWithLESolver(LLGSolver):
                     term_function = compiler.compile(self, sig_term)
                     sig_element.append(term_function)
 
-                    term = sig_term.deriviate(j)
+                    term = sig_term.differentiate(j)
                     term_function = compiler.compile(self, term)
                     f_element.append(term_function)
 
                 for sig_m_term in sig_m[i][j]:
-                    term = sig_m_term.deriviate(j)
+                    term = sig_m_term.differentiate(j)
                     term_function = compiler.compile(self, term)
                     fm_element.append(term_function)
                 
@@ -323,11 +371,11 @@ class LLGWithLESolver(LLGSolver):
         return sig_lambdas, f_lambdas, fm_lambdas
 
     # ----------------------------------------------------
-    # Definition of 1st, 2nd and mixed derivatives
+    # Definition of 1st, 2nd, and mixed derivatives
     # ----------------------------------------------------
 
     class DiffData:
-        # object that holds forward differences and first derivatives obtained from the midpoint rule
+        # Object that holds forward differences and first derivatives obtained from the midpoint rule
         def __init__(self):
             self._gradient_ud = []
             self._gradient_m = []
@@ -432,8 +480,8 @@ class LLGWithLESolver(LLGSolver):
         dx = self.diff_data.dx_epx[i_x]
         C = state.material["C"][:,:,:,ij_C[0],ij_C[1]]
 
-        C_next = torch.roll(C, -1, dims=i_x) # positive shift, to align with the definition of the forward differences
-        dx_next = torch.roll(dx, -1, dims=i_x) # positive shift, to align with the definition of the forward differences
+        C_next = torch.roll(C, -1, dims=i_x) # positive shift, to align this with the definition of the forward differences
+        dx_next = torch.roll(dx, -1, dims=i_x) # positive shift, to align this with the definition of the forward differences
         C_denom = (C_next*dx + C*dx_next) # at 0: C_1*dx_0 + C_0*dx_1, at N: C_0*dx_N + C_N*dx_0
         C_avg = 2.*C_next * C / C_denom
         C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
@@ -474,7 +522,7 @@ class LLGWithLESolver(LLGSolver):
         return C * self.diff_data.gradient_ud[i_u][i_x]
     
     #@torch.compile 
-    def _main_diag_sig_derivative(self, state, i_m, i_x, ij_C):
+    def _main_diag_sigM_derivative(self, state, i_m, i_x, ij_C):
         slice_m = self.slice_m
         l100 = state.material["lambda_100"][slice_m+(0,)]
         C = state.material["C"][slice_m+(ij_C[0],ij_C[1])]
@@ -484,7 +532,7 @@ class LLGWithLESolver(LLGSolver):
         return 3.*l100*C*mi*dmi 
     
     #@torch.compile
-    def _off_diag_sig_derivative(self, state, i_m, j_m, i_x, ij_C):
+    def _off_diag_sigM_derivative(self, state, i_m, j_m, i_x, ij_C):
         slice_m = self.slice_m
         l111 = state.material["lambda_111"][slice_m+(0,)]
         C = state.material["C"][slice_m+(ij_C[0],ij_C[1])]
@@ -503,7 +551,7 @@ class LLGWithLESolver(LLGSolver):
         diff_data = self.DiffData()
         diff_data.set_expanded_dx(state)
 
-        """ get 2nd order 1st derivatives of m """
+        # Get 2nd order 1st derivatives of m
         A = state.material["A"][...,0]
 
         slc_m = self.slice_m
@@ -513,24 +561,13 @@ class LLGWithLESolver(LLGSolver):
 
         diff_data.set_gradient_m(grad_mx, grad_my, grad_mz)
 
-        """
-        TODO:
-        There is a problem with jump conditions here, that only comes into player for symmetry below cubic:
-        It is necessary to collect all derivatives in the force components f_ij that share a deriviative before applying the jump condition
-        i.e. partial_x (C11 + C16) partial_x u_x needs to be added together before applying the sigma_m_xx jump condition
-        """
-
-        """ get 2nd order 1st derivatives of u """
+        # Get 2nd order 1st derivatives of u 
         mxl = torch.clone(state.m)
         mxr = torch.clone(state.m)
         myl = torch.clone(state.m)
         myr = torch.clone(state.m)
         mzl = torch.clone(state.m)
         mzr = torch.clone(state.m)
-
-        #dx1_exp =  state.mesh.dx_tensor[0].unsqueeze(1).unsqueeze(2).expand_as(state.m)
-        #dx2_exp =  state.mesh.dx_tensor[1].unsqueeze(0).unsqueeze(2).expand_as(state.m)
-        #dx3_exp =  state.mesh.dx_tensor[2].unsqueeze(0).unsqueeze(0).expand_as(state.m)
 
         dx_exp = state.mesh.dx_tensor[0].reshape(-1,1,1,1)
         dy_exp = state.mesh.dx_tensor[1].reshape(1,-1,1,1)
@@ -568,8 +605,8 @@ class LLGWithLESolver(LLGSolver):
 
         diff_data.set_B_jump_conditions(Bl_sigM, Br_sigM)
 
-        if (self.iteration_depht > 0):
-            for iter in range(self.iteration_depht):
+        if (self.iteration_depth > 0):
+            for iter in range(self.iteration_depth):
                 gradient_data = grad_ud_x, grad_ud_y, grad_ud_z
 
                 Bl_eps, Br_eps = _get_B_jump_conditions(state, gradient_data)
@@ -601,7 +638,7 @@ class LLGWithLESolver(LLGSolver):
     
     @timedmethod
     def get_fm(self, state):
-        # returns the magnetic part of the force field
+        # Returns the magnetic part of the force field
         m = state.m
         slice_m = self.slice_m
         
@@ -617,7 +654,7 @@ class LLGWithLESolver(LLGSolver):
         return f_m
     
     def _get_boundary_f(self, t0, s1, s2, hl, hr): 
-        # this is actually the midpoint, since the boundary value is outside the node grid
+        # This is actually the midpoint, since the boundary value is outside the node grid
         f_bdr = s2*hl**2. - t0*hr**2. + (hr**2.-hl**2.)*s1
         f_bdr /= hr*hl**2. + hl*hr**2.
         return f_bdr
@@ -658,7 +695,7 @@ class LLGWithLESolver(LLGSolver):
         f_ij = torch.zeros(n + (3,3))
 
         if self._ignore_rho_jumps:
-            # this method ingores jump conditions that keep the f/rho continuous
+            # This method ingores jump conditions that keep the f/rho continuous
             for i in range(3):
                 for j in range(3):
                     for term in self._f_terms[i][j]:
@@ -679,7 +716,7 @@ class LLGWithLESolver(LLGSolver):
             fzy = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
             fzz = gradient_with_pbc(sig_ii[...,2], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
 
-            if (self.iteration_depht > 0):
+            if (self.iteration_depth > 0):
                 
                 def harmonic_mean(g, C, shift, dim):
                     a = C*g
@@ -687,13 +724,11 @@ class LLGWithLESolver(LLGSolver):
                     return mean.nan_to_num(posinf=0, neginf=0)
                 
                 C = state.material["C"]
-                C44 = C[...,3,3]
-                C55 = C[...,4,4]
                 C66 = C[...,5,5]
                 
-                for iter in range(self.iteration_depht):
+                for iter in range(self.iteration_depth):
                     C66 = state.material["C"][...,5,5]
-                    epsXY = epsilon(state, iteration_depht=self.iteration_depht, second_order_boundary=self._gradient_second_order_boundary)[...,5]
+                    epsXY = epsilon(state, iteration_depht=self.iteration_depth, second_order_boundary=self._gradient_second_order_boundary)[...,5]
 
                     Bfyz_l = harmonic_mean(epsXY, C66, 1, 2)
                     Bfyz_r = torch.roll(Bfyz_l, -1, 2)
@@ -702,48 +737,6 @@ class LLGWithLESolver(LLGSolver):
                     Bfyz_r = gradient_with_pbc(C66*Bfyz_r, state.mesh, dim=[0], second_order_boundary=True)[0]
 
                     fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-
-
-                    """
-                    I = torch.ones(state.mesh.n)
-                    Bfxx_l = harmonic_mean(fxy, C66, 1, 0) + harmonic_mean(fxz, C55, 1, 0)
-                    Bfxy_l = harmonic_mean(fxx, I, 1, 1) + harmonic_mean(fxz, C55, 1, 1)
-                    Bfxz_l = harmonic_mean(fxx, I, 1, 2) + harmonic_mean(fxy, C66, 1, 2)
-
-                    Bfyx_l = harmonic_mean(fyy, I, 1, 0) + harmonic_mean(fyz, C44, 1, 0)
-                    Bfyy_l = harmonic_mean(fyx, C66, 1, 1) + harmonic_mean(fyz, C44, 1, 1)
-                    Bfyz_l = harmonic_mean(fyx, C66, 1, 2) #+ harmonic_mean(fyy, I, 1, 2)
-
-                    Bfzx_l = harmonic_mean(fzy, C66, 1, 0) + harmonic_mean(fzz, I, 1, 0)
-                    Bfzy_l = harmonic_mean(fzx, C55, 1, 1) + harmonic_mean(fzz, I, 1, 1)
-                    Bfzz_l = harmonic_mean(fzx, C55, 1, 2) + harmonic_mean(fzy, C55, 1, 2)
-                    
-                    Bfxx_r = torch.roll(Bfxx_l, -1, 0)
-                    Bfxy_r = torch.roll(Bfxy_l, -1, 1)
-                    Bfxz_r = torch.roll(Bfxz_l, -1, 2)
-
-                    Bfyx_r = torch.roll(Bfyx_l, -1, 0)
-                    Bfyy_r = torch.roll(Bfyy_l, -1, 1)
-                    Bfyz_r = torch.roll(Bfyz_l, -1, 2)
-
-                    Bfzx_r = torch.roll(Bfzx_l, -1, 0)
-                    Bfzy_r = torch.roll(Bfzy_l, -1, 1)
-                    Bfzz_r = torch.roll(Bfzz_l, -1, 2)
-
-                    fxx = gradient_with_pbc(sig_ii[...,0], state.mesh, dim=[0], C=[1/rho], Bl=[Bfxx_l/rho], Br=[Bfxx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fxy = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[1], C=[1/rho], Bl=[Bfxy_l/rho], Br=[Bfxy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fxz = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[2], C=[1/rho], Bl=[Bfxz_l/rho], Br=[Bfxz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-                    fyx = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[0], C=[1/rho], Bl=[Bfyx_l/rho], Br=[Bfyx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fyy = gradient_with_pbc(sig_ii[...,1], state.mesh, dim=[1], C=[1/rho], Bl=[Bfyy_l/rho], Br=[Bfyy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-                    fzx = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[0], C=[1/rho], Bl=[Bfzx_l/rho], Br=[Bfzx_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fzy = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[1], C=[1/rho], Bl=[Bfzy_l/rho], Br=[Bfzy_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    fzz = gradient_with_pbc(sig_ii[...,2], state.mesh, dim=[2], C=[1/rho], Bl=[Bfzz_l/rho], Br=[Bfzz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-                    """
-
 
             f_ij[...,0,0] = fxx
             f_ij[...,0,1] = fxy
@@ -817,8 +810,8 @@ class LLGWithLESolver(LLGSolver):
                     g_k = t_sign*(t_val[:,:,t_trans_dim2] - s_bdr)/h
 
             else:
-                # Note: When forward and backward difference are used in this scheme for the boundary values of sig
-                # They are better estimates for the value at the cell boundary (Mean value theorem). 
+                # Note: When forward and backward difference are used in this scheme for the boundary values of sig,
+                # they are better estimates for the value at the cell boundary (Mean Value Theorem). 
                 # Thus, h is the full cell width dx here
                 h = dx_exp[t_dim][t_slc]
 
@@ -943,7 +936,7 @@ class LLGWithLESolver(LLGSolver):
                     if i_where != None:
                         assert state.mesh.pbc[pl.dim] == 0
                         t_additions[pl.dim][i_where].append(lambda state, t0, bc=bc, pl=pl : _t_add(state, t0, bc.condition, pl.trans_slice1, pl.trans_slice2))
-                    # CASE: no conflict, use bc as found
+                    # CASE: no conflict, use bc as is
                     else:
                         self._neumann_bcs.append(bc)
 
@@ -979,38 +972,6 @@ class LLGWithLESolver(LLGSolver):
                 
                 self._neumann_bcs.append(bc_plane_m)
                 self._neumann_bcs.append(bc_plane_p)
-    """
-
-    def _update_neumann_bcs(self, state):
-        self._neumann_bcs = []
-
-        # set natural boundary conditions where no pbc are set
-        for i in range(3):
-            if state.mesh.pbc[i] == 0:
-                plane_m = Plane(i, 0, -1)
-                plane_p = Plane(i, -1, 1)
-
-                # remove the dimension in which the plane lies from n
-                n_bc = list(state.mesh.n)
-                n_bc.pop(i)
-                n_bc = tuple(n_bc)
-
-                # set homogenous Neumann boundary conditions
-                t0 = torch.zeros(n_bc + (3,))
-                bc_plane_m = PlaneBC(plane_m, t0)
-                bc_plane_m.mask = plane_m.get_mask(state) # TODO: This is very ugly!
-                bc_plane_p = PlaneBC(plane_p, t0)
-                bc_plane_p.mask = plane_p.get_mask(state) # TODO: This is very ugly!
-                self._neumann_bcs.append(bc_plane_m)
-                self._neumann_bcs.append(bc_plane_p)
-
-        # check for Neumann bcs set by the user
-        if hasattr(state, "bcs"):
-            if "t" in state.bcs:
-                self._neumann_bcs += state.bcs["t"]
-                for bc in self._neumann_bcs:
-                    bc.mask = bc.plane.get_mask(state) # TODO: This is very ugly!
-    """
 
     @timedmethod
     def step(self, state, dt, rtol = 1e-5, atol = None, atol_m = 1e-5, atol_ud = 1e-15, atol_pd = 1e-2, **kwargs):

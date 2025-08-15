@@ -23,95 +23,30 @@ import torch
 
 __all__ = ["LinearMagnetoElasticField", "MagnetoElasticField"]
 
-class LinearMagnetoElasticField(LinearFieldTerm):
+class MagnetoElasticField(object):
     r"""
-    Magnetoelastic Field:
+    Magnetoelastic Field
 
-    This field terms is obtained from the magnetoelastic energy 
+    This field term is obtained from the magnetoelastic energy:
 
     .. math::
         E = \int \left( \frac{1}{2}\epsilon^m :C:\epsilon^m - \epsilon :C:\epsilon^m \right) \text{d}\bm{x}
 
-    (C.Y. Liang et al., Nanotechnology 25 (2014) 435701 (10pp), doi:10.1088/0957-4484/25/43/43570
-    and Y.C. Shu et al., Mechanics of Materials 36 (2004) 975-997, doi:10.1016/j.mechmat.2003.04.004) 
+    References:
+    - C.Y. Liang et al., Nanotechnology 25 (2014) 435701 (10pp), doi:10.1088/0957-4484/25/43/435701
+    - Y.C. Shu et al., Mechanics of Materials 36 (2004) 975-997, doi:10.1016/j.mechmat.2003.04.004
 
-    :param ud: Displacement. If neither this nor 'mechanical_strain' are set, state.ud is used
+    :param ud: Displacement. If neither this nor 'mechanical_strain' is set, `state.ud` is used.
     :type ud: :class:`torch.Tensor` or function, optional
-    :param mechanical_strain: Strain in Voight notation (mesh.n + (6,))
+    :param mechanical_strain: Strain in Voigt notation (mesh.n + (6,))
     :type mechanical_strain: :class:`torch.Tensor` or function, optional
 
-    The parameters 'ud' and 'mechanical_strain' are mutualy exclusive.
+    The parameters 'ud' and 'mechanical_strain' are mutually exclusive.
     """
 
     def __init__(self, ud = None, mechanical_strain = None, **kwargs):
         if (ud != None) and (mechanical_strain != None):
-            raise Exception("[LinearMagnetoElasticField] got arguments for both 'ud' and 'mechanical_strain', but they are mutually exclusive.")
-
-        if ud != None:
-            if callable(ud):
-                self._get_ud = ud
-            else:
-                self._get_ud = lambda state : ud
-        else:
-            self._get_ud = self._default_get_ud
-
-        if mechanical_strain != None:
-            if callable(mechanical_strain):
-                self._get_strain = mechanical_strain 
-            else:
-                self._get_strain = lambda state : mechanical_strain
-        else:
-            self._get_strain = self._default_get_strain
-
-    def _default_get_ud(self, state):
-        return state.ud
-    
-    def _default_get_strain(self, state):
-        ud = self._get_ud(state)
-        return epsilon(state, ud)
-
-    @timedmethod
-    @torch.compile
-    def h(self, state):     
-        Ms = state.material["Ms"]
-        lambda_100 = state.material["lambda_100"][...,0]
-        lambda_111 = state.material["lambda_111"][...,0]
-        C = state.material["C"]
-
-        B1 = -3.*lambda_100*(C[...,0,0]-C[...,0,1]) / 2.
-        B2 = -3.*lambda_111*C[...,3,3]
-
-        m = state.m
-        eps = self._get_strain(state)
-
-        h = torch.zeros(state.mesh.n+(3,))
-        # Note: eps[...,3:] already includes a factor of 2 due to Voigth notation
-        h[...,0] = 2*B1*m[...,0]*eps[...,0] + B2*(eps[...,5]*m[...,1] + eps[...,4]*m[...,2])
-        h[...,1] = 2*B1*m[...,1]*eps[...,1] + B2*(eps[...,5]*m[...,0] + eps[...,3]*m[...,2])
-        h[...,2] = 2*B1*m[...,2]*eps[...,2] + B2*(eps[...,4]*m[...,0] + eps[...,3]*m[...,1])
-
-        h *= -1. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
-
-
-class MagnetoElasticField(object):
-    r"""
-    Magnetoelastic Field:
-
-    This field terms is obtained only from the terms in magnetoelastic energy that are quadratic in :math:`\vec{m}`
-
-    .. math::
-        E = -\int \epsilon :C:\epsilon^m \text{d}\bm{x}
-
-    :param ud: Displacement. If neither this nor 'mechanical_strain' are set, state.ud is used
-    :type ud: :class:`torch.Tensor` or function
-    :param mechanical_strain: Strain in Voight notation (mesh.n + (6,))
-    :type mechanical_strain: :class:`torch.Tensor` or function
-    """
-
-    def __init__(self, ud = None, mechanical_strain = None, **kwargs):
-        if (ud != None) and (mechanical_strain != None):
-            raise Exception("[MagnetoElasticField] got arguments for both 'ud' and 'mechanical_strain', but they are mutually exclusive.")
+            raise Exception("[MagnetoElasticField] received arguments for both 'ud' and 'mechanical_strain', but these are mutually exclusive.")
 
         if ud != None:
             if callable(ud):
@@ -180,3 +115,69 @@ class MagnetoElasticField(object):
 
         E =  zeta * state.mesh.cell_volumes
         return E[domain].sum()
+    
+class LinearMagnetoElasticField(LinearFieldTerm):
+    r"""
+    Magnetoelastic Field
+
+    This field term is obtained only from the terms in the magnetoelastic energy
+    that are quadratic in :math:`\vec{m}`:
+
+    .. math::
+        E = -\int \epsilon :C:\epsilon^m \text{d}\bm{x}
+
+    :param ud: Displacement. If neither this nor 'mechanical_strain' is set, `state.ud` is used.
+    :type ud: :class:`torch.Tensor` or function, optional
+    :param mechanical_strain: Strain in Voigt notation (mesh.n + (6,))
+    :type mechanical_strain: :class:`torch.Tensor` or function, optional
+    """
+
+    def __init__(self, ud = None, mechanical_strain = None, **kwargs):
+        if (ud != None) and (mechanical_strain != None):
+            raise Exception("[LinearMagnetoElasticField] received arguments for both 'ud' and 'mechanical_strain', but these are mutually exclusive.")
+
+        if ud != None:
+            if callable(ud):
+                self._get_ud = ud
+            else:
+                self._get_ud = lambda state : ud
+        else:
+            self._get_ud = self._default_get_ud
+
+        if mechanical_strain != None:
+            if callable(mechanical_strain):
+                self._get_strain = mechanical_strain 
+            else:
+                self._get_strain = lambda state : mechanical_strain
+        else:
+            self._get_strain = self._default_get_strain
+
+    def _default_get_ud(self, state):
+        return state.ud
+    
+    def _default_get_strain(self, state):
+        ud = self._get_ud(state)
+        return epsilon(state, ud)
+
+    @timedmethod
+    @torch.compile
+    def h(self, state):     
+        Ms = state.material["Ms"]
+        lambda_100 = state.material["lambda_100"][...,0]
+        lambda_111 = state.material["lambda_111"][...,0]
+        C = state.material["C"]
+
+        B1 = -3.*lambda_100*(C[...,0,0]-C[...,0,1]) / 2.
+        B2 = -3.*lambda_111*C[...,3,3]
+
+        m = state.m
+        eps = self._get_strain(state)
+
+        h = torch.zeros(state.mesh.n+(3,))
+        # Note: eps[...,3:] already includes a factor of 2 due to Voigth notation
+        h[...,0] = 2*B1*m[...,0]*eps[...,0] + B2*(eps[...,5]*m[...,1] + eps[...,4]*m[...,2])
+        h[...,1] = 2*B1*m[...,1]*eps[...,1] + B2*(eps[...,5]*m[...,0] + eps[...,3]*m[...,2])
+        h[...,2] = 2*B1*m[...,2]*eps[...,2] + B2*(eps[...,4]*m[...,0] + eps[...,3]*m[...,1])
+
+        h *= -1. / (constants.mu_0 * Ms)
+        return h.nan_to_num(posinf=0, neginf=0)

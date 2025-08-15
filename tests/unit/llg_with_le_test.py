@@ -3,8 +3,6 @@ import torch
 from magnumnp import *
 import numpy as np
 
-from magnumnp import *
-
 def test_C_mask():
     mask_iso = np.zeros((6,6), dtype=int)
     mask_iso[:3,:3] = 1

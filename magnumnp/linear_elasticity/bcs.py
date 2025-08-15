@@ -102,36 +102,3 @@ class Plane:
         mask = torch.zeros(state.mesh.n, dtype=torch.bool)
         mask[self.slices] = True
         return mask
-
-
-"""  
-class PlaneBC:
-    def __init__(self, plane, condition):
-        self._plane = plane
-        
-        if callable(condition):
-            self._condition = condition
-        elif isinstance(condition, torch.Tensor):
-            self._condition = lambda state : condition
-        else:
-            raise Exception("BC condition has invalid type " + type(condition) + "!/n condition has to be either torch.Tensor or a function of the state that returns torch.Tensor.")
-
-    @property
-    def plane(self):
-        return self._plane
-    
-    def condition(self, state):
-        return self._condition(state)
-    
-    def get_mask(self, state):
-        mask = torch.zeros(state.mesh.n, dtype=torch.bool)
-        p = self.plane
-        if p.dim == 0:
-            mask[p.pos, p.trans_lim1[0]:p.trans_lim1[1], p.trans_lim2[0]:p.trans_lim2[1]] = 1
-        if p.dim == 1:
-            mask[p.trans_lim1[0]:p.trans_lim1[1], p.pos, p.trans_lim2[0]:p.trans_lim2[1]] = 1
-        if p.dim == 2:
-            mask[p.trans_lim1[0]:p.trans_lim1[1], p.trans_lim2[0]:p.trans_lim2[1], p.pos] = 1
-
-        return mask
-"""

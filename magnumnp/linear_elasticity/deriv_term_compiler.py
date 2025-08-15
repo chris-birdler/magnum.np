@@ -31,13 +31,6 @@ __all__ = ["DerivTermCompiler",
 torch._dynamo.config.cache_size_limit = 1024
 torch._dynamo.config.suppress_errors = True
 
-"""
-TODO:
-There is a problem with jump conditions here, that only comes into player for symmetry below cubic:
-It is necessary to collect all derivatives in the force components f_ij that share a deriviative before applying the jump condition
-i.e. partial_x (C11 + C16) partial_x u_x needs to be added together before applying the sigma_m_xx jump condition
-"""
-
 class DerivTermCompiler:
     # this object maps stress and force terms on lambda functions that return the given term as torch.tensor
 
@@ -66,10 +59,10 @@ class DerivTermCompiler:
     def _compile_fm_term(self, solver, term):
         if term.i_m == term.j_m:
             return lambda state, _solver=solver, im=term.i_m, ix=term.i_x, ij=term.ij_C : \
-                _solver._main_diag_sig_derivative(state, im, ix, ij)
+                _solver._main_diag_sigM_derivative(state, im, ix, ij)
         else:
             return lambda state, _solver=solver, im=term.i_m, jm=term.j_m, ix=term.i_x, ij=term.ij_C : \
-                _solver._off_diag_sig_derivative(state, im, jm, ix, ij)
+                _solver._off_diag_sigM_derivative(state, im, jm, ix, ij)
 
 class EpsTerm:
     # information on the strain tensor terms
@@ -81,12 +74,12 @@ class EpsTerm:
     def multiply_Cij(self,i,j):
         return SigTerm(self._iu, self._ix, [i,j])
 
-    # corresponding component number of the displacement
+    # index of the displacement component that is differentiated
     @property
     def i_u(self):
         return self._iu
     
-    # corresponding number of the dimension in which the displacement is derivated
+    # corresponding dimension in which the displacement is differentiated
     @property
     def i_x(self):
         return self._ix
@@ -98,21 +91,21 @@ class SigTerm:
         self._ix = i_x
         self._ijC = ij_C
 
-    # derivation of stress terms yields terms of the force field
-    def deriviate(self, j_x):
+    # differentiation of stress terms yields terms of the force field
+    def differentiate(self, j_x):
         return ForceComponentTerm(self._iu, self._ix, j_x, self._ijC)
     
-    # indicies (list with two entries, i and j) of the stiffness matrix that weights the derivative
+    # indices (list with two entries, i and j) of the stiffness matrix that weights the derivative
     @property
     def ij_C(self):
         return self._ijC
     
-    # number of the displacement component that is derived
+    # index of the displacement component that is differentiated
     @property
     def i_u(self):
         return self._iu
     
-    # number of the dimension in which the displacement is derived
+    # corresponding dimension in which the displacement is differentiated
     @property
     def i_x(self):
         return self._ix
@@ -139,7 +132,7 @@ class SigMTerm:
         self._j_m = j_m 
         self._ij_C = ij_C
 
-    def deriviate(self, j_x):
+    def differentiate(self, j_x):
         return ForceMComponentTerm(self._i_m, self._j_m, j_x, self._ij_C)
 
     @property

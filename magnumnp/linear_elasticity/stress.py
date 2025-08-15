@@ -23,15 +23,5 @@ __all__ = ["sigma"]
 @torch.compile
 def sigma(state, eps):
     C = state.material["C"]
-
-    #n = state.mesh.n
-    #sig = state.zeros((n[0], n[1], n[2], 6))
-    #for i in range(6):
-    #    for j in range(6):
-    #        sig[:,:,:,i] += C[:,:,:,i,j]*eps[:,:,:,j]
-
     sig = torch.einsum("...ij,...j->...i", C, eps)
-
-    #sig = (C @ eps.unsqueeze(-1)).squeeze(-1)
-
     return sig
