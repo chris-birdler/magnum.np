@@ -14,7 +14,7 @@ device_id = os.environ.get('CUDA_DEVICE')
 if device_id == None:
     device_id = get_gpu_with_least_memory()
 device = torch.device(f"cuda:{device_id}" if int(device_id) >= 0 else "cpu")
-torch.cuda.set_device(device_id) # prevents nvidia-smi from showing process on GPU0 due to torch.compile
+torch.cuda.set_device(int(device_id)) # prevents nvidia-smi from showing process on GPU0 due to torch.compile
 torch.set_default_device(device)
 torch.manual_seed(2147483647) # fix seed
 
