@@ -37,6 +37,11 @@ UniaxialAnisotropyField
 .. autoclass:: UniaxialAnisotropyField
    :show-inheritance:
 
+UniaxialAnisotropyField2
+************************
+.. autoclass:: UniaxialAnisotropyField2
+   :show-inheritance:
+
 CubicAnisotropyField
 ********************
 .. autoclass:: CubicAnisotropyField
@@ -100,6 +105,9 @@ BiquadraticRKKYField
 ********************
 .. autoclass:: BiquadraticRKKYField
 
+IntergrainExchangeField
+***********************
+.. autoclass:: IntergrainExchangeField
 
 SpinOrbitTorque
 ***************
@@ -116,3 +124,7 @@ SpinTorqueSlonczewski
 OerstedField
 ************
 .. autoclass:: OerstedField
+
+ThermalField
+************
+.. autoclass:: ThermalField

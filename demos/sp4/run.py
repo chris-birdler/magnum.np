@@ -11,6 +11,8 @@ import pathlib
 from tqdm import tqdm
 
 set_log_level(25) # show info_green, but hide info_blue
+set_log_file("data/output.log")
+set_log_script("data/run.py")
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent

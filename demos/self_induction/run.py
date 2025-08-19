@@ -1,5 +1,6 @@
 # %% [markdown]
-# # MuMag Standard Problem #4
+# # Self Induction of a Rectangular Loop
+# https://www.allaboutcircuits.com/tools/rectangle-loop-inductance-calculator/
 
 # %% [markdown]
 # ## Run Simulation

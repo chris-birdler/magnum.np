@@ -73,7 +73,7 @@ Finally, after the grain structure has been created, proper material parameters 
   Ms = 8e5
   Ms_values = torch.normal(Ms, 0.1*Ms, (101,))
   Ms_values[-1] = 0.
-  state.material['Ms'] = Ms_values.take(voi.domains)
+  state.material['Ms'] = Ms_values[voi.domains]
 
 .. autoclass:: Voronoi
    :members:

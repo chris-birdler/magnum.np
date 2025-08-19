@@ -1,3 +1,8 @@
+2.0.3 [2025-07-15]
+- added UniaxialAnisotropyField2
+- added IntergrainExchangeField
+- prevent nvidia-smi from showing process on wrong GPUs
+
 2.0.2 [2025-02-05]
 - improved demo setup (automatically create and test .ipynb files)
 

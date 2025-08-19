@@ -3,7 +3,7 @@
   :alt: magnum.np Logo
 
 #####################################
-magnum.np 2.0.2
+magnum.np 2.0.3
 #####################################
 
 magnum.np is a Python library for the solution of micromagnetic problems with the finite-difference
@@ -34,7 +34,7 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Antiferromagnetic coupling layers (RKKY)
+* Antiferromagnetic coupling layers (RKKY, IntergrainExchange)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * `Eigenmode Solver <docs/eigensolver.rst>`__ for efficient calculation of normal modes

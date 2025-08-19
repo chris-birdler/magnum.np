@@ -8,6 +8,7 @@ test:
        - pip install .
        - python -m pytest tests/
 
+
 #test_gpu:
 #    image: nvcr.io/nvidia/pytorch:24.03-py3
 #    script:
@@ -21,15 +22,17 @@ test:
 #    tags:
 #        - saas-linux-medium-amd64-gpu-standard
 
+
 test_demos:
     script:
        - apt update -yq
        - apt install -y python3-opencv
-       - pip install setuptools pytest pytest-forked
+       - pip install setuptools pytest
        - pip install .
        - python -m pytest -s demos
     rules:
         - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
 
 deploy_pypi:
     stage: deploy
@@ -47,19 +50,14 @@ deploy_pypi:
     rules:
         - if: $PYPI_USERNAME && $CI_COMMIT_TAG
 
+
 notebooks:
-#    image: nvcr.io/nvidia/pytorch:24.03-py3
     stage: deploy
     timeout: 4h
-#    tags:
-#        - saas-linux-medium-amd64-gpu-standard
     script:
-#        # work around for 
-#        - echo $TZ
-#        - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
         # build notebooks
         - apt update -yq
-        - apt install -y python3-opencv pandoc 
+        - apt install -y python3-opencv pandoc
         - pip install --upgrade pip setuptools pytest sphinx sphinx_rtd_theme nbsphinx pandoc ipython jupyter jupytext ipykernel
         - pip install -e .
         - python -m ipykernel install --user --name=python3
@@ -84,6 +82,7 @@ notebooks:
     rules:
         - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
 
+
 pages:
     stage: deploy
     script:
@@ -93,7 +92,7 @@ pages:
         - pip install -e .
         - python -m pip install -U sphinx sphinx_rtd_theme nbsphinx pandoc
         - sphinx-build -b html docs public
-    dependencies:
+    needs:
         - notebooks
     artifacts:
         paths:

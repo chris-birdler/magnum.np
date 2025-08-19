@@ -17,9 +17,88 @@
 #
 
 from magnumnp.common import timedmethod, constants
+from magnumnp.field_terms import LinearFieldTerm
 import torch
 
-__all__ = ["RKKYField", "BiquadraticRKKYField"]
+__all__ = ["IntergrainExchangeField", "RKKYField", "BiquadraticRKKYField"]
+
+class IntergrainExchangeField(LinearFieldTerm):
+    r"""
+    Intergrain - Exchange interaction between two domains gives rise to the following energy contribution:
+
+    .. math::
+
+        E^\text{iex} = -\int\limits_\Gamma J_\text{iex} \, \vec{m}_i \cdot \vec{m}_j \, d\vec{A},
+
+    where :math:`\Gamma` is the interface between two layers :math:`i` and :math:`j`
+    with magnetizations :math:`\vec{m}_i` and :math:`\vec{m}_j`, respectively.
+
+    :Example:
+
+      .. code::
+
+        # create state with named domains from mesh
+        state = State(mesh)
+        state.material["iex"] = J_iex
+
+        # create domains as bool arrays, e.g:
+        domain1 = torch.zeros(n, dtype=torch.bool)
+        domain1[n[0]//2:,:,:] = True
+
+        domain2 = torch.zeros(n, dtype=torch.bool)
+        domain2[:-n[0]//2:,:,:] = True
+
+        # rotate magnetization within one subdomain
+        state.m[domain1] = torch.tensor([np.cos(phi), np.sin(phi), 0])
+
+        # without interface layer, two seperate exchange fields need to be defined
+        exchange1 = ExchangeField(Aex1, domain1)
+        exchange2 = ExchangeField(Aex2, domain2)
+        iex = IntergrainExchangeField(domain1, domain2)
+    """
+    def __init__(self, domain1, domain2):
+        self._domain1 = domain1
+        self._domain2 = domain2
+
+    @timedmethod
+    @torch.compile
+    def h(self, state):
+        m1 = state.m * state.material["iex"]
+        m2 = m1.clone()
+        m1[~self._domain1] = 0
+        m2[~self._domain2] = 0
+
+        # sum h1 over all next neighbors
+        h1 = m1*0.
+        h1[:-1,:,:,:] += m2[ 1:,:,:,:] / state.mesh.dx[0]
+        h1[ 1:,:,:,:] += m2[:-1,:,:,:] / state.mesh.dx[0]
+
+        h1[:,:-1,:,:] += m2[:, 1:,:,:] / state.mesh.dx[1]
+        h1[:, 1:,:,:] += m2[:,:-1,:,:] / state.mesh.dx[1]
+
+        h1[:,:,:-1,:] += m2[:,:, 1:,:] / state.mesh.dx[2]
+        h1[:,:, 1:,:] += m2[:,:,:-1,:] / state.mesh.dx[2]
+
+        # sum h2 over all next neighbors
+        h2 = m2*0.
+        h2[:-1,:,:,:] += m1[ 1:,:,:,:] / state.mesh.dx[0]
+        h2[ 1:,:,:,:] += m1[:-1,:,:,:] / state.mesh.dx[0]
+
+        h2[:,:-1,:,:] += m1[:, 1:,:,:] / state.mesh.dx[1]
+        h2[:, 1:,:,:] += m1[:,:-1,:,:] / state.mesh.dx[1]
+
+        h2[:,:,:-1,:] += m1[:,:, 1:,:] / state.mesh.dx[2]
+        h2[:,:, 1:,:] += m1[:,:,:-1,:] / state.mesh.dx[2]
+
+        h = m1 * 0.
+        h[self._domain1] = h1[self._domain1]
+        h[self._domain2] = h2[self._domain2]
+
+        h /= constants.mu_0 * state.material["Ms"]
+        return h.nan_to_num(posinf=0, neginf=0)
+
+
+
 
 # TODO: interface should be generalized and simplified
 class RKKYField(object):
@@ -120,7 +199,6 @@ class RKKYField(object):
         return E
 
 
-
 # TODO: interface should be generalized and simplified
 class BiquadraticRKKYField(object):
     r"""
@@ -144,7 +222,7 @@ class BiquadraticRKKYField(object):
         self._J_rkky_BQ = J_rkky_BQ
         if dir != "z":
             raise ValueError("Currently only dir='z' is implemented!")
-        self._dir = dir 
+        self._dir = dir
         self._id1 = min(id1,id2)
         self._id2 = max(id1,id2)
 
@@ -165,7 +243,7 @@ class BiquadraticRKKYField(object):
         h /= constants.mu_0 * state.material["Ms"] * dz
 
         return h.nan_to_num(posinf=0, neginf=0)
-    
+
     @torch.compile
     def E(self, state):
         m1 = state.m[:,:,self._id1,:]
