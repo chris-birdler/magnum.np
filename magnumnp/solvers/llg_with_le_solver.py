@@ -128,7 +128,6 @@ class LLGWithLESolver(LLGSolver):
                  magnetic_z_limits = None,  # list of len 2, upper and lower limit of the magnetic domain in z-direction
                  boundary_nodes = 1,        # number of boundary nodes used for boundary value computations
                  iteration_depth = 1,       # iteration depth for strain jump conditions
-                 ySH_mode_scheme = True,    # experimental: SH y-mode setup
                  **kwargs):
 
         # field terms for llg time integration
@@ -192,11 +191,6 @@ class LLGWithLESolver(LLGSolver):
             raise Exception(self.__class__.__name__ + ": boundary_nodes must be 1, 2 or 3.")
         self._gradient_second_order_boundary = boundary_nodes > 2 
         self._bc_second_order = boundary_nodes > 1
-
-        # calculation of second derivatives
-        self._ignore_rho_jumps = ySH_mode_scheme
-        if not ySH_mode_scheme:
-            logging.warning("Warning: jump conditions for rho are only valid for horizontal shear modes")
 
         # neumann bcs
         self._neumann_bcs = []
@@ -694,61 +688,10 @@ class LLGWithLESolver(LLGSolver):
         """ get bulk forces """
         f_ij = torch.zeros(n + (3,3))
 
-        if self._ignore_rho_jumps:
-            # This method ingores jump conditions that keep the f/rho continuous
-            for i in range(3):
-                for j in range(3):
-                    for term in self._f_terms[i][j]:
-                        f_ij[:,:,:,i,j] += term(state)
-
-        else:
-            rho = state.material["rho"][...,0]
-            # this method keeps f/rho continuous, but is most likely of lower order
-            fxx = gradient_with_pbc(sig_ii[...,0], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fxy = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fxz = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-            fyx = gradient_with_pbc(sig_ij[...,2], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fyy = gradient_with_pbc(sig_ii[...,1], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-            fzx = gradient_with_pbc(sig_ij[...,1], state.mesh, dim=[0], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fzy = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[1], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-            fzz = gradient_with_pbc(sig_ii[...,2], state.mesh, dim=[2], C=[1/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-            if (self.iteration_depth > 0):
-                
-                def harmonic_mean(g, C, shift, dim):
-                    a = C*g
-                    mean = (a+torch.roll(a, shift, dim)) / (C + torch.roll(C, shift, dim))
-                    return mean.nan_to_num(posinf=0, neginf=0)
-                
-                C = state.material["C"]
-                C66 = C[...,5,5]
-                
-                for iter in range(self.iteration_depth):
-                    C66 = state.material["C"][...,5,5]
-                    epsXY = epsilon(state, iteration_depht=self.iteration_depth, second_order_boundary=self._gradient_second_order_boundary)[...,5]
-
-                    Bfyz_l = harmonic_mean(epsXY, C66, 1, 2)
-                    Bfyz_r = torch.roll(Bfyz_l, -1, 2)
-
-                    Bfyz_l = gradient_with_pbc(C66*Bfyz_l, state.mesh, dim=[0], second_order_boundary=True)[0]
-                    Bfyz_r = gradient_with_pbc(C66*Bfyz_r, state.mesh, dim=[0], second_order_boundary=True)[0]
-
-                    fyz = gradient_with_pbc(sig_ij[...,0], state.mesh, dim=[2], C=[1/rho], Bl=[Bfyz_l/rho], Br=[Bfyz_r/rho], second_order_boundary=self._gradient_second_order_boundary)[0]
-
-            f_ij[...,0,0] = fxx
-            f_ij[...,0,1] = fxy
-            f_ij[...,0,2] = fxz 
-
-            f_ij[...,1,0] = fyx
-            f_ij[...,1,1] = fyy
-            f_ij[...,1,2] = fyz 
-            
-            f_ij[...,2,0] = fzx
-            f_ij[...,2,1] = fzy
-            f_ij[...,2,2] = fzz 
+        for i in range(3):
+            for j in range(3):
+                for term in self._f_terms[i][j]:
+                    f_ij[:,:,:,i,j] += term(state)
 
         """ get expanded dx """
         dx1_exp =  state.mesh.dx_tensor[0].unsqueeze(1).unsqueeze(2).expand_as(state.ud[...,0])
@@ -836,12 +779,11 @@ class LLGWithLESolver(LLGSolver):
             ft_weigth[t_slc+(t_trans_dim2, t_dim)] += 1
         
         """ get forces due to magnetic strain """
-        if (self._ignore_rho_jumps):
-            f_ij -= self.get_fm(state)
+        f_ij -= self.get_fm(state)
 
         """ set boundary conditions """
         bc_mask = ft_weigth > 0 
-        f_ij[bc_mask] = ft[bc_mask] #/ ft_weigth[bc_mask]
+        f_ij[bc_mask] = ft[bc_mask] / ft_weigth[bc_mask]
 
         """ add up all force contributions """
         self.f_ij = f_ij
