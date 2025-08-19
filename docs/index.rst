@@ -42,6 +42,8 @@ Features
 * efficient `Voronoi Code <voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
 * Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
+* Magnetoelastic Field
+* Combined LLG + Linear Elasticity Solver (LLGwithLESolver)
 
 
 *************

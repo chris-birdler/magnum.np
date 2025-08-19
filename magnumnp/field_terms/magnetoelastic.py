@@ -30,7 +30,7 @@ class MagnetoElasticField(object):
     This field term is obtained from the magnetoelastic energy:
 
     .. math::
-        E = \int \left( \frac{1}{2}\epsilon^m :C:\epsilon^m - \epsilon :C:\epsilon^m \right) \text{d}\bm{x}
+        E = \int \left( \frac{1}{2}\epsilon^m :C:\epsilon^m - \epsilon :C:\epsilon^m \right) \text{d}\mathbf{x}
 
     References:
     - C.Y. Liang et al., Nanotechnology 25 (2014) 435701 (10pp), doi:10.1088/0957-4484/25/43/435701
@@ -124,7 +124,7 @@ class LinearMagnetoElasticField(LinearFieldTerm):
     that are quadratic in :math:`\vec{m}`:
 
     .. math::
-        E = -\int \epsilon :C:\epsilon^m \text{d}\bm{x}
+        E = -\int \epsilon :C:\epsilon^m \text{d}\mathbf{x}
 
     :param ud: Displacement. If neither this nor 'mechanical_strain' is set, `state.ud` is used.
     :type ud: :class:`torch.Tensor` or function, optional
