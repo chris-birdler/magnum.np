@@ -128,3 +128,11 @@ OerstedField
 ThermalField
 ************
 .. autoclass:: ThermalField
+
+MagnetoElasticField
+*******************
+.. autoclass:: MagnetoElasticField
+
+LinearMagnetoElasticField
+*************************
+.. autoclass:: LinearMagnetoElasticField

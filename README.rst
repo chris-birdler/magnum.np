@@ -42,6 +42,8 @@ Features
 * efficient `Voronoi Code <docs/voronoi.rst>`__ for 2D and 3D problems (including intergrain phase)
 * Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
+* Magnetoelastic Field
+* Combined LLG + Linear Elasticity Solver (LLGwithLESolver)
 
 
 **************
@@ -64,6 +66,7 @@ The following demos are also stored on Google Colab, where they can directly be 
 * `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
 * `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
 * `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
+
 
 ************
 Installation
