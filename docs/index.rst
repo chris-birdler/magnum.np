@@ -34,7 +34,7 @@ Features
 * Spin-torque model by Slonczewski
 * Spin-torque model by Zhang and Li
 * Spin-Orbit torque (SOT)
-* Antiferromagnetic coupling layers (RKKY)
+* Antiferromagnetic coupling layers (RKKY, IntergrainExchange)
 * Dzyaloshinskii-Moriya interaction (interface, bulk, D2d)
 * String method for energy barrier computations
 * `Eigenmode Solver <eigensolver.rst>`__ for efficient calculation of normal modes
@@ -53,17 +53,18 @@ Demo scripts for various applications are available in the `demo <demos/README.r
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-* `Slonczewski Spin Torque <notebooks/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
-* `Softmagnetic Composite <notebooks/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
-* `Spin Orbit Torque <notebooks/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
-* `Standard Problem #4 <notebooks/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
-* `Standard Problem #5 <notebooks/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
-* `Standard Problem DMI <notebooks/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
-* `Standard Problem Domainwall Pinning <notebooks/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
-* `Standard Problem FMR <notebooks/sp_FMR.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS>`__)
-* `Standard Problem RKKY <notebooks/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
-* `Stochastic Integration <notebooks/langevin.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q>`__)
-* `Dispersion Calculator <notebooks/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
+* `Slonczewski Spin Torque 1 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
+* `Slonczewski Spin Torque 2 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski2.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
+* `Softmagnetic Composite <https://florian98765.gitlab.io/magnum.np/notebooks/softmagnetic_composite.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
+* `Spin Orbit Torque <https://florian98765.gitlab.io/magnum.np/notebooks/sot.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__)
+* `Standard Problem #4 <https://florian98765.gitlab.io/magnum.np/notebooks/sp4.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__)
+* `Standard Problem #5 <https://florian98765.gitlab.io/magnum.np/notebooks/sp5.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__)
+* `Standard Problem DMI <https://florian98765.gitlab.io/magnum.np/notebooks/sp_DMI.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__)
+* `Standard Problem Domainwall Pinning <https://florian98765.gitlab.io/magnum.np/notebooks/sp_domainwall_pinning.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
+* `Standard Problem FMR <https://florian98765.gitlab.io/magnum.np/notebooks/sp_FMR.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
+* `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
 
 .. toctree::
