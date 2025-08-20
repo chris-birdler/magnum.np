@@ -1,6 +1,6 @@
 """magnum.np main module"""
 
-__version__ = '2.0.3'
+__version__ = '2.1.0'
 
 import magnumnp.common.logging as logging
 from magnumnp.common.utils import get_gpu_with_least_memory

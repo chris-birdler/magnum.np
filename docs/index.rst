@@ -3,7 +3,7 @@
   :alt: magnum.np Logo
 
 #####################################
-magnum.np 2.0.3
+magnum.np 2.1.0
 #####################################
 
 *magnum.np* is a Python library for the solution of micromagnetic problems with the finite-difference
