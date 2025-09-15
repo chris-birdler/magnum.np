@@ -42,13 +42,13 @@ except:
             logger << state
         write_vti({"m0":state.m}, "data/m0_vortex_cylindric.vti", state)
 
-#with Timer("Calculate Eigenvectors"):
-#    try:
-#        res = EigenResult.load(state, "data/eigen.pt")
-#    except:
-eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
-res = eigen.solve(k=20, tol=1e-6)
-res.store("data/eigen.pt")
+with Timer("Calculate Eigenvectors"):
+    try:
+        res = EigenResult.load(state, "data/eigen.pt")
+    except:
+        eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
+        res = eigen.solve(k=20, tol=1e-6)
+        res.store("data/eigen.pt")
 
 with Timer("Store evecs"):
     print("evals[GHz]:", res.freq.numpy()*1e-9)
