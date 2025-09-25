@@ -79,7 +79,7 @@ class EigenSolver(object):
         if self._it % 500 == 0:
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
-        vv = torch.from_numpy(vv)#.to(dtype=self._vv.dtype, device=self._state._device)
+        vv = torch.from_numpy(vv).to(dtype=self._vv.dtype, device=self._state.device)
         vv = vv.reshape(self._vv[self._domain].shape)
         self._vv[...] = 0.
         self._vv[self._domain] = vv

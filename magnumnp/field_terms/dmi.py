@@ -47,7 +47,7 @@ class DMIField(LinearFieldTerm):
     """
     parameters = ["D"]
     def __init__(self, dmi_vector, **kwargs):
-        self._dmi_vector = dmi_vector
+        self._dmi_vector = torch.tensor(dmi_vector)
         super().__init__(**kwargs)
 
     @timedmethod
@@ -63,14 +63,14 @@ class DMIField(LinearFieldTerm):
 
         # x
         if state.mesh.pbc[0] == 0:
-            v = torch.tensor(self._dmi_vector[0]).expand(m[1:,:,:].shape)
+            v = self._dmi_vector[0].expand(m[1:,:,:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[1:,:,:]*D[:-1,:,:] < 0, ...
             D_avg = 2.*D[1:,:,:]*D[:-1,:,:] / (D[1:,:,:]*dx[:-1,:,:,:] + D[:-1,:,:]*dx[1:,:,:,:])
             h[:-1,:,:] += D_avg * torch.linalg.cross(v, m[ 1:,:,:]) / 2.
             h[ 1:,:,:] -= D_avg * torch.linalg.cross(v, m[:-1,:,:]) / 2.
         else:
-            v = torch.tensor(self._dmi_vector[0]).expand(m.shape)
+            v = self._dmi_vector[0].expand(m.shape)
             D_next = torch.roll(D, +1, dims=0)
             dx_next = torch.roll(dx, +1, dims=0)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
@@ -83,14 +83,14 @@ class DMIField(LinearFieldTerm):
 
         # y
         if state.mesh.pbc[1] == 0:
-            v = torch.tensor(self._dmi_vector[1]).expand(m[:,1:,:].shape)
+            v = self._dmi_vector[1].expand(m[:,1:,:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[:,1:,:]*D[:,:-1,:] < 0,
             D_avg = 2.*D[:,1:,:]*D[:,:-1,:] / (D[:,1:,:]*dy[:,:-1,:,:] + D[:,:-1,:]*dy[:,1:,:,:])
             h[:,:-1,:] += D_avg * torch.linalg.cross(v, m[:, 1:,:]) / 2.
             h[:, 1:,:] -= D_avg * torch.linalg.cross(v, m[:,:-1,:]) / 2.
         else:
-            v = torch.tensor(self._dmi_vector[1]).expand(m.shape)
+            v = self._dmi_vector[1].expand(m.shape)
             D_next = torch.roll(D, +1, dims=1)
             dy_next = torch.roll(dx, +1, dims=1)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
@@ -103,14 +103,14 @@ class DMIField(LinearFieldTerm):
 
         # z
         if state.mesh.pbc[2] == 0:
-            v = torch.tensor(self._dmi_vector[2]).expand(m[:,:,1:].shape)
+            v = self._dmi_vector[2].expand(m[:,:,1:].shape)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
             # D_avg = torch.where(D[:,:,1:]*D[:,:,:-1] < 0,
             D_avg = 2.*D[:,:,1:]*D[:,:,:-1] / (D[:,:,1:]*dz[:,:,:-1,:] + D[:,:,:-1]*dz[:,:,1:,:])
             h[:,:,:-1] += D_avg * torch.linalg.cross(v, m[:,:, 1:]) / 2.
             h[:,:, 1:] -= D_avg * torch.linalg.cross(v, m[:,:,:-1]) / 2.
         else:
-            v = torch.tensor(self._dmi_vector[2]).expand(m.shape)
+            v = self._dmi_vector[2].expand(m.shape)
             D_next = torch.roll(D, +1, dims=2)
             dz_next = torch.roll(dx, +1, dims=2)
             # TODO: implement for different signs (according to https://github.com/mumax/3/issues/236)
