@@ -4,13 +4,11 @@
 Getting Started
 ###############
 
-The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex.
-
-Google Colab allows to run magnum.np demos without local installation on CPUs as well as on GPUs (TODO: add link):
+The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory. This problem examines the effects of a constant current in the plain of a magnetic material on the trajectory of a magnetic vortex. Google Colab allows to run *magnum.np* demos without local installation on CPUs as well as on GPUs.
 
 Standard Problem #5
 *******************
-As magnum.np is a Python library this simulation script is a Python script meaning magnum.np first needs to be imported with
+As *magnum.np* is a Python library this simulation script is a Python script meaning *magnum.np* first needs to be imported with
 
 .. code-block:: python
 
@@ -51,7 +49,7 @@ The initial magnetization *m* is defined using torch.Tensor. The elements of the
   state.m[20,20,:,1] = 0.
   state.m[20,20,:,2] = 1.
 
-  state.j = state.Tensor([1e12, 0, 0])
+  state.j = state.Constant([1e12, 0, 0])
 
 In the following step the field terms are initialized. Here the demagnetization field, the exchange field and spin torque are defined.
 
@@ -84,7 +82,7 @@ Once the initial magnetic vortex pattern is found the LLG solver is reapplied, t
 
   Timer.print_report()
 
-Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through magnum.np, in order to catch mistakes in the code when new features are added.
+Finally the results are plotted alongside reference data to allow for comparison between the published results and the results achieved through *magnum.np*, in order to catch mistakes in the code when new features are added.
 
 .. code-block:: python
 
@@ -145,4 +143,4 @@ The following is a video showing the progression of the vortex during the simula
 Complete Code
 *************
 
-The complete code can be viewed here: :download:`run.py <../demos/sp5/run.py>`.
+The complete code can be viewed here: :download:`run.py <../demos/sp5/sp5_run.py>`.

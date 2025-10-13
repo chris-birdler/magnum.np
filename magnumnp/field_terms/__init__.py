@@ -24,10 +24,13 @@ from magnumnp.field_terms.dmi import *
 from magnumnp.field_terms.exchange import *
 from magnumnp.field_terms.external import *
 from magnumnp.field_terms.field_terms import *
+from magnumnp.field_terms.magnetoelastic import *
 from magnumnp.field_terms.oersted import *
 from magnumnp.field_terms.rkky import *
 from magnumnp.field_terms.rux import *
 from magnumnp.field_terms.spintorque import *
+from magnumnp.field_terms.thermal import *
+from magnumnp.field_terms.vector_potential import *
 
 __all__ = (anisotropy.__all__ +
            demag.__all__ +
@@ -37,7 +40,10 @@ __all__ = (anisotropy.__all__ +
            exchange.__all__ +
            external.__all__ +
            field_terms.__all__ +
+           magnetoelastic.__all__ +
            oersted.__all__ +
            rux.__all__ +
            rkky.__all__ +
-           spintorque.__all__)
+           spintorque.__all__ +
+           thermal.__all__ +
+           vector_potential.__all__)

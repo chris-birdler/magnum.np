@@ -9,7 +9,7 @@ def test_cube():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"sigma": 1.}
+    state.material = {"sigma": state.Constant(1.)}
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)
     dirichlet_bc_nodes[0,:,:] = True
@@ -28,10 +28,10 @@ def test_curved():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx, origin = (-n[0]*dx[0]/2.,0.,0.))
     state = State(mesh)
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     r_i = 30e-9
     r_a = 50e-9
-    state.material["sigma"] = 5.3e5 * ((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))
+    state.material["sigma"] = 5.3e5 * (((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))).unsqueeze(-1)
     write_vti(state.material, "data/material.vti")
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)
@@ -50,10 +50,10 @@ def test_curved_2D():
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx, origin = (-n[0]*dx[0]/2.,0.,0.))
     state = State(mesh)
-    x, y, z = state.SpatialCoordinate()
+    x, y, z = mesh.SpatialCoordinate()
     r_i = 30e-9
     r_a = 50e-9
-    state.material["sigma"] = 1. * ((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))
+    state.material["sigma"] = 1. * (((x**2+y**2 > r_i**2) & (x**2+y**2 < r_a**2))).unsqueeze(-1)
     write_vti(state.material, "data/material.vti")
 
     dirichlet_bc_nodes = state.Constant(False, dtype=bool)
@@ -72,7 +72,7 @@ def test_curved_2D():
 #    dx = (5e-9, 5e-9, 1e-9)
 #    mesh = Mesh(n, dx, origin = (-n[0]*dx[0]/2.,-n[1]*dx[1]/2.,-n[2]*dx[2]/2.))
 #    state = State(mesh)
-#    x, y, z = state.SpatialCoordinate()
+#    x, y, z = mesh.SpatialCoordinate()
 #
 #    domain = (x**2 < 1.0e-6**2) | (y**2 < 1.0e-6**2)
 #    state.material["sigma"] = 0.

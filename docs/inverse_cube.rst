@@ -4,12 +4,12 @@
 Inverse Problems
 ##################
 
-Usually the problems that are solved in micromagnetics are such that the final state is computed for given starting conditions, however, what if you wanted to find the necessary starting conditions for a certain state to be induced? The following demo code shows how magnum.np can be used to find the needed starting conditions for a given final state. 
+Usually the problems that are solved in micromagnetics are such that the final state is computed for given starting conditions, however, what if you wanted to find the necessary starting conditions for a certain state to be induced? The following demo code shows how *magnum.np* can be used to find the needed starting conditions for a given final state. 
 
 The Code
 ********
 
-First, all the necessary packages are imported. These are magnum.np and PyTorch which is a deep learning framework. The geometric function *sine* and *cosine* are imported separately from torch for readability. 
+First, all the necessary packages are imported. These are *magnum.np* and PyTorch which is a deep learning framework. The geometric function *sine* and *cosine* are imported separately from torch for readability. 
 
 .. code-block:: python
 
@@ -133,7 +133,7 @@ The optimization loop uses the Adam optimizer from PyTorch and the L1 loss funct
   
 Next the omptimizatin loop is entered. The loop runs over 100 epochs. In each cycle the optimizer is zeroed and the initial magnetization state *m0* is set as the state of the system. The *state.t* variable is set to 0 to start the simulation from the beginning. 
 
-.. cdoe-block:: python
+.. code-block:: python
 
   for epoch in range(100):
       print("epoch: ", epoch)

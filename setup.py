@@ -17,33 +17,33 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from distutils.core import setup
+from setuptools import setup
 
 # read the contents of your README file
 from pathlib import Path
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+long_description = (this_directory / "README.rst").read_text()
 
 setup(name='magnumnp',
-      version='1.1.2',
+      version='2.1.0',
       description='magnum.np finite-difference package for the solution of micromagnetic problems',
       long_description=long_description,
-      long_description_content_type='text/markdown',
+      long_description_content_type='text/x-rst',
       author='Florian Bruckner',
       author_email='florian.bruckner@univie.ac.at',
       url='http://gitlab.com/magnum.np/magnum.np',
       project_urls = {'Documentation': 'https://magnum.np.gitlab.io/magnum.np/',
                       'Changelog': 'https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG'
       },
-      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
+      packages=['magnumnp', 'magnumnp.common', 'magnumnp.field_terms', 'magnumnp.linear_elasticity', 'magnumnp.loggers', 'magnumnp.solvers', 'magnumnp.solvers.ode_solvers', 'magnumnp.utils'],
       install_requires = [
             'numpy',
-            'pynvml',
             'pyvista',
             'scipy',
             'setproctitle',
             'torch',
             'torchdiffeq',
             'xitorch',
+            'tqdm',
             ]
      )

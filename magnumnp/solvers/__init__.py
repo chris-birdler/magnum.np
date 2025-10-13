@@ -18,6 +18,7 @@
 
 from magnumnp.solvers.eigensolver import *
 from magnumnp.solvers.llg import *
+from magnumnp.solvers.llg_with_le_solver import *
 from magnumnp.solvers.ode_solvers import *
 from magnumnp.solvers.ohm_solver import *
 from magnumnp.solvers.string import *
@@ -27,6 +28,7 @@ from magnumnp.solvers.LBFGS import *
 
 __all__ = (eigensolver.__all__ +
            llg.__all__ +
+           llg_with_le_solver.__all__ +
            ode_solvers.__all__ +
            ohm_solver.__all__ +
            string.__all__ +

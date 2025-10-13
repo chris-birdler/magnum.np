@@ -10,34 +10,34 @@ def test_different_tensors():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
-    state.m = state.Constant([1,0,0])
+    state.material = {"Ms": state.Constant(Ms)}
+    state.m = state.Constant([1.,0.,0.])
 
-    # test vector [3]
-    external = ExternalField([1,0,0])
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]))
-    assert external.E(state).cpu() / (-mesh_volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
+    ## test vector [3] -> deprecated
+    #external = ExternalField([1.,0.,0.])
+    #torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([1.,0.,0.]))
+    #assert external.E(state).cpu() / (-mesh_volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
 
     # test vector [nx,ny,nz,3]
-    external = ExternalField(state.Constant([1,0,0]))
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]))
+    external = ExternalField(state.Constant([1.,0.,0.]))
+    torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([1.,0.,0.]))
     assert external.E(state).cpu() / (-mesh_volume*constants.mu_0*Ms) == pytest.approx(1., abs=1e-6, rel=1e-6)
 
-    # test lambda [3]
-    h_func = lambda t: state.Tensor([t,0,0])
-    external = ExternalField(h_func)
-    state.t = 0.
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([0,0,0]), atol=1e-15, rtol=1e-15)
-    state.t = 1.
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]), atol=1e-15, rtol=1e-15)
+    ## test lambda [3] -> deprecated
+    #h_func = lambda t: torch.tensor([t,0.,0.])
+    #external = ExternalField(h_func)
+    #state.t = 0.
+    #torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([0.,0.,0.]), atol=1e-15, rtol=1e-15)
+    #state.t = 1.
+    #torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
 
     # test lambda [nx,ny,nz,3]
-    h_func = lambda t: state.Constant([t,0,0])
+    h_func = lambda state: state.Constant([state.t,0.,0.])
     external = ExternalField(h_func)
     state.t = 0.
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([0,0,0]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([0.,0.,0.]), atol=1e-15, rtol=1e-15)
     state.t = 1.
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]), atol=1e-15, rtol=1e-15)
+    torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
 
 def test_setter():
     n  = (8,10,12)
@@ -45,11 +45,11 @@ def test_setter():
     Ms = 1./constants.mu_0
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": Ms}
-    state.m = state.Constant([1,0,0])
+    state.material = {"Ms": state.Constant(Ms)}
+    state.m = state.Constant([1.,0.,0.])
 
-    external = ExternalField([1,0,0])
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([1,0,0]), atol=1e-15, rtol=1e-15)
+    external = ExternalField(state.Constant([1.,0.,0.]))
+    torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([1.,0.,0.]), atol=1e-15, rtol=1e-15)
 
-    external.h = [0,1,0]
-    torch.testing.assert_close(external.h(state).avg(), state.Tensor([0,1,0]), atol=1e-15, rtol=1e-15)
+    external.h = state.Constant([0.,1.,0.])
+    torch.testing.assert_close(state.avg(external.h(state)), torch.tensor([0.,1.,0.]), atol=1e-15, rtol=1e-15)

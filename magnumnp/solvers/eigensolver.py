@@ -21,6 +21,7 @@ import os
 import torch
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs
+from scipy.interpolate import interp2d
 from scipy.linalg import eig
 from xml.etree import cElementTree
 from xml.dom import minidom
@@ -29,6 +30,31 @@ __all__ = ["EigenSolver", "EigenResult"]
 
 class EigenSolver(object):
     def __init__(self, state, linear_terms, constant_terms, domain=Ellipsis):
+        """
+        This class implements solution of the linearized LLG in the frequncy domain [dAquino2009]_.
+        The corresponding eigenvalue problem is solved using Scipy (CPU only).
+
+        *Example*
+            .. code:: python
+
+                llg = LLGSolver([demag, exchange, external])
+                logger = Logger("data", ['t', 'm'])
+                while state.t < 1e-9-eps:
+                    llg.step(state, 1e-11)
+                    logger << state
+
+        *Arguments*
+            terms ([:class:`LLGTerm`])
+                List of LLG contributions to be considered for energy minimization
+            state ([:class:`State`])
+                the State object containing the equilibrium magnetization state.m
+            linear_terms (list)
+                list of linear field terms
+            constant_terms (list)
+                list of constant field terms
+            domain ([:class:`torch.Tensor`])
+                integrate without precession term (default: False)
+        """
         self._domain = domain
         self._linear_terms = linear_terms
         self._state = state
@@ -53,7 +79,7 @@ class EigenSolver(object):
         if self._it % 500 == 0:
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
-        vv = torch.from_numpy(vv).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
+        vv = torch.from_numpy(vv).to(dtype=self._vv.dtype, device=self._state.device)
         vv = vv.reshape(self._vv[self._domain].shape)
         self._vv[...] = 0.
         self._vv[self._domain] = vv
@@ -81,18 +107,17 @@ class EigenSolver(object):
         N = np.prod(self._m0[self._domain].shape[:-1])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
-        evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol)
+        evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = np.ones(2*N))
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
 
         evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
-        evecs2D = torch.from_numpy(evecs2D).to(dtype=complex_dtype[self._state._dtype], device=self._state._device)
-        evecs2D = self._state.Tensor(evecs2D).reshape(-1,2,evecs2D.shape[-1])
+        evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
-        omega = self._state.Tensor(evals.imag)
+        omega = torch.tensor(evals.imag)
 
-        res = self._state.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
+        res = torch.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
 
@@ -112,9 +137,9 @@ class EigenResult(object):
 
     @staticmethod
     def load(state, filename):
-        stored = torch.load(filename)
+        stored = torch.load(filename, map_location=state.device)
         m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
-        state.m = state.Tensor(m0)
+        state.m = m0
 
         ez = state.Constant([1e-15,0.,1.])
         e1 = torch.linalg.cross(ez, m0)
@@ -154,8 +179,25 @@ class EigenResult(object):
         for i, vvv in enumerate(evecs):
             filename_vti = "%s_%04d.vti" % (os.path.splitext(filename)[0], i)
             write_vti(vvv, filename_vti, self._state)
-            cElementTree.SubElement(xmlroot[0], "DataSet", timestep=str(self.freq[i].numpy()), file=os.path.basename(filename_vti))
+            cElementTree.SubElement(xmlroot[0], "DataSet", timestep=str(self.freq[i].cpu().numpy()), file=os.path.basename(filename_vti))
 
         with open(filename, 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
 
+    def dispersion(self, points, dx, num_omega = 1000):
+        state = self._state
+        vvv = self.evecs().cpu().numpy()
+        m = points(vvv)
+        kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(m.shape[0], dx))
+
+        window = np.hanning(m.shape[0])[:,None]
+        mfft = np.abs(np.fft.fftshift(np.fft.fft(m*window, axis=0), axes=0))
+        mfft = mfft.T
+
+        # resample on equidistant omega-grid
+        ww = self._omega.cpu().numpy()
+        disp = interp2d(kk, ww, mfft)
+        ww = np.linspace(np.abs(ww).min(), np.abs(ww).max(), num = num_omega)
+        mm = disp(kk, ww)
+
+        return kk, ww, mm

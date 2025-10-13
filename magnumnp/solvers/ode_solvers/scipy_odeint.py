@@ -17,7 +17,7 @@
 #
 
 import torch
-from magnumnp.common import logging, DecoratedTensor
+from magnumnp.common import logging
 from scipy.integrate import odeint
 
 __all__ = ["ScipyOdeint"]
@@ -34,23 +34,32 @@ class ScipyOdeint(object):
 
         logging.info_green("[LLGSolver] using Scipy odeint Solver (rtol = %g, atol = %g)" % (rtol, atol))
 
-    def _f_wrapper(self, t, m, state, llg_args):
-        state.t = t * 1e-9 # scale time by 1e9 to prevent underflow error
-        state.m = state.Tensor(m.reshape(state.mesh.n + (3,), order = "F"))
-        f = self._f(state, **llg_args) * 1e-9
+    def _f_wrapper(self, t, x, kwargs):
+        x_torch = torch.tensor(x.reshape(kwargs["state"].mesh.n + (-1,), order = "F"))
+        f = self._f(t * 1e-9, x_torch, **kwargs) * 1e-9 # scale time by 1e9 to prevent underflow error
         return f.detach().cpu().numpy().flatten(order = "F")
 
-    def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        m0 = state.m.detach().cpu().numpy().reshape(-1, order = 'F')
-
-        t1 = state.t + dt
-        m1 = odeint(self._f_wrapper,
-                    m0,
-                    [(state.t*1e9).detach().cpu().numpy(), (t1*1e9).detach().cpu().numpy()],
-                    args = (state, llg_args),
+    def step(self, t, x_torch, dt, rtol = None, atol = None, **kwargs):
+        x0 = x_torch.detach().cpu().numpy().reshape(-1, order = 'F')
+        t1 = t + dt
+        x1 = odeint(self._f_wrapper,
+                    x0,
+                    [(t*1e9).detach().cpu(), (t1*1e9).detach().cpu()],
+                    args = (kwargs,),
                     rtol = rtol or self._rtol,
                     atol = atol or self._atol,
                     tfirst = True)[1]
 
-        state.m = state.Tensor(m1.reshape(state.mesh.n + (3,), order = "F"))
-        state.t = t1
+        return t1, torch.tensor(x1.reshape(x_torch.shape, order = "F"))
+
+    def solve(self, tt, x_torch, rtol = None, atol = None, **kwargs):
+        x0 = x_torch.detach().cpu().numpy().reshape(-1, order = 'F')
+        res = odeint(self._f_wrapper,
+                     x0,
+                     tt.detach().cpu().numpy()*1e9,
+                     args = (kwargs,),
+                     rtol = rtol or self._rtol,
+                     atol = atol or self._atol,
+                     tfirst = True)
+
+        return torch.tensor(res.reshape(tt.shape + x_torch.shape, order = "F"))

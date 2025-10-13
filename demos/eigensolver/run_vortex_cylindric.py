@@ -17,12 +17,11 @@ state.material = {
         "Ms":1./constants.mu_0,
         }
 
-x,y,z = state.SpatialCoordinate()
+x,y,z = mesh.SpatialCoordinate()
 r = n[0]*dx[0]/2.
 disk = x**2 + y**2 < r**2
-state.m = torch.stack([-y,x,0*z], dim=-1)
-state.m.normalize()
-#state.m[~disk] = 0.
+state.m = Expression([-y,x,0*z])
+normalize(state.m)
 
 state.material["A"][~disk] = 0.
 state.material["Ms"][~disk] = 0.

@@ -16,7 +16,7 @@ state.material = {
         "alpha": 1.,
         }
 
-XX, YY, ZZ = state.SpatialCoordinate()
+XX, YY, ZZ = mesh.SpatialCoordinate()
 R = 50e-9
 disk = XX**2. + YY**2. < R**2.
 
@@ -48,19 +48,19 @@ dmi = BulkDMIField()
 
 # initialize magnetization that relaxes into s-state
 state.m = state.Constant([0.0, 0.0, 0.0]) 
-state.m[disk] = state.Tensor((0.,0.,-1.))
+state.m[disk] = torch.tensor((0.,0.,-1.))
 state.m[n[0]//2-5:n[0]//2+5, n[1]//2-5:n[1]//2+5, :, 2] = 1.0
-state.m.normalize()
+normalize(state.m)
 write_vti(state.m, "data/m_init.vti", state)
 
 # relax structure without external fields
 llg = LLGSolver([exchange, aniso, dmi])
-i = 0
-with open('data/m_bulk.dat', 'w') as f:
-    while state.t < 5e-9-eps:
-        llg.step(state, 1e-11)
-        f.write("%g %g %g %g\n" % ((state.t,) + tuple(state.m.avg())))
-        f.flush()
-    write_vti(state.m, "data/m_bulk.vti")
+slogger = ScalarLogger("data/m_bulk.dat", ['t', 'm'])
+flogger = FieldLogger("data/m_bulk.pvd", ['m'], scale = 1e9)
+
+while state.t < 5e-9-eps:
+    llg.step(state, 1e-11)
+    slogger << state
+flogger << state
 
 Timer.print_report()

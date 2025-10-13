@@ -1,20 +1,21 @@
 import pytest
 import torch
 from magnumnp import *
-from softmagnetic_composite_run import run_softmagnetic_composite
 import numpy as np
 import pathlib
 
+import sys
+sys.modules.pop("run", None)
+import run
+
 def test_softmagnetic_composite():    
-    run_softmagnetic_composite()
-    
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "m.dat"
     ref_path = this_dir / "ref" / "m_test.dat"
-    
+
     data = np.loadtxt(data_path)
     ref = np.loadtxt(ref_path)
-    
+
     data_h = torch.from_numpy(data[:,1])
     data_m = torch.from_numpy(data[:,4])
     

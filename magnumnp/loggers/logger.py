@@ -37,8 +37,6 @@ class Logger(object):
             Write scalar to log file every nth call
         fields ([:class:`str` | :class:`function`])
             The columns to be written to the log file
-        every (:class:`int`)
-            Write row to log file every nth call
         fields_every (:class:`int`)
             Write fields to log file every nth call
 
@@ -90,8 +88,7 @@ class Logger(object):
         resumable_step = min(map(lambda logger: logger.resumable_step(), self.loggers.values()))
         assert resumable_step >= last_recorded_step + 1
 
-        m, state.t = self.loggers["fields"].step_data(last_recorded_step, "m")
-        state.m = m.to(device = state._device)
+        state.m, state.t = self.loggers["fields"].step_data(last_recorded_step, "m")
         logging.info_green("Resuming from step %d (t = %g)." % (last_recorded_step, state.t))
 
         for logger in self.loggers.values():

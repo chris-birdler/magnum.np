@@ -1,10 +1,14 @@
+# %% [markdown]
+# ## Plot Results
+
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 
 magnumnp = np.loadtxt("data/m0_magnumnp.dat")
 #magnumpi = np.loadtxt("data/m0_magnumpi.dat")
-finmag = np.loadtxt("data/m0_finmag.dat")
 
+finmag = np.loadtxt("ref/m0_finmag.dat")
 ref_x = np.loadtxt("ref/interfaceDMI_mx.dat")
 ref_z = np.loadtxt("ref/interfaceDMI_mz.dat")
 

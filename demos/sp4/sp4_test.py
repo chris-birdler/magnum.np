@@ -1,13 +1,14 @@
 import pytest
 import torch
 from magnumnp import *
-from sp4_run import run_sp4
 import numpy as np
 import pathlib
 
-def test_sp4():
-    run_sp4()
+import sys
+sys.modules.pop("run", None)
+import run
 
+def test_sp4():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "m_test.dat"

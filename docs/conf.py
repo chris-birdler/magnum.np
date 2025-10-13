@@ -14,7 +14,7 @@
 #
 #import os
 #import sys
-#sys.path.insert(0, os.path.abspath('./magnumnp'))
+#sys.path.insert(0, os.path.abspath('../magnumnp'))
 
 
 # -- Project information -----------------------------------------------------
@@ -26,7 +26,7 @@ author = 'Florian Bruckner'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '1.1.2'
+release = '2.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -198,6 +198,11 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+nbgallery_conf = {
+    'path_to_gallery': '../demos_gallery',    # Path to your notebook directory
+    'thumbnail_images': True,          # Generate thumbnails for each notebook (optional)
+}
+
 
 
 # -- Options for Latex output ------------------------------------------------

@@ -166,13 +166,12 @@ class Timer(object):
         table = "\n".join(lines)
 
         width = len(table.split("\n")[1])
-        print("")
-        print("=" * width)
-        print("TIMER REPORT")
-        print("=" * width)
-        print(table)
-        print("=" * width)
-        print("")
+        logging.default("=" * width)
+        logging.default("TIMER REPORT")
+        logging.default("=" * width)
+        for line in table.split('\n'):
+            logging.default(line)
+        logging.default("=" * width)
         missing = missing_time / total_time
         if missing > 0.2:
             logging.warning("Too much time missing (%.0f%%). Add some Timers for more complete timing!" % (missing * 100.))

@@ -1,13 +1,14 @@
 import pytest
 import torch
 from magnumnp import *
-from sp_DMI_run import run_sp_DMI
 import numpy as np
 import pathlib
 
-def test_sp_DMI():
-    run_sp_DMI()
+import sys
+sys.modules.pop("run", None)
+import run
 
+def test_sp_DMI():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "m0_magnumnp.dat"
     ref_path = this_dir / "ref" / "m_test.dat"

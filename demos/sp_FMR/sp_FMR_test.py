@@ -1,13 +1,14 @@
 import pytest
 import torch
 from magnumnp import *
-from sp_FMR_run import run_sp_FMR
 import numpy as np
 import pathlib
 
-def test_FMR():
-    run_sp_FMR()
+import sys
+sys.modules.pop("run", None)
+import run
 
+def test_FMR():
     this_dir = pathlib.Path(__file__).resolve().parent
     data_path = this_dir / "data" / "log.dat"
     ref_path = this_dir / "ref" / "log_test.dat"

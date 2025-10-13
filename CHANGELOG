@@ -1,3 +1,41 @@
+2.1.0 [2025-08-20]
+- added MagnetoElasticField and LinearMagnetoElasticField
+- added LLGWithLESolver
+- added magnetoelastic unittests and demos
+
+2.0.3 [2025-07-15]
+- added UniaxialAnisotropyField2
+- added IntergrainExchangeField
+- prevent nvidia-smi from showing process on wrong GPUs
+
+2.0.2 [2025-02-05]
+- improved demo setup (automatically create and test .ipynb files)
+
+2.0.1 [2024-10-16]
+- added CubicAnisotropyField2 (takes axes instead of Euler angles and is much faster)
+
+2.0.0 [2024-10-03]
+- remove DecoratedTensor and simplify internal structure
+- all lambda functions now depend on full State instead of time
+- added VectorPotential
+- added scale option to FieldLogger and write_vti
+- added Voronoi Tesselation code
+
+1.1.6 [2024-04-11]
+- added biquadratic RKKY interaction
+
+1.1.5 [2024-02-22]
+- added Slonczewski Spin Transfer Torque
+- fixed sign in DMI when using PBCs
+
+1.1.4 [2023-11-08]
+- added Dispersion Calculator demo
+- added dispersion to eigenmode solver
+
+1.1.3 [2023-10-09]
+- added ThermalField
+- added Langevin demo
+
 1.1.2 [2023-07-12]
 - added MinimizerBB
 - use demos as integration tests

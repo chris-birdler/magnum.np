@@ -16,8 +16,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from magnumnp.utils.coil import *
 from magnumnp.utils.imaging_tools import *
+from magnumnp.utils.logging_helpers import *
 from magnumnp.utils.misc import *
+from magnumnp.utils.voronoi import *
 
-__all__ = (imaging_tools.__all__ +
-           misc.__all__)
+__all__ = (coil.__all__ +
+           imaging_tools.__all__ +
+           logging_helpers.__all__ +
+           misc.__all__ +
+           voronoi.__all__)

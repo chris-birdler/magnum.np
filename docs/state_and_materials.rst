@@ -6,7 +6,7 @@ State and Materials
 
 State
 #####
-As we've already seen in the demo of the muMAG Standard Problem #4 a state is initialized as follows:
+As we have already seen in the demo of the muMAG Standard Problem #4 a state is initialized as follows:
 
 .. code-block:: python
 
@@ -15,74 +15,34 @@ As we've already seen in the demo of the muMAG Standard Problem #4 a state is in
   mesh = Mesh(n, dx, origin = (-50e-9, -12.5e-9, 0))
   state = State(mesh)
 
-For this a mesh must be defined. n and dx are tuples with three entries each, to describe a three dimensional material, with n characterizing the size of the magnetic material and dx being the discretization by defining the dimensions of a cell. If not specified, the left bottom corner of the mesh will be located at (0,0,0). Here the origin was defined so that the middle of the mesh lies in the origin.
+For this a mesh must be defined. `n` and `dx` are tuples with three entries each, to describe a three dimensional material, with n characterizing the size of the magnetic material and dx being the discretization by defining the dimensions of a cell. If not specified, the left bottom corner of the mesh will be located at (0,0,0). Here the origin was defined so that the middle of the mesh lies in the origin.
 
 Set Floating Point Precision
 ****************************
 
 Torch Global
 ============
-To define the floating point precision for all states at once you can use
+Since *magnum.np* 2.0 the floating point precission is modified by setting PyTorch defaults. E.g.:
 
 .. code-block:: python
 
-  torch.set_default_dytpe(torch.float32)
+  torch.set_default_dtype(torch.float32)
 
-for single precision, or
+The used `dtype` is printed during the creation of a state object.
 
-.. code-block:: python
-
-  torch.set_default_dytpe(torch.float64)
-
-for double precision. However, this method does not allow you to mix precisions.
-
-Use state.dtype
-=================
-Alternatively, you can use
-
-.. code-block:: python
-
-  state = State(mesh, dtype = torch.float32)
-
-which enables you to manually set the precision of each state, therefore, allowing you to mix precisions, if necessary. Note that in this case, the user cannot use torch.arange and will have to use e.g. state.arange instead.
 
 Device Selection
 ****************
 The choice of which device is used to execute the code occurs by default. First it is determined whether GPUs are available. If GPUs are available the code will be executed on the GPU with the least amount of memory usage. If no GPUs are available the code will be run on the CPU.
 
-In order to choose a processing unit manually you can set the environment variable CUDA_DEVICES by entering the following in the command line:
-
-.. code-block:: python
-
-  CUDA_DEVICE=2
-
-Positive integers refer to GPUs and negative numbers relate to CPUs. Thus, in this case the code would be run on GPU 2.
-
-Entering
-
-.. code-block:: python
-
-  CUDA_DEVICE=-1
-
-in the command line will cause the code to be executed on the CPU.
-
-To execute standard problem #4 from the command line using GPU 2, you would enter the following in the command line:
+In order to choose a processing unit manually you can set the environment variable `CUDA_DEVICE`. This can e.g be done directly in the command line which executes `pyhton`:
 
 .. code-block:: python
 
   CUDA_DEVICE=2 python run.py
 
-Another way to choose a device is to declare the variable *device* when defining the state. This can be done as follows:
+Positive integers refer to GPUs while `-1` can be used to run explicitly on CPU.
 
-.. code-block:: python
-
-  state = State(mesh, device=torch.device("cpu"))
-
-When running the code from the command line a log message will appear to inform the user which device and data type are being used, which allows you to check that your input has been implemented correctly. Such a log message will look as follows:
-
-.. code-block:: python
-
-  2023-02-21 21:50:21  magnum.np:INFO [State] running on device: cpu (dtype = float32)
 
 
 Materials
@@ -125,7 +85,7 @@ To define this material parameter in a certain area of the mesh Python's slicing
 
 .. code-block:: python
 
-  x,y,z = state.SpatialCoordinate()
+  x,y,z = mesh.SpatialCoordinate()
   state.material["A"][:50,:,:,:] = 2
 
 The result will look as follows:
@@ -148,32 +108,43 @@ Now the material will look like this:
 
 .. image:: _static/material3.png
   :width: 700
-  
-Furthermore, the magnetization *m* can also be defined in such a domain. In this example, a vortex is initialized and the magnetization outside of the disk is set to zero.
-
-.. code-block:: python
-
-  state.m = torch.stack([-y,x,0*z], dim=-1)
-  state.m[~disk] = 0
-  state.m.normalize()
-  
-The magnetization of the material will look as follows:
-  
-.. image:: _static/vortex.png
-  :width: 700
 
 Furthermore, the magnetization *m* can also be defined in such a domain. In this example, a vortex is initialized and the magnetization outside of the disk is set to zero.
 
 .. code-block:: python
 
-  state.m = torch.stack([-y,x,0*z], dim=-1)
+  state.m = Expression([-y,x,0*z]) # equivalent to torch.stack([-y,x,0*z], dim=-1)
   state.m[~disk] = 0
-  state.m.normalize()
+  normalize(state.m)
 
 The magnetization of the material will look as follows:
 
 .. image:: _static/vortex.png
   :width: 700
+
+For periodic structures the modulo operator allows elegant definition of the domain. For example the following code creates and 10 x 10 grid of circular nano dots:
+
+.. code-block:: python
+
+  n = (1000, 1000, 1)
+  dx = (1e-9, 1e-9, 1e-9)
+
+  mesh = Mesh(n, dx, origin=(-n[0]*dx[0]/2, -n[1]*dx[1]/2, -n[2]*dx[2]/2))
+  state = State(mesh)
+  x, y, z = mesh.SpatialCoordinate()
+
+  domain = (x%100e-9 - 50e-9)**2 + (y%100e-9 - 50e-9)**2 < 40e-9**2
+  write_vti(domain, "domain.vti", state, scale=1e9)
+
+.. image:: _static/material4.png
+  :width: 400
+
+Read data from Image
+====================
+In order to set location dependent material parameters it is convenient to use images as an input. 
+*magnum.np* provides a simple helper function with reads image data, applies a proper coordinate transformation and finally converts it into a torch tensor.
+
+
 
 Set multiple material parameters at once
 ========================================
@@ -195,12 +166,14 @@ To set the material in a certain domain another such dictionary *material1* need
 
   state.material.set(material1, domain1)
 
-Time-Dependent Materials
-************************
-In case the material is time-dependent each parameter can be defined as a lambda function. In this example *A* is set to be linearly dependent on time *t*:
+State-Dependent Materials
+*************************
+In case the material is time-dependent each parameter can be defined as a lambda function.
+Since *magnum.np* 2.0 all lambda functions depend on the state and may therefor also depend on any state parameter like time, temperature, materials, ...
+In this example *A* is set to be linearly dependent on time *t*:
 
 .. code-block:: python
 
-  state.material["A"] = lambda t: 1. * t
+  state.material["A"] = lambda state: 1. * state.t
 
-This causes __getitem__ of the material class to be overloaded and the corresponding material at the current time state.t will be returned.
+The material getter will always return the material corresponding to the current state. In case of constant materials a trivial lambda function is created duing setting the material.

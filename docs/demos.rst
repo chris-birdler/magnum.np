@@ -9,14 +9,17 @@ List of Demos
 
 The following demos should demonstrate the capabilities of magnum.np and also serve as a reference for the most relevant use cases:
 
-* `RKKY <demos/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
-* `Softmagnetic Composite <demos/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
-* `Spin Orbit Torque <demos/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
-* `Standard Problem #4 <demos/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
-* `Standard Problem #5 <demos/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
-* `Standard Problem DMI <demos/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
-* `Standard Problem Domainwall Pinning <demos/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
-* `Standard Problem FMR <demos/sp_FMR.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS>`__)
+* `Slonczewski Spin Torque <notebooks/slonczewski.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1KJCd-mnTaveZruLV37OWzYhtuDGuu3rH>`__)
+* `Softmagnetic Composite <notebooks/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1HazB7ydSYZKbtrQoPc9xE3U0d7uc-1Ir>`__)
+* `Spin Orbit Torque <notebooks/sot.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1OWMH0_qqxM73rB5gK5pi7nFRtO4nO_N8>`__)
+* `Standard Problem #4 <notebooks/sp4.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1kYudJgbuhGBrhTTFs_HzT68LxFcVkJPu>`__)
+* `Standard Problem #5 <notebooks/sp5.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RXlrHUtB39aHtyp2btk3GNEBS0f5ZDFk>`__)
+* `Standard Problem DMI <notebooks/sp_DMI.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1-5KuQ9GB3UeIfw4hCBN58fj2NvlXD28W>`__)
+* `Standard Problem Domainwall Pinning <notebooks/sp_domainwall_pinning.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1LgIX3o4e_6bww-RtIzJLX38QabUC5QMB>`__)
+* `Standard Problem FMR <notebooks/sp_FMR.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1mN56sxjhgPuLA5yB7z3skmZ2cy733BbS>`__)
+* `Standard Problem RKKY <notebooks/rkky.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1SIdiiz8plOI0SG3HhxNJYOxbknG178Qo>`__)
+* `Stochastic Integration <notebooks/langevin.ipynb>`__ (`Colab <https://colab.research.google.com/drive/1RlDaxgjqrZzerBFffDL7lQJHtEOm6v0q>`__)
+* `Dispersion Calculator <notebooks/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
 
 Run the Demos

@@ -2,6 +2,7 @@ import pytest
 import torch
 from magnumnp import *
 from helpers import *
+import numpy as np
 
 def test_log(simple_state, tmpdir):
     p = str(tmpdir)
@@ -25,7 +26,7 @@ def test_resume(simple_state, tmpdir):
 
     logger = Logger(p, scalars = ["t", "m"], fields = ["m"], fields_every = 8)
     for t in torch.arange(0., 2.8, 0.1):
-        simple_state.t = t
+        simple_state.t = float(t)
         simple_state.m = simple_state.Constant([t, 0, 0])
         logger << simple_state
 
@@ -36,16 +37,16 @@ def test_resume(simple_state, tmpdir):
     assert rlogger.loggers["fields"].resumable_step() == 32
     rlogger.resume(simple_state)
 
-    torch.testing.assert_close(simple_state.m.average(), simple_state.Tensor([2.4, 0, 0]))
+    torch.testing.assert_close(simple_state.avg(simple_state.m), torch.tensor([2.4,0.,0.]))
     assert simple_state.t.cpu() == pytest.approx(2.4)
     for t in torch.arange(0., 0.8, 0.1):
-        simple_state.t = t
+        simple_state.t = float(t)
         simple_state.m = simple_state.Constant([t, 0, 0])
         rlogger << simple_state
 
 def test_nonequi(tmpdir):
     n  = (20, 4, 4)
-    dx = (5., 3., torch.arange(n[2]) + 1.)
+    dx = (5., 3., np.arange(n[2]) + 1.)
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.m = state.Constant([1,0,0])
