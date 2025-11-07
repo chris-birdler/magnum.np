@@ -1,5 +1,5 @@
 # %% [markdown]
-# # strain jump over interfaces
+# # spin wave excited by an acoustic bulk mode
 
 # %% [markdown]
 # ## Run Simulation
@@ -47,8 +47,6 @@ dt = T / N_T
 print("CFL condition is %f" % (c * dt / dx0))
 
 # setup state
-v = np.array((0.,0.,1.))
-
 mesh = Mesh(n, dx, pbc=(0,1,1))
 state = State(mesh)
 state.material = {
@@ -64,12 +62,12 @@ state.material = {
 
 
 # setup time integration
-bias = ExternalField(state.Constant(h0*np.array(v)))
+bias = ExternalField(state.Constant((0,0,h0)))
 exchange = ExchangeField()
 magEl = MagnetoElasticField()
 h_terms = [bias, exchange, magEl]
 
-llg = LLGWithLESolver(h_terms, C_sym="cubic", boundary_nodes=3, dt=dt)
+llg = LLGWithLESolver(h_terms, C_sym="cubic", iteration_depth=0, boundary_nodes=3, dt=dt)
 
 # linear elasticity boundary conditions
 # ... fixed right interface
@@ -99,14 +97,14 @@ state.bcs["ud"] = dirichlet_bcs
 state.bcs["t"] = neumann_bcs
 
 # initial conditions
-state.m = state.Constant(v)
+state.m = state.Constant((0.,0.,1.))
 state.pd = state.Constant((0.,0.,0.))
 state.ud = state.Constant((0.,0.,0.))
 
 # ... initial displacement due to magnetic strain
-kx_x = (3./2.)*lambda_100*(v[0]**2. - 1./3.)
-kx_y = (3./2.)*lambda_100*(v[1]**2. - 1./3.)
-kx_z = (3./2.)*lambda_100*(v[2]**2. - 1./3.)
+kx_x = -0.5*lambda_100
+kx_y = -0.5*lambda_100
+kx_z = lambda_100
 kx = kx_x + (C12/C11)*(kx_y + kx_z)
 
 x = mesh.SpatialCoordinate()[0]

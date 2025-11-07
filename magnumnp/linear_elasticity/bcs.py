@@ -21,6 +21,56 @@ import torch
 __all__ = ["BC", "PlaneBC", "Plane"]
 
 class BC:
+    r"""
+    Boundary conditions defined on cell centers. Used for Dirichlet boundary conditions with the ``LLGWithLESolver``.
+
+    Examples
+    --------
+
+    1. Standard usage:
+        .. code:: python
+
+            u_mask = torch.zeros(n, dtype=torch.bool)
+            u_mask[-1] = 1
+            
+            u_vals = torch.zeros((n[1], n[2], 3))
+
+            dirichlet_bcs = []
+            dirichlet_bcs.append(BC(u_mask, u_vals))
+
+            state.bcs = dict()
+            state.bcs["ud"] = dirichlet_bcs
+
+    2. With callable:
+        .. code:: python
+
+            u_mask = torch.zeros(n, dtype=torch.bool)
+            u_mask[0] = 1
+            
+            def u_cond(state):
+                n = state.mesh.n
+
+                A = 1e-11
+                omega = 2*np.pi*4e9
+                u0 = torch.zeros((n[1], n[2], 3))
+                u0[:,:,0] = A*np.cos(omega*float(state.t))
+            
+            return u0
+
+            dirichlet_bcs = []
+            dirichlet_bcs.append(BC(u_mask, u_cond))
+
+            state.bcs = dict()
+            state.bcs["ud"] = dirichlet_bcs
+
+    Parameters
+    ----------
+    mask : :class:`torch.Tensor`
+        boolean tensor that is used to set the displacement via ``state.ud[mask] = condition`` or ``state.ud[mask] = condition(state)``.
+    condition : :class:`torch.Tensor` or callable
+        Boundary values given by a tensor, or a function of state that returns a tensor. The shape of ``condition`` has to match ``state.ud[mask]``
+    """
+
     def __init__(self, mask, condition):
         self._mask = mask
         
@@ -39,6 +89,49 @@ class BC:
         return self._condition(state)
 
 class PlaneBC:
+    r"""
+    Boundary conditions defined on cell boundaries. Used for Neumann boundary conditions with the ``LLGWithLESolver``.
+
+    Examples
+    --------
+
+    1. Standard usage:
+        .. code:: python
+
+            nx, ny, nz = state.mesh.n
+            t_cond = torch.zeros((ny, nz, 3))
+
+            neumann_bcs = []
+            neumann_bcs.append(PlaneBC(Plane(0, 0, -1), t_cond))
+            
+            state.bcs = dict()
+            state.bcs["t"] = neumann_bcs
+
+    2. With callable:
+        .. code:: python
+
+            def t_cond(state, t0):
+                nx, ny, nz = state.mesh.n
+
+                t_in = torch.zeros((ny, nz, 3))
+                t_in[:,:,2] = t0 * np.sin(float(state.t) * omega)
+
+            return t_in
+
+            neumann_bcs = []
+            neumann_bcs.append(PlaneBC(Plane(0, 0, -1), lambda state : t_cond(state, t0)))
+            
+            state.bcs = dict()
+            state.bcs["t"] = neumann_bcs
+
+    Parameters
+    ----------
+    plane : :class:`Plane`
+        The plane on which the boundary condition is defined.
+    condition : :class:`torch.Tensor` or callable
+        Boundary values given by a tensor, or a function of state that returns a tensor. The shape of ``condition`` needs to match the shape of ``plane``
+    """
+
     def __init__(self, plane, condition):
         self.plane = plane
 
@@ -53,6 +146,36 @@ class PlaneBC:
         return self._condition(state)
     
 class Plane:
+    r"""
+    Defines a plane for ``PlaneBC``
+
+    Examples
+    --------
+
+    1. A plane on the top :math:`z` boundary, with the normal pointing outwards:
+        .. code:: python
+
+            Plane(2, -1, 1)
+
+    2. A plane normal to :math:`y` at :math:`y=\Delta y_0 + \Delta y_1`, on the first 3 layers along :math:`z`:
+        .. code:: python
+
+           Plane(1, 2, -1, trans_lim2=[0,4])
+
+    Parameters
+    ----------
+    normal_dim : int
+        The direction of the normal vector (0=x, 1=y, 2=z).
+    normal_position_index : int
+        The cell's positional index along the normal direction
+    normal_sign : int 
+        For ``i=normal_position_index``, ``-1`` marks the interface to the cell with index ``i-1`` , ``1`` the interface to the cell with index ``i+1``.
+    trans_lim1 : list of int
+        Bounds of the plane on the transversal direction with lowest index
+    trans_lim2 : list of int
+        Bounds of the plane on the transversal direction with highest index
+    """
+
     def __init__(self, 
                  normal_dim, # (int) direction of the normal vector (0=x, 1=y, 2=z)
                  normal_position_index, # (int) positional index in the normal dimension

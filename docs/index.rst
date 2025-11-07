@@ -43,7 +43,7 @@ Features
 * Seamless VTK import / export via `pyvista <https://docs.pyvista.org/>`__
 * Inverse Problems via `pytorch <www.pytorch.org/>`__'s autograd feature
 * Magnetoelastic Field
-* Combined LLG + Linear Elasticity Solver (LLGwithLESolver)
+* Combined `LLG + Linear Elasticity Solver <elasticity.rst>`__
 
 
 *************
