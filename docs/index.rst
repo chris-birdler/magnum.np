@@ -80,6 +80,7 @@ The following demos are also stored on Google Colab, where they can directly be 
    eigensolver
    voronoi
    nonequidistant
+   elasticity
    inverse_cube
    logging
    auto_examples
