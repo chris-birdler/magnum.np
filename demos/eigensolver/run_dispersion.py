@@ -47,11 +47,10 @@ with Timer("Calculate Dispersion"):
     points = lambda vvv: vvv[:,10,0,2,:]
     omega = res.omega.cpu().numpy()
     kk, ww, mm = res.dispersion(points, dx[0])
+    kk, ww, mm = kk.cpu().numpy(), ww.cpu().numpy(), mm.cpu().numpy()
 
     fig, ax = plt.subplots()
-    cbmax = np.log10(mm*2.).max()
-    cbmin = np.log10(mm*2.).min()
-    ax.pcolormesh(kk*1e-9, ww*1e-9/2./np.pi, np.log10(np.abs(mm)**2.), cmap = "viridis") #, vmax = cbmax, vmin = cbmin, shading = "auto")
+    ax.pcolormesh(kk*1e-9, ww*1e-9/2./np.pi, np.log10(np.abs(mm)**2.), cmap = "viridis")
 
     ref1 = np.loadtxt("ref/disp1.dat")
     ref2 = np.loadtxt("ref/disp2.dat")
