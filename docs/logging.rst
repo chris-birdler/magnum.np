@@ -1,5 +1,6 @@
 :tocdepth: 1
-.. module:: magnumnp
+
+.. currentmodule:: magnumnp
 
 #######
 Logging
