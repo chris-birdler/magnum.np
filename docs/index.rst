@@ -105,6 +105,11 @@ Release Notes
 **************
 See :doc:`changes` for the summary of interface adjustments introduced with magnum.np 2.0 and later updates.
 
+.. toctree::
+   :hidden:
+
+   changes
+
 ******************
 Indices and tables
 ******************
