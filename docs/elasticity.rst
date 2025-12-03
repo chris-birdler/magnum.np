@@ -1,4 +1,4 @@
-.. module:: magnumnp
+.. currentmodule:: magnumnp
 
 :tocdepth: 1
 

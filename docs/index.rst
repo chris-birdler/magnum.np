@@ -74,15 +74,15 @@ The following demos are also stored on Google Colab, where they can directly be 
    installation
    changes
    getting_started
-   field_terms
-   demos
    state_and_materials
+   demos
    eigensolver
    voronoi
    nonequidistant
+   elasticity
    inverse_cube
+   field_terms
    logging
-   auto_examples
 
 
 ********
