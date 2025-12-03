@@ -73,3 +73,11 @@ def test_read_neper():
     assert mesh.dx == (1e-9, 2e-9, 4e-9)
     assert domains.max().cpu().numpy() == 1000
     assert groups.max().cpu().numpy() == 2
+
+    state = State(mesh, scale = 1e9)
+    state.write_vtk(domains, "domains.vti")
+    state.material['Ms'] = state.Constant(8e5)
+    state.material['Ms'][groups==2] = 0.
+    state.write_vtk(state.material, "material.vti")
+
+
