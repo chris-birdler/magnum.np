@@ -85,7 +85,25 @@ Finally, after the grain structure has been created, proper material parameters 
 Importing Neper Tessellations
 =============================
 
-Realistic grain morphologies can also be imported from a Neper tessellation using :func:`read_neper()`. Neper writes rectilinear voxel grids to ``.tesr`` files, so the reader returns the matching :class:`Mesh`, the grain-identifiers, and optional group-identifiers in one call:
+Realistic grain morphologies can also be imported from a `Neper <https://neper.info/>`_ tessellation using :func:`read_neper()`. Using Neper allows tessellating complicated crystal structures, including:
+
+* Polycrystalline aggregates with user-controlled grain size distributions.
+* Multiphase microstructures defined by phase fractions or orientation families.
+* Periodic tessellations suitable for representative volume elements.
+* Grains tagged with metadata (e.g., families, clusters) for later material assignment.
+
+For example, the following CLI command creates a two-phase tessellation ready for import:
+
+.. code-block:: bash
+
+  neper -T -n 1000 \
+        -domain "cube(500,250,40)" \
+        -group "id<500?1:2" \
+        -o test \
+        -format tess,tesr \
+        -tesrsize 500:125:10
+
+Neper writes rectilinear voxel grids to ``.tesr`` files, so the reader returns the matching :class:`Mesh`, the grain-identifiers, and optional group-identifiers in one call:
 
 .. code-block:: python
 
@@ -106,3 +124,5 @@ The ``scale`` argument converts Neper's units to the mesh spacing used inside *m
 
 .. image:: _static/neper_material.png
   :width: 600
+
+.. autofunction:: magnumnp.common.io.read_neper
