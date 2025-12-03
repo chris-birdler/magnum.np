@@ -72,7 +72,6 @@ The following demos are also stored on Google Colab, where they can directly be 
    :caption: Contents:
 
    installation
-   changes
    getting_started
    state_and_materials
    demos
@@ -101,6 +100,10 @@ The source code is hosted on `www.gitlab.com/magnum.np/magnum.np <http://www.git
 If you have any issues or question, just open an issue via gitlab.com.
 To contribute code, fork our repository on gitlab.com and create a corresponding merge request.
 
+**************
+Release Notes
+**************
+See :doc:`changes` for the summary of interface adjustments introduced with magnum.np 2.0 and later updates.
 
 ******************
 Indices and tables
