@@ -110,12 +110,12 @@ class EigenSolver(object):
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = np.ones(2*N))
         #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
 
-        evalvecs_sorted = sorted(zip(evals,evecs2D.T), key=lambda x: np.abs(x[0].imag))
-        evals = np.array([x[0] for x in evalvecs_sorted if x[0].imag > 1000.])
-        evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0].imag > 1000.]).transpose()
+        evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
+        evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
+        evecs2D = np.array([x[1] / np.sqrt(x[0]) for x in evalvecs_sorted if x[0] > 1000.]).transpose()
         evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
-        omega = torch.tensor(evals.imag)
+        omega = torch.tensor(evals)
 
         res = torch.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
@@ -183,6 +183,13 @@ class EigenResult(object):
 
         with open(filename, 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
+
+    @property
+    def domega(self):
+        ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
+        # NOTE: our mode normalization (phi_i, phi_j)_L2 = \delta_ij seems to differ from the published version!
+        #       thus, we have to add a 1/omega_i in front of every ||phi_i||^2 term
+        return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
 
     def dispersion(self, points, dx, num_omega=1000):
         vvv = self.evecs()

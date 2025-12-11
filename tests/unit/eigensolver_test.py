@@ -4,19 +4,24 @@ from math import sqrt
 from magnumnp import *
 
 def test_singlespin_hext():
+    alpha = 0.008
     hext = 1./constants.mu_0
     n  = (10, 10, 10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": 1.,}
+    state.material = {"Ms":1., "alpha":alpha}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
 
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
 
     eigen = EigenSolver(state, [], [external])
     res = eigen.solve(k=20)
-    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*hext), atol=1e-10, rtol=1e-10)
+    omega0 = constants.gamma*hext
+    print("omega:", res.omega / omega0)
+    print("domega:", res.domega / omega0)
+    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, omega0), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega.abs(), torch.full_like(res.omega, alpha * omega0), atol=1e-10, rtol=1e-10)
 
 def test_singlespin_exchange():
     hext = 1./constants.mu_0
@@ -36,15 +41,17 @@ def test_singlespin_exchange():
     torch.testing.assert_close(res.omega[0].abs(), torch.tensor(constants.gamma*hext), atol=0, rtol=1e-6)
 
 def test_singlespin_aniso():
+    alpha = 0.008
     Ms = 1./constants.mu_0
     n  = (10, 10, 10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {
-            "Ms": state.Constant(Ms),
-            "Ku": state.Constant(0.5/constants.mu_0),
-            "Ku_axis": state.Constant([1,0,0]),
+            "Ms": Ms,
+            "Ku": 0.5/constants.mu_0,
+            "Ku_axis": [1,0,0],
+            "alpha": alpha
             }
     aniso = UniaxialAnisotropyField()
 
@@ -52,7 +59,9 @@ def test_singlespin_aniso():
 
     eigen = EigenSolver(state, [aniso], [])
     res = eigen.solve(k=20)
-    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*Ms), atol=1e-10, rtol=1e-10)
+    omega0 = constants.gamma*Ms
+    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, omega0), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega.abs(), torch.full_like(res.omega, alpha * omega0), atol=1e-10, rtol=1e-10)
 
 def test_saturated_thinfilm():
     lex = 5.71e-9
