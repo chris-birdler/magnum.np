@@ -189,7 +189,32 @@ class EigenResult(object):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
         # NOTE: our mode normalization (phi_i, phi_j)_L2 = \delta_ij seems to differ from the published version!
         #       thus, we have to add a 1/omega_i in front of every ||phi_i||^2 term
+        print("||phi||^2:", ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)))
         return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
+
+    def spectrum(self, omega, h_excite):
+#        self._omega = self._omega[0:1]
+#        self._evecs2D = self._evecs2D[...,0:1]
+
+        # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
+        h2d = self._state.Constant([0.,0.])
+        h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
+        h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
+        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=(0,1,2,3)).unsqueeze(-1)
+
+        # calculate coefficiencs a_k = (omega_k/(omega_k-omega+i*domega_k) phi_k^H * R^T * P_m0 * h_excite)
+        w = torch.tensor(omega)
+        w_k = self.omega.unsqueeze(-1)
+        w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
+        print("omega:", self.omega)
+        print("domega:", self.domega)
+        print("|h_k|^2:", (h_k.conj()*h_k).real)
+        a_k = w_k_prime / (w_k_prime - w) * h_k
+        p = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1) * (a_k.conj() * a_k).real
+
+#        p = (w_k**2 * (h_k.conj()*h_k) * ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)) / ((w-w_k)**2 + (w_k**1 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)))**2)
+        return p.sum(axis=0) / np.prod(self._state.mesh.n)
+
 
     def dispersion(self, points, dx, num_omega=1000):
         vvv = self.evecs()
