@@ -204,7 +204,8 @@ class EigenResult(object):
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
         a_k = w_k_prime / (w_k_prime - w) * h_k
 
-        p = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1) * (a_k.conj() * a_k).real
+        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
+        p = phi2 * (a_k.conj() * a_k).real
         return p.sum(axis=0) / np.prod(self._state.mesh.n)
 
 
@@ -225,42 +226,19 @@ class EigenResult(object):
         """
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0., 0.])
-        h2d[:,:,:,0] = (h_excite * self.e0).sum(axis=-1)
-        h2d[:,:,:,1] = (h_excite * self.e1).sum(axis=-1)
+        h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
+        h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
         h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=(0,1,2,3)).unsqueeze(-1)
+        h_k2 = (h_k.conj() * h_k).real
 
-        # Cell volumes (Vcell) handling:
-        # - If per-cell volumes are available on the mesh/state, use them
-        # - Otherwise fall back to uniform volumes (FD case), i.e. Vcell = I and V = N
-        vol = None
-        mesh = getattr(self._state, "mesh", None)
-        for attr in ("cell_volumes", "cell_volume", "volumes", "volume"):
-            if mesh is not None and hasattr(mesh, attr):
-                vol = getattr(mesh, attr)
-                break
-            if hasattr(self._state, attr):
-                vol = getattr(self._state, attr)
-                break
-
-        if vol is None:
-            vol_field = torch.ones(self.m0.shape[:3], device=h2d.device, dtype=h2d.dtype)
-            V = float(np.prod(self._state.mesh.n))
-        else:
-            vol_field = torch.as_tensor(vol, device=h2d.device, dtype=h2d.dtype)
-            if vol_field.ndim == 0:
-                vol_field = vol_field * torch.ones(self.m0.shape[:3], device=h2d.device, dtype=h2d.dtype)
-            V = float(vol_field.sum().detach().cpu().numpy())
-
-        # h0k = w_k^H * Vcell * (R^T P_{m0} δh_ac)
-        h2d_vol = h2d * vol_field[..., None]
-        h0_k = (self._evecs2D.conj() * h2d_vol[..., None]).sum(axis=(0,1,2,3)).unsqueeze(-1)
-
-        w = torch.tensor(omega, dtype=self._omega.dtype, device=self._omega.device)
+        # calculate Pabs = 1/(2N) * sum(i*omega*|h_k|^2 / ((w_k - w) + i alpha omega_k |phi_k|^2)
+        w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
-        domega_k = self.domega.unsqueeze(-1)
+        w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
-        denom = (w_k - w) + 1j * domega_k
-        Pabs_complex = (1.0 / (2.0 * V)) * (1j * w) * (h0_k.conj() * h_k) * w_k / denom
+        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
+
+        Pabs_complex = 1.0 / 2.0 * (1j * w * h_k2 * w_k / (w_k_prime - w))
         Pabs_complex = Pabs_complex.sum(axis=0).squeeze(0)
 
         return Pabs_complex.real
