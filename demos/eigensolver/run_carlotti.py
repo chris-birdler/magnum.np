@@ -4,14 +4,18 @@ import numpy as np
 
 Timer.enable()
 
+
 n = (200, 100, 1)
 dx = (1e-9, 1e-9, 5e-9)
 
 mesh = Mesh(n, dx, origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., 0.0))
 state = State(mesh, scale = 1e9)
+
+Ms = 800e3
 state.material = {
         "A": 13e-12,
-        "Ms": 800e3,
+        "Ms": Ms,
+        "alpha": 0.01
         }
 
 x, y, z = mesh.SpatialCoordinate()
@@ -50,5 +54,20 @@ with Timer("Store evecs"):
     print("evals[GHz]:", res.freq.cpu().numpy()*1e-9)
     res.save_evecs3D("data/evecs_carlotti.pvd")
 
-Timer.print_report()
+with Timer("Plot Absorbtion"):
+    freq = np.arange(0.05e9, 30e9, 0.05e9)
+    h_excite = state.Constant([0.,0.5e-3/constants.mu_0,0.])
+    absorption = res.absorption(2*np.pi*freq, h_excite)
 
+    V = magnetic.sum() * mesh.cell_volumes
+    P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
+
+    fig, ax = plt.subplots(figsize=(8,8))
+    ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0)
+    ax.set_yscale("log")
+    ax.set_xlabel("Frequency [GHz]")
+    ax.set_ylabel("PSD [$P_0$]")
+    ax.grid()
+    fig.savefig("result_carlotti.png")
+
+Timer.print_report()
