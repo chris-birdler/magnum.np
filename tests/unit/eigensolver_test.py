@@ -1,5 +1,6 @@
 import pytest
 import torch
+import numpy as np
 from math import sqrt
 from magnumnp import *
 
@@ -108,6 +109,68 @@ def test_saturated_thinfilm():
     #print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
     #res.save_evecs3D("data/evecs.vti")
     torch.testing.assert_close(res.omega.abs()[:5]/2./torch.pi*1e-9, torch.tensor([8.23468553,10.29218845,10.36022486,12.28226803,13.60508024]), atol=1e-3, rtol=1e-2)
+
+
+def test_absorption():
+    n = (4, 1, 1)
+    dx = (1e-9, 1e-9, 1e-9)
+    origin = (-n[0] * dx[0] / 2.0, -n[1] * dx[1] / 2.0, -n[2] * dx[2] / 2.0)
+    mesh = Mesh(n, dx, origin=origin)
+    state = State(mesh)
+
+    Ms = 800e3
+    A = 13e-12
+    alpha = 0.01
+    state.material = {"Ms": Ms, "A": A, "alpha": alpha}
+    state.m = state.Constant([0.0, 0.0, 1.0])
+
+    H_bias = 1e5
+    bias = ExternalField([0.0, 0.0, H_bias])
+    exchange = ExchangeField()
+
+    magnetic = state.material["Ms"].squeeze(-1) > 0.0
+    num_cells = int(magnetic.sum().item())
+    volume = num_cells * state.mesh.cell_volumes
+
+    solver = EigenSolver(state, [exchange], [bias])
+    result = solver.solve(k=1, tol=1e-10)
+
+    omega_num = result.omega[0]
+    domega_num = result.domega[0]
+    omega_analytic = torch.tensor(constants.gamma * H_bias, dtype=omega_num.dtype)
+    domega_analytic = alpha * omega_analytic
+
+    torch.testing.assert_close(omega_num, omega_analytic, atol=0.0, rtol=1e-12)
+    torch.testing.assert_close(domega_num, domega_analytic, atol=0.0, rtol=1e-12)
+
+    freq = np.linspace(1.0e9, 6.0e9, 200)
+    omega = 2.0 * np.pi * freq
+    h_ac = 1e3
+    h_excite = state.Constant([h_ac, 0.0, 0.0])
+
+    abs_numeric = result.absorption(omega, h_excite, magnetic).detach().cpu().numpy()
+    h_k_sq = h_ac**2 * num_cells / (2.0 * omega_analytic.item())
+    abs_analytic = 0.5 * volume * (1j * omega * h_k_sq * omega_analytic.item()) / (
+        (omega_analytic.item() + 1j * domega_analytic.item()) - omega
+    )
+    abs_analytic = abs_analytic.real
+
+    np.testing.assert_allclose(abs_numeric, abs_analytic, rtol=1e-10, atol=0.0)
+    rel_err = np.max(np.abs(abs_numeric - abs_analytic)) / abs_analytic.max()
+    assert rel_err < 1e-10
+
+    # Plotting code (kept for reference but disabled during tests):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.plot(freq * 1e-9, abs_numeric, label="numerical", linewidth=2)
+    ax.plot(freq * 1e-9, abs_analytic, "--", label="analytic")
+    ax.set_xlabel("Frequency [GHz]")
+    ax.set_ylabel("Absorbed power [J/s]")
+    ax.set_title("FMR absorption of a tiny macrospin")
+    ax.legend()
+    ax.grid(True, linestyle=":", linewidth=0.5)
+    fig.tight_layout()
+    fig.savefig("result_absorption.png", dpi=150)
 
 
 #def test_vortex():

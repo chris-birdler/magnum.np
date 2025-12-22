@@ -262,7 +262,6 @@ class EigenResult(object):
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
         V = domain.sum() * self._state.mesh.cell_volumes
-        V2 = (200*100*1*1e-9*1e-9*5e-9)
         Pabs_complex = 1.0 / 2.0 * V * (1j * w * h_k2 * w_k / (w_k_prime - w))
         Pabs_complex = Pabs_complex.sum(axis=0).squeeze(0)
 
