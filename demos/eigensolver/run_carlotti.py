@@ -65,11 +65,11 @@ with Timer("Plot Absorbtion"):
 
     fig, ax = plt.subplots(figsize=(8,8))
     ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0)
-    ax2 = ax.twinx()
-    ax2.set_yscale("log")
-    ax2.plot(ref[:,0], ref[:,1], "k--")
+    #ax2 = ax.twinx()
+    #ax2.set_yscale("log")
+    #ax2.plot(ref[:,0], ref[:,1], "k--")
 
-    #ax.plot(ref[:,0], ref[:,1], "k--")
+    ax.plot(ref[:,0], ref[:,1], "k--")
     ax.set_yscale("log")
     ax.set_xlabel("Frequency [GHz]")
     ax.set_ylabel("PSD [$P_0$]")

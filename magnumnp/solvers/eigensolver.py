@@ -224,6 +224,31 @@ class EigenResult(object):
         torch.Tensor
             Absorbed power P_abs(omega)
         """
+        # check norm and renormalize modes for absorption
+        evecs2d_flat = self._evecs2D.reshape(-1, 2, self._evecs2D.shape[-1])
+        phi_modes = evecs2d_flat.permute(2, 0, 1)  # (num_modes, num_points, 2)
+        B0 = torch.tensor([[0., 1j], [-1j, 0.]], dtype=self._evecs2D.dtype, device=self._evecs2D.device)
+        B0_phi = torch.matmul(phi_modes, B0.T)
+        phi_norm_B0 = (phi_modes.conj() * B0_phi).sum(dim=(1, 2)).real
+        omega_phi_norm_B0 = (self.omega * phi_norm_B0).real
+        logging.info_blue("[Eigensolver] omega_k * (phi_k, phi_k)_B0 (pre-normalization) = %s" % omega_phi_norm_B0.detach().cpu().numpy())
+
+        # divide eigenvectors by sqrt(omega_k * (phi_k,phi_k)_B0)
+        norm_factor = torch.sqrt(omega_phi_norm_B0.to(self._evecs2D.dtype))
+        eps = torch.finfo(omega_phi_norm_B0.dtype).eps
+        inv_norm = torch.ones_like(norm_factor, dtype=self._evecs2D.dtype)
+        mask = omega_phi_norm_B0.abs() > eps
+        inv_norm[mask] = 1.0 / norm_factor[mask]
+        inv_norm = inv_norm.reshape(1, 1, 1, 1, -1)
+        self._evecs2D *= inv_norm
+
+        # recheck normalization with scaled eigenvectors
+        phi_modes_norm = self._evecs2D.reshape(-1, 2, self._evecs2D.shape[-1]).permute(2, 0, 1)
+        B0_phi_norm = torch.matmul(phi_modes_norm, B0.T)
+        phi_norm_B0_norm = (phi_modes_norm.conj() * B0_phi_norm).sum(dim=(1, 2)).real
+        omega_phi_norm_B0_norm = (self.omega * phi_norm_B0_norm).real
+        logging.info_blue("[Eigensolver] omega_k * (phi_k, phi_k)_B0 (post-normalization) = %s" % omega_phi_norm_B0_norm.detach().cpu().numpy())
+
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0., 0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
