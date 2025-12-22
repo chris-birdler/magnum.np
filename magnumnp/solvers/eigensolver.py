@@ -102,6 +102,9 @@ class EigenSolver(object):
 
         return self._vv[self._domain].reshape(-1).detach().cpu().numpy()
 
+    def B0(self, vv):
+        return torch.stack([-1j*vv[...,1,:], 1j*vv[...,0,:]], dim=-2)
+
     @timedmethod
     def solve(self, k=10, tol=1e-6):
         N = np.prod(self._m0[self._domain].shape[:-1])
@@ -112,7 +115,7 @@ class EigenSolver(object):
 
         evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
-        evecs2D = np.array([x[1] / np.sqrt(x[0]) for x in evalvecs_sorted if x[0] > 1000.]).transpose()
+        evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0] > 1000.]).transpose()
         evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
 
         omega = torch.tensor(evals)
@@ -120,6 +123,9 @@ class EigenSolver(object):
         res = torch.zeros(self._m0.shape[:3] + (2,evecs2D.shape[-1]), dtype=torch.complex128)
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
+
+        norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=(0,1,2,3)).real
+        evecs2D /= torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
 
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
@@ -224,31 +230,6 @@ class EigenResult(object):
         torch.Tensor
             Absorbed power P_abs(omega)
         """
-        # check norm and renormalize modes for absorption
-        evecs2d_flat = self._evecs2D.reshape(-1, 2, self._evecs2D.shape[-1])
-        phi_modes = evecs2d_flat.permute(2, 0, 1)  # (num_modes, num_points, 2)
-        B0 = torch.tensor([[0., 1j], [-1j, 0.]], dtype=self._evecs2D.dtype, device=self._evecs2D.device)
-        B0_phi = torch.matmul(phi_modes, B0.T)
-        phi_norm_B0 = (phi_modes.conj() * B0_phi).sum(dim=(1, 2)).real
-        omega_phi_norm_B0 = (self.omega * phi_norm_B0).real
-        logging.info_blue("[Eigensolver] omega_k * (phi_k, phi_k)_B0 (pre-normalization) = %s" % omega_phi_norm_B0.detach().cpu().numpy())
-
-        # divide eigenvectors by sqrt(omega_k * (phi_k,phi_k)_B0)
-        norm_factor = torch.sqrt(omega_phi_norm_B0.to(self._evecs2D.dtype))
-        eps = torch.finfo(omega_phi_norm_B0.dtype).eps
-        inv_norm = torch.ones_like(norm_factor, dtype=self._evecs2D.dtype)
-        mask = omega_phi_norm_B0.abs() > eps
-        inv_norm[mask] = 1.0 / norm_factor[mask]
-        inv_norm = inv_norm.reshape(1, 1, 1, 1, -1)
-        self._evecs2D *= inv_norm
-
-        # recheck normalization with scaled eigenvectors
-        phi_modes_norm = self._evecs2D.reshape(-1, 2, self._evecs2D.shape[-1]).permute(2, 0, 1)
-        B0_phi_norm = torch.matmul(phi_modes_norm, B0.T)
-        phi_norm_B0_norm = (phi_modes_norm.conj() * B0_phi_norm).sum(dim=(1, 2)).real
-        omega_phi_norm_B0_norm = (self.omega * phi_norm_B0_norm).real
-        logging.info_blue("[Eigensolver] omega_k * (phi_k, phi_k)_B0 (post-normalization) = %s" % omega_phi_norm_B0_norm.detach().cpu().numpy())
-
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0., 0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
