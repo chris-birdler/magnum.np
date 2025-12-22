@@ -58,7 +58,7 @@ with Timer("Plot Absorbtion"):
     ref = np.loadtxt("ref/carlotti.dat")
     freq = np.arange(0.05e9, 30e9, 0.05e9)
     h_excite = state.Constant([0.,0.5e-3/constants.mu_0,0.])
-    absorption = res.absorption(2*np.pi*freq, h_excite)
+    absorption = res.absorption(2*np.pi*freq, h_excite, magnetic)
 
     V = magnetic.sum() * mesh.cell_volumes
     P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
@@ -66,7 +66,10 @@ with Timer("Plot Absorbtion"):
     fig, ax = plt.subplots(figsize=(8,8))
     ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0)
     ax2 = ax.twinx()
+    ax2.set_yscale("log")
     ax2.plot(ref[:,0], ref[:,1], "k--")
+
+    #ax.plot(ref[:,0], ref[:,1], "k--")
     ax.set_yscale("log")
     ax.set_xlabel("Frequency [GHz]")
     ax.set_ylabel("PSD [$P_0$]")

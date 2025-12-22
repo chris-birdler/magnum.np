@@ -209,7 +209,7 @@ class EigenResult(object):
         return p.sum(axis=0) / np.prod(self._state.mesh.n)
 
 
-    def absorption(self, omega, h_excite):
+    def absorption(self, omega, h_excite, domain):
         """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
 
         Parameters
@@ -236,9 +236,9 @@ class EigenResult(object):
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
-        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
-
-        Pabs_complex = 1.0 / 2.0 * (1j * w * h_k2 * w_k / (w_k_prime - w))
+        V = domain.sum() * (1e-9*1e-9*5e-9)
+        V2 = (200*100*1*1e-9*1e-9*5e-9)
+        Pabs_complex = 1.0 / 2.0 * V * (1j * w * h_k2 * w_k / (w_k_prime - w))
         Pabs_complex = Pabs_complex.sum(axis=0).squeeze(0)
 
         return Pabs_complex.real
