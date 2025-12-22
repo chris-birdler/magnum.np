@@ -119,35 +119,31 @@ def test_absorption():
 
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
     exchange = ExchangeField()
-
     eigen = EigenSolver(state, [exchange], [external])
     res = eigen.solve(k=1)
 
-    w0 = constants.gamma * hext
+    w0 = torch.tensor(constants.gamma * hext)
     dw0 = alpha * w0
 
-    torch.testing.assert_close(res.omega[0], torch.tensor(w0), atol=1e-10, rtol=1e-10)
-    torch.testing.assert_close(res.domega[0], torch.tensor(dw0), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.omega[0], w0, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega[0], dw0, atol=1e-10, rtol=1e-10)
+
+    h_ac = 1e-3
+    omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
+    h_excite = state.Constant([h_ac, 0.0, 0.0])
+    absorption = res.absorption(omega.numpy(), h_excite)
 
     num_cells = n[0] * n[1] * n[2]
-
-    omega = np.linspace(0.9*w0 , 1.1*w0, 200)
-    h_ac = 1e-3
-    h_excite = state.Constant([h_ac, 0.0, 0.0])
-
-    absorption_numeric = res.absorption(omega, h_excite).detach().cpu().numpy()
     h_k_sq = h_ac**2 * num_cells / (2.0 * w0)
-    absorption_analytic = 0.5 * state.mesh.volume * (1j * omega * h_k_sq * w0) / ((w0 + 1j * dw0) - omega)
-    absorption_analytic = absorption_analytic.real
+    absorption_analytic = (0.5 * state.mesh.volume * (1j * omega * h_k_sq * w0) / ((w0 + 1j * dw0) - omega)).real
 
-    np.testing.assert_allclose(absorption_numeric, absorption_analytic, rtol=1e-10, atol=0.0)
-    rel_err = np.max(np.abs(absorption_numeric - absorption_analytic)) / absorption_analytic.max()
-    assert rel_err < 1e-10
+    torch.testing.assert_close(absorption, absorption_analytic, atol=0.0, rtol=1e-10)
+    assert torch.max(torch.abs(absorption - absorption_analytic)) / absorption_analytic.max() < 1e-10
 
     # Plotting code (kept for reference but disabled during tests):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_numeric, label="numerical", linewidth=2)
+    ax.plot(omega / 2.0 / np.pi * 1e-9, absorption, label="numerical", linewidth=2)
     ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_analytic, "--", label="analytic")
     ax.set_xlabel("Frequency [GHz]")
     ax.set_ylabel("Absorbed power [J/s]")
