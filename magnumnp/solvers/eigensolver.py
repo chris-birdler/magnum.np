@@ -124,6 +124,7 @@ class EigenSolver(object):
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
 
+        # re-normalize w_i (phi_i,phi_j)_B0 = delta_ij
         norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=(0,1,2,3)).real
         evecs2D /= torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
 
