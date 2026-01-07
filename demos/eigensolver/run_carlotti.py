@@ -58,7 +58,7 @@ with Timer("Plot Absorbtion"):
     ref = np.loadtxt("ref/carlotti.dat")
     freq = np.arange(0.05e9, 30e9, 0.05e9)
     h_excite = state.Constant([0.,0.5e-3/constants.mu_0,0.])
-    absorption = res.absorption(2*np.pi*freq, h_excite, magnetic)
+    absorption = res.absorption(2*np.pi*freq, h_excite)#, magnetic)
 
     V = magnetic.sum() * mesh.cell_volumes
     P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
