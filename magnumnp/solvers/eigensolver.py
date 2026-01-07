@@ -243,10 +243,8 @@ class EigenResult(object):
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
-        Pabs_complex = 0.5 * self._state.mesh.cell_volumes * (1j * w * h_k2 * w_k / (w_k_prime - w))
-        Pabs_complex = Pabs_complex.sum(axis=0).squeeze(0)
-
-        return Pabs_complex.real
+        Pabs_complex = 0.5 / constants.mu_0 * self._state.mesh.cell_volumes * (1j * w * h_k2 * w_k / (w_k_prime - w))
+        return (Pabs_complex.sum(axis=0).squeeze(0)).real
 
 
     def dispersion(self, points, dx, num_omega=1000):

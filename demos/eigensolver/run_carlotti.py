@@ -63,7 +63,7 @@ with Timer("Plot Absorbtion"):
     V = magnetic.sum() * mesh.cell_volumes
     P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
 
-    fig, ax = plt.subplots(figsize=(8,8))
+    fig, ax = plt.subplots(figsize=(15,8))
     ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0)
     #ax2 = ax.twinx()
     #ax2.set_yscale("log")
