@@ -57,6 +57,6 @@ class Mesh(object):
     @property
     def volume(self):
         if self.is_equidistant:
-            return self.n[0]*self.n[1]*self.n[1]*self.cell_volumes
+            return self.n[0]*self.n[1]*self.n[2]*self.cell_volumes
         else:
             return self.cell_volumes.sum()
