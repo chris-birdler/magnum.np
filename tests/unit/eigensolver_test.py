@@ -133,9 +133,9 @@ def test_absorption():
     h_excite = state.Constant([h_ac, 0.0, 0.0])
     absorption = res.absorption(omega.numpy(), h_excite)
 
-    num_cells = n[0] * n[1] * n[2]
-    h_k_sq = h_ac**2 * num_cells / (2.0 * w0)
-    absorption_analytic = (0.5 * state.mesh.volume * (1j * omega * h_k_sq * w0) / ((w0 + 1j * dw0) - omega)).real
+    # |h_k|^2 must only depend on the physical excitation amplitude (Eq. 40 in d'Aquino & Hertel)
+    h_k2 = h_ac**2 / (2.0 * w0)
+    absorption_analytic = (0.5 * state.mesh.volume * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real / constants.mu_0
 
     torch.testing.assert_close(absorption, absorption_analytic, atol=0.0, rtol=1e-10)
     assert torch.max(torch.abs(absorption - absorption_analytic)) / absorption_analytic.max() < 1e-10
