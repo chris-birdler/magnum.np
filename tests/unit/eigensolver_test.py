@@ -114,7 +114,7 @@ def test_spectrum():
     # check spectrum
     h_amp = 1e-3
     prefactor0 = h_amp**2 / (2.0 * w0**2)
-    omega = torch.linspace(0.9 * w0, 1.1 * w0, 50)
+    omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
 
     h_excite = state.Constant([h_amp, 0., 0.])
     spectrum = res.spectrum(omega, h_excite)

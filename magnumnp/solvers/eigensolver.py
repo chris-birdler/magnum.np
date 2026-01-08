@@ -124,7 +124,8 @@ class EigenSolver(object):
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
 
-        # re-normalize w_i (phi_i,phi_j)_B0 = delta_ij
+        # NOTE: our mode normalization (phi_i,phi_j)_l2 = \delta_ij seems to differ from the published version!
+        #       thus, re-normalize w_i (phi_i,phi_j)_B0 = \delta_ij
         norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=(0,1,2,3)).real
         evecs2D /= torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
 
@@ -194,8 +195,6 @@ class EigenResult(object):
     @property
     def domega(self):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
-        # NOTE: our mode normalization (phi_i, phi_j)_L2 = \delta_ij seems to differ from the published version!
-        #       thus, we have to add a 1/omega_i in front of every ||phi_i||^2 term
         return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
 
     def spectrum(self, omega, h_excite):
