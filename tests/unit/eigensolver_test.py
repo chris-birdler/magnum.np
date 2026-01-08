@@ -55,9 +55,6 @@ def test_singlespin_exchange():
     w = torch.complex(omega, torch.zeros_like(omega))
     spectrum_expected = prefactor0 * (torch.abs(w_prime)**2 / torch.abs(w_prime - w)**2)
 
-    print("spectrum_numeric:", spectrum_numeric)
-    print("spectrum_expected:", spectrum_expected)
-    print("diff:", spectrum_numeric-spectrum_expected)
     torch.testing.assert_close(spectrum_numeric, spectrum_expected, atol=0, rtol=1e-10)
 
 def test_singlespin_aniso():
@@ -140,18 +137,18 @@ def test_absorption():
     torch.testing.assert_close(absorption, absorption_analytic, atol=0.0, rtol=1e-10)
     assert torch.max(torch.abs(absorption - absorption_analytic)) / absorption_analytic.max() < 1e-10
 
-    # Plotting code (kept for reference but disabled during tests):
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(omega / 2.0 / np.pi * 1e-9, absorption, label="numerical", linewidth=2)
-    ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_analytic, "--", label="analytic")
-    ax.set_xlabel("Frequency [GHz]")
-    ax.set_ylabel("Absorbed power [J/s]")
-    ax.set_title("FMR absorption of a tiny macrospin")
-    ax.legend()
-    ax.grid(True, linestyle=":", linewidth=0.5)
-    fig.tight_layout()
-    fig.savefig("result_absorption.png", dpi=150)
+    ## Plotting code (kept for reference but disabled during tests):
+    #import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots(figsize=(6, 4))
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption, label="numerical", linewidth=2)
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_analytic, "--", label="analytic")
+    #ax.set_xlabel("Frequency [GHz]")
+    #ax.set_ylabel("Absorbed power [J/s]")
+    #ax.set_title("FMR absorption of a tiny macrospin")
+    #ax.legend()
+    #ax.grid(True, linestyle=":", linewidth=0.5)
+    #fig.tight_layout()
+    #fig.savefig("result_absorption.png", dpi=150)
 
 
 #def test_vortex():
