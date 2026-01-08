@@ -113,30 +113,26 @@ def test_spectrum():
 
     # check spectrum
     h_amp = 1e-3
-    prefactor0 = h_amp**2 / (2.0 * w0**2)
     omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
+    spectrum_analytic = 0.5 * state.mesh.volume * (constants.gamma * h_amp)**2 / torch.abs((w0 + 1j * dw0) - omega)**2
 
     h_excite = state.Constant([h_amp, 0., 0.])
     spectrum = res.spectrum(omega, h_excite)
 
-    w_prime = torch.complex(w0, dw0)
-    w = torch.complex(omega, torch.zeros_like(omega))
-    spectrum_analytic = prefactor0 * (torch.abs(w_prime)**2 / torch.abs(w_prime - w)**2)
-
     torch.testing.assert_close(spectrum, spectrum_analytic, atol=0, rtol=1e-10)
 
-    # Plotting code (kept for reference but disabled during tests):
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum, label="numerical", linewidth=2)
-    ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum_analytic, "--", label="analytic")
-    ax.set_xlabel("Frequency [GHz]")
-    ax.set_ylabel("Magnetization Spectrum [??]")
-    ax.set_title("Magnetization Spectrum of a tiny macrospin")
-    ax.legend()
-    ax.grid(True, linestyle=":", linewidth=0.5)
-    fig.tight_layout()
-    fig.savefig("result_spectrum.png", dpi=150)
+    ## Plotting code (kept for reference but disabled during tests):
+    #import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots(figsize=(6, 4))
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum, label="numerical", linewidth=2)
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum_analytic, "--", label="analytic")
+    #ax.set_xlabel("Frequency [GHz]")
+    #ax.set_ylabel("Magnetization Spectrum [??]")
+    #ax.set_title("Magnetization Spectrum of a tiny macrospin")
+    #ax.legend()
+    #ax.grid(True, linestyle=":", linewidth=0.5)
+    #fig.tight_layout()
+    #fig.savefig("result_spectrum.png", dpi=150)
 
 def test_absorption():
     hext = 1./constants.mu_0

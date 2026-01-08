@@ -198,6 +198,20 @@ class EigenResult(object):
         return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
 
     def spectrum(self, omega, h_excite):
+        """Compute absorbed power using Eq. (39) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
+
+        Parameters
+        ----------
+        omega : array_like
+            Angular frequencies (rad/s) at which to evaluate the absorbed power.
+        h_excite : torch.Tensor
+            Real-valued excitation field dh^ac(x) (same spatial shape as state.m).
+
+        Returns
+        -------
+        torch.Tensor
+            Absorbed power P_abs(omega)
+        """
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0.,0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
@@ -208,11 +222,11 @@ class EigenResult(object):
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
-        a_k = w_k_prime / (w_k_prime - w) * h_k
+        a_k = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
 
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
-        p = phi2 * (a_k.conj() * a_k).real
-        return p.sum(axis=0) / np.prod(self._state.mesh.n)
+        p = 0.5 * self._state.mesh.cell_volumes * phi2 * (a_k.conj()*a_k).real
+        return 2.*p.sum(axis=0) # consider factor of 2 since only positive eigenfrequencies are stored
 
 
     def absorption(self, omega, h_excite):
@@ -223,7 +237,7 @@ class EigenResult(object):
         omega : array_like
             Angular frequencies (rad/s) at which to evaluate the absorbed power.
         h_excite : torch.Tensor
-            Real-valued excitation field δh^ac(x) (same spatial shape as state.m).
+            Real-valued excitation field dh^ac(x) (same spatial shape as state.m).
 
         Returns
         -------
