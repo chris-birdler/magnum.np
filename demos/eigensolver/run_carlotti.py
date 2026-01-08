@@ -4,7 +4,6 @@ import numpy as np
 
 Timer.enable()
 
-
 n = (200, 100, 1)
 dx = (1e-9, 1e-9, 5e-9)
 
@@ -64,16 +63,13 @@ with Timer("Plot Absorbtion"):
     P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
 
     fig, ax = plt.subplots(figsize=(15,8))
-    ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0)
-    #ax2 = ax.twinx()
-    #ax2.set_yscale("log")
-    #ax2.plot(ref[:,0], ref[:,1], "k--")
-
-    ax.plot(ref[:,0], ref[:,1], "k--")
+    ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0, label="magnum.np")
+    ax.plot(ref[:,0], ref[:,1], "k--", label="d'Aquino")
     ax.set_yscale("log")
     ax.set_xlabel("Frequency [GHz]")
     ax.set_ylabel("PSD [$P_0$]")
     ax.grid()
+    ax.legend()
     fig.savefig("result_carlotti.png")
 
 Timer.print_report()
