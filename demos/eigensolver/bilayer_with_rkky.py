@@ -1,0 +1,145 @@
+from magnumnp import *
+import pyvista as pv
+import torch
+import numpy as np
+import scipy.signal
+import matplotlib.pyplot as plt
+
+# initialize state
+dt = 5e-12
+n = (24, 24, 2)
+l = (120e-9, 120e-9, 10e-9)
+dx = (l[0]/n[0], l[1]/n[1], l[2]/n[2])
+origin = (-n[0]*dx[0]/2., -n[1]*dx[1]/2., -n[2]*dx[2]/2.)
+mesh = Mesh(n, dx, origin=origin)
+state = State(mesh)
+
+state.material = {
+    "alpha": 0.008,
+    "Ms": 800e3, # A/m
+    "A": 13e-12, # J/m
+    "Di": -3e-3, # J/m^2
+    "Ku": 0.5e6, # J/m^3
+    "Ku_axis": [0,0,1]
+    }
+
+domain1 = torch.zeros(n, dtype=torch.bool)
+domain1[:,:, 0] = True
+domain2 = torch.zeros(n, dtype=torch.bool)
+domain2[:,:, 1] = True
+
+state.m = state.Constant([0.,0.,0.])
+state.m[domain1] = torch.tensor([0., 0., -1.])
+state.m[domain2] = torch.tensor([0., 0., +1.])
+
+# Néel skyrmion field
+radius = 10e-9
+x, y, z = mesh.SpatialCoordinate()  
+r   = torch.hypot(x, y)
+phi = torch.atan2(y, x)
+core = r <= radius
+s = torch.pi * (r / radius) 
+
+mx = torch.cos(phi) * torch.sin(s)
+my = torch.sin(phi) * torch.sin(s)
+mz = torch.cos(s)                        
+sky = torch.stack([mx, my, mz], dim=-1)
+
+# apply to layers 
+mask_bot = core & domain1
+mask_top = core & domain2
+
+state.m[mask_bot] =  sky[mask_bot]   # bottom core up
+state.m[mask_top] = -sky[mask_top]   # top core down 
+
+# define field terms
+exchange_b = ExchangeField(domain1)
+exchange_t = ExchangeField(domain2)
+dmi        = InterfaceDMIField()
+aniso      = UniaxialAnisotropyField()
+rkky       = RKKYField(-3e-4, "z", 0, 1) # adding antiferromagnetic coupling between the two layers
+bias       = ExternalField(state.Constant([65076.68505349, 46529.82981324, 0.0])) # static field bias
+
+
+# calculate groundstate
+try:
+    mesh0, fields0 = read_vti("data/m0.vti")
+    state.m[...] = fields0["m0"]
+except:
+    with Timer("Calculate Groundstate"):
+        minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias])
+        minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
+        state.write_vtk({"m0":state.m}, "data/m0.vti")
+m0 = state.m.clone()
+
+
+# Ring-Down method
+tt = torch.arange(0, 10e-9, dt)
+Nt = len(tt)
+bias_new = ExternalField(state.Constant([65538.55364152, 45876.98754907, 0.0]))
+
+try:
+    stored = torch.load("data/ringdown.pt", map_location=state.device)
+    data4d = stored['data4d']
+except:
+    with Timer("Ring-Down Method "):
+        llg = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias_new], atol=1e-10, rtol=1e-10)
+        logger = Logger("data", ['t', 'm'], [])
+        
+        data4d = torch.zeros((Nt,)+state.m.shape)
+        for i, t in enumerate(tt):
+            data4d[i,...] = state.m
+            llg.step(state, dt)
+            logger << state
+        torch.save({"data4d":data4d}, "data/ringdown.pt")           
+
+
+freq = np.fft.rfftfreq(Nt, d=dt)
+m_fft = np.fft.rfft(data4d - m0[None,...], axis=0, norm='ortho')
+power = (np.abs(m_fft)**2).mean(axis=(1,2,3)) 
+peaks = scipy.signal.find_peaks(power[:,2], prominence=1e-10)[0]
+
+
+# EigenSolver method 
+with Timer("EigenSolver"):
+    try:
+        res = EigenResult.load(state, "data/eigen.pt")
+    except Exception:
+        state.m = m0
+        eigen = EigenSolver(state, [exchange_b, exchange_t, rkky, aniso, dmi], [bias])
+        res = eigen.solve(k=20)
+        res.store("data/eigen.pt") 
+        res.save_evecs3D("data/evecs.pvd")
+
+h_excite = bias_new.h(state) - bias.h(state) 
+spectrum = res.spectrum(2*np.pi*freq[1:], h_excite)
+
+fig, ax = plt.subplots(figsize=(15,10))
+ax.plot(freq[1:] * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
+ax.plot(np.array([]), np.array([]), label="PSD(Eigensolver)", color="red", linewidth=2.0)
+#ax2 = ax.twinx()
+#ax2.set_xlim([0, 50])
+#ax2.set_yscale("log")
+#ax2.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0)
+ax.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0)
+
+ax.scatter(freq[peaks] * 1e-9, power[peaks,2], color="red", label="Peaks")
+ax.set_xlim([0, 50])
+ax.set_yscale("log")
+ax.set_xlabel("Frequency [GHz]")
+ax.set_ylabel("PSD [arb.]")
+ax.set_title("Spatially Resolved PSD")
+
+freq_eig = res.freq * 1e-9
+tick_labels = [f"{f:.5f}" for f in freq_eig]
+for p in peaks[:6]:
+    x_val = freq[p] * 1e-9      # GHz
+    y_val = power[p, 2]
+    ax.text(x_val, y_val, f"{freq[p]*1e-9:.2f}", rotation=45, ha='left',va='bottom')
+ax.set_xticks(freq_eig)
+ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=12)
+ax.tick_params(axis='both', direction='in', length=6, width=1.2)
+ax.grid(True, axis='x', linestyle='--', alpha=0.9)
+ax.legend(loc='upper right')
+
+fig.savefig("result.png")
