@@ -34,23 +34,23 @@ state.m[domain2] = torch.tensor([0., 0., +1.])
 
 # Néel skyrmion field
 radius = 10e-9
-x, y, z = mesh.SpatialCoordinate()  
+x, y, z = mesh.SpatialCoordinate()
 r   = torch.hypot(x, y)
 phi = torch.atan2(y, x)
 core = r <= radius
-s = torch.pi * (r / radius) 
+s = torch.pi * (r / radius)
 
 mx = torch.cos(phi) * torch.sin(s)
 my = torch.sin(phi) * torch.sin(s)
-mz = torch.cos(s)                        
+mz = torch.cos(s)
 sky = torch.stack([mx, my, mz], dim=-1)
 
-# apply to layers 
+# apply to layers
 mask_bot = core & domain1
 mask_top = core & domain2
 
 state.m[mask_bot] =  sky[mask_bot]   # bottom core up
-state.m[mask_top] = -sky[mask_top]   # top core down 
+state.m[mask_top] = -sky[mask_top]   # top core down
 
 # define field terms
 exchange_b = ExchangeField(domain1)
@@ -85,22 +85,26 @@ except:
     with Timer("Ring-Down Method "):
         llg = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias_new], atol=1e-10, rtol=1e-10)
         logger = Logger("data", ['t', 'm'], [])
-        
+
         data4d = torch.zeros((Nt,)+state.m.shape)
         for i, t in enumerate(tt):
             data4d[i,...] = state.m
             llg.step(state, dt)
             logger << state
-        torch.save({"data4d":data4d}, "data/ringdown.pt")           
+        torch.save({"data4d":data4d}, "data/ringdown.pt")
 
 
 freq = np.fft.rfftfreq(Nt, d=dt)
-m_fft = np.fft.rfft(data4d - m0[None,...], axis=0, norm='ortho')
-power = (np.abs(m_fft)**2).mean(axis=(1,2,3)) 
+m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
+
+# convert PSD from average-per-cell to volume integral to match the eigenmode spectrum
+num_cells = np.prod(n)
+cell_volume = np.prod(dx)
+power = (np.abs(m_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
 peaks = scipy.signal.find_peaks(power[:,2], prominence=1e-10)[0]
 
 
-# EigenSolver method 
+# EigenSolver method
 with Timer("EigenSolver"):
     try:
         res = EigenResult.load(state, "data/eigen.pt")
@@ -108,10 +112,10 @@ with Timer("EigenSolver"):
         state.m = m0
         eigen = EigenSolver(state, [exchange_b, exchange_t, rkky, aniso, dmi], [bias])
         res = eigen.solve(k=20)
-        res.store("data/eigen.pt") 
+        res.store("data/eigen.pt")
         res.save_evecs3D("data/evecs.pvd")
 
-h_excite = bias_new.h(state) - bias.h(state) 
+h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq[1:], h_excite)
 
 fig, ax = plt.subplots(figsize=(15,10))
@@ -142,4 +146,4 @@ ax.tick_params(axis='both', direction='in', length=6, width=1.2)
 ax.grid(True, axis='x', linestyle='--', alpha=0.9)
 ax.legend(loc='upper right')
 
-fig.savefig("result.png")
+fig.savefig("data/result_bilayer.png")

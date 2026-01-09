@@ -70,6 +70,6 @@ with Timer("Plot Absorbtion"):
     ax.set_ylabel("PSD [$P_0$]")
     ax.grid()
     ax.legend()
-    fig.savefig("result_carlotti.png")
+    fig.savefig("data/result_carlotti.png")
 
 Timer.print_report()
