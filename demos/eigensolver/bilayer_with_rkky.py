@@ -1,9 +1,16 @@
+from pathlib import Path
+
 from magnumnp import *
 import pyvista as pv
 import torch
 import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
+
+
+base_dir = Path(__file__).resolve().parent
+data_dir = base_dir / "data"
+data_dir.mkdir(parents=True, exist_ok=True)
 
 # initialize state
 dt = 5e-12
@@ -60,39 +67,51 @@ aniso      = UniaxialAnisotropyField()
 rkky       = RKKYField(-3e-4, "z", 0, 1) # adding antiferromagnetic coupling between the two layers
 bias       = ExternalField(state.Constant([65076.68505349, 46529.82981324, 0.0])) # static field bias
 
-
 # calculate groundstate
 try:
-    mesh0, fields0 = read_vti("data/m0.vti")
+    mesh0, fields0 = read_vti(str(data_dir / "m0.vti"))
     state.m[...] = fields0["m0"]
-except:
+except FileNotFoundError:
     with Timer("Calculate Groundstate"):
         minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias])
         minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
-        state.write_vtk({"m0":state.m}, "data/m0.vti")
+        state.write_vtk({"m0":state.m}, str(data_dir / "m0.vti"))
 m0 = state.m.clone()
 
+# new equilibrium under the modified bias
+bias_new = ExternalField(state.Constant([65538.55364152, 45876.98754907, 0.0]))
+try:
+    mesh1, fields1 = read_vti(str(data_dir / "m1.vti"))
+    m1 = fields1["m1"]
+except FileNotFoundError:
+    with Timer("Calculate Deviated Groundstate"):
+        state.m = m0.clone()
+        minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias_new])
+        minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
+        state.write_vtk({"m1": state.m}, str(data_dir / "m1.vti"))
+        m1 = state.m.clone()
+state.m = m0.clone()
+# initial deviation corresponds to the difference between the old and new equilibrium states
+delta_m = m0 - m1
 
 # Ring-Down method
 tt = torch.arange(0, 10e-9, dt)
 Nt = len(tt)
-bias_new = ExternalField(state.Constant([65538.55364152, 45876.98754907, 0.0]))
 
 try:
-    stored = torch.load("data/ringdown.pt", map_location=state.device)
+    stored = torch.load(str(data_dir / "ringdown.pt"), map_location=state.device)
     data4d = stored['data4d']
-except:
+except FileNotFoundError:
     with Timer("Ring-Down Method "):
         llg = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias_new], atol=1e-10, rtol=1e-10)
-        logger = Logger("data", ['t', 'm'], [])
+        logger = Logger(str(data_dir), ['t', 'm'], [])
 
         data4d = torch.zeros((Nt,)+state.m.shape)
         for i, t in enumerate(tt):
             data4d[i,...] = state.m
             llg.step(state, dt)
             logger << state
-        torch.save({"data4d":data4d}, "data/ringdown.pt")
-
+        torch.save({"data4d":data4d}, str(data_dir / "ringdown.pt"))
 
 freq = np.fft.rfftfreq(Nt, d=dt)
 m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
@@ -103,29 +122,39 @@ cell_volume = np.prod(dx)
 power = (np.abs(m_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
 peaks = scipy.signal.find_peaks(power[:,2], prominence=1e-10)[0]
 
-
 # EigenSolver method
 with Timer("EigenSolver"):
     try:
-        res = EigenResult.load(state, "data/eigen.pt")
+        res = EigenResult.load(state, str(data_dir / "eigen.pt"))
     except Exception:
         state.m = m0
         eigen = EigenSolver(state, [exchange_b, exchange_t, rkky, aniso, dmi], [bias])
         res = eigen.solve(k=20)
-        res.store("data/eigen.pt")
-        res.save_evecs3D("data/evecs.pvd")
+        res.store(str(data_dir / "eigen.pt"))
+        res.save_evecs3D(str(data_dir / "evecs.pvd"))
 
 h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq[1:], h_excite)
 
+# Modal projection of the equilibrium shift to match ring-down amplitudes
+coeffs = res.project(delta_m)
+phi = res.evecs().to(dtype=torch.complex128)
+omega = res.omega.to(dtype=torch.complex128)
+damping = res.domega.to(dtype=torch.complex128)
+time_phase = torch.exp(((-damping) - 1j * omega).unsqueeze(-1) * tt.to(dtype=torch.complex128))
+amplitudes = coeffs.to(dtype=torch.complex128)[:, None] * time_phase
+modal_delta = torch.tensordot(phi, amplitudes, dims=([4], [0])).real
+modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
+modal_fft = np.fft.rfft(modal_delta.cpu().numpy(), axis=0)
+modal_power = (np.abs(modal_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
+
 fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq[1:] * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
-ax.plot(np.array([]), np.array([]), label="PSD(Eigensolver)", color="red", linewidth=2.0)
-#ax2 = ax.twinx()
-#ax2.set_xlim([0, 50])
-#ax2.set_yscale("log")
-#ax2.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0)
-ax.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0)
+ax.plot(freq[1:] * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
+ax.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
+print("ringdown:", power.max().item())
+print("modal:", modal_power.max().item())
+print("spectrum:", spectrum.max().item())
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks,2], color="red", label="Peaks")
 ax.set_xlim([0, 50])
@@ -146,4 +175,4 @@ ax.tick_params(axis='both', direction='in', length=6, width=1.2)
 ax.grid(True, axis='x', linestyle='--', alpha=0.9)
 ax.legend(loc='upper right')
 
-fig.savefig("data/result_bilayer.png")
+fig.savefig(base_dir / "result.png")

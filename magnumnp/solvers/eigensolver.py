@@ -228,6 +228,40 @@ class EigenResult(object):
         p = 0.5 * self._state.mesh.cell_volumes * phi2 * (a_k.conj()*a_k).real
         return 2.*p.sum(axis=0) # consider factor of 2 since only positive eigenfrequencies are stored
 
+    def _B0(self, vv):
+        return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
+
+    def project(self, field):
+        """Project a spatial vector field onto the eigenmode basis.
+
+        This is useful to express magnetization deviations or excitation fields in the modal
+        coordinates used by the eigensolver.
+
+        Parameters
+        ----------
+        field : torch.Tensor
+            Real-valued vector field with the same spatial shape as ``state.m``.
+
+        Returns
+        -------
+        torch.Tensor
+            Complex modal coefficients c_k satisfying δm ≈ Σ_k c_k φ_k.
+        """
+        if not isinstance(field, torch.Tensor):
+            field = torch.as_tensor(field, dtype=self._state.m.dtype, device=self._state.device)
+        else:
+            field = field.to(dtype=self._state.m.dtype, device=self._state.device)
+
+        proj2d = self._state.Constant([0., 0.], dtype=field.dtype)
+        proj2d[:,:,:,0] = (field * self.e0).sum(axis=-1)
+        proj2d[:,:,:,1] = (field * self.e1).sum(axis=-1)
+
+        proj2d = proj2d.unsqueeze(-1).to(dtype=self._evecs2D.dtype)
+        proj2d = self._B0(proj2d)
+        proj2d = proj2d.expand_as(self._evecs2D)
+
+        coeffs = (self._evecs2D.conj() * proj2d).sum(axis=(0,1,2,3))
+        return self._omega * coeffs
 
     def absorption(self, omega, h_excite):
         """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
