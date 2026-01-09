@@ -247,16 +247,11 @@ class EigenResult(object):
         torch.Tensor
             Complex modal coefficients c_k satisfying δm ≈ Σ_k c_k φ_k.
         """
-        if not isinstance(field, torch.Tensor):
-            field = torch.as_tensor(field, dtype=self._state.m.dtype, device=self._state.device)
-        else:
-            field = field.to(dtype=self._state.m.dtype, device=self._state.device)
-
         proj2d = self._state.Constant([0., 0.], dtype=field.dtype)
         proj2d[:,:,:,0] = (field * self.e0).sum(axis=-1)
         proj2d[:,:,:,1] = (field * self.e1).sum(axis=-1)
 
-        proj2d = proj2d.unsqueeze(-1).to(dtype=self._evecs2D.dtype)
+        proj2d = proj2d.unsqueeze(-1)
         proj2d = self._B0(proj2d)
         proj2d = proj2d.expand_as(self._evecs2D)
 

@@ -114,13 +114,14 @@ except FileNotFoundError:
         torch.save({"data4d":data4d}, str(data_dir / "ringdown.pt"))
 
 freq = np.fft.rfftfreq(Nt, d=dt)
+freq_axis = freq[1:]
 m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
 
 # convert PSD from average-per-cell to volume integral to match the eigenmode spectrum
 num_cells = np.prod(n)
 cell_volume = np.prod(dx)
 power = (np.abs(m_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
-peaks = scipy.signal.find_peaks(power[:,2], prominence=1e-10)[0]
+peaks = scipy.signal.find_peaks(power[:,2], prominence=1e-30)[0]
 
 # EigenSolver method
 with Timer("EigenSolver"):
@@ -134,7 +135,7 @@ with Timer("EigenSolver"):
         res.save_evecs3D(str(data_dir / "evecs.pvd"))
 
 h_excite = bias_new.h(state) - bias.h(state)
-spectrum = res.spectrum(2*np.pi*freq[1:], h_excite)
+spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
 
 # Modal projection of the equilibrium shift to match ring-down amplitudes
 coeffs = res.project(delta_m)
@@ -149,10 +150,22 @@ modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
 modal_fft = np.fft.rfft(modal_delta.cpu().numpy(), axis=0)
 modal_power = (np.abs(modal_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
 
+# Simple modal projection: use modal amplitudes to build Lorentzian peaks without synthesizing time traces
+coeffs_np = coeffs.detach().cpu().numpy()
+omega_np = omega.real.detach().cpu().numpy()
+domega_np = damping.real.detach().cpu().numpy()
+omega_axis = 2 * np.pi * freq_axis
+mode_weights = np.abs(coeffs_np)**2
+lorentz_denom = (omega_axis[None, :] - omega_np[:, None])**2 + (domega_np[:, None] + 1e-30)**2
+simple_modal_power = (mode_weights[:, None] * (domega_np[:, None] + 1e-30) / lorentz_denom).sum(axis=0)
+simple_modal_power *= cell_volume
+
 fig, ax = plt.subplots(figsize=(15,10))
-ax.plot(freq[1:] * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
-ax.plot(freq[1:] * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
-ax.plot(freq[1:] * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
+ax.plot(freq_axis * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
+ax.plot(freq_axis * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
+ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
+ax.plot(freq_axis * 1e-9, 100*simple_modal_power, color="purple", linewidth=2.0, label="PSD(Simple modal projection)") # TODO: remove scaling factor 100
+print("peaks:", peaks)
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks,2], color="red", label="Peaks")
 ax.set_xlim([0, 50])
