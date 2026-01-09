@@ -231,32 +231,26 @@ class EigenResult(object):
     def _B0(self, vv):
         return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
 
-    def project(self, field):
-        """Project a spatial vector field onto the eigenmode basis.
+    def coeffs(self, m):
+        """Project a spatial vector m onto the eigenmode basis.
 
-        This is useful to express magnetization deviations or excitation fields in the modal
-        coordinates used by the eigensolver.
+        This is useful to express magnetization deviations in the modal coordinates used by the eigensolver.
 
         Parameters
         ----------
-        field : torch.Tensor
-            Real-valued vector field with the same spatial shape as ``state.m``.
+        m : torch.Tensor
+            Real-valued vector m with the same spatial shape as ``state.m``.
 
         Returns
         -------
         torch.Tensor
-            Complex modal coefficients c_k satisfying δm ≈ Σ_k c_k φ_k.
+            Complex modal coefficients a_k satisfying dm ≈ Sum_k a_k phi_k.
         """
-        proj2d = self._state.Constant([0., 0.])
-        proj2d[:,:,:,0] = (field * self.e0).sum(axis=-1)
-        proj2d[:,:,:,1] = (field * self.e1).sum(axis=-1)
+        m2d = self._state.Constant([0., 0.])
+        m2d[:,:,:,0] = (m * self.e0).sum(axis=-1)
+        m2d[:,:,:,1] = (m * self.e1).sum(axis=-1)
 
-        proj2d = proj2d.unsqueeze(-1)
-        proj2d = self._B0(proj2d)
-        proj2d = proj2d.expand_as(self._evecs2D)
-
-        coeffs = (self._evecs2D.conj() * proj2d).sum(axis=(0,1,2,3))
-        return self._omega * coeffs
+        return self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))
 
     def modal_projection_psd(self, delta_m, times, volume_scale=1.0):
         """Compute the PSD of a modal reconstruction that matches a time-domain ring-down.
@@ -277,7 +271,7 @@ class EigenResult(object):
         tuple(np.ndarray, np.ndarray)
             Frequency axis (Hz) and PSD averaged over space with components along the last axis.
         """
-        coeffs = self.project(delta_m)
+        coeffs = self.coeffs(delta_m)
 
         time_phase = torch.exp(((-self.domega) - 1j * self.omega).unsqueeze(-1) * times)
         amplitudes = coeffs[:, None] * time_phase
@@ -311,7 +305,7 @@ class EigenResult(object):
         """
         omega_axis = 2.0 * np.pi * torch.tensor(freq)
 
-        coeffs = self.project(delta_m)
+        coeffs = self.coeffs(delta_m)
         mode_weights = np.abs(coeffs)**2
 
         widths = self.domega[:, None]
