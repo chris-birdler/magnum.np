@@ -137,35 +137,16 @@ with Timer("EigenSolver"):
 h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
 
-# Modal projection of the equilibrium shift to match ring-down amplitudes
-coeffs = res.project(delta_m)
-phi = res.evecs().to(dtype=torch.complex128)
-omega = res.omega.to(dtype=torch.complex128)
-damping = res.domega.to(dtype=torch.complex128)
-time_phase = torch.exp(((-damping) - 1j * omega).unsqueeze(-1) * tt.to(dtype=torch.complex128))
-amplitudes = coeffs.to(dtype=torch.complex128)[:, None] * time_phase
-# only positive-frequency modes are stored, so double the real part to recover the conjugate partners
-modal_delta = 2.0 * torch.tensordot(phi, amplitudes, dims=([4], [0])).real
-modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
-modal_fft = np.fft.rfft(modal_delta.cpu().numpy(), axis=0)
-modal_power = (np.abs(modal_fft)**2).mean(axis=(1,2,3)) * (num_cells * cell_volume)
-
-# Simple modal projection: use modal amplitudes to build Lorentzian peaks without synthesizing time traces
-coeffs_np = coeffs.detach().cpu().numpy()
-omega_np = omega.real.detach().cpu().numpy()
-domega_np = damping.real.detach().cpu().numpy()
-omega_axis = 2 * np.pi * freq_axis
-mode_weights = np.abs(coeffs_np)**2
-lorentz_denom = (omega_axis[None, :] - omega_np[:, None])**2 + (domega_np[:, None] + 1e-30)**2
-simple_modal_power = (mode_weights[:, None] * (domega_np[:, None] + 1e-30) / lorentz_denom).sum(axis=0)
-simple_modal_power *= cell_volume
+# Modal projections handled by EigenResult helpers
+modal_coeffs = res.project(delta_m)
+modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume, coeffs=modal_coeffs)
+simple_modal_power = res.simple_modal_projection(delta_m, freq_axis, volume_scale=cell_volume, coeffs=modal_coeffs)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
-ax.plot(freq_axis * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
+ax.plot(modal_freq[1:] * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
 ax.plot(freq_axis * 1e-9, 100*simple_modal_power, color="purple", linewidth=2.0, label="PSD(Simple modal projection)") # TODO: remove scaling factor 100
-print("peaks:", peaks)
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks,2], color="red", label="Peaks")
 ax.set_xlim([0, 50])
@@ -176,14 +157,13 @@ ax.set_title("Spatially Resolved PSD")
 
 freq_eig = res.freq * 1e-9
 tick_labels = [f"{f:.5f}" for f in freq_eig]
-for p in peaks[:6]:
+for p in peaks[:12]:
     x_val = freq[p] * 1e-9      # GHz
     y_val = power[p, 2]
     ax.text(x_val, y_val, f"{freq[p]*1e-9:.2f}", rotation=45, ha='left',va='bottom')
-ax.set_xticks(freq_eig)
-ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=12)
+ax.set_xticks(np.arange(0,50,5))
 ax.tick_params(axis='both', direction='in', length=6, width=1.2)
-ax.grid(True, axis='x', linestyle='--', alpha=0.9)
+ax.grid()
 ax.legend(loc='upper right')
 
 fig.savefig(base_dir / "result.png")
