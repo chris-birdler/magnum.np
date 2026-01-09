@@ -258,7 +258,7 @@ class EigenResult(object):
         coeffs = (self._evecs2D.conj() * proj2d).sum(axis=(0,1,2,3))
         return self._omega * coeffs
 
-    def modal_projection_psd(self, delta_m, times, volume_scale=1.0, coeffs=None):
+    def modal_projection_psd(self, delta_m, times, volume_scale=1.0):
         """Compute the PSD of a modal reconstruction that matches a time-domain ring-down.
 
         Parameters
@@ -279,25 +279,20 @@ class EigenResult(object):
         """
         coeffs = self.project(delta_m)
 
-        phi = self.evecs().to(dtype=torch.complex128)
-        omega = self.omega.to(dtype=torch.complex128)
-        damping = self.domega.to(dtype=torch.complex128)
+        time_phase = torch.exp(((-self.domega) - 1j * self.omega).unsqueeze(-1) * times)
+        amplitudes = coeffs[:, None] * time_phase
 
-        tt = times.to(dtype=torch.complex128, device=phi.device)
-        time_phase = torch.exp(((-damping) - 1j * omega).unsqueeze(-1) * tt)
-        amplitudes = coeffs.to(dtype=torch.complex128, device=phi.device)[:, None] * time_phase
-
-        modal_delta = 2.0 * torch.tensordot(phi, amplitudes, dims=([4], [0])).real
+        modal_delta = 2.0 * torch.tensordot(self.evecs(), amplitudes, dims=([4], [0])).real
         modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
         modal_fft = torch.fft.rfft(modal_delta, dim=0)
         modal_power = (modal_fft.abs()**2).mean(dim=(1,2,3)) * volume_scale
 
         num_steps = times.shape[0]
-        dt = float((times[1] - times[0]).detach().cpu().item())
+        dt = float((times[1] - times[0]).item())
         freq = np.fft.rfftfreq(num_steps, d=dt)
-        return freq, modal_power.detach().cpu().numpy()
+        return freq, modal_power
 
-    def simple_modal_projection(self, delta_m, freq, volume_scale=1.0, eps=1e-30, coeffs=None):
+    def simple_modal_projection(self, delta_m, freq, volume_scale=1.0):
         """Build a Lorentzian sum directly from modal amplitudes ``a_k``.
 
         Parameters
@@ -308,31 +303,19 @@ class EigenResult(object):
             Frequency axis in Hz at which to evaluate the spectrum.
         volume_scale : float, optional
             Additional scaling to match PSD normalization (e.g. ``cell_volume``).
-        eps : float, optional
-            Small positive number to avoid division by zero for undamped modes.
-        coeffs : torch.Tensor, optional
-            Precomputed modal coefficients ``a_k``.
 
         Returns
         -------
         np.ndarray
             Scalar PSD evaluated on ``freq``.
         """
-        freq = np.asarray(freq, dtype=float)
-        omega_axis = 2.0 * np.pi * freq
+        omega_axis = 2.0 * np.pi * torch.tensor(freq)
 
-        if coeffs is None:
-            if delta_m is None:
-                raise ValueError("Either delta_m or coeffs must be provided")
-            coeffs_np = self.project(delta_m).detach().cpu().numpy()
-        else:
-            coeffs_np = coeffs.detach().cpu().numpy()
-        omega = self.omega.detach().cpu().numpy()
-        domega = self.domega.detach().cpu().numpy()
+        coeffs = self.project(delta_m)
+        mode_weights = np.abs(coeffs)**2
 
-        mode_weights = np.abs(coeffs_np)**2
-        widths = domega[:, None] + eps
-        lorentz = mode_weights[:, None] * widths / ((omega_axis - omega[:, None])**2 + widths**2)
+        widths = self.domega[:, None]
+        lorentz = mode_weights[:, None] * widths / ((omega_axis - self.omega[:, None])**2 + widths**2)
         return (lorentz.sum(axis=0)) * volume_scale
 
     def absorption(self, omega, h_excite):

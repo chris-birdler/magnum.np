@@ -138,9 +138,8 @@ h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
 
 # Modal projections handled by EigenResult helpers
-modal_coeffs = res.project(delta_m)
-modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume, coeffs=modal_coeffs)
-simple_modal_power = res.simple_modal_projection(delta_m, freq_axis, volume_scale=cell_volume, coeffs=modal_coeffs)
+modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume)
+simple_modal_power = res.simple_modal_projection(delta_m, freq_axis, volume_scale=cell_volume)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
