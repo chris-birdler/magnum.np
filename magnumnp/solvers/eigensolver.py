@@ -305,18 +305,16 @@ class EigenResult(object):
         """
         omega_axis = 2.0 * np.pi * torch.tensor(freq)
 
-        coeffs = self.coeffs(delta_m)
-        mode_weights = torch.abs(coeffs)**2
+        a_k = self.coeffs(delta_m)
+        mode_weights = torch.abs(a_k)**2
 
         # compensate for the 1/alpha scaling that appears when matching ring-down PSDs
-        mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0, 1, 2, 3))
-        damping = self.domega
+        mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0,1,2,3))
         scale = torch.zeros_like(mode_weights)
-        nonzero = damping > 0
-        scale[nonzero] = (self._omega[nonzero]**2 * mode_norm[nonzero]) / damping[nonzero]
+        scale = (self._omega**2 * mode_norm) / self.domega
         mode_weights = mode_weights * scale
 
-        widths = damping[:, None]
+        widths = self.domega[:, None]
         lorentz = mode_weights[:, None] * widths / ((omega_axis - self.omega[:, None])**2 + widths**2)
         return (lorentz.sum(axis=0)) * volume_scale
 
