@@ -145,7 +145,7 @@ fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
 ax.plot(modal_freq[1:] * 1e-9, modal_power[1:,2], color="green", linewidth=2.0, label="PSD(Modal projection)")
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
-ax.plot(freq_axis * 1e-9, 100*simple_modal_power, color="purple", linewidth=2.0, label="PSD(Simple modal projection)") # TODO: remove scaling factor 100
+ax.plot(freq_axis * 1e-9, simple_modal_power, "--", color="purple", linewidth=2.0, label="PSD(Simple modal projection)")
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks,2], color="red", label="Peaks")
 ax.set_xlim([0, 50])
