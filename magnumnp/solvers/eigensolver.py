@@ -224,6 +224,11 @@ class EigenResult(object):
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
         a_k = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
 
+#        print("w:", w.shape)
+#        print("w_k:", w_k.shape)
+#        print("a_k:", a_k.shape)
+#        print("test:", (w_k - w).shape)
+
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
         p = 0.5 * self._state.mesh.cell_volumes * phi2 * (a_k.conj()*a_k).real
         return 2.*p.sum(axis=0) # consider factor of 2 since only positive eigenfrequencies are stored
@@ -303,20 +308,14 @@ class EigenResult(object):
         np.ndarray
             Scalar PSD evaluated on ``freq``.
         """
-
-        # compensate for the 1/alpha scaling that appears when matching ring-down PSDs
         w = torch.tensor(omega)
-        w_k = self.omega
-        dw_k = self.domega
-        a_k = self.coeffs(delta_m)
+        w_k = self.omega.unsqueeze(-1)
+        dw_k = self.domega.unsqueeze(-1)
 
-        mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0,1,2,3))
-        mode_weights = torch.abs(a_k)**2 * (w_k**2 * mode_norm)
+        a_k = self.coeffs(delta_m).unsqueeze(-1)
+        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
 
-        w = w[None, :]
-        w_k = w_k[:, None]
-        dw_k = dw_k[:, None]
-        lorentz = mode_weights[:, None] / ((w - w_k)**2 + dw_k**2)
+        lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 / ((w - w_k)**2 + dw_k**2)
         return lorentz.sum(axis=0) * volume_scale
 
     def absorption(self, omega, h_excite):
