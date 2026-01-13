@@ -274,7 +274,7 @@ class EigenResult(object):
         Returns
         -------
         tuple(np.ndarray, np.ndarray)
-            Frequency axis (Hz) and PSD averaged over space with components along the last axis.
+            Frequency axis (Hz) and scalar PSD averaged over space.
         """
         coeffs = self.coeffs(delta_m)
 
@@ -284,7 +284,7 @@ class EigenResult(object):
         modal_delta = 2.0 * torch.tensordot(self.evecs(), amplitudes, dims=([4], [0])).real
         modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
         modal_fft = torch.fft.rfft(modal_delta, dim=0)
-        modal_power = (modal_fft.abs()**2).mean(dim=(1,2,3)) * volume_scale
+        modal_power = (modal_fft.abs()**2).mean(dim=(1,2,3)).sum(dim=1) * volume_scale
 
         num_steps = times.shape[0]
         dt = float((times[1] - times[0]).item())
