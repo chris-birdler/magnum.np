@@ -286,15 +286,15 @@ class EigenResult(object):
         freq = np.fft.rfftfreq(num_steps, d=dt)
         return freq, modal_power
 
-    def simple_modal_projection(self, delta_m, freq, volume_scale=1.0):
+    def simple_modal_projection(self, delta_m, omega, volume_scale=1.0):
         """Build a Lorentzian sum directly from modal amplitudes ``a_k``.
 
         Parameters
         ----------
         delta_m : torch.Tensor
             Real-valued deviation field used to obtain modal amplitudes. Ignored when ``coeffs`` is provided.
-        freq : array_like
-            Frequency axis in Hz at which to evaluate the spectrum.
+        omega : array_like
+            Angular frequency axis (rad/s) at which to evaluate the spectrum.
         volume_scale : float, optional
             Additional scaling to match PSD normalization (e.g. ``cell_volume``).
 
@@ -303,20 +303,21 @@ class EigenResult(object):
         np.ndarray
             Scalar PSD evaluated on ``freq``.
         """
-        omega_axis = 2.0 * np.pi * torch.tensor(freq)
-
-        a_k = self.coeffs(delta_m)
-        mode_weights = torch.abs(a_k)**2
 
         # compensate for the 1/alpha scaling that appears when matching ring-down PSDs
-        mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0,1,2,3))
-        scale = torch.zeros_like(mode_weights)
-        scale = (self._omega**2 * mode_norm) / self.domega
-        mode_weights = mode_weights * scale
+        w = torch.tensor(omega)
+        w_k = self.omega
+        dw_k = self.domega
+        a_k = self.coeffs(delta_m)
 
-        widths = self.domega[:, None]
-        lorentz = mode_weights[:, None] * widths / ((omega_axis - self.omega[:, None])**2 + widths**2)
-        return (lorentz.sum(axis=0)) * volume_scale
+        mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0,1,2,3))
+        mode_weights = torch.abs(a_k)**2 * (w_k**2 * mode_norm) / dw_k
+
+        w = w[None, :]
+        w_k = w_k[:, None]
+        dw_k = dw_k[:, None]
+        lorentz = mode_weights[:, None] * dw_k / ((w - w_k)**2 + dw_k**2)
+        return lorentz.sum(axis=0) * volume_scale
 
     def absorption(self, omega, h_excite):
         """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).

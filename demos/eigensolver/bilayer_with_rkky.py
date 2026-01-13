@@ -139,7 +139,7 @@ spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
 
 # Modal projections handled by EigenResult helpers
 modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume)
-simple_modal_power = res.simple_modal_projection(delta_m, freq_axis, volume_scale=cell_volume)
+simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, power[1:,2], label="PSD(RingDown)", linewidth=2.0)
