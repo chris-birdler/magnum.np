@@ -252,7 +252,7 @@ class EigenResult(object):
 
         return self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))
 
-    def modal_projection_psd(self, delta_m, times, volume_scale=1.0):
+    def modal_projection_psd(self, delta_m, times, volume_scale):
         """Compute the PSD of a modal reconstruction that matches a time-domain ring-down.
 
         Parameters
@@ -286,7 +286,7 @@ class EigenResult(object):
         freq = np.fft.rfftfreq(num_steps, d=dt)
         return freq, modal_power
 
-    def simple_modal_projection(self, delta_m, omega, volume_scale=1.0):
+    def simple_modal_projection(self, delta_m, omega, volume_scale):
         """Build a Lorentzian sum directly from modal amplitudes ``a_k``.
 
         Parameters
@@ -311,12 +311,12 @@ class EigenResult(object):
         a_k = self.coeffs(delta_m)
 
         mode_norm = (self._evecs2D.conj() * self._evecs2D).real.sum(dim=(0,1,2,3))
-        mode_weights = torch.abs(a_k)**2 * (w_k**2 * mode_norm) / dw_k
+        mode_weights = torch.abs(a_k)**2 * (w_k**2 * mode_norm)
 
         w = w[None, :]
         w_k = w_k[:, None]
         dw_k = dw_k[:, None]
-        lorentz = mode_weights[:, None] * dw_k / ((w - w_k)**2 + dw_k**2)
+        lorentz = mode_weights[:, None] / ((w - w_k)**2 + dw_k**2)
         return lorentz.sum(axis=0) * volume_scale
 
     def absorption(self, omega, h_excite):
