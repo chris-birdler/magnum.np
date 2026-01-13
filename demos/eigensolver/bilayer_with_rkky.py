@@ -95,11 +95,11 @@ state.m = m0.clone()
 delta_m = m0 - m1
 
 # Ring-Down method
-tt = torch.arange(0, 10e-9, dt)
+tt = torch.arange(0, 50e-9, dt)
 Nt = len(tt)
 
 try:
-    stored = torch.load(str(data_dir / "ringdown.pt"), map_location=state.device)
+    stored = torch.load(str(data_dir / "ringdown_50ns.pt"), map_location=state.device)
     data4d = stored['data4d']
 except FileNotFoundError:
     with Timer("Ring-Down Method "):
@@ -111,7 +111,7 @@ except FileNotFoundError:
             data4d[i,...] = state.m
             llg.step(state, dt)
             logger << state
-        torch.save({"data4d":data4d}, str(data_dir / "ringdown.pt"))
+        torch.save({"data4d":data4d}, str(data_dir / "ringdown_50ns.pt"))
 
 freq = np.fft.rfftfreq(Nt, d=dt)
 freq_axis = freq[1:]
@@ -142,6 +142,9 @@ modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num
 simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume)
 
 fig, ax = plt.subplots(figsize=(15,10))
+##np.savez("data/ringdown_10ns.npz", f=freq_axis, p = power[1:])
+#ref = np.load("data/ringdown_10ns.npz")
+#ax.plot(ref["f"] * 1e-9, ref["p"], "k--", label="PSD(RingDown) 10ns", linewidth=2.0)
 ax.plot(freq_axis * 1e-9, power[1:], label="PSD(RingDown)", linewidth=2.0)
 ax.plot(modal_freq[1:] * 1e-9, modal_power[1:], color="green", linewidth=2.0, label="PSD(Modal projection)")
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
