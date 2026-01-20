@@ -224,11 +224,6 @@ class EigenResult(object):
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
         a_k = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
 
-#        print("w:", w.shape)
-#        print("w_k:", w_k.shape)
-#        print("a_k:", a_k.shape)
-#        print("test:", (w_k - w).shape)
-
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
         p = 0.5 * self._state.mesh.cell_volumes * phi2 * (a_k.conj()*a_k).real
         return 2.*p.sum(axis=0) # consider factor of 2 since only positive eigenfrequencies are stored
@@ -291,7 +286,7 @@ class EigenResult(object):
         freq = np.fft.rfftfreq(num_steps, d=dt)
         return freq, modal_power
 
-    def simple_modal_projection(self, delta_m, omega, volume_scale):
+    def simple_modal_projection(self, delta_m, omega, volume_scale, dt):
         """Build a Lorentzian sum directly from modal amplitudes ``a_k``.
 
         Parameters
@@ -302,6 +297,8 @@ class EigenResult(object):
             Angular frequency axis (rad/s) at which to evaluate the spectrum.
         volume_scale : float, optional
             Additional scaling to match PSD normalization (e.g. ``cell_volume``).
+        dt : float
+            Time step used in the ring-down simulation. Required to match FFT scaling.
 
         Returns
         -------
@@ -315,7 +312,7 @@ class EigenResult(object):
         a_k = self.coeffs(delta_m).unsqueeze(-1)
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
 
-        lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 / ((w - w_k)**2 + dw_k**2)
+        lorentz = torch.abs(a_k)**2 * phi2 / ((w - w_k)**2 + dw_k**2) / dt**2
         return lorentz.sum(axis=0) * volume_scale
 
     def absorption(self, omega, h_excite):
