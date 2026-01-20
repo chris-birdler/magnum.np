@@ -306,14 +306,28 @@ class EigenResult(object):
             Scalar PSD evaluated on ``freq``.
         """
         w = torch.tensor(omega)
-        w_k = self.omega.unsqueeze(-1)
-        dw_k = self.domega.unsqueeze(-1)
+        w_k = self.omega.unsqueeze(-1)  # (num_modes, 1)
+        dw_k = self.domega.unsqueeze(-1)  # (num_modes, 1)
 
-        a_k = self.coeffs(delta_m).unsqueeze(-1)
-        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
+        a_k = self.coeffs(delta_m).unsqueeze(-1)  # (num_modes, 1), complex
 
-        lorentz = torch.abs(a_k)**2 * phi2 / ((w - w_k)**2 + dw_k**2) / dt**2
-        return lorentz.sum(axis=0) * volume_scale
+        # Complex Lorentzian responses (num_modes, num_freq)
+        # From FT of exp((-γ - iω_k)t): 1/(γ + i(ω + ω_k))
+        # From FT of exp((-γ + iω_k)t): 1/(γ + i(ω - ω_k))
+        L_pos = 1.0 / (dw_k + 1j * (w + w_k))
+        L_neg = 1.0 / (dw_k + 1j * (w - w_k))
+
+        # Coherent response: R_k = a_k * L_pos + a_k* * L_neg
+        R = a_k * L_pos + a_k.conj() * L_neg  # (num_modes, num_freq)
+
+        # Spatial response: M(x,ω) = Σ_k φ_k(x) * R_k(ω)
+        # _evecs2D: (nx, ny, nz, 2, num_modes), R: (num_modes, num_freq)
+        M = torch.tensordot(self._evecs2D, R, dims=([4], [0]))  # (nx, ny, nz, 2, num_freq)
+
+        # |M|² summed over space and components
+        power = (M.abs()**2).sum(dim=(0, 1, 2, 3)) / dt**2
+
+        return power * volume_scale
 
     def absorption(self, omega, h_excite):
         """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
