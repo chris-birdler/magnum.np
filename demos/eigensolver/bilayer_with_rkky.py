@@ -140,6 +140,7 @@ spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
 # Modal projections handled by EigenResult helpers
 modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume)
 simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume, dt=dt)
+simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ##np.savez("data/ringdown_10ns.npz", f=freq_axis, p = power[1:])
@@ -149,6 +150,7 @@ ax.plot(freq_axis * 1e-9, power[1:], label="PSD(RingDown)", linewidth=2.0)
 ax.plot(modal_freq[1:] * 1e-9, modal_power[1:], color="green", linewidth=2.0, label="PSD(Modal projection)")
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
 ax.plot(freq_axis * 1e-9, simple_modal_power, "--", color="purple", linewidth=2.0, label="PSD(Simple modal projection)")
+ax.plot(freq_axis * 1e-9, simple_modal_power2, "--", linewidth=2.0, label="PSD(Simple modal projection2)")
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks], color="red", label="Peaks")
 ax.set_xlim([0, 50])

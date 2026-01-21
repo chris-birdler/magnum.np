@@ -329,6 +329,19 @@ class EigenResult(object):
 
         return power * volume_scale
 
+
+    def simple_modal_projection2(self, delta_m, omega, volume_scale):
+        w = torch.tensor(omega)
+        w_k = self.omega.unsqueeze(-1)
+        dw_k = self.domega.unsqueeze(-1)
+ 
+        a_k = self.coeffs(delta_m).unsqueeze(-1)
+        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3)).unsqueeze(-1)
+ 
+        lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 / ((w - w_k)**2 + dw_k**2)
+        return lorentz.sum(axis=0) * volume_scale
+
+
     def absorption(self, omega, h_excite):
         """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
 
