@@ -117,10 +117,9 @@ freq = np.fft.rfftfreq(Nt, d=dt)
 freq_axis = freq[1:]
 m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
 
-# convert PSD from average-per-cell to volume integral to match the eigenmode spectrum
-num_cells = np.prod(n)
-cell_volume = np.prod(dx)
-power = (np.abs(m_fft)**2).mean(axis=(1,2,3)).sum(axis=-1) * (num_cells * cell_volume)
+# compute volume-averaged PSD (no volume scaling)
+total_volume = np.prod(n) * np.prod(dx)
+power = (np.abs(m_fft)**2).mean(axis=(1,2,3)).sum(axis=-1)
 peaks = scipy.signal.find_peaks(power, prominence=1e-30)[0]
 
 # EigenSolver method
@@ -135,12 +134,12 @@ with Timer("EigenSolver"):
         res.save_evecs3D(str(data_dir / "evecs.pvd"))
 
 h_excite = bias_new.h(state) - bias.h(state)
-spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
+spectrum = res.spectrum(2*np.pi*freq_axis, h_excite) / total_volume
 
-# Modal projections handled by EigenResult helpers
-modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=num_cells * cell_volume)
-simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume, dt=dt)
-simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis, volume_scale=cell_volume)
+# Modal projections handled by EigenResult helpers (volume_scale=1.0 for volume average)
+modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=1.0)
+simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=1.0, dt=dt)
+simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis, volume_scale=1.0)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ##np.savez("data/ringdown_10ns.npz", f=freq_axis, p = power[1:])
@@ -152,12 +151,18 @@ ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmo
 ax.plot(freq_axis * 1e-9, simple_modal_power, "--", color="purple", linewidth=2.0, label="PSD(Simple modal projection)")
 ax.plot(freq_axis * 1e-9, simple_modal_power2, "--", linewidth=2.0, label="PSD(Simple modal projection2)")
 
+print("%25s" % "RingDown:", power[1:].max())
+print("%25s" % "modal_projection_psd:", modal_power[1:].max().item())
+print("%25s" % "spectrum:", spectrum.max().item())
+print("%25s" % "simple_modal_power:", simple_modal_power.max().item())
+print("%25s" % "simple_modal_power2:", simple_modal_power2.max().item())
+
 ax.scatter(freq[peaks] * 1e-9, power[peaks], color="red", label="Peaks")
 ax.set_xlim([0, 50])
 ax.set_yscale("log")
 ax.set_xlabel("Frequency [GHz]")
 ax.set_ylabel("PSD [arb.]")
-ax.set_title("Spatially Resolved PSD")
+ax.set_title("Volume-Averaged PSD")
 
 freq_eig = res.freq * 1e-9
 tick_labels = [f"{f:.5f}" for f in freq_eig]
