@@ -117,8 +117,9 @@ freq = np.fft.rfftfreq(Nt, d=dt)
 freq_axis = freq[1:]
 m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
 
-# compute volume-averaged PSD (no volume scaling)
-total_volume = np.prod(n) * np.prod(dx)
+# compute volume-averaged PSD
+num_cells = np.prod(n)
+total_volume = num_cells * np.prod(dx)
 power = (np.abs(m_fft)**2).mean(axis=(1,2,3)).sum(axis=-1)
 peaks = scipy.signal.find_peaks(power, prominence=1e-30)[0]
 
@@ -136,10 +137,12 @@ with Timer("EigenSolver"):
 h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq_axis, h_excite) / total_volume
 
-# Modal projections handled by EigenResult helpers (volume_scale=1.0 for volume average)
+# Modal projections handled by EigenResult helpers
+# modal_projection_psd uses .mean() internally, so volume_scale=1.0
+# simple_modal_projection/2 use .sum() internally, so volume_scale=1.0/num_cells
 modal_freq, modal_power = res.modal_projection_psd(delta_m, tt, volume_scale=1.0)
-simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=1.0, dt=dt)
-simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis, volume_scale=1.0)
+simple_modal_power = res.simple_modal_projection(delta_m, 2*np.pi*freq_axis, volume_scale=1.0/num_cells, dt=dt)
+simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis, volume_scale=1.0/num_cells)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ##np.savez("data/ringdown_10ns.npz", f=freq_axis, p = power[1:])
@@ -153,8 +156,9 @@ ax.plot(freq_axis * 1e-9, simple_modal_power2, "--", linewidth=2.0, label="PSD(S
 
 print("%25s" % "RingDown:", power[1:].max())
 print("%25s" % "modal_projection_psd:", modal_power[1:].max().item())
-print("%25s" % "spectrum:", spectrum.max().item())
 print("%25s" % "simple_modal_power:", simple_modal_power.max().item())
+print("")
+print("%25s" % "spectrum:", spectrum.max().item())
 print("%25s" % "simple_modal_power2:", simple_modal_power2.max().item())
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks], color="red", label="Peaks")
