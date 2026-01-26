@@ -97,7 +97,7 @@ state.m = m0.clone()
 delta_m = m0 - m1
 
 # Ring-Down method
-tt = torch.arange(0, 50e-9, dt)
+tt = torch.arange(0, 10e-9, dt)
 Nt = len(tt)
 
 #try:
@@ -156,18 +156,19 @@ with Timer("Sinc Excitation Method"):
         data4d_sinc[i, ...] = state.m
         llg_sinc.step(state, dt)
 
-    # Compute susceptibility χ(ω) = FFT[δm(t)] / FFT[h(t)]
+    # Compute FFTs
     h_fft = np.fft.rfft(h_history)
     delta_m_sinc = (data4d_sinc - m0[None, ...]).numpy()
     m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
 
-    # Avoid division by zero at DC and high frequencies where h_fft is small
-    h_fft_safe = np.where(np.abs(h_fft) > 1e-10, h_fft, 1e-10)
-    chi_fft = m_fft_sinc / h_fft_safe[:, None, None, None, None]
+    # The sinc function has a flat spectrum (constant H₀) for f < f_max
+    # Use mean over flat region for normalization (simpler and more robust)
+    freq_sinc = np.fft.rfftfreq(Nt, d=dt)
+    H0 = np.abs(h_fft[freq_sinc < f_max]).mean()
 
-    # Power spectrum: |χ(ω)|² (volume-averaged)
+    # Volume-averaged power spectrum: |χ(ω)|² = |m_fft|² / H₀²
     # Sum over vector components, mean over spatial dimensions
-    power_sinc = (np.abs(chi_fft)**2).mean(axis=(1,2,3)).sum(axis=-1)
+    power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2
 
 # EigenSolver method
 with Timer("EigenSolver"):
