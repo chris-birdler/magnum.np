@@ -13,7 +13,7 @@ data_dir = base_dir / "data"
 data_dir.mkdir(parents=True, exist_ok=True)
 
 # initialize state
-dt = 5e-12
+dt = 2e-12
 n = (24, 24, 2)
 l = (120e-9, 120e-9, 10e-9)
 dx = (l[0]/n[0], l[1]/n[1], l[2]/n[2])
@@ -68,11 +68,12 @@ rkky       = RKKYField(-3e-4, "z", 0, 1) # adding antiferromagnetic coupling bet
 bias       = ExternalField(state.Constant([65076.68505349, 46529.82981324, 0.0])) # static field bias
 
 # calculate groundstate
-try:
-    mesh0, fields0 = read_vti(str(data_dir / "m0.vti"))
-    state.m[...] = fields0["m0"]
-except FileNotFoundError:
-    with Timer("Calculate Groundstate"):
+#try:
+#    mesh0, fields0 = read_vti(str(data_dir / "m0.vti"))
+#    state.m[...] = fields0["m0"]
+#except FileNotFoundError:
+#    with Timer("Calculate Groundstate"):
+with Timer("Calculate Groundstate"):
         minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias])
         minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
         state.write_vtk({"m0":state.m}, str(data_dir / "m0.vti"))
@@ -80,11 +81,12 @@ m0 = state.m.clone()
 
 # new equilibrium under the modified bias
 bias_new = ExternalField(state.Constant([65538.55364152, 45876.98754907, 0.0]))
-try:
-    mesh1, fields1 = read_vti(str(data_dir / "m1.vti"))
-    m1 = fields1["m1"]
-except FileNotFoundError:
-    with Timer("Calculate Deviated Groundstate"):
+#try:
+#    mesh1, fields1 = read_vti(str(data_dir / "m1.vti"))
+#    m1 = fields1["m1"]
+#except FileNotFoundError:
+#    with Timer("Calculate Deviated Groundstate"):
+with Timer("Calculate Deviated Groundstate"):
         state.m = m0.clone()
         minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias_new])
         minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
@@ -98,11 +100,12 @@ delta_m = m0 - m1
 tt = torch.arange(0, 50e-9, dt)
 Nt = len(tt)
 
-try:
-    stored = torch.load(str(data_dir / "ringdown_50ns.pt"), map_location=state.device)
-    data4d = stored['data4d']
-except FileNotFoundError:
-    with Timer("Ring-Down Method "):
+#try:
+#    stored = torch.load(str(data_dir / "ringdown_50ns.pt"), map_location=state.device)
+#    data4d = stored['data4d']
+#except FileNotFoundError:
+#    with Timer("Ring-Down Method "):
+with Timer("Ring-Down Method "):
         llg = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias_new], atol=1e-10, rtol=1e-10)
         logger = Logger(str(data_dir), ['t', 'm'], [])
 
@@ -121,11 +124,56 @@ m_fft = np.fft.rfft(data4d - m0[None,...], axis=0)
 power = (np.abs(m_fft)**2).mean(axis=(1,2,3)).sum(axis=-1)
 peaks = scipy.signal.find_peaks(power, prominence=1e-30)[0]
 
+# === Sinc Excitation Method (validates spectrum()) ===
+# This uses a broadband sinc pulse to measure the susceptibility χ(ω) at all frequencies
+# sinc(t) in time → flat spectrum in frequency up to f_max
+# The result should match the eigenmode-based spectrum() method exactly
+with Timer("Sinc Excitation Method"):
+    state.m = m0.clone()  # start from equilibrium
+
+    # Sinc pulse parameters
+    f_max = 100e9  # Hz, maximum frequency of interest
+    t_pulse = 0.0  # pulse center time (at t=0)
+
+    # The excitation field is the difference between the two bias fields
+    h_excite = bias_new.h(state) - bias.h(state)
+
+    # Store field and response history
+    h_history = np.zeros(Nt)
+    data4d_sinc = torch.zeros((Nt,) + state.m.shape)
+
+    for i, t in enumerate(tt):
+        # Sinc pulse: sinc(2π f_max t) = sin(2π f_max t) / (2π f_max t)
+        # np.sinc(x) = sin(πx)/(πx), so we use np.sinc(2 * f_max * t)
+        t_val = float(t) - t_pulse
+        sinc_val = np.sinc(2 * f_max * t_val)  # np.sinc includes the π factor
+        h_history[i] = sinc_val
+
+        # Apply field with sinc envelope
+        bias_pulse = ExternalField(h_excite * sinc_val)
+        llg_sinc = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias, bias_pulse], atol=1e-10, rtol=1e-10)
+
+        data4d_sinc[i, ...] = state.m
+        llg_sinc.step(state, dt)
+
+    # Compute susceptibility χ(ω) = FFT[δm(t)] / FFT[h(t)]
+    h_fft = np.fft.rfft(h_history)
+    delta_m_sinc = (data4d_sinc - m0[None, ...]).numpy()
+    m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
+
+    # Avoid division by zero at DC and high frequencies where h_fft is small
+    h_fft_safe = np.where(np.abs(h_fft) > 1e-10, h_fft, 1e-10)
+    chi_fft = m_fft_sinc / h_fft_safe[:, None, None, None, None]
+
+    # Power spectrum: |χ(ω)|² (volume-averaged)
+    # Sum over vector components, mean over spatial dimensions
+    power_sinc = (np.abs(chi_fft)**2).mean(axis=(1,2,3)).sum(axis=-1)
+
 # EigenSolver method
 with Timer("EigenSolver"):
-    try:
-        res = EigenResult.load(state, str(data_dir / "eigen.pt"))
-    except Exception:
+#    try:
+#        res = EigenResult.load(state, str(data_dir / "eigen.pt"))
+#    except Exception:
         state.m = m0
         eigen = EigenSolver(state, [exchange_b, exchange_t, rkky, aniso, dmi], [bias])
         res = eigen.solve(k=20)
@@ -147,6 +195,7 @@ fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, power[1:], label="PSD(RingDown)", linewidth=2.0)
 ax.plot(modal_freq[1:] * 1e-9, modal_power[1:], color="green", linewidth=2.0, label="PSD(Modal projection)")
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
+ax.plot(freq_axis * 1e-9, power_sinc[1:], "k--", linewidth=2.0, label="PSD(Sinc excitation)")
 ax.plot(freq_axis * 1e-9, simple_modal_power, "--", color="purple", linewidth=2.0, label="PSD(Simple modal projection)")
 ax.plot(freq_axis * 1e-9, simple_modal_power2, "--", linewidth=2.0, label="PSD(Simple modal projection2)")
 
@@ -155,10 +204,12 @@ print("%25s" % "modal_projection_psd:", modal_power[1:].max().item())
 print("%25s" % "simple_modal_power:", simple_modal_power.max().item())
 print("")
 print("%25s" % "spectrum:", spectrum.max().item())
+print("%25s" % "Sinc excitation:", power_sinc[1:].max())
 print("%25s" % "simple_modal_power2:", simple_modal_power2.max().item())
 
 ax.scatter(freq[peaks] * 1e-9, power[peaks], color="red", label="Peaks")
 ax.set_xlim([0, 50])
+ax.set_ylim([1e-7, 1e-0])
 ax.set_yscale("log")
 ax.set_xlabel("Frequency [GHz]")
 ax.set_ylabel("PSD [arb.]")
