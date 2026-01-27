@@ -106,7 +106,8 @@ mathjax3_config = {
                 "vec": ["{\\mathbf #1}", 1],
                 "mat": ["{\\mathbf #1}", 1],
                 "dx":  "{\\;\\text{d}\\vec{x}}",
-                "ds":  "{\\;\\text{d}\\vec{s}}"
+                "ds":  "{\\;\\text{d}\\vec{s}}",
+                "bm": ["{\\boldsymbol{#1}}", 1],
                 }
             }
         }
