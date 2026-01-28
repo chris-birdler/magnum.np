@@ -18,6 +18,7 @@
 
 import os
 import torch
+import errno
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
 from xml.dom import minidom
