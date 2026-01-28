@@ -54,6 +54,8 @@ deploy_pypi:
 notebooks:
     stage: deploy
     timeout: 4h
+    tags:
+        - saas-linux-medium-amd64
     script:
         # build notebooks
         - apt update -yq
