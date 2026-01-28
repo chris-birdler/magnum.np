@@ -184,20 +184,22 @@ class EigenResult(object):
         with open(filename, 'w') as fd:
             fd.write(minidom.parseString(" ".join(cElementTree.tostring(xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
 
-    def dispersion(self, points, dx, num_omega = 1000):
-        state = self._state
-        vvv = self.evecs().cpu().numpy()
+    def dispersion(self, points, dx, num_omega=1000):
+        vvv = self.evecs()
         m = points(vvv)
-        kk = 2.*np.pi*np.fft.fftshift(np.fft.fftfreq(m.shape[0], dx))
+        N = m.shape[0]
+        kk = 2.*torch.pi * torch.fft.fftshift(torch.fft.fftfreq(N, dx))
 
-        window = np.hanning(m.shape[0])[:,None]
-        mfft = np.abs(np.fft.fftshift(np.fft.fft(m*window, axis=0), axes=0))
+        window = torch.hann_window(N, device=m.device)[:,None]
+        mfft = torch.abs(torch.fft.fftshift(torch.fft.fft(m * window, dim=0), dim=0))
         mfft = mfft.T
 
-        # resample on equidistant omega-grid
-        ww = self._omega.cpu().numpy()
-        disp = interp2d(kk, ww, mfft)
-        ww = np.linspace(np.abs(ww).min(), np.abs(ww).max(), num = num_omega)
-        mm = disp(kk, ww)
+        w = self._omega
+        ww = torch.linspace(w.abs().min(), w.abs().max(), num_omega, device=w.device)
+
+        # inline 1D linear interpolation along w
+        idx = torch.clamp(torch.searchsorted(w, ww), 1, w.numel() - 1)
+        t = (ww - w[idx-1]) / (w[idx] - w[idx-1])
+        mm = mfft[idx-1] + (mfft[idx] - mfft[idx-1]) * t.unsqueeze(1)
 
         return kk, ww, mm

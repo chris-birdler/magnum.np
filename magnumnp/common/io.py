@@ -24,7 +24,7 @@ import os
 from . import Mesh
 from magnumnp.common import logging, Material
 
-__all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh"]
+__all__ = ["write_vtr", "write_vti", "read_vti", "read_image", "read_mesh", "read_neper"]
 
 def write_vtr(fields, filename, state = None, scale = 1.):
     if not filename.endswith(".vtr"):
@@ -250,3 +250,138 @@ def read_mesh(mesh, filename, scale = 1.):
     data[containing_cells == -1] = -1 # containing_cell == -1, if point is not included in any cell
 
     return data.reshape(mesh.n)
+
+
+def read_neper(filename, scale = 1.):
+    r"""
+    Read a rasterized Neper tessellation (.tesr) file.
+
+    This function parses a Neper TESR file containing a rectilinear voxel
+    representation of a tessellation. It extracts:
+
+      • the grid dimensions and voxel spacings,
+      • the per-cell (grain) IDs assigned to each voxel,
+      • the per-cell group IDs (if present in the header).
+
+    TESR files may contain both *id* and *group* lists in the header.
+    The voxel data block stores only cell IDs, so group IDs are mapped
+    voxel-wise using the cell → group association defined in the header.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the `.tesr` file to be read.
+
+    scale : float, optional
+        Additional scaling factor applied to the voxel spacing
+        (dx, dy, dz). Defaults to 1.
+
+    Returns
+    -------
+    mesh : :class:`Mesh`
+        A Mesh object describing grid resolution and voxel spacing.
+
+    domains : torch.Tensor
+        Integer tensor of shape (Nx, Ny, Nz) containing the **grain IDs**
+        (cell IDs) for each voxel.
+
+    groups : torch.Tensor
+        Integer tensor of shape (Nx, Ny, Nz) containing the **group IDs**
+        for each voxel. If the TESR file does not define groups, `groups`
+        will contain zeros.
+
+    Examples
+    --------
+    Generating a suitable Neper tessellation:
+
+    .. code::
+
+        # Create 1000 grains in a 500. x 250. x 40. domain
+        # Assign group 1 to grains with id < 500, and group 2 otherwise
+        # Rasterize to 500 x 125 x 10 voxels
+        neper -T -n 1000 \
+              -domain "cube(500,250,40)" \
+              -group "id<500?1:2" \
+              -o test \
+              -format tess,tesr \
+              -tesrsize 500:125:10
+
+    Reading the generated TESR file:
+
+    .. code::
+
+        mesh, grain_ids, group_ids = read_neper("test.tesr")
+    """
+    Nx = Ny = Nz = None
+    start_offset = None
+    cell_ids = []
+    group_ids = []
+
+    with open(filename, "rb") as f:
+        # --- Read ASCII header ---
+        while True:
+            pos = f.tell()
+            line = f.readline().decode("ascii", errors="ignore")
+            if not line:
+                raise ValueError("Unexpected end of file while reading header.")
+
+            line_s = line.strip()
+
+            # --- Basic grid information ---
+            if line_s.startswith("**general"):
+                dim = int(f.readline().decode().strip())
+                Nx, Ny, Nz = map(int, f.readline().decode().split())
+                dx, dy, dz = tuple(scale * float(d) for d in f.readline().decode().split())
+
+            # --- Cell definitions ---
+            if line_s == "*id":
+                # Next line(s) contain the cell IDs
+                # They may span multiple lines until next "*"
+                while True:
+                    pos2 = f.tell()
+                    l2 = f.readline().decode().strip()
+                    if l2.startswith("*") or l2.startswith("**"):
+                        f.seek(pos2)
+                        break
+                    cell_ids.extend(map(int, l2.split()))
+
+            if line_s == "*group":
+                # Next line(s) contain group IDs in same order as cell IDs
+                while True:
+                    pos2 = f.tell()
+                    l2 = f.readline().decode().strip()
+                    if l2.startswith("*") or l2.startswith("**"):
+                        f.seek(pos2)
+                        break
+                    group_ids.extend(map(int, l2.split()))
+
+            # --- Binary voxel block starts after **data / binary16 ---
+            if line_s.startswith("**data"):
+                fmt = f.readline().decode().strip()
+                if fmt != "binary16":
+                    raise ValueError(f"Unsupported TESR binary format: {fmt}")
+                start_offset = f.tell()
+                break
+
+        if Nx is None:
+            raise ValueError("TESR header did not contain voxel size.")
+
+        # --- Read voxel cell ID block ---
+        count = Nx * Ny * Nz
+        vox_cell = np.fromfile(f, dtype="<u2", count=count)
+        vox_cell = vox_cell.reshape((Nx, Ny, Nz), order="F")
+
+    # --- Convert cell-id to group-id ---
+    if group_ids:
+        # cell_ids is 1-based, array index is 0-based
+        lookup = np.zeros(max(cell_ids) + 1, dtype=np.int32)
+        for cid, gid in zip(cell_ids, group_ids):
+            lookup[cid] = gid
+        vox_group = lookup[vox_cell]
+    else:
+        vox_group = None
+
+    mesh = Mesh((Nx, Ny, Nz), (dx, dy, dz))
+    domains = torch.tensor(vox_cell.astype(np.int64))
+    groups = torch.tensor(vox_group.astype(np.int64))
+    return mesh, domains, groups

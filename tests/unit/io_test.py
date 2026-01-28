@@ -56,3 +56,28 @@ def test_read_image():
     state.m = state.Constant([0,0,0])
     state.m[:,:,:,2] = Expression((field > 100)*2. - 1.)
     torch.testing.assert_close(state.avg(state.m), torch.tensor([0.,0.,0.42355347]), rtol=1e-7, atol=1e-7)
+
+def test_read_neper():
+    """
+    reads Neper .tesr file create using:
+
+    .. code::
+        neper -T -n 1000 -domain "cube(500,250,40)" -group "id<500?1:2" -o  test -format tess,tesr -tesrsize 500:125:10
+    """
+    this_dir = pathlib.Path(__file__).resolve().parent
+    filename = this_dir / "ref" / "test.tesr"
+
+    mesh, domains, groups = read_neper(filename, scale = 1e-9)
+
+    assert mesh.n == (500, 125, 10)
+    assert mesh.dx == (1e-9, 2e-9, 4e-9)
+    assert domains.max().cpu().numpy() == 1000
+    assert groups.max().cpu().numpy() == 2
+
+    state = State(mesh, scale = 1e9)
+    state.write_vtk(domains, "domains.vti")
+    state.material['Ms'] = state.Constant(8e5)
+    state.material['Ms'][groups==2] = 0.
+    state.write_vtk(state.material, "material.vti")
+
+

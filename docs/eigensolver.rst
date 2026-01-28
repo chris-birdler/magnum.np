@@ -1,4 +1,4 @@
-.. module:: magnumnp
+.. currentmodule:: magnumnp
 
 :tocdepth: 1
 
@@ -88,3 +88,8 @@ The complete code can be viewed here: :download:`run.py <../demos/eigensolver/ru
 .. autoclass:: EigenSolver
    :members:
    :special-members:
+
+References
+==========
+
+.. [dAquino2009] M. d'Aquino, C. Serpico, G. Miano, and C. Forestiere, "Spectral micromagnetic analysis of switching processes," Journal of Applied Physics 105, 07D541 (2009).
