@@ -178,7 +178,7 @@ tick_labels = [f"{f:.5f}" for f in freq_eig]
 for p in peaks[:12]:
     x_val = freq[p] * 1e-9      # GHz
     y_val = power_sinc[p]
-    ax.text(x_val, y_val, f"{freq[p]*1e-9:.2f}", rotation=45, ha='left',va='bottom')
+    ax.text(x_val, y_val, f"{freq[p]*1e-9:.1f}", rotation=45, ha='left',va='bottom')
 ax.set_xticks(np.arange(0,50,5))
 ax.tick_params(axis='both', direction='in', length=6, width=1.2)
 ax.grid()
