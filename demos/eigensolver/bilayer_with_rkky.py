@@ -139,7 +139,7 @@ except FileNotFoundError:
         power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2
         torch.save({"power_sinc":power_sinc}, str(data_dir / "sinc.pt"))
 
-peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-30)[0]
+peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-7)[0]
 
 # EigenSolver method
 with Timer("Caculate Eigenmodes"):
@@ -165,7 +165,7 @@ print("%25s" % "spectrum:", spectrum.max().item())
 print("%25s" % "Sinc excitation:", power_sinc[1:].max())
 print("%25s" % "simple_modal_power2:", simple_modal_power2.max().item())
 
-#ax.scatter(freq[peaks] * 1e-9, power[peaks], color="red", label="Peaks")
+ax.scatter(freq[peaks] * 1e-9, power_sinc[peaks], color="red", label="Peaks")
 ax.set_xlim([0, 50])
 ax.set_ylim([1e-7, 1e-2])
 ax.set_yscale("log")
