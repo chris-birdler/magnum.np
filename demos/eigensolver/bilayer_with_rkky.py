@@ -136,10 +136,11 @@ m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
 H0 = 1 / (2 * f_max * dt)
 
 # Volume-averaged power spectrum (Eq. 22 of d'Aquino & Hertel):
-# p(ω) = (1/V) ∫ |δm̂|²/2 dV
+# P(ω) = Ms² · (1/V) ∫ |δm̂|²/2 dV  [A²/m²]
 # m_fft includes H0 factor from sinc spectrum, so divide by H0² to get |δm̂|²
-power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2 / 2
-peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-7)[0]
+Ms = state.material["Ms"].mean()
+power_sinc = Ms**2 * (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2 / 2
+peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-22)[0]
 
 # EigenSolver method
 with Timer("Caculate Eigenmodes"):
@@ -162,15 +163,15 @@ ax.plot(freq_axis * 1e-9, power_sinc[1:], "k--", linewidth=2.0, label="PSD(Sinc 
 ax.plot(freq_axis * 1e-9, simple_modal_power2, "--", linewidth=2.0, label="PSD(Simple modal projection2)")
 
 print("%25s" % "spectrum:", spectrum.max().item())
-print("%25s" % "Sinc excitation:", power_sinc[1:].max())
+print("%25s" % "Sinc excitation:", power_sinc[1:].max().item())
 print("%25s" % "simple_modal_power2:", simple_modal_power2.max().item())
 
 ax.scatter(freq[peaks] * 1e-9, power_sinc[peaks], color="red", label="Peaks")
 ax.set_xlim([0, 50])
-ax.set_ylim([1e-7, 1e-2])
+ax.set_ylim([1e5, 1e9])
 ax.set_yscale("log")
 ax.set_xlabel("Frequency [GHz]")
-ax.set_ylabel("PSD [arb.]")
+ax.set_ylabel(r"$P(\omega) = M_s^2 \langle|\delta\hat{m}|^2\rangle / 2$ [A$^2$/m$^2$]")
 ax.set_title("Volume-Averaged PSD")
 
 freq_eig = res.freq * 1e-9
