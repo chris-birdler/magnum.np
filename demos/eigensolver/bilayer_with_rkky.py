@@ -98,17 +98,18 @@ tt = torch.arange(0, 10e-9, dt)
 Nt = len(tt)
 freq = np.fft.rfftfreq(Nt, d=dt)
 freq_axis = freq[1:]
+
+# Sinc pulse parameters
+f_max = 100e9  # Hz, maximum frequency of interest
+t_pulse = 5e-11 # pulse center time (at t=0)
+h_excite = bias_new.h(state) - bias.h(state) # excitation field is the difference between the two bias fields
+
 try:
     stored = torch.load(str(data_dir / "sinc.pt"), map_location=state.device)
-    power_sinc = stored['power_sinc']
+    data4d_sinc = stored['data4d_sinc']
 except FileNotFoundError:
     with Timer("Sinc Excitation Method"):
         state.m = m0.clone()  # start from equilibrium
-    
-        # Sinc pulse parameters
-        f_max = 100e9  # Hz, maximum frequency of interest
-        t_pulse = 5e-11 # pulse center time (at t=0)
-        h_excite = bias_new.h(state) - bias.h(state) # excitation field is the difference between the two bias fields
     
         # Store field and response history
         h_history = np.zeros(Nt)
@@ -123,22 +124,20 @@ except FileNotFoundError:
     
             data4d_sinc[i, ...] = state.m
             llg_sinc.step(state, dt)
+        torch.save({"data4d_sinc":data4d_sinc}, str(data_dir / "sinc.pt"))
     
-        # Compute FFTs
-        h_fft = np.fft.rfft(h_history)
-        delta_m_sinc = (data4d_sinc - m0[None, ...]).numpy()
-        m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
-    
-        # The sinc function has a flat spectrum (constant H₀) for f < f_max
-        # Use mean over flat region for normalization (simpler and more robust)
-        freq_sinc = np.fft.rfftfreq(Nt, d=dt)
-        H0 = np.abs(h_fft[freq_sinc < f_max]).mean()
-    
-        # Volume-averaged power spectrum: |χ(ω)|² = |m_fft|² / H₀²
-        # Sum over vector components, mean over spatial dimensions
-        power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2
-        torch.save({"power_sinc":power_sinc}, str(data_dir / "sinc.pt"))
+# Compute FFTs
+delta_m_sinc = (data4d_sinc - m0[None, ...]).numpy()
+m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
 
+# The sinc function has a flat spectrum (constant H₀) for f < f_max
+# Analytic formula: FT{sinc(2*f_max*t)} = 1/(2*f_max) for |f| < f_max
+# With DFT scaling: H0 = 1/(2*f_max*dt)
+H0 = 1 / (2 * f_max * dt)
+
+# Volume-averaged power spectrum: |χ(ω)|² = |m_fft|² / H₀²
+# Sum over vector components, mean over spatial dimensions
+power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2
 peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-7)[0]
 
 # EigenSolver method
