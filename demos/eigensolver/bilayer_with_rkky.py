@@ -127,8 +127,8 @@ except FileNotFoundError:
         torch.save({"data4d_sinc":data4d_sinc}, str(data_dir / "sinc.pt"))
     
 # Compute FFTs
-delta_m_sinc = (data4d_sinc - m0[None, ...]).numpy()
-m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
+delta_m_sinc = data4d_sinc - m0[None, ...]
+m_fft_sinc = torch.fft.rfft(delta_m_sinc, dim=0)
 
 # The sinc function has a flat spectrum (constant H₀) for f < f_max
 # Analytic formula: FT{sinc(2*f_max*t)} = 1/(2*f_max) for |f| < f_max
@@ -136,11 +136,10 @@ m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
 H0 = 1 / (2 * f_max * dt)
 
 # Volume-averaged power spectrum (Eq. 22 of d'Aquino & Hertel):
-# P(ω) = Ms² · (1/V) ∫ |δm̂|²/2 dV  [A²/m²]
+# P(ω) = (1/V) ∫ Ms² |δm̂|²/2 dV  [A²/m²]
 # m_fft includes H0 factor from sinc spectrum, so divide by H0² to get |δm̂|²
-Ms = state.material["Ms"].mean()
-power_sinc = Ms**2 * (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2 / 2
-peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-22)[0]
+power_sinc = (state.material["Ms"]**2 * torch.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2 / 2
+peaks = scipy.signal.find_peaks(power_sinc.numpy(), prominence=1e-22)[0]
 
 # EigenSolver method
 with Timer("Caculate Eigenmodes"):
