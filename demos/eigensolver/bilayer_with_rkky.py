@@ -68,12 +68,12 @@ rkky       = RKKYField(-3e-4, "z", 0, 1) # adding antiferromagnetic coupling bet
 bias       = ExternalField(state.Constant([65076.68505349, 46529.82981324, 0.0])) # static field bias
 
 # calculate groundstate
-#try:
-#    mesh0, fields0 = read_vti(str(data_dir / "m0.vti"))
-#    state.m[...] = fields0["m0"]
-#except FileNotFoundError:
-#    with Timer("Calculate Groundstate"):
-with Timer("Calculate Groundstate"):
+try:
+    mesh0, fields0 = read_vti(str(data_dir / "m0.vti"))
+    state.m[...] = fields0["m0"]
+except FileNotFoundError:
+    with Timer("Calculate Groundstate"):
+#with Timer("Calculate Groundstate"):
         minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias])
         minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
         state.write_vtk({"m0":state.m}, str(data_dir / "m0.vti"))
@@ -81,12 +81,12 @@ m0 = state.m.clone()
 
 # new equilibrium under the modified bias
 bias_new = ExternalField(state.Constant([65538.55364152, 45876.98754907, 0.0]))
-#try:
-#    mesh1, fields1 = read_vti(str(data_dir / "m1.vti"))
-#    m1 = fields1["m1"]
-#except FileNotFoundError:
-#    with Timer("Calculate Deviated Groundstate"):
-with Timer("Calculate Deviated Groundstate"):
+try:
+    mesh1, fields1 = read_vti(str(data_dir / "m1.vti"))
+    m1 = fields1["m1"]
+except FileNotFoundError:
+    with Timer("Calculate Deviated Groundstate"):
+#with Timer("Calculate Deviated Groundstate"):
         state.m = m0.clone()
         minimizer = MinimizerBB([exchange_b, exchange_t, dmi, aniso, rkky, bias_new])
         minimizer.minimize(state, maxiter=5000, dm_tol=1e-4)
@@ -100,12 +100,12 @@ delta_m = m0 - m1
 tt = torch.arange(0, 10e-9, dt)
 Nt = len(tt)
 
-#try:
-#    stored = torch.load(str(data_dir / "ringdown_50ns.pt"), map_location=state.device)
-#    data4d = stored['data4d']
-#except FileNotFoundError:
-#    with Timer("Ring-Down Method "):
-with Timer("Ring-Down Method "):
+try:
+    stored = torch.load(str(data_dir / "ringdown_50ns.pt"), map_location=state.device)
+    data4d = stored['data4d']
+except FileNotFoundError:
+    with Timer("Ring-Down Method "):
+#with Timer("Ring-Down Method "):
         llg = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias_new], atol=1e-10, rtol=1e-10)
         logger = Logger(str(data_dir), ['t', 'm'], [])
 
@@ -133,7 +133,7 @@ with Timer("Sinc Excitation Method"):
 
     # Sinc pulse parameters
     f_max = 100e9  # Hz, maximum frequency of interest
-    t_pulse = 0.0  # pulse center time (at t=0)
+    t_pulse = 5e-11 # pulse center time (at t=0)
 
     # The excitation field is the difference between the two bias fields
     h_excite = bias_new.h(state) - bias.h(state)
@@ -141,7 +141,10 @@ with Timer("Sinc Excitation Method"):
     # Store field and response history
     h_history = np.zeros(Nt)
     data4d_sinc = torch.zeros((Nt,) + state.m.shape)
+    bias_pulse = ExternalField(lambda state: h_excite * np.sinc(2 * f_max * (state.t-t_pulse)))
+    llg_sinc = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias, bias_pulse], atol=1e-10, rtol=1e-10)
 
+    logger = ScalarLogger("data/log.dat", ["t", "m", bias_pulse.h])
     for i, t in enumerate(tt):
         # Sinc pulse: sinc(2π f_max t) = sin(2π f_max t) / (2π f_max t)
         # np.sinc(x) = sin(πx)/(πx), so we use np.sinc(2 * f_max * t)
@@ -150,11 +153,11 @@ with Timer("Sinc Excitation Method"):
         h_history[i] = sinc_val
 
         # Apply field with sinc envelope
-        bias_pulse = ExternalField(h_excite * sinc_val)
-        llg_sinc = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias, bias_pulse], atol=1e-10, rtol=1e-10)
+        #bias_pulse.h = h_excite * sinc_val
 
         data4d_sinc[i, ...] = state.m
         llg_sinc.step(state, dt)
+        logger.log(state)
 
     # Compute FFTs
     h_fft = np.fft.rfft(h_history)
