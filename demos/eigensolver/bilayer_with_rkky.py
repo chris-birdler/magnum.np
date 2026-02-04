@@ -135,9 +135,10 @@ m_fft_sinc = np.fft.rfft(delta_m_sinc, axis=0)
 # With DFT scaling: H0 = 1/(2*f_max*dt)
 H0 = 1 / (2 * f_max * dt)
 
-# Volume-averaged power spectrum: |χ(ω)|² = |m_fft|² / H₀²
-# Sum over vector components, mean over spatial dimensions
-power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2
+# Volume-averaged power spectrum (Eq. 22 of d'Aquino & Hertel):
+# p(ω) = (1/V) ∫ |δm̂|²/2 dV
+# m_fft includes H0 factor from sinc spectrum, so divide by H0² to get |δm̂|²
+power_sinc = (np.abs(m_fft_sinc)**2).mean(axis=(1,2,3)).sum(axis=-1) / H0**2 / 2
 peaks = scipy.signal.find_peaks(power_sinc, prominence=1e-7)[0]
 
 # EigenSolver method

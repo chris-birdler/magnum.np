@@ -247,7 +247,7 @@ class EigenResult(object):
         lorentz_pos = 1.0 / ((w - w_k)**2 + dw_k**2)
         lorentz_neg = 1.0 / ((w + w_k)**2 + dw_k**2)
         lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 * (lorentz_pos + lorentz_neg)
-        return lorentz.sum(axis=0)
+        return lorentz.sum(axis=0) / 2  # Factor 1/2 for Eq. 22 of d'Aquino & Hertel
 
 
     def spectrum(self, omega, h_excite):
@@ -281,7 +281,7 @@ class EigenResult(object):
         # phi2 = ||phi_k||^2: sum over 2 components, mean over space for volume average
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
         p = phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
-        return p.sum(axis=0)
+        return p.sum(axis=0) / 2  # Factor 1/2 for Eq. 22 of d'Aquino & Hertel
 
 
     def absorption(self, omega, h_excite):
