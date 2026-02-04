@@ -197,6 +197,57 @@ class EigenResult(object):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
         return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
 
+    def _B0(self, vv):
+        return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
+
+    def coeffs(self, m):
+        """Project a spatial vector m onto the eigenmode basis.
+
+        This is useful to express magnetization deviations in the modal coordinates used by the eigensolver.
+
+        Parameters
+        ----------
+        m : torch.Tensor
+            Real-valued vector m with the same spatial shape as ``state.m``.
+
+        Returns
+        -------
+        torch.Tensor
+            Complex modal coefficients a_k satisfying dm ≈ Sum_k a_k phi_k.
+        """
+        m2d = self._state.Constant([0., 0.])
+        m2d[:,:,:,0] = (m * self.e0).sum(axis=-1)
+        m2d[:,:,:,1] = (m * self.e1).sum(axis=-1)
+
+        return self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))
+
+    def simple_modal_projection2(self, delta_m, omega):
+        """Compute volume-averaged PSD using simplified Lorentzian formula.
+
+        Parameters
+        ----------
+        delta_m : torch.Tensor
+            Real-valued deviation field used to obtain modal amplitudes.
+        omega : array_like
+            Angular frequency axis (rad/s) at which to evaluate the spectrum.
+
+        Returns
+        -------
+        torch.Tensor
+            Volume-averaged PSD evaluated on ``omega``.
+        """
+        w = torch.tensor(omega)
+        w_k = self.omega.unsqueeze(-1)
+        dw_k = self.domega.unsqueeze(-1)
+
+        a_k = self.coeffs(delta_m).unsqueeze(-1)
+        # phi2 = ||phi_k||^2: sum over 2 components, mean over space for volume average
+        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+
+        lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 / ((w - w_k)**2 + dw_k**2)
+        return lorentz.sum(axis=0)
+
+
     def spectrum(self, omega, h_excite):
         """Compute volume-averaged absorbed power using Eq. (39) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
 
@@ -228,128 +279,6 @@ class EigenResult(object):
         phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
         p = 0.5 * phi2 * (a_k.conj()*a_k).real
         return 2.*p.sum(axis=0) # consider factor of 2 since only positive eigenfrequencies are stored
-
-    def _B0(self, vv):
-        return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
-
-    def coeffs(self, m):
-        """Project a spatial vector m onto the eigenmode basis.
-
-        This is useful to express magnetization deviations in the modal coordinates used by the eigensolver.
-
-        Parameters
-        ----------
-        m : torch.Tensor
-            Real-valued vector m with the same spatial shape as ``state.m``.
-
-        Returns
-        -------
-        torch.Tensor
-            Complex modal coefficients a_k satisfying dm ≈ Sum_k a_k phi_k.
-        """
-        m2d = self._state.Constant([0., 0.])
-        m2d[:,:,:,0] = (m * self.e0).sum(axis=-1)
-        m2d[:,:,:,1] = (m * self.e1).sum(axis=-1)
-
-        return self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))
-
-    def modal_projection_psd(self, delta_m, times):
-        """Compute the volume-averaged PSD of a modal reconstruction that matches a time-domain ring-down.
-
-        Parameters
-        ----------
-        delta_m : torch.Tensor
-            Real-valued deviation field.
-        times : torch.Tensor
-            1D tensor with uniform time samples.
-
-        Returns
-        -------
-        tuple(np.ndarray, np.ndarray)
-            Frequency axis (Hz) and volume-averaged PSD.
-        """
-        coeffs = self.coeffs(delta_m)
-
-        time_phase = torch.exp(((-self.domega) - 1j * self.omega).unsqueeze(-1) * times)
-        amplitudes = coeffs[:, None] * time_phase
-
-        modal_delta = 2.0 * torch.tensordot(self.evecs(), amplitudes, dims=([4], [0])).real
-        modal_delta = modal_delta.permute(4, 0, 1, 2, 3).contiguous()
-        modal_fft = torch.fft.rfft(modal_delta, dim=0)
-        modal_power = (modal_fft.abs()**2).mean(dim=(1,2,3)).sum(dim=1)
-
-        num_steps = times.shape[0]
-        dt = float((times[1] - times[0]).item())
-        freq = np.fft.rfftfreq(num_steps, d=dt)
-        return freq, modal_power
-
-    def simple_modal_projection(self, delta_m, omega, dt):
-        """Build a volume-averaged Lorentzian sum directly from modal amplitudes ``a_k``.
-
-        Parameters
-        ----------
-        delta_m : torch.Tensor
-            Real-valued deviation field used to obtain modal amplitudes.
-        omega : array_like
-            Angular frequency axis (rad/s) at which to evaluate the spectrum.
-        dt : float
-            Time step used in the ring-down simulation. Required to match FFT scaling.
-
-        Returns
-        -------
-        np.ndarray
-            Volume-averaged PSD evaluated on ``freq``.
-        """
-        w = torch.tensor(omega)
-        w_k = self.omega.unsqueeze(-1)  # (num_modes, 1)
-        dw_k = self.domega.unsqueeze(-1)  # (num_modes, 1)
-
-        a_k = self.coeffs(delta_m).unsqueeze(-1)  # (num_modes, 1), complex
-
-        # Complex Lorentzian responses (num_modes, num_freq)
-        # From FT of exp((-γ - iω_k)t): 1/(γ + i(ω + ω_k))
-        # From FT of exp((-γ + iω_k)t): 1/(γ + i(ω - ω_k))
-        L_pos = 1.0 / (dw_k + 1j * (w + w_k))
-        L_neg = 1.0 / (dw_k + 1j * (w - w_k))
-
-        # Coherent response: R_k = a_k * L_pos + a_k* * L_neg
-        R = a_k * L_pos + a_k.conj() * L_neg  # (num_modes, num_freq)
-
-        # Spatial response: M(x,ω) = Σ_k φ_k(x) * R_k(ω)
-        # _evecs2D: (nx, ny, nz, 2, num_modes), R: (num_modes, num_freq)
-        M = torch.tensordot(self._evecs2D, R, dims=([4], [0]))  # (nx, ny, nz, 2, num_freq)
-
-        # |M|² summed over 2 components, averaged over space for volume average
-        power = (M.abs()**2).sum(dim=3).mean(dim=(0, 1, 2)) / dt**2
-
-        return power
-
-
-    def simple_modal_projection2(self, delta_m, omega):
-        """Compute volume-averaged PSD using simplified Lorentzian formula.
-
-        Parameters
-        ----------
-        delta_m : torch.Tensor
-            Real-valued deviation field used to obtain modal amplitudes.
-        omega : array_like
-            Angular frequency axis (rad/s) at which to evaluate the spectrum.
-
-        Returns
-        -------
-        torch.Tensor
-            Volume-averaged PSD evaluated on ``omega``.
-        """
-        w = torch.tensor(omega)
-        w_k = self.omega.unsqueeze(-1)
-        dw_k = self.domega.unsqueeze(-1)
-
-        a_k = self.coeffs(delta_m).unsqueeze(-1)
-        # phi2 = ||phi_k||^2: sum over 2 components, mean over space for volume average
-        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
-
-        lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 / ((w - w_k)**2 + dw_k**2)
-        return lorentz.sum(axis=0)
 
 
     def absorption(self, omega, h_excite):
