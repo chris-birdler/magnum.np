@@ -200,28 +200,8 @@ class EigenResult(object):
     def _B0(self, vv):
         return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
 
-    def coeffs(self, m):
-        """Project a spatial vector m onto the eigenmode basis.
 
-        This is useful to express magnetization deviations in the modal coordinates used by the eigensolver.
-
-        Parameters
-        ----------
-        m : torch.Tensor
-            Real-valued vector m with the same spatial shape as ``state.m``.
-
-        Returns
-        -------
-        torch.Tensor
-            Complex modal coefficients a_k satisfying dm ≈ Sum_k a_k phi_k.
-        """
-        m2d = self._state.Constant([0., 0.])
-        m2d[:,:,:,0] = (m * self.e0).sum(axis=-1)
-        m2d[:,:,:,1] = (m * self.e1).sum(axis=-1)
-
-        return self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))
-
-    def simple_modal_projection2(self, delta_m, omega):
+    def projection(self, omega, delta_m):
         """Compute volume-averaged PSD using simplified Lorentzian formula.
 
         Parameters
@@ -240,7 +220,11 @@ class EigenResult(object):
         w_k = self.omega.unsqueeze(-1)
         dw_k = self.domega.unsqueeze(-1)
 
-        a_k = self.coeffs(delta_m).unsqueeze(-1)
+        m2d = self._state.Constant([0., 0.])
+        m2d[:,:,:,0] = (delta_m * self.e0).sum(axis=-1)
+        m2d[:,:,:,1] = (delta_m * self.e1).sum(axis=-1)
+        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))).unsqueeze(-1)
+
         phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
 
         lorentz_pos = 1.0 / ((w - w_k)**2 + dw_k**2)

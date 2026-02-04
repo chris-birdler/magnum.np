@@ -155,7 +155,7 @@ with Timer("Caculate Eigenmodes"):
 
 h_excite = bias_new.h(state) - bias.h(state)
 spectrum = res.spectrum(2*np.pi*freq_axis, h_excite)
-simple_modal_power2 = res.simple_modal_projection2(delta_m, 2*np.pi*freq_axis)
+simple_modal_power2 = res.projection(2*np.pi*freq_axis, delta_m)
 
 fig, ax = plt.subplots(figsize=(15,10))
 ax.plot(freq_axis * 1e-9, spectrum, color="red", linewidth=2.0, label="PSD(Harmonic drive)")
