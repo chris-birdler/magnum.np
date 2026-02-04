@@ -171,7 +171,7 @@ ax.set_xlim([0, 50])
 ax.set_ylim([1e5, 1e9])
 ax.set_yscale("log")
 ax.set_xlabel("Frequency [GHz]")
-ax.set_ylabel(r"$P(\omega) = M_s^2 \langle|\delta\hat{m}|^2\rangle / 2$ [A$^2$/m$^2$]")
+ax.set_ylabel(r"$P(\omega) = \langle M_s^2 |\delta\hat{m}|^2\rangle / 2$ [A$^2$/m$^2$]")
 ax.set_title("Volume-Averaged PSD")
 
 freq_eig = res.freq * 1e-9

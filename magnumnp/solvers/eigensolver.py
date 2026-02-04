@@ -241,15 +241,12 @@ class EigenResult(object):
         dw_k = self.domega.unsqueeze(-1)
 
         a_k = self.coeffs(delta_m).unsqueeze(-1)
-        # phi2 = ||phi_k||^2: sum over 2 components, mean over space for volume average
-        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
 
         lorentz_pos = 1.0 / ((w - w_k)**2 + dw_k**2)
         lorentz_neg = 1.0 / ((w + w_k)**2 + dw_k**2)
         lorentz = torch.abs(a_k)**2 * w_k**2 * phi2 * (lorentz_pos + lorentz_neg)
-        # Eq. 22: P(ω) = Ms² · ⟨|δm̂|²⟩/2  [A²/m²]
-        Ms = self._state.material["Ms"].mean()
-        return Ms**2 * lorentz.sum(axis=0) / 2
+        return lorentz.sum(axis=0) / 2 # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
 
 
     def spectrum(self, omega, h_excite):
@@ -280,12 +277,10 @@ class EigenResult(object):
         a_k_pos = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
         a_k_neg = constants.gamma * h_k * w_k_prime / (w_k_prime + w)
 
-        # phi2 = ||phi_k||^2: sum over 2 components, mean over space for volume average
-        phi2 = ((self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+        # phi2 = Ms² ||phi_k||^2: sum over 2 components, Ms²-weighted mean over space
+        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
         p = phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
-        # Eq. 22: P(ω) = Ms² · ⟨|δm̂|²⟩/2  [A²/m²]
-        Ms = self._state.material["Ms"].mean()
-        return Ms**2 * p.sum(axis=0) / 2
+        return p.sum(axis=0) / 2 # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
 
 
     def absorption(self, omega, h_excite):
