@@ -59,8 +59,8 @@ with Timer("Plot Absorbtion"):
     h_excite = state.Constant([0.,0.5e-3/constants.mu_0,0.])
     absorption = res.absorption(2*np.pi*freq, h_excite)#, magnetic)
 
-    V = magnetic.sum() * mesh.cell_volumes
-    P0 = constants.mu_0 * Ms**2 * V * constants.gamma * Ms
+    # P0 normalization for volume-averaged absorption [W/m³]
+    P0 = constants.mu_0 * Ms**2 * constants.gamma * Ms
 
     fig, ax = plt.subplots(figsize=(15,8))
     ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0, label="magnum.np")

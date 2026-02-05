@@ -165,7 +165,7 @@ def test_absorption():
 
     # |h_k|^2 must only depend on the physical excitation amplitude (Eq. 40 in d'Aquino & Hertel)
     h_k2 = h_ac**2 / (2.0 * w0)
-    absorption_analytic = (0.5 * state.mesh.volume * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real / constants.mu_0
+    absorption_analytic = (0.5 * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real / constants.mu_0
 
     ## Plotting code (kept for reference but disabled during tests):
     #import matplotlib.pyplot as plt
@@ -173,7 +173,7 @@ def test_absorption():
     #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption, label="numerical", linewidth=2)
     #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_analytic, "--", label="analytic")
     #ax.set_xlabel("Frequency [GHz]")
-    #ax.set_ylabel("Absorbed power [J/s]")
+    #ax.set_ylabel("Absorbed power density [W/m³]")
     #ax.set_title("FMR absorption of a tiny macrospin")
     #ax.legend()
     #ax.grid(True, linestyle=":", linewidth=0.5)

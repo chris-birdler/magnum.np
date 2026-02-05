@@ -111,7 +111,7 @@ class EigenSolver(object):
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
         evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = np.ones(2*N))
-        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol)
+        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol, v0 = np.ones(2*N))
 
         evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
@@ -126,7 +126,8 @@ class EigenSolver(object):
 
         # NOTE: our mode normalization (phi_i,phi_j)_l2 = \delta_ij seems to differ from the published version!
         #       thus, re-normalize w_i (phi_i,phi_j)_B0 = \delta_ij
-        norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=(0,1,2,3)).real
+        # NOTE: Using volume-averaged scalar product: <f,g> = mean_i(f_i * g_i)
+        norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=3).mean(dim=(0,1,2)).real
         evecs2D /= torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
 
         return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
@@ -195,7 +196,7 @@ class EigenResult(object):
     @property
     def domega(self):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
-        return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=(0,1,2,3))
+        return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2))
 
     def _B0(self, vv):
         return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
@@ -223,7 +224,7 @@ class EigenResult(object):
         m2d = self._state.Constant([0., 0.])
         m2d[:,:,:,0] = (delta_m * self.e0).sum(axis=-1)
         m2d[:,:,:,1] = (delta_m * self.e1).sum(axis=-1)
-        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=(0,1,2,3))).unsqueeze(-1)
+        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=3).mean(axis=(0,1,2))).unsqueeze(-1)
 
         phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
 
@@ -248,11 +249,11 @@ class EigenResult(object):
         torch.Tensor
             Volume-averaged absorbed power P_abs(omega)
         """
-        # calculate h_k = phi_k^H * R^T * P_m0 * h_excite (projection coefficient, keep as sum)
+        # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0.,0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=(0,1,2,3)).unsqueeze(-1)
+        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
 
         # calculate coefficiencs a_k = (omega_k/(omega_k-omega+i*domega_k) phi_k^H * R^T * P_m0 * h_excite)
         w = torch.tensor(omega)
@@ -268,7 +269,7 @@ class EigenResult(object):
 
 
     def absorption(self, omega, h_excite):
-        """Compute absorbed power using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
+        """Compute volume-averaged absorbed power density using Eq. (40) of d'Aquino & Hertel (JAP 133, 033902 (2023)).
 
         Parameters
         ----------
@@ -280,21 +281,21 @@ class EigenResult(object):
         Returns
         -------
         torch.Tensor
-            Absorbed power P_abs(omega)
+            Volume-averaged absorbed power density P_abs(omega) [W/m³]
         """
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0., 0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=(0,1,2,3)).unsqueeze(-1)
+        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
         h_k2 = (h_k.conj() * h_k).real
 
-        # calculate Pabs = 1/(2N) * sum(i*omega*|h_k|^2 / ((w_k - w) + i alpha omega_k |phi_k|^2)
+        # calculate Pabs = 1/(2 mu_0) * sum(i*omega*|h_k|^2 * w_k / (w_k' - w))
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
-        Pabs_complex = 0.5 / constants.mu_0 * self._state.mesh.cell_volumes * (1j * w * h_k2 * w_k / (w_k_prime - w))
+        Pabs_complex = 0.5 / constants.mu_0 * (1j * w * h_k2 * w_k / (w_k_prime - w))
         return (Pabs_complex.sum(axis=0).squeeze(0)).real
 
 
