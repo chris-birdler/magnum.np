@@ -60,7 +60,9 @@ with Timer("Plot Absorbtion"):
     absorption = res.absorption(2*np.pi*freq, h_excite)#, magnetic)
 
     # P0 normalization for volume-averaged absorption [W/m³]
-    P0 = constants.mu_0 * Ms**2 * constants.gamma * Ms
+    # Factor 2*sqrt(2) accounts for: (1) factor 2 from time-averaging convention,
+    # (2) factor sqrt(2) from the 2D eigenmode representation
+    P0 = 2 * np.sqrt(2) * constants.mu_0 * Ms**2 * constants.gamma * Ms
 
     fig, ax = plt.subplots(figsize=(15,8))
     ax.plot(freq * 1e-9, absorption / P0, color="red", linewidth=2.0, label="magnum.np")
@@ -71,5 +73,7 @@ with Timer("Plot Absorbtion"):
     ax.grid()
     ax.legend()
     fig.savefig("data/result_carlotti.png")
-
+    print("absorption:", (absorption / P0).max().item())
+    print("ref:       ", (ref[:,1]).max())
+    print("ratio:     ", (absorption / P0).max().item() / (ref[:,1]).max())
 Timer.print_report()
