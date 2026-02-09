@@ -17,7 +17,6 @@
 #
 
 from magnumnp.common import logging, constants, write_vti, complex_dtype, timedmethod
-import math
 import os
 import torch
 import numpy as np
@@ -291,17 +290,19 @@ class EigenResult(object):
         h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
         ###h_k2 = (h_k.conj() * h_k).real
 
-        # calculate Pabs = 1/(2 mu_0) * sum(i*omega*|h_k|^2 * w_k / (w_k' - w))
+        # calculate Pabs = mu_0*Ms/2 * Re{i*omega * sum_k h_k^* a_k}
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
+        a_k = constants.gamma * h_k * w_k / (w_k_prime - w)
 
-        ###a_k_pos = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
-        a_k_pos = h_k * w_k / (w_k_prime - w)
+        Ms = self._state.material["Ms"].mean()
+        Pabs = 0.5 * constants.mu_0 * Ms * (1j * w * h_k.conj() * a_k)
 
-        Pabs = 0.5 / constants.mu_0 * (1j * w * h_k.conj() * a_k_pos)
-        Pabs = Pabs.sum(axis=0).squeeze(0).real
-        return Pabs / (2.0*math.sqrt(2.0))
+        # eigenvectors and h_k use total-mesh averaging (mean over all cells),
+        # correct by fill fraction f² to get power per unit magnetic volume
+        f = (self._state.material["Ms"] > 0).float().mean()
+        return Pabs.sum(axis=0).squeeze(0).real / f**2
 
 
     def dispersion(self, points, dx, num_omega=1000):
