@@ -290,19 +290,24 @@ class EigenResult(object):
         h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
         ###h_k2 = (h_k.conj() * h_k).real
 
-        # calculate Pabs = mu_0*Ms/2 * Re{i*omega * sum_k h_k^* a_k}
+        # Ms-weighted projection: g_k = mean_x{ Ms(x) * phi_k^H(x) * h2d(x) }
+        Ms = self._state.material["Ms"]
+        print("Ms:", Ms.shape)
+        print("evecs:", self._evecs2D.conj().shape)
+        print("h2d:", h2d[...,None].shape)
+        g_k = (Ms[...,None] * self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+
+        # calculate Pabs = mu_0/2 * Re{i*omega * sum_k g_k^* a_k}
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
         a_k = constants.gamma * h_k * w_k / (w_k_prime - w)
 
-        Ms = self._state.material["Ms"].mean()
-        Pabs = 0.5 * constants.mu_0 * Ms * (1j * w * h_k.conj() * a_k)
+        Pabs = 0.5 * constants.mu_0 * (1j * w * g_k.conj() * a_k)
 
-        # eigenvectors and h_k use total-mesh averaging (mean over all cells),
-        # correct by fill fraction f² to get power per unit magnetic volume
+        # correct for eigenvector normalization using total-mesh mean (line 130)
         f = (self._state.material["Ms"] > 0).float().mean()
-        return Pabs.sum(axis=0).squeeze(0).real / f**2
+        return Pabs.sum(axis=0).squeeze(0).real / f
 
 
     def dispersion(self, points, dx, num_omega=1000):
