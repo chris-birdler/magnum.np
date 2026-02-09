@@ -265,8 +265,8 @@ class EigenResult(object):
 
         # phi2 = Ms² ||phi_k||^2: sum over 2 components, Ms²-weighted mean over space
         phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
-        p = phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
-        return p.sum(axis=0) / 2 # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
+        p = 0.5 * phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
+        return p.sum(axis=0) # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
 
 
     def absorption(self, omega, h_excite):
