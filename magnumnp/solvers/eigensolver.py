@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common import logging, constants, write_vti, complex_dtype, timedmethod
+import math
 import os
 import torch
 import numpy as np
@@ -288,7 +289,8 @@ class EigenResult(object):
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
         h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
-        h_k2 = (h_k.conj() * h_k).real
+        # Eq. (25) (paper.pdf, Sec. IV) uses RMS amplitudes for the rf field, so peak inputs need |h_k|^2/2.
+        h_k2 = (h_k.conj() * h_k).real / 2.0
 
         # calculate Pabs = 1/(2 mu_0) * sum(i*omega*|h_k|^2 * w_k / (w_k' - w))
         w = torch.tensor(omega)
@@ -296,7 +298,9 @@ class EigenResult(object):
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
         Pabs_complex = 0.5 / constants.mu_0 * (1j * w * h_k2 * w_k / (w_k_prime - w))
-        return (Pabs_complex.sum(axis=0).squeeze(0)).real
+        Pabs = (Pabs_complex.sum(axis=0).squeeze(0)).real
+        # RMS magnetization amplitudes are |w_k|/sqrt(2) (Eq. (16), Sec. III), hence the additional sqrt(2) scaling.
+        return Pabs / math.sqrt(2.0)
 
 
     def dispersion(self, points, dx, num_omega=1000):
