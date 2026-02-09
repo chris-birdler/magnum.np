@@ -289,18 +289,19 @@ class EigenResult(object):
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
         h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
-        # Eq. (25) (paper.pdf, Sec. IV) uses RMS amplitudes for the rf field, so peak inputs need |h_k|^2/2.
-        h_k2 = (h_k.conj() * h_k).real / 2.0
+        ###h_k2 = (h_k.conj() * h_k).real
 
         # calculate Pabs = 1/(2 mu_0) * sum(i*omega*|h_k|^2 * w_k / (w_k' - w))
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
         w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
 
-        Pabs_complex = 0.5 / constants.mu_0 * (1j * w * h_k2 * w_k / (w_k_prime - w))
-        Pabs = (Pabs_complex.sum(axis=0).squeeze(0)).real
-        # RMS magnetization amplitudes are |w_k|/sqrt(2) (Eq. (16), Sec. III), hence the additional sqrt(2) scaling.
-        return Pabs / math.sqrt(2.0)
+        ###a_k_pos = constants.gamma * h_k * w_k_prime / (w_k_prime - w)
+        a_k_pos = h_k * w_k / (w_k_prime - w)
+
+        Pabs = 0.5 / constants.mu_0 * (1j * w * h_k.conj() * a_k_pos)
+        Pabs = Pabs.sum(axis=0).squeeze(0).real
+        return Pabs / (2.0*math.sqrt(2.0))
 
 
     def dispersion(self, points, dx, num_omega=1000):
