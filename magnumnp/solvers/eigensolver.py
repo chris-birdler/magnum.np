@@ -124,13 +124,19 @@ class EigenSolver(object):
         res[self._domain] = evecs2D.reshape(res[self._domain].shape)
         evecs2D = res
 
+        # create boolean domain mask
+        if self._domain is Ellipsis:
+            domain = torch.ones(self._m0.shape[:3], dtype=torch.bool, device=evecs2D.device)
+        else:
+            domain = self._domain
+
         # NOTE: our mode normalization (phi_i,phi_j)_l2 = \delta_ij seems to differ from the published version!
         #       thus, re-normalize w_i (phi_i,phi_j)_B0 = \delta_ij
-        # NOTE: Using volume-averaged scalar product: <f,g> = mean_i(f_i * g_i)
-        norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=3).mean(dim=(0,1,2)).real
+        # NOTE: Using magnetic-domain-averaged scalar product: <f,g> = mean_domain(f_i * g_i)
+        norm = omega * (evecs2D.conj() * self.B0(evecs2D))[domain].sum(dim=1).mean(dim=0).real
         evecs2D /= torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
 
-        return EigenResult(omega, evecs2D, self._state, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
+        return EigenResult(omega, evecs2D, self._state, domain = domain, m0 = self._m0, e0 = self._e0, e1 = self._e1, D0 = D0)
 
 
 class EigenResult(object):
@@ -141,13 +147,14 @@ class EigenResult(object):
         self.__dict__.update(kwargs)
 
     def store(self, filename):
-        torch.save({"m0":self.m0, "omega":self._omega, "evecs2D":self._evecs2D}, filename)
+        torch.save({"m0":self.m0, "omega":self._omega, "evecs2D":self._evecs2D, "domain":self.domain}, filename)
         logging.info_green("[Eigensolver] Stored %d eigenvalues to '%s'" % (len(self._omega), filename))
 
     @staticmethod
     def load(state, filename):
         stored = torch.load(filename, map_location=state.device)
         m0, omega, evecs2D = stored['m0'], stored['omega'], stored['evecs2D']
+        domain = stored.get('domain', evecs2D.abs().sum(dim=(3,4)) > 0)
         state.m = m0
 
         ez = state.Constant([1e-15,0.,1.])
@@ -157,7 +164,7 @@ class EigenResult(object):
         e0 = e0 / torch.linalg.norm(e0, axis=3, keepdim=True)
 
         logging.info_green("[Eigensolver] Loaded %d eigenvalues from '%s'" % (len(omega), filename))
-        return EigenResult(omega, evecs2D, state, m0 = m0, e0 = e0, e1 = e1)
+        return EigenResult(omega, evecs2D, state, domain = domain, m0 = m0, e0 = e0, e1 = e1)
 
     @property
     def omega(self):
@@ -196,7 +203,7 @@ class EigenResult(object):
     @property
     def domega(self):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
-        return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real).sum(axis=3).mean(axis=(0,1,2))
+        return self._omega**2 * (self._state.material["alpha"][...,None] * (self._evecs2D.conj()*self._evecs2D).real)[self.domain].sum(dim=1).mean(dim=0)
 
     def _B0(self, vv):
         return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
@@ -224,9 +231,9 @@ class EigenResult(object):
         m2d = self._state.Constant([0., 0.])
         m2d[:,:,:,0] = (delta_m * self.e0).sum(axis=-1)
         m2d[:,:,:,1] = (delta_m * self.e1).sum(axis=-1)
-        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1))).sum(axis=3).mean(axis=(0,1,2))).unsqueeze(-1)
+        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d.unsqueeze(-1)))[self.domain].sum(dim=1).mean(dim=0)).unsqueeze(-1)
 
-        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
+        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3))[self.domain].mean(dim=0).unsqueeze(-1)
 
         lorentz_pos = 1.0 / ((w - w_k)**2 + dw_k**2)
         lorentz_neg = 1.0 / ((w + w_k)**2 + dw_k**2)
@@ -253,7 +260,7 @@ class EigenResult(object):
         h2d = self._state.Constant([0.,0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+        h_k = (self._evecs2D.conj() * h2d[...,None])[self.domain].sum(dim=1).mean(dim=0).unsqueeze(-1)
 
         # calculate coefficiencs a_k = (omega_k/(omega_k-omega+i*domega_k) phi_k^H * R^T * P_m0 * h_excite)
         w = torch.tensor(omega)
@@ -263,7 +270,7 @@ class EigenResult(object):
         a_k_neg = constants.gamma * h_k * w_k_prime / (w_k_prime + w)
 
         # phi2 = Ms² ||phi_k||^2: sum over 2 components, Ms²-weighted mean over space
-        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3)).mean(axis=(0,1,2)).unsqueeze(-1)
+        phi2 = (self._state.material["Ms"]**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(axis=3))[self.domain].mean(dim=0).unsqueeze(-1)
         p = 0.5 * phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
         return p.sum(axis=0) # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
 
@@ -283,31 +290,32 @@ class EigenResult(object):
         torch.Tensor
             Volume-averaged absorbed power density P_abs(omega) [W/m³]
         """
+        # re-normalize eigenvectors to domain convention (handles old cached files)
+        norm = self._omega * (self._evecs2D.conj() * self._B0(self._evecs2D))[self.domain].sum(dim=1).mean(dim=0).real
+        evecs = self._evecs2D / torch.sqrt(norm).reshape(1, 1, 1, 1, -1)
+
         # calculate h_k = phi_k^H * R^T * P_m0 * h_excite
         h2d = self._state.Constant([0., 0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
-        ###h_k2 = (h_k.conj() * h_k).real
+        h_k = (evecs.conj() * h2d[...,None])[self.domain].sum(dim=1).mean(dim=0).unsqueeze(-1)
 
-        # Ms-weighted projection: g_k = mean_x{ Ms(x) * phi_k^H(x) * h2d(x) }
+        # Ms-weighted projection: g_k = mean_domain{ Ms(x) * phi_k^H(x) * h2d(x) }
         Ms = self._state.material["Ms"]
-        print("Ms:", Ms.shape)
-        print("evecs:", self._evecs2D.conj().shape)
-        print("h2d:", h2d[...,None].shape)
-        g_k = (Ms[...,None] * self._evecs2D.conj() * h2d[...,None]).sum(axis=3).mean(axis=(0,1,2)).unsqueeze(-1)
+        g_k = (Ms[...,None] * evecs.conj() * h2d[...,None])[self.domain].sum(dim=1).mean(dim=0).unsqueeze(-1)
+
+        # domega using re-normalized eigenvectors
+        domega = self._omega**2 * (self._state.material["alpha"][...,None] * (evecs.conj()*evecs).real)[self.domain].sum(dim=1).mean(dim=0)
 
         # calculate Pabs = mu_0/2 * Re{i*omega * sum_k g_k^* a_k}
         w = torch.tensor(omega)
         w_k = self.omega.unsqueeze(-1)
-        w_k_prime = (self.omega + 1j * self.domega).unsqueeze(-1)
+        w_k_prime = (self.omega + 1j * domega).unsqueeze(-1)
         a_k = constants.gamma * h_k * w_k / (w_k_prime - w)
 
         Pabs = 0.5 * constants.mu_0 * (1j * w * g_k.conj() * a_k)
 
-        # correct for eigenvector normalization using total-mesh mean (line 130)
-        f = (self._state.material["Ms"] > 0).float().mean()
-        return Pabs.sum(axis=0).squeeze(0).real / f
+        return Pabs.sum(axis=0).squeeze(0).real
 
 
     def dispersion(self, points, dx, num_omega=1000):
