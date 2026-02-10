@@ -195,7 +195,8 @@ class EigenResult(object):
     @property
     def domega(self):
         ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
-        return self._omega**2 * (self._state.material["alpha"][self.domain].flatten(end_dim=-2).unsqueeze(-1) * (self._evecs2D.conj()*self._evecs2D).real).sum(dim=1).mean(dim=0)
+        alpha = self._state.material["alpha"][self.domain].flatten(end_dim=-2).unsqueeze(-1)
+        return self._omega**2 * (alpha * (self._evecs2D.conj()*self._evecs2D).real).sum(dim=1).mean(dim=0)
 
     def _B0(self, vv):
         return torch.stack([-1j * vv[..., 1, :], 1j * vv[..., 0, :]], dim=-2)
@@ -224,9 +225,11 @@ class EigenResult(object):
         m2d = self._state.Constant([0., 0.])
         m2d[:,:,:,0] = (delta_m * self.e0).sum(axis=-1)
         m2d[:,:,:,1] = (delta_m * self.e1).sum(axis=-1)
-        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d[self.domain].flatten(end_dim=-2).unsqueeze(-1))).sum(dim=1).mean(dim=0)).unsqueeze(-1)
+        m2d = m2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)
+        a_k = (self._omega * (self._evecs2D.conj() * self._B0(m2d)).sum(dim=1).mean(dim=0)).unsqueeze(-1)
 
-        phi2 = (self._state.material["Ms"][self.domain].flatten(end_dim=-2)**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(dim=1)).mean(dim=0).unsqueeze(-1)
+        Ms = self._state.material["Ms"][self.domain].flatten(end_dim=-2)
+        phi2 = (Ms**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(dim=1)).mean(dim=0).unsqueeze(-1)
 
         lorentz_pos = 1.0 / ((w - w_k)**2 + dw_k**2)
         lorentz_neg = 1.0 / ((w + w_k)**2 + dw_k**2)
@@ -254,7 +257,8 @@ class EigenResult(object):
         h2d = self._state.Constant([0.,0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)).sum(dim=1).mean(dim=0).unsqueeze(-1)
+        h2d = h2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)
+        h_k = (self._evecs2D.conj() * h2d).sum(dim=1).mean(dim=0).unsqueeze(-1)
 
         # calculate coefficiencs a_k = (omega_k/(omega_k-omega+i*domega_k) phi_k^H * R^T * P_m0 * h_excite)
         w = torch.tensor(omega)
@@ -264,7 +268,8 @@ class EigenResult(object):
         a_k_neg = constants.gamma * h_k * w_k_prime / (w_k_prime + w)
 
         # phi2 = Ms² ||phi_k||^2: sum over 2 components, Ms²-weighted mean over space
-        phi2 = (self._state.material["Ms"][self.domain].flatten(end_dim=-2)**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(dim=1)).mean(dim=0).unsqueeze(-1)
+        Ms = self._state.material["Ms"][self.domain].flatten(end_dim=-2)
+        phi2 = (Ms**2 * (self._evecs2D.conj()*self._evecs2D).real.sum(dim=1)).mean(dim=0).unsqueeze(-1)
         p = 0.5 * phi2 * ((a_k_pos.conj()*a_k_pos).real + (a_k_neg.conj()*a_k_neg).real)
         return p.sum(axis=0) # P(ω) = ⟨Ms² |δm̂|²⟩/2  [A²/m²]
 
@@ -289,11 +294,12 @@ class EigenResult(object):
         h2d = self._state.Constant([0., 0.])
         h2d[:,:,:,0] = (h_excite*self.e0).sum(axis=-1)
         h2d[:,:,:,1] = (h_excite*self.e1).sum(axis=-1)
-        h_k = (self._evecs2D.conj() * h2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)).sum(dim=1).mean(dim=0).unsqueeze(-1)
+        h2d = h2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)
+        h_k = (self._evecs2D.conj() * h2d).sum(dim=1).mean(dim=0).unsqueeze(-1)
 
         # Ms-weighted projection: g_k = mean_domain{ Ms(x) * phi_k^H(x) * h2d(x) }
-        Ms = self._state.material["Ms"]
-        g_k = (Ms[self.domain].flatten(end_dim=-2).unsqueeze(-1) * self._evecs2D.conj() * h2d[self.domain].flatten(end_dim=-2).unsqueeze(-1)).sum(dim=1).mean(dim=0).unsqueeze(-1)
+        Ms = self._state.material["Ms"][self.domain].flatten(end_dim=-2).unsqueeze(-1)
+        g_k = (Ms * self._evecs2D.conj() * h2d).sum(dim=1).mean(dim=0).unsqueeze(-1)
 
         # calculate Pabs = mu_0/2 * Re{i*omega * sum_k g_k^* a_k}
         w = torch.tensor(omega)
