@@ -121,7 +121,7 @@ class EigenSolver(object):
         omega = torch.tensor(evals)
 
         # NOTE: our mode normalization (phi_i,phi_j)_l2 = \delta_ij seems to differ from the published version!
-        #       thus, re-normalize w_i (phi_i,phi_j)_B0 = \delta_ij
+        #       thus, re-normalize w_i <phi_i,phi_j>_B0 = \delta_ij
         # NOTE: Using magnetic-domain-averaged scalar product: <f,g> = mean_domain(f_i * g_i)
         norm = omega * (evecs2D.conj() * self.B0(evecs2D)).sum(dim=1).mean(dim=0).real
         evecs2D /= torch.sqrt(norm).reshape(1, 1, -1)
@@ -194,7 +194,7 @@ class EigenResult(object):
 
     @property
     def domega(self):
-        ### domega_k = alpha * omega_k^2 * ||phi_k||^2   # TODO: add reference!
+        """Compute peak broadening due to damping domega_k = alpha * omega_k^2 * ||phi_k||^2 """
         alpha = self._state.material["alpha"][self.domain].flatten(end_dim=-2).unsqueeze(-1)
         return self._omega**2 * (alpha * (self._evecs2D.conj()*self._evecs2D).real).sum(dim=1).mean(dim=0)
 
