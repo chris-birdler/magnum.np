@@ -165,7 +165,7 @@ def test_absorption():
 
     # |h_k|^2 must only depend on the physical excitation amplitude (Eq. 40 in d'Aquino & Hertel)
     h_k2 = h_ac**2 / (2.0 * w0)
-    absorption_analytic = (0.5 * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real / constants.mu_0
+    absorption_analytic = (0.5 * constants.mu_0 * constants.gamma * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real
 
     ## Plotting code (kept for reference but disabled during tests):
     #import matplotlib.pyplot as plt
