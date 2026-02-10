@@ -4,7 +4,7 @@
 Spin Wave Dispersion (run_dispersion.py)
 ##############################################
 
-This example uses the eigensolver to calculate the spin wave dispersion relation in a magnonic waveguide, following [VENKAT]_.
+This example uses the eigensolver to calculate the spin wave dispersion relation in a magnonic waveguide, following [BAKER]_.
 
 Setup
 =====
@@ -88,4 +88,4 @@ The complete code can be viewed here: :download:`run_dispersion.py <../demos/eig
 References
 ==========
 
-.. [VENKAT] G. Venkat, H. Fangohr, and A. Prabhakar, "Absorbing boundary layers for spin wave micromagnetics," Journal of Magnetism and Magnetic Materials 450, 34--39 (2018).
+.. [BAKER] A. Baker, M. Beg, G. Ashton, M. Albert, D. Chernyshenko, W. Wang, S. Zhang, M.-A. Bisotti, M. Franchin, C. L. Hu, R. Stamps, T. Hesjedal, and H. Fangohr, "Proposal of a micromagnetic standard problem for ferromagnetic resonance simulations," Journal of Magnetism and Magnetic Materials 421, 428--439 (2017).

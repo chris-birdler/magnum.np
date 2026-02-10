@@ -9,12 +9,16 @@ The undamped eigenmodes are obtained from a Hermitian generalized eigenvalue pro
 Damping is incorporated via first-order perturbation theory, and closed-form expressions for the magnetization power spectrum and the absorbed magnetic power are derived using a modal expansion.
 All continuum formulas are written in terms of a volume-averaged inner product, so that they translate directly to the finite-difference discretization without rescaling.
 
+Demos
+-----
+
 .. toctree::
    :maxdepth: 1
 
    Elliptical Nanodisc <eigensolver_carlotti>
    AFM Coupled Bilayer <eigensolver_bilayer>
    Spin Wave Dispersion <eigensolver_dispersion>
+
 
 Eigenmode Equation
 ==================
@@ -139,7 +143,7 @@ For well separated resonances the off-diagonal terms (:math:`k \neq h`) can be n
 .. math::
 
    \tilde{p}(\omega) \approx \frac{\gamma^2}{2}\sum_k \frac{\omega_k^2\,|\tilde{h}_k|^2\,\|M_s\,\tilde{\boldsymbol{\varphi}}_k\|^2}{(\omega_k - \omega)^2 + \delta\omega_k^2}
-   = \frac{1}{2}\sum_k |\tilde{a}_k|^2\,\|M_s\,\tilde{\boldsymbol{\varphi}}_k\|^2.
+   = \frac{1}{2}\sum_k \vert \tilde{a}_k \vert^2 \, \|M_s \, \tilde{\boldsymbol{\varphi}}_k\|^2.
 
 
 Absorbed Magnetic Power
