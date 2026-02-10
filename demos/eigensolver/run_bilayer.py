@@ -104,12 +104,12 @@ with Timer("Time-domain simulation with sinc excitation"):
         data4d_sinc = torch.zeros((len(tt),) + state.m.shape)
         bias_pulse = ExternalField(lambda state: excite.h(state) * np.sinc(2 * f_max * (state.t-t_pulse)))
         llg_sinc = LLGSolver([exchange_b, exchange_t, dmi, aniso, rkky, bias, bias_pulse], atol=1e-10, rtol=1e-10)
-    
+
         for i, t in enumerate(tt):
             data4d_sinc[i, ...] = state.m
             llg_sinc.step(state, dt)
         torch.save({"data4d_sinc":data4d_sinc}, "data/sinc.pt")
-    
+
     delta_m_sinc = data4d_sinc - m0[None, ...]
     m_fft_sinc = torch.fft.rfft(delta_m_sinc, dim=0)
     H0 = 1 / (2 * f_max * dt) # m_fft includes H0 factor from sinc spectrum, so divide by H0² to get |δm̂|²
