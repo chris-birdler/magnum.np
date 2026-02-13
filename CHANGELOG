@@ -1,3 +1,8 @@
+2.2.0 [2026-02-13]
+- added spectrum(), projection() and absorption() to EigenResult
+- added eigensolver demos run_carlotti.py and run_bilayer.py
+- improved EigenSolver documentation
+
 2.1.0 [2025-08-20]
 - added MagnetoElasticField and LinearMagnetoElasticField
 - added LLGWithLESolver
