@@ -1,58 +1,70 @@
 import pytest
 import torch
+import numpy as np
 from math import sqrt
 from magnumnp import *
 
 def test_singlespin_hext():
+    alpha = 0.008
     hext = 1./constants.mu_0
     n  = (10, 10, 10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": 1.,}
+    state.material = {"Ms":1., "alpha":alpha}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
-
     external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
-
     eigen = EigenSolver(state, [], [external])
     res = eigen.solve(k=20)
-    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*hext), atol=1e-10, rtol=1e-10)
+
+    w0 = constants.gamma*hext
+    dw0 = alpha * w0
+    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, w0), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega.abs(), torch.full_like(res.omega, dw0), atol=1e-10, rtol=1e-10)
 
 def test_singlespin_exchange():
     hext = 1./constants.mu_0
+    alpha = 0.008
     n  = (10, 10, 10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
-    state.material = {"Ms": state.Constant(1.),
-                      "A": state.Constant(1.3e-11)}
+    state.material = {"Ms": 1.,
+                      "A": 1.3e-11,
+                      "alpha": alpha}
     state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
-
-    external = ExternalField(state.Constant([0.,hext/sqrt(2.),hext/sqrt(2.)]))
+    external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
     exchange = ExchangeField()
-
     eigen = EigenSolver(state, [exchange], [external])
-    res = eigen.solve(k=20)
-    torch.testing.assert_close(res.omega[0].abs(), torch.tensor(constants.gamma*hext), atol=0, rtol=1e-6)
+    res = eigen.solve(k=1)
+
+    w0 = torch.tensor(constants.gamma * hext)
+    dw0 = alpha * w0
+    torch.testing.assert_close(res.omega[0], w0, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega[0], dw0, atol=1e-10, rtol=1e-10)
 
 def test_singlespin_aniso():
+    alpha = 0.008
     Ms = 1./constants.mu_0
     n  = (10, 10, 10)
     dx = (1e-9, 1e-9, 1e-9)
     mesh = Mesh(n, dx)
     state = State(mesh)
     state.material = {
-            "Ms": state.Constant(Ms),
-            "Ku": state.Constant(0.5/constants.mu_0),
-            "Ku_axis": state.Constant([1,0,0]),
+            "Ms": Ms,
+            "Ku": 0.5/constants.mu_0,
+            "Ku_axis": [1,0,0],
+            "alpha": alpha
             }
     aniso = UniaxialAnisotropyField()
-
     state.m = state.Constant([1.,0.,0.])
-
     eigen = EigenSolver(state, [aniso], [])
     res = eigen.solve(k=20)
-    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, constants.gamma*Ms), atol=1e-10, rtol=1e-10)
+
+    w0 = constants.gamma*Ms
+    dw0 = alpha * w0
+    torch.testing.assert_close(res.omega.abs(), torch.full_like(res.omega, w0), atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega.abs(), torch.full_like(res.omega, dw0), atol=1e-10, rtol=1e-10)
 
 def test_saturated_thinfilm():
     lex = 5.71e-9
@@ -76,6 +88,102 @@ def test_saturated_thinfilm():
     #print("evals[GHz]:", res.omega.numpy()/2./torch.pi*1e-9)
     #res.save_evecs3D("data/evecs.vti")
     torch.testing.assert_close(res.omega.abs()[:5]/2./torch.pi*1e-9, torch.tensor([8.23468553,10.29218845,10.36022486,12.28226803,13.60508024]), atol=1e-3, rtol=1e-2)
+
+
+def test_spectrum():
+    hext = 1./constants.mu_0
+    alpha = 0.008
+    n  = (10, 10, 10)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"Ms": 1.,
+                      "A": 1.3e-11,
+                      "alpha": alpha}
+    state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
+    external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
+    exchange = ExchangeField()
+    eigen = EigenSolver(state, [exchange], [external])
+    res = eigen.solve(k=1)
+
+    w0 = torch.tensor(constants.gamma * hext)
+    dw0 = alpha * w0
+    torch.testing.assert_close(res.omega[0], w0, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega[0], dw0, atol=1e-10, rtol=1e-10)
+
+    # check spectrum
+    h_amp = 1e-3
+    omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
+    spectrum_analytic = 0.25 * (constants.gamma * h_amp)**2 / torch.abs((w0 + 1j * dw0) - omega)**2
+
+    h_excite = state.Constant([h_amp, 0., 0.])
+    spectrum = res.spectrum(omega, h_excite)
+
+    ## Plotting code (kept for reference but disabled during tests):
+    #import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots(figsize=(6, 4))
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum, label="numerical", linewidth=2)
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, spectrum_analytic, "--", label="analytic")
+    #ax.set_xlabel("Frequency [GHz]")
+    #ax.set_ylabel("Magnetization Spectrum [??]")
+    #ax.set_title("Magnetization Spectrum of a tiny macrospin")
+    #ax.legend()
+    #ax.grid(True, linestyle=":", linewidth=0.5)
+    #fig.tight_layout()
+    #fig.savefig("result_spectrum.png", dpi=150)
+    #print("spectrum:", spectrum.max().item())
+    #print("anayltic:", spectrum_analytic.max().item())
+
+    torch.testing.assert_close(spectrum, spectrum_analytic, atol=0.0, rtol=1e-2)
+
+def test_absorption():
+    hext = 1./constants.mu_0
+    alpha = 0.008
+    n  = (10, 10, 10)
+    dx = (1e-9, 1e-9, 1e-9)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {"Ms": 1., "A": 1.3e-11, "alpha": alpha}
+    state.m = state.Constant([0.,1./sqrt(2.),1./sqrt(2.)])
+
+    external = ExternalField([0.,hext/sqrt(2.),hext/sqrt(2.)])
+    exchange = ExchangeField()
+    eigen = EigenSolver(state, [exchange], [external])
+    res = eigen.solve(k=1)
+
+    w0 = torch.tensor(constants.gamma * hext)
+    dw0 = alpha * w0
+
+    torch.testing.assert_close(res.omega[0], w0, atol=1e-10, rtol=1e-10)
+    torch.testing.assert_close(res.domega[0], dw0, atol=1e-10, rtol=1e-10)
+
+    # check absorption
+    h_ac = 1e-3
+    omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
+    h_excite = state.Constant([h_ac, 0.0, 0.0])
+    absorption = res.absorption(omega.numpy(), h_excite)
+
+    # |h_k|^2 must only depend on the physical excitation amplitude (Eq. 40 in d'Aquino & Hertel)
+    h_k2 = h_ac**2 / (2.0 * w0)
+    absorption_analytic = (0.5 * constants.mu_0 * constants.gamma * (1j * omega * h_k2 * w0) / ((w0 + 1j * dw0) - omega)).real
+
+    ## Plotting code (kept for reference but disabled during tests):
+    #import matplotlib.pyplot as plt
+    #fig, ax = plt.subplots(figsize=(6, 4))
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption, label="numerical", linewidth=2)
+    #ax.plot(omega / 2.0 / np.pi * 1e-9, absorption_analytic, "--", label="analytic")
+    #ax.set_xlabel("Frequency [GHz]")
+    #ax.set_ylabel("Absorbed power density [W/m³]")
+    #ax.set_title("FMR absorption of a tiny macrospin")
+    #ax.legend()
+    #ax.grid(True, linestyle=":", linewidth=0.5)
+    #fig.tight_layout()
+    #fig.savefig("result_absorption.png", dpi=150)
+    #print("absorption:", absorption.max().item())
+    #print("anayltic:", absorption_analytic.max().item())
+
+    torch.testing.assert_close(absorption, absorption_analytic, atol=0.0, rtol=1e-10)
+
 
 #def test_vortex():
 #    lex = 5.71e-9

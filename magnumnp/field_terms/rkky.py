@@ -158,7 +158,6 @@ class RKKYField(object):
         self._id1 = min(id1,id2)
         self._id2 = max(id1,id2)
         self._order = order
-        print("TEST")
 
     @timedmethod
     @torch.compile
@@ -170,17 +169,17 @@ class RKKYField(object):
         if self._order == 0:
             m1 = state.m[:,:,(self._id1,),:]
             m2 = state.m[:,:,(self._id2,),:]
-        elif self._order == 1:
-            m1 = 1.5 * state.m[:,:,(self._id1,),:] - 0.5 * state.m[:,:,(self._id1-1,),:]
-            m2 = 1.5 * state.m[:,:,(self._id2,),:] - 0.5 * state.m[:,:,(self._id2+1,),:]
-        elif self._order == 2:
-            m1 = 15./8. * state.m[:,:,(self._id1,),:] - 5./4. * state.m[:,:,(self._id1-1,),:] + 3./8.* state.m[:,:,(self._id1-2,),:]
-            m2 = 15./8. * state.m[:,:,(self._id2,),:] - 5./4. * state.m[:,:,(self._id2+1,),:] + 3./8.* state.m[:,:,(self._id2+2,),:]
-
-        #h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
-        #h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
-        h[:,:,(self._id1,),:] = self._J_rkky * m2
-        h[:,:,(self._id2,),:] = self._J_rkky * m1
+            h[:,:,(self._id1,),:] = self._J_rkky * m2 # this form makes the 0-order field linear
+            h[:,:,(self._id2,),:] = self._J_rkky * m1 # (which is needed for eigenmode calculations)
+        else:
+            if self._order == 1:
+                m1 = 1.5 * state.m[:,:,(self._id1,),:] - 0.5 * state.m[:,:,(self._id1-1,),:]
+                m2 = 1.5 * state.m[:,:,(self._id2,),:] - 0.5 * state.m[:,:,(self._id2+1,),:]
+            elif self._order == 2:
+                m1 = 15./8. * state.m[:,:,(self._id1,),:] - 5./4. * state.m[:,:,(self._id1-1,),:] + 3./8.* state.m[:,:,(self._id1-2,),:]
+                m2 = 15./8. * state.m[:,:,(self._id2,),:] - 5./4. * state.m[:,:,(self._id2+1,),:] + 3./8.* state.m[:,:,(self._id2+2,),:]
+            h[:,:,(self._id1,),:] = self._J_rkky * (m2 - (m1*m2).sum(axis = 3, keepdim=True) * m1)
+            h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
         h /= constants.mu_0 * state.material["Ms"] * dz
         return h.nan_to_num(posinf=0, neginf=0)

@@ -87,7 +87,9 @@ html_theme = 'sphinx_rtd_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'titles_only': True,
+}
 #html_theme_options = {
 #   "logo": {
 #      "image_light": "logo.png",

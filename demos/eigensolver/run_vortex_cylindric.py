@@ -17,7 +17,7 @@ state.material = {
         "Ms":1./constants.mu_0,
         }
 
-x,y,z = mesh.SpatialCoordinate()
+x, y, z = mesh.SpatialCoordinate()
 r = n[0]*dx[0]/2.
 disk = x**2 + y**2 < r**2
 state.m = Expression([-y,x,0*z])
@@ -44,11 +44,11 @@ except:
 
 with Timer("Calculate Eigenvectors"):
     try:
-        res = EigenResult.load(state, "data/eigen.pt")
+        res = EigenResult.load(state, "data/eigen_vortex_cylindric.pt")
     except:
         eigen = EigenSolver(state, [demag, exchange], [], domain = disk)
         res = eigen.solve(k=20, tol=1e-6)
-        res.store("data/eigen.pt")
+        res.store("data/eigen_vortex_cylindric.pt")
 
 with Timer("Store evecs"):
     print("evals[GHz]:", res.freq.numpy()*1e-9)

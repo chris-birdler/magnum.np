@@ -53,3 +53,10 @@ class Mesh(object):
 
         XX, YY, ZZ = torch.meshgrid(x, y, z, indexing = "ij")
         return XX, YY, ZZ
+
+    @property
+    def volume(self):
+        if self.is_equidistant:
+            return self.n[0]*self.n[1]*self.n[2]*self.cell_volumes
+        else:
+            return self.cell_volumes.sum()
