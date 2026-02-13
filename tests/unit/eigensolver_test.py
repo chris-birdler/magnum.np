@@ -161,7 +161,7 @@ def test_absorption():
     h_ac = 1e-3
     omega = torch.linspace(0.9 * w0, 1.1 * w0, 200)
     h_excite = state.Constant([h_ac, 0.0, 0.0])
-    absorption = res.absorption(omega.numpy(), h_excite)
+    absorption = res.absorption(omega, h_excite)
 
     # |h_k|^2 must only depend on the physical excitation amplitude (Eq. 40 in d'Aquino & Hertel)
     h_k2 = h_ac**2 / (2.0 * w0)

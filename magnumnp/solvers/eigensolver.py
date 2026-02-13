@@ -79,7 +79,7 @@ class EigenSolver(object):
         if self._it % 500 == 0:
             logging.info_blue("[Eigensolver] it= %d" % self._it)
 
-        vv = torch.from_numpy(vv).to(dtype=self._vv.dtype, device=self._state.device)
+        vv = torch.from_numpy(vv).to(device=self._state.device)
         vv = vv.reshape(self._vv[self._domain].shape)
         self._vv[...] = 0.
         self._vv[self._domain] = vv
@@ -116,7 +116,8 @@ class EigenSolver(object):
         evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
         evecs2D = np.array([x[1] for x in evalvecs_sorted if x[0] > 1000.]).transpose()
-        evecs2D = torch.from_numpy(evecs2D).reshape(-1,2,evecs2D.shape[-1])
+        evecs2D = torch.from_numpy(evecs2D).to(device=self._state.device)
+        evecs2D = evecs2D.reshape(-1,2,evecs2D.shape[-1])
 
         omega = torch.tensor(evals)
 

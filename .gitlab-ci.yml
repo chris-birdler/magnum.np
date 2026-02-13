@@ -87,6 +87,8 @@ notebooks:
 
 pages:
     stage: deploy
+    tags:
+        - saas-linux-medium-amd64
     script:
         - apt update -yq
         - apt install -y python3-opencv pandoc
