@@ -80,6 +80,7 @@ The following demos are also stored on Google Colab, where they can directly be 
    nonequidistant
    elasticity
    inverse_cube
+   inverse_mag_rec
    field_terms
    logging
 
