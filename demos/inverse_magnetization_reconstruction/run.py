@@ -1,11 +1,7 @@
 # %% [markdown]
-# # Inverse Magnetization Reconstruction (Cartesian Parameterization)
-# Reconstruct magnetization from stray-field data using Cartesian coordinates
-# with projection-to-sphere normalization and physics-based regularization.
-#
-# Unlike the spherical (theta, phi) parameterization, this avoids sigmoid
-# saturation and gimbal lock at the poles, preventing the optimizer from
-# getting trapped in purely up/down magnetization states.
+# # Inverse Magnetization Reconstruction 
+# Reconstruct magnetization from stray-field data using physics regularization and L-BFGS optimization. This demo uses a simple Cartesian parameterization of the magnetization vector, with normalization to enforce unit magnitude.
+
 
 # %% [markdown]
 # ## Setup
@@ -21,10 +17,8 @@ except:
     this_dir = pathlib.Path().resolve()
 
 # %% [markdown]
-# ## Cartesian Normalization Helper
+# ## Normalization Helper
 # Optimize unconstrained 3-component vectors and normalize to the unit sphere.
-# The gradient of normalization is well-behaved everywhere (no poles, no
-# vanishing gradients), so no region of the sphere becomes a trap.
 
 # %%
 def normalize_to_unit(m):
@@ -124,7 +118,7 @@ aniso_field = UniaxialAnisotropyField()
 # ## Reconstruction via L-BFGS Optimization (Cartesian Parameterization)
 
 # %%
-# Initialize with a uniform +z guess (same as spherical u=v=0 default)
+# Initialize with a uniform +z guess 
 m_opt = torch.zeros(nx, ny, 1, 3)
 m_opt[..., 2] = 1.0
 
