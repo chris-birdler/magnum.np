@@ -1,7 +1,7 @@
-:tocdepth: 1
+.. currentmodule:: magnumnp
 
 #######################################
-Inverse Magnetization Reconstruction
+Magnetization Reconstruction from Stray-Field Data
 #######################################
 
 Magnetic inverse problems aim to infer unknown magnetization configurations from indirect measurements such as stray-field data.
@@ -12,29 +12,36 @@ Thanks to PyTorch's automatic differentiation (autograd), *magnum.np* can solve 
 The key idea is to treat the unknown magnetization as a set of trainable parameters and minimize a loss function that quantifies the mismatch between simulated and measured stray fields, optionally regularized by micromagnetic energy terms.
 
 This page demonstrates the reconstruction of a 2D magnetization texture from a single stray-field projection, using a Cartesian parameterization with physics-based regularization.
-For a simpler introductory example of inverse problems with *magnum.np* (finding optimal external-field angles), see :doc:`inverse_cube`.
 
 
 Problem Statement
 ==================
 
 Consider a thin magnetic film whose magnetization :math:`\mathbf{m}(\mathbf{r})` is unknown.
-A sensor (e.g.\ a nitrogen-vacancy magnetometer) measures the projection of the stray field onto a fixed axis :math:`\mathbf{n}_\mathrm{NV}` at a measurement plane above the sample:
+A sensor (e.g.\ a nitrogen-vacancy magnetometer) measures the projection of the stray field onto a fixed axis :math:`\mathbf{n}_\mathrm{NV}` at a distance :math:`d_\mathrm{NV}` above the sample, producing a scalar field measurement map :math:`H^\mathrm{meas}`, which we treat as the **target** that the reconstruction must reproduce.
+In this example we generate :math:`H^\mathrm{meas}` synthetically by evaluating the stray field of a known ground-truth magnetization at the top vacuum layer.
+
+The **forward model** maps a candidate magnetization :math:`\mathbf{m}` to the corresponding sensor signal: *magnum.np* computes the demagnetization field via FFT-accelerated convolution and projects it onto the sensor axis,
 
 .. math::
 
-   h_\mathrm{meas}(\mathbf{r}_\parallel) = \mathbf{H}^\mathrm{dem}(\mathbf{r}_\parallel, z_\mathrm{meas}) \cdot \mathbf{n}_\mathrm{NV}.
+   H^\mathrm{dem}(\mathbf{m}) = \mathbf{H}^\mathrm{dem}(\mathbf{m}) \cdot \mathbf{n}_\mathrm{NV}.
 
 The reconstruction task is to find the magnetization :math:`\mathbf{m}` that minimizes
 
 .. math::
 
-   \mathcal{L}(\mathbf{m}) \;=\; \underbrace{\bigl\| h_\mathrm{sim}(\mathbf{m}) - h_\mathrm{meas} \bigr\|_1}_{\text{data fidelity}}
-   \;+\; \lambda \underbrace{\bigl( E_\mathrm{exc} + E_\mathrm{DMI} + E_\mathrm{aniso} + E_\mathrm{dem} \bigr)}_{\text{physics regularization}},
+   \mathcal{L}(\mathbf{m}) \;=\; \underbrace{\bigl\| H^\mathrm{dem}(\mathbf{m}) - H^\mathrm{meas} \bigr\|_1}_{\text{data fidelity}}
+   \;+\; \lambda \underbrace{E_\mathrm{total}(\mathbf{m})}_{\text{physics regularization}},
 
-subject to the unit-length constraint :math:`|\mathbf{m}| = 1` everywhere.
+where the total micromagnetic energy reads
 
-The data-fidelity term drives the solution towards consistency with the measurement, while the physics regularization steers the reconstruction towards micromagnetically plausible states and acts as a prior to resolve the inherent non-uniqueness of the inverse problem.
+.. math::
+
+    E_\mathrm{total} = E_\mathrm{dem} + E_\mathrm{ex} + E_\mathrm{dmi} + E_\mathrm{ani}.
+
+The **data-fidelity** term penalizes the mismatch between the forward-model prediction and the measurement, driving the solution towards consistency with the observed data.
+The **physics regularization** steers the reconstruction towards micromagnetically plausible states and serves as a prior that helps resolve the inherent non-uniqueness of the inverse problem.
 
 
 The Code
@@ -43,7 +50,7 @@ The Code
 Setup
 -----
 
-First, the necessary packages are imported: *magnum.np* for micromagnetic computations, PyTorch for automatic differentiation, and *pathlib* for path handling.
+First, the necessary packages are imported: *magnum.np* for micromagnetic computations and PyTorch for automatic differentiation.
 
 .. code-block:: python
 
