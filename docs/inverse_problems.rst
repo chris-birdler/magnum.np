@@ -49,7 +49,7 @@ This can be a time integration of the LLG equation, the evaluation of a demagnet
    def forward_model(params):
        # Run the micromagnetic simulation to compute the quantity of interest
        ...
-       return simulated_quantity   # will be compared to a target later
+       return prediction   # will be compared to target later
 
 
 2. Trainable Parameters (``requires_grad``)
@@ -59,14 +59,11 @@ Identify which quantities are unknown and mark them as trainable by setting ``re
 PyTorch will then record every operation involving these tensors into a computational graph, enabling automatic differentiation.
 
 .. code-block:: python
-
-   # Example: optimize external-field angles
-   state.phi   = state.Tensor([1.5708], requires_grad=True)
-   state.theta = state.Tensor([1.5708], requires_grad=True)
-
+   
    # Example: optimize a full magnetization field
    m_opt = torch.zeros(nx, ny, nz, 3)
    m_opt.requires_grad = True
+   params = [m_opt]
 
 Any tensor can be made trainable — scalar parameters, spatially varying material constants, or the magnetization itself.
 
@@ -80,7 +77,7 @@ Typical choices include the L1 or L2 distance between simulated and measured qua
 .. code-block:: python
 
    criterion = torch.nn.L1Loss()
-   loss = criterion(simulated_quantity, target_quantity)
+   loss = criterion(prediction, target)
 
    # Optional: add regularization
    loss = loss + lambda_reg * regularization
@@ -106,7 +103,7 @@ Before each forward evaluation the optimizer's gradient buffers are cleared with
 
 .. code-block:: python
 
-   optimizer = torch.optim.Adam([state.phi, state.theta], lr=0.05)
+   optimizer = torch.optim.Adam(params, lr=0.05)
 
    for epoch in range(n_epochs):
        optimizer.zero_grad()
@@ -141,22 +138,22 @@ The complete optimization loop therefore reads:
    fields = [DemagField(), ExchangeField(), ...]
 
    # 2. Trainable parameters
-   params = state.Tensor([...], requires_grad=True)
+   params = [...]  # e.g. m_opt with requires_grad=True
 
    # 3. Loss function
    criterion = torch.nn.L1Loss()
 
    # 5. Optimizer
-   optimizer = torch.optim.Adam([params], lr=0.05)
+   optimizer = torch.optim.Adam(params, lr=0.05)
 
    for epoch in range(n_epochs):
        optimizer.zero_grad()          # clear gradients
 
        # --- run forward model ---
-       ...
+       prediction = forward_model(params)
 
-       loss = criterion(output, target) # compute loss
-       loss.backward()                  # compute gradients
-       optimizer.step()                 # update parameters
+       loss = criterion(prediction, target) # compute loss
+       loss.backward()                      # compute gradients
+       optimizer.step()                     # update parameters
 
 Because *magnum.np* delegates all numerical work to PyTorch, any optimizer from ``torch.optim`` can be used (Adam, L-BFGS, SGD, ...) and advanced techniques such as learning-rate scheduling are available out of the box.

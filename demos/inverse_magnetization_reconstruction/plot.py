@@ -19,7 +19,7 @@ h_rec = data["h_rec"].cpu()
 # ### Magnetization Comparison (Ground Truth / Starting Guess / After 1 Step / Final)
 
 # %%
-comp_labels = ["$m_x$", "$m_y$", "$m_z$", r"$\mathbf{H}^\mathrm{dem} \cdot \mathbf{n}_\mathrm{NV}$"]
+comp_labels = ["$m_x$", "$m_y$", "$m_z$", r"$\mathbf{H}^\mathrm{dem} \cdot \mathbf{n}_\mathrm{NV}$ (A/m)"]
 row_labels = [
     "Ground Truth",
     "Starting Guess",
@@ -41,12 +41,18 @@ for row, (label, m, h) in enumerate(zip(row_labels, row_data, row_fields)):
         # Add row labels on the left
         if i == 0:
             axes[row, i].set_ylabel(label, fontsize=11, fontweight='bold')
-        plt.colorbar(im, ax=axes[row, i], fraction=0.046)
+        axes[row, i].set_xticks([])
+        axes[row, i].set_yticks([])
+        cb = plt.colorbar(im, ax=axes[row, i], fraction=0.046)
+        cb.set_ticks([-1.0, -0.5, 0.0, 0.5, 1.0])
     
     # Plot H-field projection
-    im = axes[row, 3].imshow(h.T, origin="lower", cmap="viridis")
+    h_vlim = h.abs().max().item()
+    im = axes[row, 3].imshow(h.T, origin="lower", cmap="coolwarm", vmin=-h_vlim, vmax=h_vlim)
     if row == 0:
         axes[row, 3].set_title(comp_labels[3], fontsize=12)
+    axes[row, 3].set_xticks([])
+    axes[row, 3].set_yticks([])
     plt.colorbar(im, ax=axes[row, 3], fraction=0.046)
 
 fig.suptitle("Magnetization Reconstruction Results", fontsize=16, fontweight='bold')
@@ -61,6 +67,8 @@ m_err = (m_rec - m_true).norm(dim=-1)[:, :, 0]
 fig2, ax = plt.subplots(figsize=(6, 5))
 im = ax.imshow(m_err.T, origin="lower", cmap="hot")
 ax.set_title("Pointwise $\|\\mathbf{m}_{rec} - \\mathbf{m}_{true}\|$")
+ax.set_xticks([])
+ax.set_yticks([])
 plt.colorbar(im, ax=ax, fraction=0.046)
 fig2.tight_layout()
 fig2.savefig("data/error_map.png", dpi=150)

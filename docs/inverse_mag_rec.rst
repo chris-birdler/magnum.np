@@ -96,7 +96,7 @@ The computational grid, material constants, and optimization hyperparameters are
    Ku_axis = (0, 0, 1)
 
    # Optimization
-   n_epochs = 30
+   n_epochs = 50
    lr = 1.0
    max_iter = 100
    history_size = 100
@@ -296,6 +296,34 @@ After the optimization the final reconstruction is compared against the ground t
        h_err = torch.abs(h_final - h_measurement_target).mean().item()
        print(f"Final H-field MAE: {h_err:.4e}")
 
+       # Compute H-field projections for all magnetization states
+       def compute_h_proj(m_slice):
+           m_full = state.Constant([0.0, 0.0, 0.0])
+           m_full[:, :, :1, :] = m_slice
+           state.m = m_full
+           h = demag_field.h(state)
+           h_proj = (h[:, :, -1, :] @ nv).squeeze(-1)
+           return h_proj
+
+       h_true = h_measurement_target.squeeze(-1)
+       h_0 = compute_h_proj(m_0)
+       h_rec_1 = compute_h_proj(m_rec_1)
+       h_rec = compute_h_proj(m_rec)
+
+       # Save results
+       def save_mag_vti(m_slice, filename):
+           # Create a mesh with only the material layer (no vacuum)
+           save_mesh = Mesh((nx, ny, 1), (dx, dy, dz))
+           save_state = State(save_mesh)
+           m_out = save_state.Constant([0.0, 0.0, 0.0])
+           m_out[:, :, :, :] = m_slice
+           write_vti(m_out, this_dir / "data" / filename)
+
+       save_mag_vti(m_true, "m_true.vti")
+       save_mag_vti(m_0, "m_0.vti")
+       save_mag_vti(m_rec_1, "m_rec_1.vti")
+       save_mag_vti(m_rec, "m_rec.vti")
+
        torch.save({
            "m_true": m_true,
            "m_0": m_0,
@@ -324,31 +352,45 @@ The reconstruction can be visualized with the following plotting script, which s
    m_0 = data["m_0"].cpu()
    m_rec_1 = data["m_rec_1"].cpu()
    m_rec = data["m_rec"].cpu()
-   h_true = data["h_true"].cpu()
-   h_0 = data["h_0"].cpu()
-   h_rec_1 = data["h_rec_1"].cpu()
-   h_rec = data["h_rec"].cpu()
+   h_true = data["h_true"].cpu() / 1e3
+   h_0 = data["h_0"].cpu() / 1e3
+   h_rec_1 = data["h_rec_1"].cpu() / 1e3
+   h_rec = data["h_rec"].cpu() / 1e3
 
    comp_labels = ["$m_x$", "$m_y$", "$m_z$",
-                   r"$\mathbf{H}^\mathrm{dem} \cdot \mathbf{n}_\mathrm{NV}$"]
-   row_labels = ["Ground Truth", "Starting Guess", "After 1 Step", "Final"]
+                   r"$\mathbf{H}^\mathrm{dem} \cdot \mathbf{n}_\mathrm{NV}$ (kA/m)"]
+   row_labels = [
+       "Ground Truth",
+       "Starting Guess",
+       "After 1 Step",
+       "Final",
+   ]
    row_data = [m_true, m_0, m_rec_1, m_rec]
    row_fields = [h_true, h_0, h_rec_1, h_rec]
 
    fig, axes = plt.subplots(4, 4, figsize=(20, 16))
+
    for row, (label, m, h) in enumerate(zip(row_labels, row_data, row_fields)):
+       # Plot magnetization components
        for i in range(3):
-           im = axes[row, i].imshow(m[:, :, 0, i].T, origin="lower",
-                                     cmap="RdBu_r", vmin=-1, vmax=1)
+           im = axes[row, i].imshow(m[:, :, 0, i].T, origin="lower", cmap="RdBu_r", vmin=-1, vmax=1)
+           # Only show component labels in the top row
            if row == 0:
                axes[row, i].set_title(comp_labels[i], fontsize=12)
+           # Add row labels on the left
            if i == 0:
                axes[row, i].set_ylabel(label, fontsize=11, fontweight='bold')
-           plt.colorbar(im, ax=axes[row, i], fraction=0.046)
+           axes[row, i].set_xticks([])
+           axes[row, i].set_yticks([])
+           cb = plt.colorbar(im, ax=axes[row, i], fraction=0.046)
+           cb.set_ticks([-1.0, -0.5, 0.0, 0.5, 1.0])
 
-       im = axes[row, 3].imshow(h.T, origin="lower", cmap="viridis")
+       # Plot H-field projection
+       im = axes[row, 3].imshow(h.T, origin="lower", cmap="coolwarm")
        if row == 0:
            axes[row, 3].set_title(comp_labels[3], fontsize=12)
+       axes[row, 3].set_xticks([])
+       axes[row, 3].set_yticks([])
        plt.colorbar(im, ax=axes[row, 3], fraction=0.046)
 
    fig.suptitle("Magnetization Reconstruction Results", fontsize=16, fontweight='bold')
@@ -376,3 +418,7 @@ After running *run.py*, the plotting script can be executed to produce visualiza
    python plot.py
 
 This generates ``data/results.png`` showing the magnetization components and stray-field projections at each stage of the reconstruction, as well as ``data/error_map.png`` showing the pointwise reconstruction error.
+
+.. image:: _static/results_inverse_magnetization_reconstruction.png
+   :width: 600
+
