@@ -13,7 +13,7 @@ cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
 sigma2 = np.array([0, -0.1, -0.05, -0.01])
 
 
-for i in range(1):
+for i in range(4):
     sigma2_ = sigma2[i]
     
     ref_Bz = np.load(f"ref/oommf_hysteresis_Bz_sigma2_{sigma2_}.npy")/1000

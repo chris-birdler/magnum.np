@@ -31,7 +31,7 @@ except:
     this_dir = pathlib.Path().resolve()
 
 
-sigma2 = np.array([0.0, -0.1, -0.05, -0.01])
+sigma2 = np.array([-0.1, -0.05, -0.01])
 sigma2 = sigma2 * 2
 
 
