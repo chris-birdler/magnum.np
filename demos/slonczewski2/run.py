@@ -3,7 +3,7 @@
 #
 # Example 2 taken from the Mumax3 Website (https://mumax.github.io/examples.html)
 # Flipping the magnetization of a elliptical nanodisk with Slonczewski STT.
-# Implemented by Jed Cheng (jed.cheng@mag.ed.kyushu-u.ac.jp)
+# Implemented by Jed Cheng (jed.chengXmag.ed.kyushu-u.ac.jp, replace X with @)
 
 # %% [markdown]
 # ## Run Simulation
