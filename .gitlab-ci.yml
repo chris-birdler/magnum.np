@@ -66,7 +66,7 @@ notebooks:
         - mkdir -p public/notebooks
         - cd demos
 #        - ./create_notebook.sh dispersion inverse_demag langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
-        - ./create_notebook.sh dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
+        - ./create_notebook.sh inverse_magnetization_reconstruction dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
         - mv $(find . -name "*.ipynb") ../public/notebooks
 
         # deploy to github (in order to be accessible via Colab
