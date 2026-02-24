@@ -1,7 +1,7 @@
-:tocdepth: 1
+.. currentmodule:: magnumnp
 
 ##################
-Inverse Problems
+Optimal External-Field Angles
 ##################
 
 Usually the problems that are solved in micromagnetics are such that the final state is computed for given starting conditions, however, what if you wanted to find the necessary starting conditions for a certain state to be induced? The following demo code shows how *magnum.np* can be used to find the needed starting conditions for a given final state. 
