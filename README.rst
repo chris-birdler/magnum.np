@@ -21,9 +21,9 @@ Find more details about the necessary changes and the motivation `here <docs/cha
 The following table summarizes the most important syntax changes:
 
 
-********
+########
 Features
-********
+########
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
@@ -46,9 +46,9 @@ Features
 * Combined LLG + Linear Elasticity Solver (LLGwithLESolver)
 
 
-**************
+##############
 Selected Demos
-**************
+##############
 Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
 See also `https://florian98765.gitlab.io/magnum.np/demos.html <http://florian98765.gitlab.io/magnum.np/demos.html>`__ for a full list of available demos.
 
@@ -75,9 +75,9 @@ Inverse Problems
 ----------------
 * `Inverse Magnetization Reconstruction <https:///magnum.np.gitlab.io/magnum.np/notebooks/inverse_magnetization_reconstruction.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
 
-************
+############
 Installation
-************
+############
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
 .. code::
@@ -123,9 +123,9 @@ Magnum.np could also be used without any hardware by executing it remotely on re
 Some jupyter-notebook examples are included in the `demo <demos/README.md>`__ directory, which also include links to Colab, where they can directly be run without any local installation.
 
 
-*******
+#######
 Example
-*******
+#######
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
 .. code:: [python]
@@ -177,9 +177,9 @@ The following demo code shows the solution of the muMAG Standard Problem #5 and 
     
     Timer.print_report()
 
-*************
+#############
 Documentation
-*************
+#############
 The documentation is located in the doc directory and can be built using `sphinx <https://www.sphinx-doc.org>`__.
 For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
 
@@ -187,17 +187,17 @@ For example the following commands build an HTML documentation of the actual sou
 
 Alternatively, the latest version of the documentation is always available on https://magnum.np.gitlab.io/magnum.np/
 
-********
+########
 Citation
-********
+########
 If you use *magnum.np* in your work or publication, please cite the following reference:
 
 [1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", Scientific Reports volume 13, 12054 (2023).
 
 
-************
+############
 Contributing
-************
+############
 Contributions are gratefully accepted.
 The source code is hosted on `www.gitlab.com/magnum.np/magnum.np <http://www.gitlab.com/magnum.np/magnum.np>`__.
 If you have any issues or question, just open an issue via gitlab.com.
