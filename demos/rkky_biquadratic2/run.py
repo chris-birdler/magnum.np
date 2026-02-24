@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 set_log_level(25) # show info_green, but hide info_blue
 
-torch.set_default_dtype(torch.float32 )
+torch.set_default_dtype(torch.float32)
 Timer.enable()
 try:
     this_dir = pathlib.Path(__file__).resolve().parent
