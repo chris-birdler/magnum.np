@@ -30,14 +30,13 @@ Run remotely via Google Colab
 The same notebook can be executed remotely on resources provided by Google Colab. The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
 
 
-*************
+#############
 List of Demos
-*************
+#############
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
 
------------------
 Standard Problems
 -----------------
 * `Slonczewski Spin Torque 1 <https:///magnum.np.gitlab.io/magnum.np/notebooks/slonczewski1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
@@ -55,7 +54,6 @@ Standard Problems
 * `Stochastic Integration <https:///magnum.np.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
 * `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
-----------------
 Inverse Problems
 ----------------
 * `Inverse Magnetization Reconstruction <https:///magnum.np.gitlab.io/magnum.np/notebooks/inverse_magnetization_reconstruction.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)

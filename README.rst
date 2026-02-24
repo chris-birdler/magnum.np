@@ -54,6 +54,8 @@ See also `https://florian98765.gitlab.io/magnum.np/demos.html <http://florian987
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
+Standard Problems
+-----------------
 * `Slonczewski Spin Torque 1 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
 * `Slonczewski Spin Torque 2 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski2.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
 * `Softmagnetic Composite <https://florian98765.gitlab.io/magnum.np/notebooks/softmagnetic_composite.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
@@ -64,9 +66,14 @@ The following demos are also stored on Google Colab, where they can directly be 
 * `Standard Problem Domainwall Pinning <https://florian98765.gitlab.io/magnum.np/notebooks/sp_domainwall_pinning.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
 * `Standard Problem FMR <https://florian98765.gitlab.io/magnum.np/notebooks/sp_FMR.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
 * `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Standard Problem biquadratic RKKY 1 <https:///magnum.np.gitlab.io/magnum.np/notebooks/rkky_biquadratic1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__)
+* `Standard Problem biquadratic RKKY 2 <https:///magnum.np.gitlab.io/magnum.np/notebooks/rkky_biquadratic2.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__)
 * `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
 * `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
+Inverse Problems
+----------------
+* `Inverse Magnetization Reconstruction <https:///magnum.np.gitlab.io/magnum.np/notebooks/inverse_magnetization_reconstruction.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
 
 ************
 Installation
@@ -80,7 +87,6 @@ For a clean and independent system, we start with a clean virtual python environ
     source venv/bin/activate
 
 
---------------------------------
 from Python Package Index (PyPi)
 --------------------------------
 In order to install a release versions of magnum.np one simple uses:
@@ -96,7 +102,6 @@ You can also easily install different versions from private repositories. E.g. u
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
------------------------------
 from source code (gitlab.com)
 -----------------------------
 More advanced users can also install magnum.np from source code.
@@ -111,7 +116,6 @@ After activating the virtual environment magnum.np can be installed using the pi
 Note that a default version of http://www.pytorch.org is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
 
 
------------------------------
 run remotely via Google Colab
 -----------------------------
 Magnum.np could also be used without any hardware by executing it remotely on resources provided by Google Colab. The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
