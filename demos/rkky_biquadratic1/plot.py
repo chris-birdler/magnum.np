@@ -18,11 +18,11 @@ for i, sigma in enumerate(np.array([0, -0.1, -0.05, -0.01])):
     B = data[:,3]*4*np.pi*1e-7
     M = data[:,9]*2/3 + data[:,12]*1/3
 
-    ax.plot(ref_Bz, ref_Mz, '-', color = cycle[i], label = f"magnum.np (sigma2 = {sigma*2})")
-    ax.plot(B, M, '-', color = cycle[i], linewidth = 6, alpha = 0.4, label = f"reference (sigma2 = {sigma * 2})")
+    ax.plot(ref_Bz, ref_Mz, '-', color = cycle[i], linewidth = 6, alpha = 0.4, label = f"reference (sigma2 = {sigma*2})")
+    ax.plot(B, M, '-', color = cycle[i], label = f"magnum.np (sigma2 = {sigma * 2})")
 
 ax.set_xlabel("Bz (T)")
 ax.set_ylabel("Mz")
-ax.legend(ncol = 2)
+ax.legend()
 ax.grid()
 fig.savefig("data/results.png", dpi=300)

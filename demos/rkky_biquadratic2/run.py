@@ -25,20 +25,8 @@ except:
     this_dir = pathlib.Path().resolve()
 
 
-B_min = -5
-B_max = 5
-n_pts = 20
-
-BB = np.concatenate([np.linspace(B_min, B_max, n_pts), np.linspace(B_max, B_min, n_pts)])
-B_z = np.linspace(B_min, B_max, n_pts)
-B_z2 = np.linspace(B_max, B_min, n_pts)
-
-for sigma2 in np.array([-0.20, -0.10, -0.02]):
-#for i, sigma2_ in enumerate(sigma2):
+for sigma2 in np.array([0, -0.20, -0.10, -0.02]):
     Timer.enable()
-
-    Mz = np.zeros(2*n_pts)
-    Bz = np.zeros(2*n_pts)
 
     J_rkky = sigma2
 
@@ -92,22 +80,10 @@ for sigma2 in np.array([-0.20, -0.10, -0.02]):
     m2 = ("m2", lambda state: state.m[domain2])
     logger = ScalarLogger(f"data/m_sigma2_{sigma2}.dat", ['t', external.h, 'm', m1, m2])
 
+    # calculate hysteresis
+    B0 = 5
+    BB = np.concatenate([np.linspace(-B0, B0, 20), np.linspace(B0, -B0, 20)])
     for j, B in enumerate(BB):
         external.h = state.Constant([0, 0, B/constants.mu_0])
         llg.relax(state, maxiter=100)           
         logger << state
-
-        domain1_m = torch.mean(state.m[domain1], dim=0)
-        domain2_m = torch.mean(state.m[domain2], dim=0)
-
-        domain1_mz = domain1_m[2].detach().cpu().numpy()
-        domain2_mz = domain2_m[2].detach().cpu().numpy()
-
-        Mz_ = (domain1_mz + domain2_mz)/2
-        Mz[j] = Mz_
-
-        if j % 5 == 0:
-            print(f"sigma2: {sigma2}, B: {B}, Mz: {Mz_} ({j}/{len(B_z)*2})")
-
-    np.save(f"data/hysteresis_Mz_sigma2_{sigma2}.npy", Mz)
-    np.save(f"data/hysteresis_Bz_sigma2_{sigma2}.npy", BB)
