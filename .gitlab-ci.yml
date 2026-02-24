@@ -65,7 +65,8 @@ notebooks:
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
         - cd demos
-        - ./create_notebook.sh inverse_magnetization_reconstruction dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
+        #- ./create_notebook.sh inverse_magnetization_reconstruction dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
+        - ./create_notebook.sh inverse_magnetization_reconstruction rkky_biquadratic2
         - mv $(find . -name "*.ipynb") ../public/notebooks
 
         # deploy to github (in order to be accessible via Colab
@@ -80,9 +81,8 @@ notebooks:
     artifacts:
         paths:
             - public/notebooks
-    rules:
-        - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
-
+#    rules:
+#        - if: ( $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH ) && ( $GITHUB_TOKEN != null )
 
 pages:
     stage: deploy
