@@ -24,7 +24,7 @@ Standard Problems
 * `Standard Problem biquadratic RKKY 1 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__)
 * `Standard Problem biquadratic RKKY 2 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__)
 * `Stochastic Integration              <https://github.com/magnumnp/magnumnp_demos/blob/main/langevin.ipynb>`__               (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Dispersion Calculator               <demos/dispersion_calculator.ipynb>`__                                              (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
+* `Dispersion Calculator               <https://github.com/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__)
 
 Inverse Problems
 ----------------
