@@ -73,7 +73,7 @@ Standard Problems
 
 Inverse Problems
 ----------------
-* `Inverse Magnetization Reconstruction <https:///magnum.np.gitlab.io/magnum.np/notebooks/inverse_magnetization_reconstruction.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
+* `Inverse Magnetization Reconstruction <https://github.com/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
 
 ############
 Installation
