@@ -65,8 +65,7 @@ notebooks:
         - python -m ipykernel install --user --name=python3
         - mkdir -p public/notebooks
         - cd demos
-#        - ./create_notebook.sh dispersion inverse_demag langevin rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
-        - ./create_notebook.sh dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR
+        - ./create_notebook.sh dispersion inverse_demag rkky slonczewski1 slonczewski2 softmagnetic_composite sot sp4 sp5 sp_DMI sp_domainwall_pinning sp_FMR rkky_biquadratic1
         - mv $(find . -name "*.ipynb") ../public/notebooks
 
         # deploy to github (in order to be accessible via Colab
