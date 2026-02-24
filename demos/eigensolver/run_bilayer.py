@@ -120,13 +120,13 @@ with Timer("Time-domain simulation with sinc excitation"):
 ### calculate eigenmodes and spectrum
 with Timer("Caculate Eigenmodes"):
     try:
-        res = EigenResult.load(state, "data/eigen.pt")
+        res = EigenResult.load(state, "data/eigen_bilayer.pt")
     except Exception:
         state.m = m0
         eigen = EigenSolver(state, [exchange_b, exchange_t, rkky, aniso, dmi], [bias])
         res = eigen.solve(k=20)
-        res.store("data/eigen.pt")
-        res.save_evecs3D("data/evecs.pvd")
+        res.store("data/eigen_bilayer.pt")
+        res.save_evecs3D("data/evecs_bilayer.pvd")
 
     spectrum = res.spectrum(2*np.pi*freq, excite.h(state))
     projection = res.projection(2*np.pi*freq, delta_m)
