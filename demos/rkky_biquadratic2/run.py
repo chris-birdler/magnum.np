@@ -26,8 +26,6 @@ except:
 
 
 for sigma2 in np.array([0, -0.20, -0.10, -0.02]):
-    Timer.enable()
-
     J_rkky = sigma2
 
     # initialize mesh
@@ -87,3 +85,5 @@ for sigma2 in np.array([0, -0.20, -0.10, -0.02]):
         external.h = state.Constant([0, 0, B/constants.mu_0])
         llg.relax(state, maxiter=100)           
         logger << state
+
+Timer.print_report()
