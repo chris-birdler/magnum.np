@@ -74,8 +74,6 @@ state = State(mesh)
 domain = state.Constant(False, dtype=torch.bool)
 domain[:, :, 0] = True
 
-
-# %%
 state.material = {
     "Ms": 1e-20,
     "A": 1e-20,
@@ -94,6 +92,7 @@ state.material["Ku"][domain] = torch.tensor(Ku)
 # %% [markdown]
 # ## Compute Target H-field from Ground Truth
 
+# %%
 # Initialize bottom layer with ground truth magnetization
 state.m = state.Constant([0.0, 0.0, 0.0])
 state.m[:, :, :1, :] = m_true.clone()

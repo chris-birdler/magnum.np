@@ -3,7 +3,7 @@
 #
 # Example taken from the Mumax3 paper: Vansteenkiste, Arne, et al. "The design and verification of MuMax3." AIP advances 4.10 (2014).
 # The team compared the results of Mumax3 with the results from oommf of a 160nm x 80nm x 5nm permalloy film. Non-zero epislon prime is used.
-# Implemented by Jed Cheng (jed.cheng@mag.ed.kyushu-u.ac.jp)
+# Implemented by Jed Cheng (jed.chengXmag.ed.kyushu-u.ac.jp, replace X with @)
 
 # %% [markdown]
 # ## Run Simulation

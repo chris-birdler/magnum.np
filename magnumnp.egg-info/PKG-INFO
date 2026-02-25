@@ -1,3 +1,33 @@
+Metadata-Version: 2.4
+Name: magnumnp
+Version: 2.2.0
+Summary: magnum.np finite-difference package for the solution of micromagnetic problems
+Home-page: http://gitlab.com/magnum.np/magnum.np
+Author: Florian Bruckner
+Author-email: florian.bruckner@univie.ac.at
+Project-URL: Documentation, https://magnum.np.gitlab.io/magnum.np/
+Project-URL: Changelog, https://gitlab.com/magnum.np/magnum.np/blob/main/CHANGELOG
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+License-File: AUTHORS
+Requires-Dist: numpy
+Requires-Dist: pyvista
+Requires-Dist: scipy
+Requires-Dist: setproctitle
+Requires-Dist: torch
+Requires-Dist: torchdiffeq
+Requires-Dist: xitorch
+Requires-Dist: tqdm
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-dist
+Dynamic: summary
+
 .. image:: ./logo.png
   :width: 400
   :alt: magnum.np Logo
@@ -21,9 +51,9 @@ Find more details about the necessary changes and the motivation `here <docs/cha
 The following table summarizes the most important syntax changes:
 
 
-########
+********
 Features
-########
+********
 * Explicit / Implicit time-integration of the Landau-Lifshitz-Gilbert Equation
 * Fast FFT Demagnetization-field computation optimized for small memory footprint
 * Fast FFT Oersted-field optimized for small memory footprint
@@ -46,38 +76,31 @@ Features
 * Combined LLG + Linear Elasticity Solver (LLGwithLESolver)
 
 
-##############
+**************
 Selected Demos
-##############
+**************
 Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
 See also `https://florian98765.gitlab.io/magnum.np/demos.html <http://florian98765.gitlab.io/magnum.np/demos.html>`__ for a full list of available demos.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-Standard Problems
------------------
-* `Slonczewski Spin Torque 1           <https://github.com/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__           (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
-* `Slonczewski Spin Torque 2           <https://github.com/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__           (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
-* `Softmagnetic Composite              <https://github.com/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
-* `Spin Orbit Torque                   <https://github.com/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__)
-* `Standard Problem #4                 <https://github.com/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__)
-* `Standard Problem #5                 <https://github.com/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__)
-* `Standard Problem DMI                <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__                 (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__)
-* `Standard Problem Domainwall Pinning <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__  (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
-* `Standard Problem FMR                <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__                 (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
-* `Standard Problem RKKY               <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__                   (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Standard Problem biquadratic RKKY 1 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__)
-* `Standard Problem biquadratic RKKY 2 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__)
-* `Stochastic Integration              <https://github.com/magnumnp/magnumnp_demos/blob/main/langevin.ipynb>`__               (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Dispersion Calculator               <https://github.com/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__)
+* `Slonczewski Spin Torque 1 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
+* `Slonczewski Spin Torque 2 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski2.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
+* `Softmagnetic Composite <https://florian98765.gitlab.io/magnum.np/notebooks/softmagnetic_composite.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
+* `Spin Orbit Torque <https://florian98765.gitlab.io/magnum.np/notebooks/sot.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__)
+* `Standard Problem #4 <https://florian98765.gitlab.io/magnum.np/notebooks/sp4.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__)
+* `Standard Problem #5 <https://florian98765.gitlab.io/magnum.np/notebooks/sp5.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__)
+* `Standard Problem DMI <https://florian98765.gitlab.io/magnum.np/notebooks/sp_DMI.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__)
+* `Standard Problem Domainwall Pinning <https://florian98765.gitlab.io/magnum.np/notebooks/sp_domainwall_pinning.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
+* `Standard Problem FMR <https://florian98765.gitlab.io/magnum.np/notebooks/sp_FMR.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
+* `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
 
-Inverse Problems
-----------------
-* `Inverse Magnetization Reconstruction <https://github.com/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
 
-############
+************
 Installation
-############
+************
 For a clean and independent system, we start with a clean virtual python environment (this step could be omitted, if you would like to install magnum.np into the global python environment)
 
 .. code::
@@ -87,6 +110,7 @@ For a clean and independent system, we start with a clean virtual python environ
     source venv/bin/activate
 
 
+--------------------------------
 from Python Package Index (PyPi)
 --------------------------------
 In order to install a release versions of magnum.np one simple uses:
@@ -102,6 +126,7 @@ You can also easily install different versions from private repositories. E.g. u
     pip install git+https://gitlab.com/magnum.np/magnum.np@main
 
 
+-----------------------------
 from source code (gitlab.com)
 -----------------------------
 More advanced users can also install magnum.np from source code.
@@ -116,6 +141,7 @@ After activating the virtual environment magnum.np can be installed using the pi
 Note that a default version of http://www.pytorch.org is included in magnum.np's dependecy list. If you would like to uses a specific pytorch version (fitting your installed CUDA library) it needs to be installed in advance.
 
 
+-----------------------------
 run remotely via Google Colab
 -----------------------------
 Magnum.np could also be used without any hardware by executing it remotely on resources provided by Google Colab. The platform offers different runtime types like CPU(None), GPU or TPU. This allows users to directly test magnum.np, whithout needing their own hardware. Advanced users can use Google Colab(Pro), which provides access to current GPUs like the A100.
@@ -123,9 +149,9 @@ Magnum.np could also be used without any hardware by executing it remotely on re
 Some jupyter-notebook examples are included in the `demo <demos/README.md>`__ directory, which also include links to Colab, where they can directly be run without any local installation.
 
 
-#######
+*******
 Example
-#######
+*******
 The following demo code shows the solution of the muMAG Standard Problem #5 and can be found in the demos directory:
 
 .. code:: [python]
@@ -177,9 +203,9 @@ The following demo code shows the solution of the muMAG Standard Problem #5 and 
     
     Timer.print_report()
 
-#############
+*************
 Documentation
-#############
+*************
 The documentation is located in the doc directory and can be built using `sphinx <https://www.sphinx-doc.org>`__.
 For example the following commands build an HTML documentation of the actual source code and stores it in the `public` folder:
 
@@ -187,17 +213,17 @@ For example the following commands build an HTML documentation of the actual sou
 
 Alternatively, the latest version of the documentation is always available on https://magnum.np.gitlab.io/magnum.np/
 
-########
+********
 Citation
-########
+********
 If you use *magnum.np* in your work or publication, please cite the following reference:
 
 [1] Bruckner, Florian, et al. "magnum.np -- A pytorch based GPU enhanced Finite Difference Micromagnetic Simulation Framework for High Level Development and Inverse Design", Scientific Reports volume 13, 12054 (2023).
 
 
-############
+************
 Contributing
-############
+************
 Contributions are gratefully accepted.
 The source code is hosted on `www.gitlab.com/magnum.np/magnum.np <http://www.gitlab.com/magnum.np/magnum.np>`__.
 If you have any issues or question, just open an issue via gitlab.com.

@@ -49,23 +49,30 @@ Features
 *************
 List of Demos
 *************
-Demo scripts for various applications are available in the `demo <demos/README.rst>`__ directory.
+Demo scripts for various applications are available in the `demo <demos.html>`__ directory.
 
 The following demos are also stored on Google Colab, where they can directly be run without any local installation:
 
-* `Slonczewski Spin Torque 1 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski1.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
-* `Slonczewski Spin Torque 2 <https://florian98765.gitlab.io/magnum.np/notebooks/slonczewski2.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
-* `Softmagnetic Composite <https://florian98765.gitlab.io/magnum.np/notebooks/softmagnetic_composite.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
-* `Spin Orbit Torque <https://florian98765.gitlab.io/magnum.np/notebooks/sot.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__)
-* `Standard Problem #4 <https://florian98765.gitlab.io/magnum.np/notebooks/sp4.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__)
-* `Standard Problem #5 <https://florian98765.gitlab.io/magnum.np/notebooks/sp5.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__)
-* `Standard Problem DMI <https://florian98765.gitlab.io/magnum.np/notebooks/sp_DMI.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__)
-* `Standard Problem Domainwall Pinning <https://florian98765.gitlab.io/magnum.np/notebooks/sp_domainwall_pinning.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
-* `Standard Problem FMR <https://florian98765.gitlab.io/magnum.np/notebooks/sp_FMR.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
-* `Standard Problem RKKY <https://florian98765.gitlab.io/magnum.np/notebooks/rkky.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Stochastic Integration <https://florian98765.gitlab.io/magnum.np/notebooks/langevin.html>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
-* `Dispersion Calculator <demos/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/drive/1B3sSPnm_Nycbka_Fa54INtXD2nZr8Mb2>`__)
+Standard Problems
+-----------------
+* `Slonczewski Spin Torque 1           <https://github.com/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__           (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski1.ipynb>`__)
+* `Slonczewski Spin Torque 2           <https://github.com/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__           (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/slonczewski2.ipynb>`__)
+* `Softmagnetic Composite              <https://github.com/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/softmagnetic_composite.ipynb>`__)
+* `Spin Orbit Torque                   <https://github.com/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sot.ipynb>`__)
+* `Standard Problem #4                 <https://github.com/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp4.ipynb>`__)
+* `Standard Problem #5                 <https://github.com/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__                    (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp5.ipynb>`__)
+* `Standard Problem DMI                <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__                 (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_DMI.ipynb>`__)
+* `Standard Problem Domainwall Pinning <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__  (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_domainwall_pinning.ipynb>`__)
+* `Standard Problem FMR                <https://github.com/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__                 (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/sp_FMR.ipynb>`__)
+* `Standard Problem RKKY               <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__                   (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Standard Problem biquadratic RKKY 1 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic1.ipynb>`__)
+* `Standard Problem biquadratic RKKY 2 <https://github.com/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__      (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky_biquadratic2.ipynb>`__)
+* `Stochastic Integration              <https://github.com/magnumnp/magnumnp_demos/blob/main/langevin.ipynb>`__               (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/rkky.ipynb>`__)
+* `Dispersion Calculator               <https://github.com/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__  (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/dispersion_calculator.ipynb>`__)
 
+Inverse Problems
+----------------
+* `Inverse Magnetization Reconstruction <https://github.com/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__ (`Colab <https://colab.research.google.com/github/magnumnp/magnumnp_demos/blob/main/inverse_magnetization_reconstruction.ipynb>`__)
 
 .. toctree::
    :maxdepth: 1

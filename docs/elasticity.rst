@@ -175,6 +175,7 @@ The coupled magnetoelastic solver requires additional material parameters. These
 The dynamics of the mechanical degrees of freedom further depends on the magnetization, and is also explicitly dependent on the exchange constant ``"A"`` at boundary and material interface cells.
 
 .. code-block:: python
+
     state.material = {
             "alpha": state.Constant(alpha),
             "Ms": state.Constant(Ms),
@@ -318,3 +319,158 @@ Coupled Solver
 **************
 
 .. autoclass:: LLGWithLESolver
+
+
+
+**********************
+Uni-Directional Solver
+**********************
+
+For calculating magnetic insertion losses :math:`\Delta S_{ij}` of an acoustic
+wave, a uni-directional approximation can be used if the acoustic wave's mode
+and velocity are not significantly affected by the magnetic interaction. In this
+approximation, all energy loss is attributed to a reduction in the acoustic wave's
+amplitude. The insertion losses can then be calculated from an energy conservation
+argument (see Steinbauer et al., https://arxiv.org/abs/2507.23456).
+
+This approximation is not self-consistent, but it significantly simplifies the
+problem. Instead of simulating the mechanical degrees of freedom, the strain field
+is provided analytically as a function of time and position. Only the magnetization
+dynamics need to be computed. This means only the magnetic material needs to be
+simulated, which significantly reduces computational costs, especially for surface
+acoustic waves (SAWs), where the magnetic material is typically very thin
+compared to the non-magnetic substrate.
+
+----------------------------------
+Analytical Strain Field Definition
+----------------------------------
+
+The ``MagnetoElasticField`` accepts a callable ``mechanical_strain`` argument
+that returns the strain tensor as a function of the state. This allows the
+analytical solution of the acoustic wave to be defined.
+
+For example, using a Rayleigh SAW (see Maekawa et al., https://doi.org/10.1063/1.30437):
+
+.. code-block:: python
+
+    def rayleigh_eps(state, q, k_t, k_l, A, amp, omega, mesh_z, capping):
+        """Calculate strain tensor for Rayleigh wave."""
+        nx, ny, nz = state.mesh.n
+        eps = torch.zeros((nx, ny, nz, 6))
+
+        xx, xy, xz = state.mesh.SpatialCoordinate()
+        # Conversion from magnum.np coordinate system to
+        # https://doi.org/10.1063/1.30437 coordinate system
+        xz_down = mesh_z - xz + capping
+
+        kt_exp = torch.exp(-k_t * xz_down)
+        kl_exp = torch.exp(-k_l * xz_down)
+
+        # eps_xx
+        eps[:, :, :, 0] = ((kt_exp - ((2 * q**2) / (q**2 + k_t**2)) * kl_exp) *
+                          k_t * (-q) * torch.sin(xx * q - state.t * omega))
+        # eps_yy
+        eps[:, :, :, 1] = 0
+        # eps_zz
+        eps[:, :, :, 2] = (((k_t) * kt_exp - ((2 * k_t * k_l) / (q**2 + k_t**2)) *
+                          (k_l) * kl_exp) * q * torch.sin(xx * q - state.t * omega))
+        # 2 * eps_yz
+        eps[:, :, :, 3] = 0
+        # 2 * eps_xz
+        eps[:, :, :, 4] = (((k_t) * kt_exp - ((2 * q**2) / (q**2 + k_t**2)) *
+                          (k_l) * kl_exp) * k_t * torch.cos(xx * q - state.t * omega) +
+                          (kt_exp - ((2 * k_t * k_l) / (q**2 + k_t**2)) * kl_exp) *
+                          q**2 * torch.cos(xx * q - state.t * omega))
+        # 2 * eps_xy
+        eps[:, :, :, 5] = 0
+
+        return eps * (A / amp)
+
+Here, ``q`` is the wave vector, ``k_t`` and ``k_l`` are the transverse and
+longitudinal penetration depths, ``A`` is the SAW amplitude, ``amp`` is a
+normalization factor, ``omega`` is the angular frequency, ``mesh_z`` is the
+mesh height, and ``capping`` is the thickness of a non-magnetic capping layer.
+
+The magnetoelastic field term is then initialized with this analytical strain:
+
+.. code-block:: python
+
+    mag_el = MagnetoElasticField(
+        mechanical_strain=lambda state: rayleigh_eps(
+            state, q=SAW_k, k_t=SAW_kt, k_l=SAW_kl, A=SAW_amplitude,
+            amp=SAW_amp_factor, omega=SAW_omega, mesh_z=mesh_size_z,
+            capping=capping_thick
+        )
+    )
+
+--------------------------------
+Time Integration with LLGSolver
+--------------------------------
+
+Since only the magnetization dynamics need to be solved, the standard
+``LLGSolver`` can be used instead of ``LLGWithLESolver``. The magnetoelastic
+field term couples the analytical strain to the effective field acting on
+the magnetization.
+
+.. code-block:: python
+
+    exchange = ExchangeField()
+    external = ExternalField(h=[h_x, h_y, h_z])
+    demag = DemagField()
+    uniax_easy = UniaxialAnisotropyField(Ku="Ku_easy", Ku_axis="Ku_axis_easy")
+
+    energy_contributions = [exchange, external, mag_el, uniax_easy, demag]
+    llg = LLGSolver(energy_contributions)
+
+    while state.t < simulation_time:
+        llg.step(state, dt)
+
+----------------------------
+Calculating Insertion Losses
+----------------------------
+
+The energy transfer from the SAW to the magnetic system is calculated from the
+time derivative of the strain (defined analytically) and
+the magnetostrictive stress:
+
+.. math::
+  \frac{\text{d}E_\text{SAW}}{\text{d}t} = \frac{\partial\varepsilon}{\partial t}:\sigma^m
+
+Since the uni-directional model is not self-consistent, this energy transfer rate
+only has physical significance when the system is in dynamic equilibrium, defined
+as :math:`\frac{\text{d}^2E_\text{SAW}}{\text{d}t^2} = 0`.
+
+The magnetic insertion loss :math:`\Delta S_{ij}` is then computed from:
+
+.. math::
+  \Delta S_{ij} = \frac{10}{\ln(10)} \frac{l}{c_\text{SAW}} \frac{1}{E_\text{SAW}}
+  \frac{\text{d}E_\text{SAW}}{\text{d}t}
+
+Here, :math:`l` is the total length of the magnetic material along the SAW's
+propagation direction, :math:`c_\text{SAW}` is the SAW velocity, and
+:math:`E_\text{SAW}` is the SAW energy. Note that :math:`l` can be much longer
+than the simulation box, and the formula still applies.
+
+.. code-block:: python
+
+    # Calculate time derivative of strain
+    eps_v = rayleigh_deps_dt(state, q=SAW_k, k_t=SAW_kt, k_l=SAW_kl,
+                             A=SAW_amplitude, amp=SAW_amp_factor,
+                             omega=SAW_omega, mesh_z=mesh_size_z,
+                             capping=capping_thick)
+
+    # Calculate magnetostrictive stress
+    eps_m = epsilon_m(state)
+    sig_m = sigma(state, eps_m)
+
+    # Energy transfer rate
+    dE_SAW = float(torch.sum(eps_v * sig_m * cell_size))
+
+    # Insertion loss ΔSij in dB/mm
+    sij = (10 / np.log(10)) * (1e-3 / SAW_c) * (dE_SAW / SAW_energy)
+
+-------------
+Complete Code
+-------------
+
+The complete code can be viewed here: :download:`run.py <../demos/linear_elasticity/unidirectional/run.py>`.
