@@ -97,6 +97,10 @@ class IntergrainExchangeField(LinearFieldTerm):
         h /= constants.mu_0 * state.material["Ms"]
         return h.nan_to_num_(posinf=0, neginf=0)
 
+    def E(self, state, domain = Ellipsis): # TODO: remove as soon as the compiled LinearFieldTerm.E can trace the compiled h (cf. DemagField.E)
+        E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
+        return E[domain].sum()
+
 
 
 
