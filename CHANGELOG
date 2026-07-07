@@ -19,6 +19,8 @@ unreleased
   calls; an indexed write by the caller materializes a private copy (copy-on-write)
 - kernel cache files written at a different floating point precision are cast on
   load (with a warning when this loses precision)
+- DemagFieldPBC caches its spectral factors and uses rfftn (half-spectrum) instead
+  of rebuilding all transfer functions and running a full complex fftn every call
 
 2.2.0 [2026-02-13]
 - added spectrum(), projection() and absorption() to EigenResult
