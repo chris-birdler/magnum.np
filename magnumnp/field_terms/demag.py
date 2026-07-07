@@ -69,26 +69,30 @@ def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
         + F0(func, x - dx + dX, y, z, dy, dY, dz, dZ)
     return -res / (4.*pi*dx*dy*dz)
 
-def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
+def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin = True):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
-    res[0,0,0] = 0.
+    if zero_origin:
+        res[0,0,0] = 0.
     return res * dx*dy*dz / (4.*pi)
 
-def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
+def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin = True):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
-    res[0,0,0] = 0.
+    if zero_origin:
+        res[0,0,0] = 0.
     return res * dx*dy*dz / (4.*pi)
 
-def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
-    res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)
+def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p, zero_origin = True):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
+    res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(f, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
 
-def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p):
-    res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ)
+def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p, zero_origin = True):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
+    res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(g, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
@@ -110,10 +114,15 @@ class DemagField(LinearFieldTerm):
 
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
+    :param chunk_cells: chunk size (in cells) for the kernel setup; bounds the size of
+        the temporaries during initialization (default = 4*1024**2, i.e. 32 MB per
+        double-precision temporary)
+    :type chunk_cells: int, optional
     """
-    def __init__(self, p = 20, cache_dir = None):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 4<<20):
         self._p = p
         self._cache_dir = cache_dir
+        self._chunk_cells = chunk_cells
 
     def _shape(self, state): # TODO: try padding to 2N-1 for small N like mumax does
         s = [1,1,1]
@@ -130,19 +139,34 @@ class DemagField(LinearFieldTerm):
         dx = np.array(state.mesh.dx)
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
+        # the kernel is always evaluated on the CPU in double precision and
+        # only the final (much smaller) rfft components are moved to the
+        # target device by the caller; 1-D coordinate vectors + broadcasting
+        # replace the full padded meshgrids
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
-        ij = torch.meshgrid(*ij,indexing='ij')
-        x, y, z = [ij[ind]*dx[ind] for ind in perm]
+        coords = []
+        for i, n in enumerate(shape):
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu") * dx[i] # local indices
+            coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
+        x, y, z = [coords[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device="cpu") for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = torch.zeros(shape)
-        for offset in offsets:
-            Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx, *dx, self._p)
+        Nc = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        # evaluate in chunks along the first grid axis to bound the size of
+        # the elementwise temporaries (~10 temporaries of chunk size)
+        nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
+        for i0 in range(0, shape[0], nc):
+            xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]
+            for offset in offsets:
+                # zero_origin positionally zeroes the local [0,0,0] entry of the
+                # dipole formula (as the unchunked code did), so it may only be
+                # applied to the chunk containing the origin
+                Nc[i0:i0+nc] += func(xs + offset[0]*Lx[0], ys + offset[1]*Lx[1], zs + offset[2]*Lx[2],
+                                     *dx, *dx, self._p, zero_origin = (i0 == 0))
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -157,18 +181,16 @@ class DemagField(LinearFieldTerm):
             logging.info("[DEMAG]: Use cached demag kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()
-            torch.set_default_dtype(torch.float64) # always use double precision
             time_kernel = time()
 
-            Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
-            Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype)
-            Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype)
-            Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype)
-            Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype)
-            Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype)
+            Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype, device=state.device)
+            Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype, device=state.device)
+            Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype, device=state.device)
+            Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype, device=state.device)
+            Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype, device=state.device)
+            Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype, device=state.device)
 
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-            torch.set_default_dtype(dtype) # restore dtype
 
             # cache demag tensor
             if self._cache_dir != None:
