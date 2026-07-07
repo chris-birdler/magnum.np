@@ -122,14 +122,19 @@ class DemagField(LinearFieldTerm):
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
     :param chunk_cells: chunk size (in cells) for the kernel setup; bounds the size of
-        the temporaries during initialization (default = 4*1024**2, i.e. 32 MB per
+        the temporaries during initialization (default = 1024**2, i.e. 8 MB per
         double-precision temporary)
     :type chunk_cells: int, optional
+    :param kernel_device: device used to evaluate the demag kernel during setup
+        (default: the simulation device). Pass "cpu" to keep the device memory
+        usage during setup at the size of the final kernel.
+    :type kernel_device: str, optional
     """
-    def __init__(self, p = 20, cache_dir = None, chunk_cells = 4<<20):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None):
         self._p = p
         self._cache_dir = cache_dir
         self._chunk_cells = chunk_cells
+        self._kernel_device = kernel_device
 
     def _shape(self, state): # TODO: try padding to 2N-1 for small N like mumax does
         s = [1,1,1]
@@ -146,23 +151,25 @@ class DemagField(LinearFieldTerm):
         dx = np.array(state.mesh.dx)
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
-        # the kernel is always evaluated on the CPU in double precision and
-        # only the final (much smaller) rfft components are moved to the
-        # target device by the caller; 1-D coordinate vectors + broadcasting
-        # replace the full padded meshgrids
+        # the kernel is evaluated in double precision in bounded chunks, so the
+        # peak memory during setup stays close to the padded kernel volume;
+        # 1-D coordinate vectors + broadcasting replace the full padded
+        # meshgrids. kernel_device="cpu" additionally keeps the whole setup off
+        # the simulation device (only the final rfft components are moved).
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         shape = self._shape(state)
         coords = []
         for i, n in enumerate(shape):
-            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu") * dx[i] # local indices
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device) * dx[i] # local indices
             coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
         x, y, z = [coords[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device="cpu") for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device=device) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        Nc = torch.zeros(shape, dtype=torch.float64, device=device)
         # evaluate in chunks along the first grid axis to bound the size of
         # the elementwise temporaries (~10 temporaries of chunk size)
         nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))

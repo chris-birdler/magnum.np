@@ -4,9 +4,11 @@ unreleased
   indexed writes (material["Ms"][domain] = ...) materialize them transparently, other
   in-place operations on a never-written homogeneous parameter now raise and require
   Material.materialize(key) first
-- demag/Oersted/VectorPotential kernels are now always evaluated on the CPU in chunks
-  (new chunk_cells option), which removes the large device memory spike during setup;
-  values are unchanged (cached kernel files remain compatible)
+- demag/Oersted/VectorPotential kernels are evaluated in bounded chunks (new
+  chunk_cells option), which removes the large device memory spike during setup
+  (peak ~ kernel size instead of 10-20x); new kernel_device option ("cpu" keeps
+  the whole setup off the GPU); values are unchanged on a given device (cached
+  kernel files remain compatible)
 - reduced allocations and GPU synchronization in LLGSolver, RKF45/56, MinimizerBB,
   SD_solver and Minimizer_LBFGS; constant ExternalField and ThermalField prefactors
   are cached; non-equidistant demag uses a batched einsum instead of a python loop

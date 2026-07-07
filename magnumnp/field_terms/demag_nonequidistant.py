@@ -43,8 +43,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20):
+    def __init__(self, p = 20, kernel_device = None):
         self._p = p
+        self._kernel_device = kernel_device
 
     def _shape(self, state):
         s = [1,1,1]
@@ -60,16 +61,18 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
     def _init_N_component(self, state, i_dst, i_src, perm, func):
         # rescale dx to avoid NaNs when using single precision
         # TODO: add scale to state and rescale like in DemagField
-        # the kernel is always evaluated on the CPU in double precision and
-        # only the final stacked tensor is moved to the target device
+        # the kernel is evaluated in double precision on kernel_device
+        # (default: the simulation device) and the final stacked tensor is
+        # moved to the target device
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         dx = state.mesh.dx
-        dz = state.mesh.dx_tensor[2].detach().to(device="cpu", dtype=torch.float64)
+        dz = state.mesh.dx_tensor[2].detach().to(device=device, dtype=torch.float64)
         z = torch.cumsum(dz, dim=0) - dz[0]
         dx_dst = [[dx[0], dx[1], float(dz[i_dst])][ind] for ind in perm]
         dx_src = [[dx[0], dx[1], float(dz[i_src])][ind] for ind in perm]
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu").reshape([n if j == i else 1 for j in range(3)])
+        ij = [torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device).reshape([n if j == i else 1 for j in range(3)])
               for i, n in enumerate(shape)] # local indices (1-D, broadcast inside func)
         ij[2] = ij[2]*0. + z[i_dst] - z[i_src] # use fixed distance for z-direction
         x, y, z = [[ij[0]*dx[0], ij[1]*dx[1], ij[2].clone()][ind] for ind in perm]
@@ -77,10 +80,10 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], float(torch.cumsum(dz, dim=0)[-1])]
         Lx = [Lx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device="cpu") for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device=device) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        Nc = torch.zeros(shape, dtype=torch.float64, device=device)
         for offset in offsets:
             Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx_dst, *dx_src, self._p)
 
@@ -114,7 +117,7 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
                 Nzz = self._init_N_component(state, i_dst, i_src, [2,0,1], demag_f).squeeze(-1).to(dtype=complex_dtype[dtype])
 
                 if N is None:
-                    N = torch.zeros((n_z, n_z, 3, 3) + Nxx.shape, dtype=complex_dtype[dtype], device="cpu")
+                    N = torch.zeros((n_z, n_z, 3, 3) + Nxx.shape, dtype=complex_dtype[dtype], device=Nxx.device)
                 N[i_dst,i_src] = torch.stack([torch.stack([ Nxx,  Nxy,  Nxz]),
                                               torch.stack([ Nxy,  Nyy,  Nyz]),
                                               torch.stack([ Nxz,  Nyz,  Nzz])])

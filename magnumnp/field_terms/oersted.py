@@ -85,31 +85,35 @@ class OerstedField(FieldTerm):
     :param p: number of next neighbors for near field via Krueger's equations (default = 20)
     :type p: int, optional
     :param chunk_cells: chunk size (in cells) for the kernel setup; bounds the size of
-        the temporaries during initialization (default = 4*1024**2)
+        the temporaries during initialization (default = 1024**2)
     :type chunk_cells: int, optional
+    :param kernel_device: device used to evaluate the kernel during setup
+        (default: the simulation device); pass "cpu" to minimize device memory
+    :type kernel_device: str, optional
     """
-    def __init__(self, p = 20, cache_dir = None, chunk_cells = 4<<20):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None):
         self._p = p
         self._cache_dir = cache_dir
         self._chunk_cells = chunk_cells
+        self._kernel_device = kernel_device
 
     def _init_K_component(self, state, perm, func):
         # dipole far-field
         dx = np.array(state.mesh.dx)
 
-        # the kernel is always evaluated on the CPU in double precision and
-        # only the final rfft components are moved to the target device by
-        # the caller; 1-D coordinate vectors + broadcasting replace the full
-        # padded meshgrids, chunking bounds the elementwise temporaries
+        # the kernel is evaluated in double precision in bounded chunks (see
+        # DemagField._init_N_component); 1-D coordinate vectors + broadcasting
+        # replace the full padded meshgrids
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         coords = []
         for i, n in enumerate(shape):
-            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu") * dx[i] # local indices
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device) * dx[i] # local indices
             coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
         x, y, z = [coords[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        Kc = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        Kc = torch.zeros(shape, dtype=torch.float64, device=device)
         nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
         for i0 in range(0, shape[0], nc):
             xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]

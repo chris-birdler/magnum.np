@@ -73,26 +73,27 @@ class VectorPotential(object):
     :param p: number of next neighbors for near field via Seidov's equations (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20, cache_dir = None, chunk_cells = 4<<20):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None):
         self._p = p
         self._cache_dir = cache_dir
         self._chunk_cells = chunk_cells
+        self._kernel_device = kernel_device
 
     def _init_A_component(self, state):
         dx = np.array(state.mesh.dx)
 
-        # the kernel is always evaluated on the CPU in double precision and
-        # only the final rfft component is moved to the target device by the
-        # caller; 1-D coordinate vectors + broadcasting replace the full
-        # padded meshgrids, chunking bounds the elementwise temporaries
+        # the kernel is evaluated in double precision in bounded chunks (see
+        # DemagField._init_N_component); 1-D coordinate vectors + broadcasting
+        # replace the full padded meshgrids
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
         coords = []
         for i, n in enumerate(shape):
-            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu") * dx[i] # local indices
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device) * dx[i] # local indices
             coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
         x, y, z = coords
 
-        Ac = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        Ac = torch.zeros(shape, dtype=torch.float64, device=device)
         nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
         for i0 in range(0, shape[0], nc):
             Ac[i0:i0+nc] = vector_func(x[i0:i0+nc], y, z, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
