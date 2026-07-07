@@ -45,10 +45,18 @@ SCRIPT = textwrap.dedent("""
 """)
 
 
+# resolve the repo root explicitly: other tests may os.chdir() away, and the
+# subprocess must find the magnumnp package regardless of cwd or installation
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SUBPROCESS_ENV = {**os.environ,
+                  "CUDA_DEVICE": os.environ.get("CUDA_DEVICE", "-1"),
+                  "PYTHONPATH": REPO_ROOT + os.pathsep + os.environ.get("PYTHONPATH", "")}
+
+
 def run_variant(precision):
     result = subprocess.run([sys.executable, "-c", SCRIPT, precision],
                             capture_output=True, text=True, timeout=600,
-                            env={**os.environ, "CUDA_DEVICE": os.environ.get("CUDA_DEVICE", "-1")})
+                            cwd=REPO_ROOT, env=SUBPROCESS_ENV)
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout.strip().splitlines()[-1])
 
@@ -83,7 +91,7 @@ def test_set_precision_after_mesh_raises():
     """)
     result = subprocess.run([sys.executable, "-c", script],
                             capture_output=True, text=True, timeout=300,
-                            env={**os.environ, "CUDA_DEVICE": os.environ.get("CUDA_DEVICE", "-1")})
+                            cwd=REPO_ROOT, env=SUBPROCESS_ENV)
     assert result.returncode == 0, result.stderr
     assert "RAISED" in result.stdout
     assert "FORCED" in result.stdout

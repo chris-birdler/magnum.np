@@ -99,8 +99,13 @@ class Timer(object):
         return self
 
     def __exit__(self, e_typ, e_val, trcbak):
-        if all((e_typ, e_val, trcbak)):
-            raise e_typ from e_val
+        if e_typ is not None:
+            # propagate the original exception unmodified; re-raising e_typ
+            # would construct a new exception without arguments and mask the
+            # real error with a TypeError for exception types requiring them
+            if Timer._options['active']:
+                Timer._current = self._data['parent']
+            return False
 
         if not Timer._options['active']: return self
 
