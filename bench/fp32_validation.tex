@@ -174,6 +174,7 @@ suite & platform & passed & failed & notes \\
 \texttt{tests/unit} (branch, final) & CPU & 139$^\dagger$ & 1 & same rkky failure only \\
 \texttt{demos} integration (12 tests, incl.\ SP4/SP5) & CPU & 12 & 0 & \\
 \texttt{tests/unit} (branch) & V100 & 137 & 2 & rkky + flaky ARPACK \\
+\texttt{demos} integration (12 tests) & V100 & 12 & 0 & 768\,s wall-clock \\
 \bottomrule
 \end{tabular}
 \caption{Test-suite outcomes. $^\dagger$includes 7 new tests added by the branch
@@ -354,7 +355,7 @@ Refactored numerics vs.\ reference implementations (demag kernels, non-equidista
 Old-vs-new physics trajectories (SP4, V100, both precisions, Tab.~\ref{tab:oldvsnew}) & $\le 1.5\cdot10^{-8}$ after 520 steps \ok \\
 Unit suite, CPU (139 tests incl.\ 7 new) & 1 failure, \preexisting{} on \texttt{main} \ok \\
 Unit suite, V100 & 2 failures: same \preexisting{} + root-caused ARPACK flake \ok \\
-Demos integration suite (12 end-to-end problems incl.\ SP4/SP5) & all pass (CPU) \ok \\
+Demos integration suite (12 end-to-end problems incl.\ SP4/SP5) & all pass, CPU and V100 \ok \\
 fp32 validity (dedicated trajectory test + 13.8\,M-cell production run) & Secs.~\ref{sec:fp32tests}, \ref{sec:composite} \ok \\
 Adversarial multi-agent code review (high effort) & 10 findings $\to$ 8 fixed with regression tests, 2 documented \ok \\
 Performance non-regression (V100 + CPU benchmark sweeps) & 1 regression found, fixed, re-confirmed \ok \\
@@ -368,8 +369,6 @@ Performance non-regression (V100 + CPU benchmark sweeps) & 1 regression found, f
 \begin{enumerate}
 \item The project GitLab CI has not yet run on the branch (it repeats the unit
       and demo suites on the project runners) and should gate the merge as usual.
-\item The demo suite was executed on CPU only; on the GPU, coverage comes from
-      the unit suite and the benchmarks.
 \item Two intentional behavior changes ship with the branch and must be
       communicated in the merge request: copy-on-write material parameters
       (chained or non-indexed in-place writes on never-written homogeneous
