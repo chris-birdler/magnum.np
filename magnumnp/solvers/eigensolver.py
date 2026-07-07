@@ -20,7 +20,7 @@ from magnumnp.common import logging, constants, write_vti, complex_dtype, timedm
 import os
 import torch
 import numpy as np
-from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs
+from scipy.sparse.linalg import LinearOperator, aslinearoperator, eigs, ArpackError
 from scipy.interpolate import interp2d
 from scipy.linalg import eig
 from xml.etree import cElementTree
@@ -110,8 +110,26 @@ class EigenSolver(object):
         N = np.prod(self._m0[self._domain].shape[:-1])
         D0 = LinearOperator((2*N,2*N), self._D0, dtype=np.complex128)
 
-        evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = np.ones(2*N))
-        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol, v0 = np.ones(2*N))
+        # (nearly) degenerate spectra are hostile to Krylov methods: in exact
+        # arithmetic the Krylov space contains only one eigenvector per
+        # distinct eigenvalue, so ARPACK's convergence depends on the start
+        # vector and on floating-point noise ("no shifts could be applied").
+        # Mitigations: a seeded random start vector (an all-ones v0 collapses
+        # the Krylov space for symmetric problems), an enlarged Krylov basis
+        # (ncv), and a bounded retry with fresh seeded start vectors.
+        ncv = min(2*N, max(6*k + 1, 61))
+        last_err = None
+        for attempt in range(5):
+            v0 = np.random.default_rng(42 + attempt).standard_normal(2*N)
+            try:
+                evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = v0, ncv = ncv)
+                break
+            except ArpackError as e: # includes ArpackNoConvergence
+                logging.warning("[EigenSolver] ARPACK failed (attempt %d/5): %s. Retrying with a new start vector." % (attempt+1, str(e).splitlines()[0]))
+                last_err = e
+        else:
+            raise last_err
+        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol, v0 = v0, ncv = ncv)
 
         evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
