@@ -43,16 +43,26 @@ class ExternalField(object):
         external = ExternalField(Expression([x,y,z]))
     """
     def __init__(self, h = None):
+        self._h_cache = None
+        self._h_is_const = False
         if h != None:
             self.__setattr__("h", h)
 
     @timedmethod
     def h(self, state):
-        h = self._h(state)
-        return state.convert_tensorfield(h)
+        if self._h_is_const:
+            # cache the converted field for constant h; converting on every call
+            # would expand+copy a full [nx,ny,nz,3] tensor per evaluation.
+            # Callers must not modify the returned tensor (accumulate_h complies).
+            if self._h_cache is None:
+                self._h_cache = state.convert_tensorfield(self._h(state))
+            return self._h_cache
+        return state.convert_tensorfield(self._h(state))
 
     def __setattr__(self, name, value):
         if name == "h":
+            super().__setattr__("_h_is_const", not callable(value))
+            super().__setattr__("_h_cache", None) # invalidate cache when h is reassigned
             if callable(value):
                 self._h = value
             else:
