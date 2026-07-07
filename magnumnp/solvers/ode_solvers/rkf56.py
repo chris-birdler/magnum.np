@@ -16,8 +16,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import math
 import torch
-from magnumnp.common import logging
+from magnumnp.common import logging, normalize
 
 __all__ = ["RKF56"]
 
@@ -44,7 +45,7 @@ class RKF56(object):
         state.m = m
         f = self._f(state, **llg_args)
         state.t = t0
-        state.m = m0.normalize()
+        state.m = normalize(m0)
         return f
 
     def _try_step(self, state, **llg_args):
@@ -64,19 +65,24 @@ class RKF56(object):
         return m+dm, t+dt, rk_error
 
     def _optimal_stepsize(self, rk_error, atol):
-        norm = torch.linalg.norm(rk_error._base.flatten() / atol, torch.inf)
-        if torch.isnan(norm):
+        # single device sync per attempted step; all step-size control
+        # afterwards is plain python float arithmetic
+        norm = float(torch.linalg.norm(rk_error.flatten() / atol, torch.inf))
+        if math.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
         if norm > 1.1:
             # decrease step, no more than factor of 5, but a fraction S more
             # than scaling suggests (for better accuracy)
-            r = self._headroom / torch.pow(norm, 1.0/self._order)
+            r = self._headroom / norm**(1.0/self._order)
             if (r < self._minscale):
                 r = self._minscale
         elif norm < 0.5:
             # increase step, but no more than by a factor of 5
-            r = self._headroom / torch.pow(norm, 1.0/(self._order+1.0));
+            if norm > 0.:
+                r = self._headroom / norm**(1.0/(self._order+1.0))
+            else:
+                r = self._maxscale
             if r > self._maxscale: # increase no more than factor of 5
                 r = self._maxscale
             if r < 1.: # don't allow any decrease caused by S<1
@@ -90,19 +96,20 @@ class RKF56(object):
         return dt_opt
 
     def step(self, state, dt, rtol = None, atol = None, **llg_args):
-        t0, t1 = state.t, state.t + dt
-        while state.t < t1:
+        remaining = float(dt) # track remaining time in python to avoid device syncs
+        while remaining > 0.:
             _m1, _t1, err = self._try_step(state, **llg_args)
-            dt_opt = torch.tensor(self._optimal_stepsize(err, atol or self._atol))
-            if self._dt > dt_opt or self._dt > t1 - state.t:
+            dt_opt = self._optimal_stepsize(err, atol or self._atol)
+            if self._dt > dt_opt or self._dt > remaining:
                 # step size was too large, retry with optimal stepsize
                 # also rescale the thermal field accordingly
-                self._dt = torch.min(dt_opt, t1 - state.t).detach()
-                logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
+                self._dt = min(dt_opt, remaining)
+                logging.debug("REVERT step: %g, new step size: %g", self._dt, dt_opt)
             else:
                 # accept step, adapt stepsize for next step
+                remaining -= self._dt
                 state.m = _m1
                 state.t = _t1
-                logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, state.t))
+                logging.debug("ACCEPT step: %g, new step size: %g", self._dt, dt_opt)
                 self._dt = dt_opt
                 state._step += 1
