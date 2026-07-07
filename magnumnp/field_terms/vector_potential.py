@@ -111,6 +111,11 @@ class VectorPotential(object):
         name = "/A_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             Axx = torch.load(self._cache_dir + name, map_location=state.device)
+            cdtype = complex_dtype[torch.get_default_dtype()]
+            if Axx.dtype != cdtype: # cache file was written at a different precision
+                if Axx.dtype.itemsize < cdtype.itemsize:
+                    logging.warning("[DEMAG]: Cached kernel '%s' has lower precision (%s) than the current run (%s). Delete it to recompute at full precision." % (self._cache_dir + name, Axx.dtype, cdtype))
+                Axx = Axx.to(dtype=cdtype)
             logging.info("[DEMAG]: Use cached VectorPotential kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()

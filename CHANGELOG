@@ -15,6 +15,10 @@ unreleased
 - ScalarLogger defaults to fsync_every=100 (rows are still flushed every write);
   FieldLogger no longer rewrites the whole .pvd document through minidom on every log
 - added bench/ with GPU benchmark scripts and a vast.ai setup guide
+- the field returned by a constant ExternalField.h() shares its storage between
+  calls; an indexed write by the caller materializes a private copy (copy-on-write)
+- kernel cache files written at a different floating point precision are cast on
+  load (with a warning when this loses precision)
 
 2.2.0 [2026-02-13]
 - added spectrum(), projection() and absorption() to EigenResult

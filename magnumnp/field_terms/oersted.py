@@ -128,6 +128,11 @@ class OerstedField(FieldTerm):
         name = "/K_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=state.device)
+            cdtype = complex_dtype[torch.get_default_dtype()]
+            if Kxy.dtype != cdtype: # cache file was written at a different precision
+                if Kxy.dtype.itemsize < cdtype.itemsize:
+                    logging.warning("[OERSTED]: Cached kernel '%s' has lower precision (%s) than the current run (%s). Delete it to recompute at full precision." % (self._cache_dir + name, Kxy.dtype, cdtype))
+                [Kxy, Kyz, Kxz] = [K.to(dtype=cdtype) for K in [Kxy, Kyz, Kxz]]
             logging.info("[OERSTED]: Use cached Oersted kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()

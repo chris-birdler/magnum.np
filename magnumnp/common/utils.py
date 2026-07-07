@@ -91,11 +91,15 @@ def accumulate_h(fields):
         total = next(it)
     except StopIteration:
         raise ValueError("accumulate_h() requires at least one field contribution")
-    for i, f in enumerate(it):
-        if i == 0:
+    accumulated = False
+    for f in it:
+        if not accumulated:
             total = total + f # allocate the accumulator; never mutate the first field
+            accumulated = True
         else:
             total.add_(f)
+    if not accumulated:
+        total = total.clone() # single contribution: never hand out a term's own (possibly cached) tensor
     return total
 
 

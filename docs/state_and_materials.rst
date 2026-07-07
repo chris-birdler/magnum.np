@@ -89,7 +89,7 @@ Because materials are defined as Python dictionaries its items are accessed usin
 
   state.material["A"] = 1.
 
-If the material is homogeneous this internally uses torch.tensor.expand to create the tensor [nx,ny,nz,1] and save memory. Such parameters are stored copy-on-write: an indexed write like :code:`state.material["Ms"][domain] = 0.` transparently converts them into a dense tensor-field. Other in-place operations (e.g. :code:`state.material["Ms"] *= 2.`) on a never-written homogeneous parameter raise an error; call :code:`state.material.materialize("Ms")` first in that case.
+If the material is homogeneous this internally uses torch.tensor.expand to create the tensor [nx,ny,nz,1] and save memory. Such parameters are stored copy-on-write: a direct indexed write like :code:`state.material["Ms"][domain] = 0.` transparently converts them into a dense tensor-field. Other in-place operations (e.g. :code:`state.material["Ms"] *= 2.` or chained writes like :code:`state.material["Ms"][0][mask] = 0.`) do not trigger the conversion; call :code:`state.material.materialize("Ms")` first in that case.
 
 Location-Dependent Materials
 ****************************

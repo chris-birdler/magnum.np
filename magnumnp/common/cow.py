@@ -36,12 +36,19 @@ class CoWTensor(torch.Tensor):
 
     first materializes a dense private copy. The storage swap happens in
     place (via :code:`Tensor.set_`), so every existing reference to the
-    parameter observes the write.
+    parameter *object* observes the write.
 
-    Note that in-place operations other than :code:`__setitem__` (e.g.
-    :code:`mul_` or :code:`+=`) on a still-expanded tensor raise the usual
-    "multiple elements refer to a single memory location" error; call
-    :code:`materialize()` first in that case.
+    Caveats (compared to a dense tensor):
+    - only a *direct* :code:`__setitem__` on the parameter triggers the
+      copy-on-write. In-place operations on a still-expanded tensor either
+      raise pytorch's "multiple elements refer to a single memory location"
+      error (:code:`mul_`, :code:`+=`, slice assignment through a view) or -
+      for chained indexed writes like :code:`param[0][mask] = 0.` - write
+      through to the shared storage (pytorch deprecation warning). Call
+      :code:`materialize()` first for such patterns.
+    - views created *before* the materializing write (e.g.
+      :code:`layer = param[:,:,0]`) keep pointing to the old expanded storage
+      and do not observe the write; re-index the parameter after the write.
     """
     __torch_function__ = torch._C._disabled_torch_function_impl
 

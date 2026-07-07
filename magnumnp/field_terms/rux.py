@@ -66,8 +66,14 @@ class AtomisticRuXExchangeField(LinearFieldTerm):
 
     @timedmethod
     def h(self, state):
-        if not hasattr(self, "_coeffs"):
+        # identity catches parameter reassignment, the version counters catch
+        # in-place/domain writes (which keep the object identity)
+        Ms = state.material["Ms"]
+        dist = state.material["RuxDistribution"]
+        key = (id(Ms), Ms._version, id(dist), dist._version)
+        if getattr(self, "_coeffs_key", None) != key:
             self._coeffs = self._init_coefficients(state)
+            self._coeffs_key = key
 
         h = torch.zeros_like(state.m)
         m = state.m

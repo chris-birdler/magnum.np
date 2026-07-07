@@ -45,7 +45,10 @@ class RKF56(object):
         state.m = m
         f = self._f(state, **llg_args)
         state.t = t0
-        state.m = normalize(m0)
+        # m0 shares storage with the stage base held by _try_step, so the
+        # normalization must act on a copy - normalizing in place would
+        # silently change the base point of the remaining RK stages
+        state.m = normalize(m0.clone())
         return f
 
     def _try_step(self, state, **llg_args):

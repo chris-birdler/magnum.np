@@ -28,8 +28,7 @@ class ThermalField(FieldTerm):
     parameters = ["T"]
     def __init__(self, domain=None, **kwargs):
         self._step = None
-        self._alpha_ref = None
-        self._Ms_ref = None
+        self._pref_key = None
         super().__init__(**kwargs)
 
     @timedmethod
@@ -39,14 +38,17 @@ class ThermalField(FieldTerm):
             self._sigma = torch.normal(0., 1., size = state.m.shape, device = state.m.device, dtype = state.m.dtype)
             self._step = state._step
 
-        # cache the time-invariant prefactor; constant material parameters return
-        # the identical tensor object on every access, so an identity check is
-        # sufficient (state-dependent parameters invalidate on every call)
+        # cache the time-invariant prefactor; the key combines object identity
+        # (catches reassignment; constant material parameters return the identical
+        # tensor object on every access, state-dependent ones a new object) with
+        # the tensors' version counters (catches in-place/domain writes, which
+        # keep the object identity)
         alpha = state.material["alpha"]
         Ms = state.material["Ms"]
-        if self._alpha_ref is not alpha or self._Ms_ref is not Ms:
+        key = (id(alpha), alpha._version, id(Ms), Ms._version)
+        if self._pref_key != key:
             self._pref = torch.sqrt(2. * alpha * constants.kb / (constants.mu_0 * Ms * constants.gamma * state.mesh.cell_volumes))
-            self._alpha_ref, self._Ms_ref = alpha, Ms
+            self._pref_key = key
 
         T = torch.as_tensor(state.T, dtype=state.m.dtype, device=state.m.device)
         h = self._sigma * self._pref * (T / state._dt)**0.5

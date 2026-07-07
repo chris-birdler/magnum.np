@@ -70,6 +70,13 @@ def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
     return -res / (4.*pi*dx*dy*dz)
 
 def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin = True):
+    # TODO: zero_origin positionally zeroes the local [0,0,0] entry. For the
+    # 0-offset image this removes the (undefined) self-term, which the Newell
+    # near-field rescue then replaces. For nonzero PBC offsets and far
+    # non-equidistant layer pairs, however, it silently drops a real on-axis
+    # dipole coupling whenever the image/layer distance exceeds the Newell
+    # radius p (behavior inherited from previous versions and kept for
+    # bit-compatibility).
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
     if zero_origin:
@@ -178,6 +185,11 @@ class DemagField(LinearFieldTerm):
         name = "/N_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = torch.load(self._cache_dir + name, map_location=state.device)
+            dtype = torch.get_default_dtype()
+            if Nxx.dtype != dtype: # cache file was written at a different precision
+                if Nxx.dtype.itemsize < dtype.itemsize:
+                    logging.warning("[DEMAG]: Cached kernel '%s' has lower precision (%s) than the current run (%s). Delete it to recompute at full precision." % (self._cache_dir + name, Nxx.dtype, dtype))
+                [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = [N.to(dtype=dtype) for N in [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz]]
             logging.info("[DEMAG]: Use cached demag kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()

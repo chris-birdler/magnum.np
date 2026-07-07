@@ -97,9 +97,11 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
 
         dtype = torch.get_default_dtype()
         time_kernel = time()
-        # kernel is stored as one stacked tensor N[i_dst, i_src, comp, ax, x, y],
-        # so h() can contract all layer pairs in a single einsum instead of a
-        # O(nz^2 * 3) python loop
+        # kernel is stacked over layer pairs and components so h() can contract
+        # everything in a single batched matmul instead of a O(nz^2 * 3) python
+        # loop; the final layout [x, y, (dst,comp), (src,ax)] keeps the batch
+        # dimensions leading, so no per-call permutation/copy of the kernel is
+        # needed
         n_z = state.mesh.n[2]
         N = None
         for i_dst in range(n_z):
@@ -120,7 +122,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
                     N[i_src,i_dst] = torch.stack([torch.stack([ Nxx,  Nxy, -Nxz]),
                                                   torch.stack([ Nxy,  Nyy, -Nyz]),
                                                   torch.stack([-Nxz, -Nyz,  Nzz])])
-        self._N = N.to(state.device)
+        # [dst, src, comp, ax, x, y] -> [x, y, (dst,comp), (src,ax)]
+        X, Y = N.shape[4], N.shape[5]
+        self._N = N.permute(4, 5, 0, 2, 1, 3).reshape(X, Y, n_z*3, n_z*3).contiguous().to(state.device)
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
 
     @timedmethod
@@ -136,11 +140,12 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         else:
             m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
 
-        # contract kernel N[a, b, comp, ax, x, y] with m_fft[x, y, b, ax]
-        # over all layer pairs and components in one batched operation
+        # contract kernel [x, y, (dst,comp), (src,ax)] with m_fft[x, y, (src,ax)]
+        # over all layer pairs and components in one batched matmul
         if not m_pad_fft.is_complex():
             m_pad_fft = m_pad_fft.to(self._N.dtype) # single-spin branch passes a real tensor
-        h_fft = torch.einsum("abcdxy,xybd->xyac", self._N, m_pad_fft)
+        X, Y, n_z = m_pad_fft.shape[0], m_pad_fft.shape[1], state.mesh.n[2]
+        h_fft = (self._N @ m_pad_fft.reshape(X, Y, n_z*3, 1)).reshape(X, Y, n_z, 3)
 
         if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
             h = h_fft.real.clone()

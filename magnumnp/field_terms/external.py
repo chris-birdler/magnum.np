@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common import timedmethod, constants
+from magnumnp.common.cow import CoWTensor
 import torch
 
 __all__ = ["ExternalField"]
@@ -52,10 +53,14 @@ class ExternalField(object):
     def h(self, state):
         if self._h_is_const:
             # cache the converted field for constant h; converting on every call
-            # would expand+copy a full [nx,ny,nz,3] tensor per evaluation.
-            # Callers must not modify the returned tensor (accumulate_h complies).
+            # would expand+copy a full [nx,ny,nz,3] tensor per evaluation
             if self._h_cache is None:
                 self._h_cache = state.convert_tensorfield(self._h(state))
+            if isinstance(self._h_cache, CoWTensor):
+                # hand out a fresh copy-on-write wrapper per call: an indexed
+                # write by the caller materializes into the caller's object and
+                # leaves the cached field untouched
+                return CoWTensor.wrap(self._h_cache.as_subclass(torch.Tensor))
             return self._h_cache
         return state.convert_tensorfield(self._h(state))
 
