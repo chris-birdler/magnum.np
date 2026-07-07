@@ -42,7 +42,7 @@ class SpinOrbitTorque(object):
         p = state.material["p"].expand_as(state.m)
         h = state.material["eta_damp"] * torch.linalg.cross(state.m, p) + state.material["eta_field"] * p
         h *= -state.material["je"] * constants.hbar / (2. * constants.e * state.material["Ms"] * constants.mu_0 * state.material["d"])
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
     def E(self, state):
         raise NotImplemented()
@@ -118,7 +118,7 @@ class SpinTorqueSlonczewski(object):
         h = epsilon * mxp + state.material["epsilon_prime"] * mp
 
         h *= constants.hbar * state.material["J"] / (constants.mu_0 * state.material["Ms"] * constants.e * d)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
     def E(self, state):
         raise NotImplemented()

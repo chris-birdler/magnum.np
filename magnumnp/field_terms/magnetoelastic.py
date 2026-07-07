@@ -101,7 +101,7 @@ class MagnetoElasticField(object):
         h[:,:,:,2] = sig_el[:,:,:,2]*dz_eps_zz + sig_el[:,:,:,4]*d_eps_x + sig_el[:,:,:,3]*d_eps_y
 
         h *= -1. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
     
     @torch.compile
     def E(self, state, domain = Ellipsis):
@@ -180,4 +180,4 @@ class LinearMagnetoElasticField(LinearFieldTerm):
         h[...,2] = 2*B1*m[...,2]*eps[...,2] + B2*(eps[...,4]*m[...,0] + eps[...,3]*m[...,1])
 
         h *= -1. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)

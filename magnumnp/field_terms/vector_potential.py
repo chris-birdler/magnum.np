@@ -128,10 +128,6 @@ class VectorPotential(object):
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         s = [2*state.mesh.n[i] for i in range(3) if state.mesh.n[i] > 1]
 
-        Ax = torch.zeros_like(self._Axx)
-        Ay = torch.zeros_like(self._Axx)
-        Az = torch.zeros_like(self._Axx)
-
         j = state.j # state calls j(state) if j is a function
         Ai = [torch.fft.irfftn(self._Axx * torch.fft.rfftn(j[:,:,:,ax], dim=dim, s=s), dim=dim) for ax in range(3)]
 

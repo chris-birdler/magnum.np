@@ -47,7 +47,7 @@ class UniaxialAnisotropyField(LinearFieldTerm):
         Ku_axis = state.material[self.Ku_axis]
 
         h = 2. * Ku * Ku_axis / (constants.mu_0 * state.material["Ms"]) * torch.sum(Ku_axis * state.m, dim=3, keepdim=True)
-        return torch.nan_to_num(h, posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
 
 class UniaxialAnisotropyField2(FieldTerm):
@@ -74,7 +74,7 @@ class UniaxialAnisotropyField2(FieldTerm):
         Ku_axis = state.material[self.Ku_axis]
 
         h = 4. * Ku2 * Ku_axis / (constants.mu_0 * state.material["Ms"]) * torch.sum(Ku_axis * state.m, dim=3, keepdim=True)**3
-        return torch.nan_to_num(h, posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
     @torch.compile
     def E(self, state, domain = Ellipsis):
@@ -150,7 +150,7 @@ class CubicAnisotropyField(FieldTerm):
         h =  2. * Kc1 * torch.stack([mx * (my**2 + mz**2), my*(mz**2 + mx**2), mz*(mx**2 + my**2)], dim = -1) + \
              2. * Kc2 * torch.stack([mx * my**2. * mz**2., mx**2. * my * mz**2., mx**2. * my**2. * mz], dim = -1)
         h = torch.einsum('...a, ...ba-> ...b', h, R) # matmult transpose
-        return torch.nan_to_num(-1./constants.mu_0/state.material["Ms"] * h, posinf=0, neginf=0)
+        return (-1./constants.mu_0/state.material["Ms"] * h).nan_to_num_(posinf=0, neginf=0)
 
     @torch.compile
     def E(self, state):
@@ -217,7 +217,7 @@ class CubicAnisotropyField2(FieldTerm):
                         (c1m**4 + c3m**4) * c2m**3 * Kc_axis2 + \
                         (c1m**4 + c2m**4) * c3m**3 * Kc_axis3)
 
-        return torch.nan_to_num(-1./constants.mu_0/state.material["Ms"] * h, posinf=0, neginf=0)
+        return (-1./constants.mu_0/state.material["Ms"] * h).nan_to_num_(posinf=0, neginf=0)
 
     @torch.compile
     def E(self, state):

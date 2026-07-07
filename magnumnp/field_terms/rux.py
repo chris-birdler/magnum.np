@@ -38,27 +38,46 @@ class AtomisticRuXExchangeField(LinearFieldTerm):
         self._Jij = Jij
         super().__init__(**kwargs)
 
-    @timedmethod
-    def h(self, state):
-        h = torch.zeros_like(state.m)
+    def _init_coefficients(self, state):
+        # everything except state.m is time-invariant, so the interaction
+        # coefficients (material prefactor * J-lookup * spacer masks) are
+        # computed once and cached (trades ~6*len(J) stored fields for the
+        # per-step recomputation; this term targets small atomistic meshes)
         J = self._Jij
         mu = state.material["Ms"]*state.mesh.cell_volumes
-        mat = torch.tensor(state.material["RuxDistribution"].repeat_interleave(3).reshape(state.mesh.n + (3,)))
-        Jsize = list(J.size())
-        for i in range(Jsize[1]):
-            f = 2. / (constants.mu_0 * mu)
+        f = 2. / (constants.mu_0 * mu)
+        mat = state.material["RuxDistribution"].repeat_interleave(3).reshape(state.mesh.n + (3,))
+        coeffs = []
+        for i in range(J.size(1)):
             smx, smy, smz = 1., 1., 1.
             for k in range(i):
                 smx *= (1 - torch.sign(mat[1+k:-i+k,:,:]))
                 smy *= (1 - torch.sign(mat[:,1+k:-i+k,:]))
                 smz *= (1 - torch.sign(mat[:,:,1+k:-i+k]))
 
-            h[+i+1:,:,:,:] += f[+i+1:,:,:,:] * J[mat[+i+1:,:,:,:] + mat[:-i-1,:,:,:], i] * smx * state.m[:-i-1,:,:,:]
-            h[:-i-1,:,:,:] += f[:-i-1,:,:,:] * J[mat[+i+1:,:,:,:] + mat[:-i-1,:,:,:], i] * smx * state.m[+i+1:,:,:,:]
-            h[:,+i+1:,:,:] += f[:,+i+1:,:,:] * J[mat[:,+i+1:,:,:] + mat[:,:-i-1,:,:], i] * smy * state.m[:,:-i-1,:,:]
-            h[:,:-i-1,:,:] += f[:,:-i-1,:,:] * J[mat[:,+i+1:,:,:] + mat[:,:-i-1,:,:], i] * smy * state.m[:,+i+1:,:,:]
-            h[:,:,+i+1:,:] += f[:,:,+i+1:,:] * J[mat[:,:,+i+1:,:] + mat[:,:,:-i-1,:], i] * smz * state.m[:,:,:-i-1,:]
-            h[:,:,:-i-1,:] += f[:,:,:-i-1,:] * J[mat[:,:,+i+1:,:] + mat[:,:,:-i-1,:], i] * smz * state.m[:,:,+i+1:,:]
+            Jx = J[mat[+i+1:,:,:,:] + mat[:-i-1,:,:,:], i] * smx
+            Jy = J[mat[:,+i+1:,:,:] + mat[:,:-i-1,:,:], i] * smy
+            Jz = J[mat[:,:,+i+1:,:] + mat[:,:,:-i-1,:], i] * smz
+
+            coeffs.append((f[+i+1:,:,:,:] * Jx, f[:-i-1,:,:,:] * Jx,
+                           f[:,+i+1:,:,:] * Jy, f[:,:-i-1,:,:] * Jy,
+                           f[:,:,+i+1:,:] * Jz, f[:,:,:-i-1,:] * Jz))
+        return coeffs
+
+    @timedmethod
+    def h(self, state):
+        if not hasattr(self, "_coeffs"):
+            self._coeffs = self._init_coefficients(state)
+
+        h = torch.zeros_like(state.m)
+        m = state.m
+        for i, (cxa, cxb, cya, cyb, cza, czb) in enumerate(self._coeffs):
+            h[+i+1:,:,:,:] += cxa * m[:-i-1,:,:,:]
+            h[:-i-1,:,:,:] += cxb * m[+i+1:,:,:,:]
+            h[:,+i+1:,:,:] += cya * m[:,:-i-1,:,:]
+            h[:,:-i-1,:,:] += cyb * m[:,+i+1:,:,:]
+            h[:,:,+i+1:,:] += cza * m[:,:,:-i-1,:]
+            h[:,:,:-i-1,:] += czb * m[:,:,+i+1:,:]
 
         if self._hom is not None:
             for i in self._hom:

@@ -60,7 +60,7 @@ def normalize(data):
     Helper function to normalize vectorial data inplace
     """
     data /= torch.linalg.norm(data, dim = -1, keepdim = True)
-    data[...] = torch.nan_to_num(data, posinf=0, neginf=0)
+    data.nan_to_num_(posinf=0, neginf=0)
     return data
 
 def randM(data):
