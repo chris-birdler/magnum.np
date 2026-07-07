@@ -1,0 +1,358 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\newcommand{\magnumnp}{magnum.np}
+\newcommand{\ok}{\textcolor{green!50!black}{\textbf{pass}}}
+\newcommand{\preexisting}{\textcolor{orange!80!black}{pre-existing}}
+
+\title{Validation of Single-Precision (fp32) Arithmetic in \magnumnp{}\\
+\large Test and benchmark report of the \texttt{perf/memory-optimizations} branch}
+\author{automated validation campaign\thanks{Prepared with Claude Code (Claude Fable~5). All numbers are measured, none are estimated unless explicitly marked.}}
+\date{2026-07-07}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report documents the correctness and performance validation of the optional
+single-precision (fp32) mode introduced into \magnumnp{} via
+\texttt{set\_precision("single")}, together with the accompanying performance work
+on branch \texttt{perf/memory-optimizations} (24 commits on top of
+\texttt{main@ff6507a}). Validation comprises (i)~exact-equivalence tests of all
+refactored kernels against the reference implementation, (ii)~the full unit and
+demo test suites on CPU and on a Tesla V100 GPU, (iii)~a dedicated
+fp32-vs-fp64 trajectory test ($\mu$MAG~SP4-like), and (iv)~a production-scale
+application benchmark: 200\,ns field-free relaxation of a $240^3$-cell
+soft-magnetic composite (13.8\,M cells) at both precisions from bit-identical
+initial states. \textbf{Conclusion: for LLG time integration, fp32 reproduces
+fp64 observables within solver tolerance while halving both wall-clock time
+($1.98\times$) and memory ($1.96\times$); double precision remains the default
+and remains recommended for tightly converged energy comparisons.}
+\end{abstract}
+
+\tableofcontents
+
+\section{Why fp32 is admissible: numerical background}
+\label{sec:background}
+
+The demagnetization field dominates the cost of finite-difference micromagnetics.
+Its evaluation splits into two numerically very different parts:
+
+\begin{enumerate}
+\item \textbf{Kernel setup (once per run).} The Newell formul\ae{} evaluate
+      4th-order finite differences of the analytic cell-interaction functions
+      $f$ and $g$: 64 function evaluations with alternating signs per tensor
+      entry. For distant cells the individual terms grow $\sim r^2$ while their
+      sum decays $\sim r^{-3}$; at the switch-over distance ($p=20$ cells)
+      roughly 11 significant decimal digits cancel. This is fatal in fp32
+      ($\approx 7$ digits) and safe in fp64 ($\approx 16$ digits).
+      \emph{\magnumnp{} therefore always evaluates demag/Oersted/vector-potential
+      kernels in fp64}, independent of the selected run precision, and casts the
+      final kernel to the run dtype afterwards (\texttt{demag.py},
+      \texttt{oersted.py}, \texttt{vector\_potential.py},
+      \texttt{demag\_nonequidistant.py}).
+\item \textbf{Per-step evaluation (thousands of times).} Each field evaluation
+      is FFT $\rightarrow$ pointwise multiply with the cached kernel
+      $\rightarrow$ inverse FFT, plus local stencils (exchange, anisotropy,
+      \dots). None of these operations exhibit systematic cancellation; their
+      relative rounding error stays at machine precision
+      ($\varepsilon_{\mathrm{fp32}}\approx 1.2\cdot10^{-7}$), i.e.\ two orders of
+      magnitude below the default integrator tolerance
+      (\texttt{RKF45}, $\mathrm{atol}=10^{-5}$) and far below model/discretization
+      error. \emph{This part carries the run precision.}
+\end{enumerate}
+
+This mirrors the design of mumax\textsuperscript{3}, which runs fp32 throughout
+with high-precision kernel setup and reproduces fp64 codes on all $\mu$MAG
+standard problems. Additional fp32-specific safeguards in \magnumnp{}:
+
+\begin{itemize}
+\item cell sizes are rescaled by $\min(\Delta x_i)$ during kernel setup to avoid
+      fp32 overflow/NaN in intermediate powers;
+\item kernel cache files written at a different precision are cast on load, with
+      a warning if precision would be lost;
+\item \texttt{set\_precision()} refuses to run after the first \texttt{Mesh} is
+      created, preventing silently mixed precisions;
+\item a hard-coded fp64 scratch allocation in \texttt{Minimizer\_LBFGS} (which
+      would have silently up-cast fp32 runs) was fixed.
+\end{itemize}
+
+\paragraph{Expected fp32 limits.} fp32 is \emph{not} recommended for
+(a)~comparisons of nearly degenerate energies (barriers between similar states),
+(b)~tightly converged minimizations with $\lVert\mathrm{d}m\rVert$ criteria near
+machine precision, and (c)~any workflow relying on energy differences below
+$\sim10^{-6}$ relative. The fp64 default is unchanged.
+
+\section{Test environments}
+\label{sec:env}
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lll}
+\toprule
+ & CPU host & GPU host (vast.ai \#44119668) \\
+\midrule
+device & CPU only & Tesla V100-SXM2-16GB \\
+PyTorch & 2.12.1+cpu & 2.12.0+cu126 \\
+Python & 3.12 & 3.10 (vast.ai PyTorch image) \\
+\magnumnp{} & \texttt{perf/memory-optimizations} & identical tree (rsync) \\
+baseline ref & \texttt{main@ff6507a} & identical \\
+\bottomrule
+\end{tabular}
+\caption{Software/hardware environments. Note the V100 is a data-center GPU with
+fp64:fp32 throughput ratio 1:2; on consumer GPUs (ratio 1:32--1:64) the fp32
+advantage is larger than reported here.}
+\end{table}
+
+\section{Exact-equivalence tests (refactoring safety)}
+\label{sec:equiv}
+
+The performance work rewrote several numerical paths. Each rewrite was verified
+against the unmodified reference implementation \emph{before} any fp32 testing,
+so that precision effects cannot be confounded with refactoring effects.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{llll}
+\toprule
+component & comparison & result & verdict \\
+\midrule
+demag kernel (chunked setup) & vs.\ \texttt{main}, single chunk & bitwise identical & \ok \\
+ & PBC $(2,1,0)$, 2-D meshes & bitwise identical & \ok \\
+ & forced multi-chunk & rel.\ diff $\le 1.7\cdot10^{-21}$ & \ok \\
+non-equidistant demag (einsum/matmul) & vs.\ \texttt{main} triple loop & bitwise identical & \ok \\
+ & vs.\ equidistant \texttt{DemagField} & rel.\ diff $2.6\cdot10^{-12}$ & \ok \\
+\texttt{DemagFieldPBC} (cached factors, rfftn) & vs.\ previous fftn code & rel.\ diff $\le 5.2\cdot10^{-16}$ & \ok \\
+ & odd sizes, degenerate dims & rel.\ diff $\le 4.4\cdot10^{-16}$ & \ok \\
+RuX exchange (cached coefficients) & vs.\ \texttt{main} per-call code & bitwise identical & \ok \\
+kernel evaluated on GPU vs.\ CPU & unit-test tolerances & ULP-level differences & \ok \\
+\bottomrule
+\end{tabular}
+\caption{Equivalence of refactored numerical paths against reference implementations
+(fp64, CPU unless noted).}
+\end{table}
+
+\section{Test-suite results}
+\label{sec:suites}
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lllll}
+\toprule
+suite & platform & passed & failed & notes \\
+\midrule
+\texttt{tests/unit} (baseline \texttt{main}) & CPU & 130 & 1 & \preexisting{} rkky failure \\
+\texttt{tests/unit} (branch, final) & CPU & 139$^\dagger$ & 1 & same rkky failure only \\
+\texttt{demos} integration (12 tests, incl.\ SP4/SP5) & CPU & 12 & 0 & \\
+\texttt{tests/unit} (branch) & V100 & 137 & 2 & rkky + flaky ARPACK \\
+\bottomrule
+\end{tabular}
+\caption{Test-suite outcomes. $^\dagger$includes 7 new tests added by the branch
+(copy-on-write materials, cache invalidation, fp32 end-to-end).
+The failures are analysed below and are unrelated to fp32.}
+\end{table}
+
+\paragraph{Known failures, root-caused.}
+\begin{itemize}
+\item \texttt{rkky\_test::test\_intergrain\_exchange}: \texttt{TypeError} due to a
+      call-signature mismatch in \texttt{IntergrainExchangeField}; fails
+      identically on unmodified \texttt{main}; unrelated to precision.
+\item \texttt{eigensolver\_test::test\_singlespin\_*}: intermittent
+      \texttt{ArpackError} (``no shifts could be applied''). The test solves a
+      fully degenerate eigenproblem (all 20 requested eigenvalues identical);
+      ARPACK convergence then depends on its random start vector, which is not
+      seeded. Reproduced as flaky (8/8 passes on re-execution of the exact
+      commits that had ``failed''). Two by-products of this investigation were
+      fixed on the branch: \texttt{Timer.\_\_exit\_\_} masked such exceptions
+      with a secondary \texttt{TypeError}, and the precision test depended on
+      the working directory left behind by \texttt{io\_test}.
+\end{itemize}
+
+\section{Dedicated fp32 correctness tests}
+\label{sec:fp32tests}
+
+\subsection{End-to-end trajectory test (\texttt{tests/unit/precision\_test.py})}
+
+An SP4-like problem ($25\times10\times1$ cells, demag + exchange + external
+field, s-state initialization) is integrated for 5 LLG steps in two fresh
+subprocesses, one per precision. Assertions (all \ok):
+\begin{itemize}
+\item dtype propagates end-to-end (\texttt{state.dtype}, all field terms);
+\item $\lvert m\rvert = 1$ preserved everywhere at fp32 (tolerance $10^{-5}$);
+\item component-wise agreement of $\langle m\rangle(t)$ with the fp64 run within
+      $5\cdot10^{-3}$ absolute;
+\item \texttt{set\_precision} raises after mesh creation; \texttt{force=True}
+      overrides.
+\end{itemize}
+
+\subsection{Field-level agreement (demag benchmark checksums)}
+
+Within one precision, the per-component-FFT and batched-FFT demag variants agree
+to $\sim10^{-8}$ relative on random magnetization (e.g.\ fp32:
+$65007157940$ vs.\ $65007158587$ absolute-field-sum on $128^2{\times}8$),
+confirming that fp32 summation error remains at the round-off floor even across
+$4\cdot10^{5}$-term reductions. (fp32/fp64 checksums are not directly comparable
+because the seeded random magnetizations differ per dtype.)
+
+\section{Application-scale benchmark: soft-magnetic composite}
+\label{sec:composite}
+
+\subsection{Setup}
+\begin{itemize}
+\item Geometry: FCC-based random packing (\texttt{fcc\_placer},
+      \texttt{example\_4um\_1um\_70pd}); $240^3$ cells at 27\,nm (6.48\,\textmu m
+      box, 13.8\,M cells), 3-D periodic. Achieved packing $\varphi=0.670$
+      (target 0.70), large:small = 73:27 (target 70:30), $d_L=4$\,\textmu m,
+      $d_S=1$\,\textmu m.
+\item Materials: powder $J_s=1.5$\,T ($M_s = 1.194\cdot10^{6}$\,A/m),
+      $A_\mathrm{ex}=10^{-11}$\,J/m, $K_u = 2$\,kJ/m$^3$ with random per-cell
+      easy axes, $\alpha=0.1$; air $J_s=10^{-8}$\,T, $A_\mathrm{ex}=0$, $K_u=0$.
+\item Physics: \texttt{DemagFieldPBC} (true periodic boundary conditions,
+      cancelled surface charges) + exchange + uniaxial anisotropy; no external
+      field; \texttt{RKF45}, $\mathrm{atol}=10^{-5}$, $\Delta t_{\max}=0.1$\,ns.
+\item Protocol: 200\,ns relaxation from random per-cell magnetization.
+      \textbf{Both precisions start from bit-identical states}: axes and $m_0$
+      are drawn once from a seeded fp64 NumPy RNG and cast to the run dtype.
+\end{itemize}
+
+\subsection{Performance}
+\begin{table}[h]\centering\small
+\begin{tabular}{lccc}
+\toprule
+ & fp32 & fp64 & ratio fp64/fp32 \\
+\midrule
+wall-clock (200\,ns) & 4203.5\,s (70.1\,min) & 8324.8\,s (138.7\,min) & \textbf{1.98} \\
+CUDA peak memory & 3.09\,GB & 6.06\,GB & \textbf{1.96} \\
+accepted RK steps & 27\,736 & 27\,711 & 1.001 \\
+bytes per cell (measured) & 224 & $\approx$450 & 2.0 \\
+\bottomrule
+\end{tabular}
+\caption{Composite relaxation, V100. The virtually identical step counts show the
+adaptive integrator is \emph{not} forced to smaller steps at fp32, i.e.\ the local
+error estimate is not polluted by fp32 round-off.}
+\end{table}
+
+The measured footprint implies maximum box sizes of $\approx 500^3$ (fp32) vs.\
+$\approx 400^3$ (fp64) cells for this workload on a 32\,GB card.
+
+\subsection{Result agreement}
+
+Field-free relaxation of a disordered system is chaotic: infinitesimal
+perturbations grow exponentially during switching events, so \emph{point-wise}
+long-time agreement between any two arithmetic variants is impossible and is the
+wrong metric. The correct comparison is (a)~trajectory agreement during the
+deterministic early phase, and (b)~statistical equivalence of relaxed
+observables.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lccc}
+\toprule
+$t$ & $E_\mathrm{fp32}$ [J] & $E_\mathrm{fp64}$ [J] & rel.\ difference \\
+\midrule
+1\,ns  & $+1.813016\cdot10^{-12}$ & $+1.813066\cdot10^{-12}$ & $2.7\cdot10^{-5}$ \\
+2\,ns  & $+8.371534\cdot10^{-13}$ & $+8.371537\cdot10^{-13}$ & $3.4\cdot10^{-7}$ \\
+5\,ns  & $+3.144951\cdot10^{-13}$ & $+3.146625\cdot10^{-13}$ & $5.3\cdot10^{-4}$ \\
+10\,ns & $+1.408864\cdot10^{-13}$ & $+1.416453\cdot10^{-13}$ & $5.4\cdot10^{-3}$ \\
+20\,ns & $+4.907668\cdot10^{-14}$ & $+4.991685\cdot10^{-14}$ & $1.7\cdot10^{-2}$ \\
+200\,ns (final) & $-2.244219\cdot10^{-14}$ & $-2.289220\cdot10^{-14}$ & $2.0\cdot10^{-2}$ \\
+\bottomrule
+\end{tabular}
+\caption{Total energy along the relaxation. Through $t\approx5$\,ns (thousands of
+RK steps) fp32 tracks fp64 to $10^{-7}\dots10^{-4}$; the growing late-time
+deviation reflects chaotic decorrelation into \emph{different, statistically
+equivalent} multi-domain minima, not accumulating fp32 error (see text).}
+\label{tab:energy}
+\end{table}
+
+Evidence that the late-time difference is configurational, not numerical:
+\begin{itemize}
+\item both runs relax monotonically and keep drifting \emph{in parallel} over the
+      last 50\,ns ($-2.11\to-2.24$ vs.\ $-2.14\to-2.29\cdot10^{-14}$\,J);
+\item both final states are demagnetized to the same fluctuation floor,
+      $\lvert\langle m\rangle_\mathrm{powder}\rvert = 3.4\cdot10^{-5}$ (fp32) and
+      $1.5\cdot10^{-4}$ (fp64), i.e.\ the difference between the runs equals the
+      natural magnitude of the observable itself;
+\item the divergence of $\langle m\rangle_\mathrm{powder}(t)$ between the runs
+      saturates at that same floor ($\sim10^{-4}$) from $\approx$5\,ns on instead
+      of growing;
+\item the integrator statistics (step counts, step-size evolution) are
+      indistinguishable.
+\end{itemize}
+
+\section{Performance context of the branch (fp64 and fp32)}
+\label{sec:perf}
+
+For completeness, the V100 validation of the optimization branch itself
+(baseline \texttt{main@ff6507a} vs.\ branch, benchmark scripts in
+\texttt{bench/}):
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lcccc}
+\toprule
+benchmark & metric & \texttt{main} & branch & change \\
+\midrule
+kernel init $256^2{\times}16$ & GPU peak & 992\,MB & 388\,MB$^\ast$ & $-61\%$ \\
+kernel init $512^2{\times}4$ & GPU peak & 1024\,MB & 445\,MB$^\ast$ & $-57\%$ \\
+kernel init $256^2{\times}16$ & time & 0.66\,s & 1.48\,s$^\ast$ & $+0.8$\,s (one-off) \\
+MinimizerBB (fp64) & iterations/s & 445 & 816 & $+83\%$ \\
+MinimizerBB (fp32) & iterations/s & 467 & 797 & $+71\%$ \\
+SP4 $500{\times}125{\times}2$ (fp64) & steps/s & 0.36 & 0.46 & $+28\%$ \\
+SP4 $500{\times}125{\times}2$ (fp32) & steps/s & 0.61 & 0.87 & $+43\%$ \\
+demag $h()$ $128^2{\times}8$ (fp32) & ms/call & 1.13 & 0.70 & $-38\%$ \\
+\bottomrule
+\end{tabular}
+\caption{Branch validation on the V100. $^\ast$with \texttt{kernel\_device} fix
+(kernels evaluated on the simulation device in bounded chunks);
+\texttt{kernel\_device="cpu"} further lowers the GPU peak to the kernel size
+(214\,MB resp.\ 252\,MB) at the cost of slower setup. The fp32:fp64 SP4 ratio of
+1.9 on the V100 (fp64 rate 1:2) grows substantially on consumer GPUs.}
+\end{table}
+
+The batched single-FFT demag variant was evaluated and \emph{rejected}: it is
+slower than the per-component FFT loop at both precisions on both CPU and V100.
+
+\section{Conclusions and recommendations}
+\label{sec:conclusions}
+
+\begin{enumerate}
+\item \textbf{fp32 is validated for LLG time integration} (dynamics, relaxation,
+      hysteresis-type protocols): trajectory-level agreement within solver
+      tolerance during the deterministic phase, statistically equivalent relaxed
+      states, unchanged integrator behavior --- at $2.0\times$ speed and
+      $0.5\times$ memory on a V100 (larger speed advantage on consumer GPUs).
+\item \textbf{Kernel setup remains fp64 by construction} independent of the run
+      precision; no user action required.
+\item \textbf{fp64 remains the default} and is recommended for energy-barrier
+      comparisons, tightly converged minimization, and eigenproblems.
+\item Practical guidance: enable with \texttt{set\_precision("single")} before
+      creating the mesh; for long AC protocols (e.g.\ 3\,\textmu s at 1\,MHz on
+      $240^3$ cells $\approx$ 21\,h/V100 at fp32) start from a relaxed state and
+      consider a loosened \texttt{atol} after a convergence spot-check.
+\item Known, documented non-fp32 issues: pre-existing rkky test failure
+      (\texttt{main}), unseeded-ARPACK test flakiness, and the pre-existing
+      \texttt{zero\_origin} far-field kernel defect for pseudo-PBC images/far
+      layer pairs (behavior intentionally preserved bit-identically; fix
+      proposed separately).
+\end{enumerate}
+
+\appendix
+\section{Data provenance}
+\begin{itemize}\small
+\item Branch: \texttt{perf/memory-optimizations}, 24 commits on
+      \texttt{main@ff6507a}; all equivalence/verification scripts run on
+      2026-07-07.
+\item Raw benchmark JSONs, run logs and composite results:
+      \texttt{fcc\_placer/example\_4um\_1um\_70pd/results\_v100/}
+      (\texttt{validation/\{base,opt,opt\_fixed\}}, \texttt{logs/},
+      \texttt{single/}, \texttt{double/} incl.\ \texttt{m\_final.vti}).
+\item Benchmark scripts: \texttt{bench/} (this repository) and
+      \texttt{fcc\_placer/example\_4um\_1um\_70pd/bench\_composite\_fp.py}.
+\item GPU: vast.ai instance 44119668 (Tesla V100-SXM2-16GB), total cost of the
+      campaign $<\$1$.
+\end{itemize}
+
+\end{document}
