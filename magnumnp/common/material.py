@@ -61,9 +61,23 @@ class Material(dict):
         """
         for key, value in material.items():
             if domain == None:
-                self[key] = self._state.Constant(value)
+                self[key] = value # homogeneous parameters stay O(1) expanded views (copy-on-write)
             else:
                 if key not in self.keys():
                     self[key] = self._state.Constant(value)
                     self[key][...] = 0.
                 self[key][domain] = value
+
+    def materialize(self, key):
+        r"""
+        Explicitly convert a homogeneous (copy-on-write) parameter into a
+        dense tensor-field, e.g. before applying in-place operations other
+        than indexed writes.
+
+        :param key: name of the material parameter
+        :type key: :class:`str`
+        """
+        value = self[key]
+        if hasattr(value, "materialize"):
+            value.materialize()
+        return value

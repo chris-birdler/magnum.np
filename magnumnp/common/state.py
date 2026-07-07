@@ -18,6 +18,7 @@
 
 import torch
 from magnumnp.common import logging, Material
+from magnumnp.common.cow import CoWTensor
 from magnumnp.common.io import write_vti, write_vtr
 from magnumnp.common.utils import randM
 
@@ -136,8 +137,7 @@ class State(object):
             shape = value.shape
             value = value.reshape((1,1,1) + tuple(shape))
             value = value.expand(self.mesh.n + tuple(shape))
-            #value._expanded = True # annotate expanded tensor (clone will be before individual items are modified)
-            value = value.clone()
+            value = CoWTensor.wrap(value) # keep stride-0 view (O(1) memory); a dense copy is created on first indexed write
         elif len(value.shape) == 3: # scalar-field should have dimension [nx,ny,nz,1]
             value = value.unsqueeze(-1)
         else: # otherwise assume the dimention is correct!
