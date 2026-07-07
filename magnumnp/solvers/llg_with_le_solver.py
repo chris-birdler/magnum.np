@@ -432,13 +432,13 @@ class LLGWithLESolver(LLGSolver):
 
         C_denom = (dx[slice_0]*C[slice_1] + dx[slice_1]*C[slice_0])
         C_avg = 2.*C[slice_0]*C[slice_1] / C_denom
-        C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
+        C_avg.nan_to_num_(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
 
         # Look up: [Bx_xl, Bx_yl, Bx_zl], [By_xl, By_yl, By_zl], [Bz_xl, Bz_yl, Bz_zl]
         Bl = self.diff_data._Bl_jump_conditions[i_u][i_x]
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
         jump = -(Br[slice_0] - Bl[slice_1]) / C_denom
-        jump.nan_to_num(posinf=0, neginf=0)
+        jump.nan_to_num_(posinf=0, neginf=0)
 
         diff = state.ud[slice_1+(i_u,)] - state.ud[slice_0+(i_u,)] 
 
@@ -478,7 +478,7 @@ class LLGWithLESolver(LLGSolver):
         dx_next = torch.roll(dx, -1, dims=i_x) # positive shift, to align this with the definition of the forward differences
         C_denom = (C_next*dx + C*dx_next) # at 0: C_1*dx_0 + C_0*dx_1, at N: C_0*dx_N + C_N*dx_0
         C_avg = 2.*C_next * C / C_denom
-        C_avg.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
+        C_avg.nan_to_num_(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
 
         diff = torch.roll(state.ud[...,i_u],-1,i_x) - state.ud[...,i_u]
         a += C_avg * diff
@@ -489,7 +489,7 @@ class LLGWithLESolver(LLGSolver):
         Br = self.diff_data._Br_jump_conditions[i_u][i_x]
 
         jump = -(Br - torch.roll(Bl, -1, i_x)) / C_denom
-        jump.nan_to_num(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
+        jump.nan_to_num_(posinf=0, neginf=0) # C could be 0 if not proper C_mask is set
         
         a += torch.roll(dx, -1, i_x)*C*jump 
         a += torch.roll(dx, +1, i_x)*C*torch.roll(jump, +1, i_x)
