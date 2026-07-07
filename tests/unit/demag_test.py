@@ -174,6 +174,28 @@ def test_nonequi_vs_equi():
 
     torch.testing.assert_close(h1, h2, atol=1e-10, rtol=1e-10)
 
+def test_nonequi_vs_equi_far_layers():
+    # layer pairs beyond the Newell radius (p = 20 cell diagonals): the
+    # far-field on-axis coupling must be kept. Previous versions zeroed the
+    # local [0,0,0] entry of the dipole formula positionally, which dropped
+    # the dominant interlayer coupling for distant layers; the field of a
+    # single magnetized layer then vanished in layers further away than the
+    # Newell radius.
+    n  = (4, 4, 50)
+    dx = (1., 1., 1.)
+    mesh = Mesh(n, dx)
+    state = State(mesh)
+    state.material = {'Ms': state.Constant(1.)}
+    state.m = state.Constant([0., 0., 0.])
+    state.m[:,:,0,2] = 1. # magnetize only the bottom layer
+
+    h1 = DemagField().h(state)
+    h2 = DemagFieldNonEquidistant().h(state)
+
+    # the far layers carry a small but essential dipole field
+    assert h1[:,:,-1,:].abs().max() > 0.
+    torch.testing.assert_close(h1, h2, atol=1e-10, rtol=1e-6)
+
 def test_nonequidistant():
     n  = (20, 4, 6)
     dx1 = (5., 3., 1.)

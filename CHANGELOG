@@ -1,4 +1,12 @@
 unreleased
+- fixed dropped on-axis dipole couplings in the demag kernel for pseudo-PBC images
+  and far non-equidistant layer pairs beyond the Newell radius: only the true
+  self-term (r = 0) is excluded from the far-field formula now. Results with
+  mesh.pbc != 0 or distant layers change slightly toward the correct values;
+  delete cached kernel files of affected meshes to avoid stale results.
+- fixed IntergrainExchangeField.E, which failed with a TypeError under torch.compile
+- EigenSolver: seeded random ARPACK start vector, enlarged Krylov basis and bounded
+  retries make (nearly) degenerate eigenproblems robust and reproducible
 - added set_precision("single"/"double") for opt-in single precision (double stays the default)
 - homogeneous material parameters are stored as O(1) copy-on-write expanded views;
   indexed writes (material["Ms"][domain] = ...) materialize them transparently, other
