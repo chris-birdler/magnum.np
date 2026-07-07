@@ -182,6 +182,26 @@ suite & platform & passed & failed & notes \\
 The failures are analysed below and are unrelated to fp32.}
 \end{table}
 
+\paragraph{What a demo-suite ``pass'' asserts.}
+The demo tests are quantitative regression tests, not smoke tests. Each test
+executes the \emph{complete} simulation of its problem (energy minimization
+and/or full LLG time integration; 768\,s total for all twelve on the V100) and
+then compares the produced trajectory \emph{point-by-point at every logged time
+step} against stored reference data with
+$\mathrm{atol}=\mathrm{rtol}=10^{-3}$ (\texttt{torch.testing.assert\_close}).
+For example, the SP4 test checks all three components of
+$\langle\vec m\rangle(t)$ over the entire switching trajectory against
+\texttt{ref/m\_test.dat}; the FMR test compares the resonance response curve.
+The twelve problems are: $\mu$MAG SP4 and SP5, FMR, interface-DMI spectrum,
+domain-wall pinning, RKKY coupling, SOT, two Slonczewski spin-torque variants,
+soft-magnetic composite, self-induction (vector potential), and the
+minimizer. A V100 ``pass'' therefore means the optimized branch, running on
+GPU, reproduces the reference physics of all twelve problems --- references
+generated with the original, unmodified code --- within $10^{-3}$ at every
+time step. The demo tests contain no timing assertions; performance
+regressions are covered separately by the \texttt{bench/} suite
+(Sec.~\ref{sec:perf}).
+
 \paragraph{Known failures, root-caused.}
 \begin{itemize}
 \item \texttt{rkky\_test::test\_intergrain\_exchange}: \texttt{TypeError} due to a
