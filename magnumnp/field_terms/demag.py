@@ -69,37 +69,34 @@ def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
         + F0(func, x - dx + dX, y, z, dy, dY, dz, dZ)
     return -res / (4.*pi*dx*dy*dz)
 
-def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin = True):
-    # TODO: zero_origin positionally zeroes the local [0,0,0] entry. For the
-    # 0-offset image this removes the (undefined) self-term, which the Newell
-    # near-field rescue then replaces. For nonzero PBC offsets and far
-    # non-equidistant layer pairs, however, it silently drops a real on-axis
-    # dipole coupling whenever the image/layer distance exceeds the Newell
-    # radius p (behavior inherited from previous versions and kept for
-    # bit-compatibility).
+def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
-    if zero_origin:
-        res[0,0,0] = 0.
+    # only the true self-term (r = 0) is undefined and gets replaced by the
+    # Newell near-field; couplings to PBC images and far non-equidistant
+    # layer pairs are located at the same local index but have r != 0 and
+    # must be kept (previous versions zeroed the local [0,0,0] entry
+    # positionally, silently dropping the on-axis coupling whenever the
+    # image/layer distance exceeded the Newell radius p)
+    res[(x == 0.) & (y == 0.) & (z == 0.)] = 0.
     return res * dx*dy*dz / (4.*pi)
 
-def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin = True):
+def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
-    if zero_origin:
-        res[0,0,0] = 0.
+    res[(x == 0.) & (y == 0.) & (z == 0.)] = 0. # see dipole_f
     return res * dx*dy*dz / (4.*pi)
 
-def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p, zero_origin = True):
+def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
     x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
-    res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin)
+    res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(f, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
 
-def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p, zero_origin = True):
+def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p):
     x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
-    res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ, zero_origin)
+    res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(g, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
@@ -176,11 +173,8 @@ class DemagField(LinearFieldTerm):
         for i0 in range(0, shape[0], nc):
             xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]
             for offset in offsets:
-                # zero_origin positionally zeroes the local [0,0,0] entry of the
-                # dipole formula (as the unchunked code did), so it may only be
-                # applied to the chunk containing the origin
                 Nc[i0:i0+nc] += func(xs + offset[0]*Lx[0], ys + offset[1]*Lx[1], zs + offset[2]*Lx[2],
-                                     *dx, *dx, self._p, zero_origin = (i0 == 0))
+                                     *dx, *dx, self._p)
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
