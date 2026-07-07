@@ -20,9 +20,33 @@ For this a mesh must be defined. `n` and `dx` are tuples with three entries each
 Set Floating Point Precision
 ****************************
 
+*magnum.np* uses double precision by default. Single precision halves the memory
+consumption and is considerably faster - especially on consumer GPUs, where the
+FP64 throughput is only a small fraction of FP32 - while the demag and Oersted
+kernels are still evaluated in double precision internally. Single precision is
+usually sufficient for LLG time integration; tightly converged energy
+minimization or comparing energies of nearly degenerate states may still
+require double precision.
+
+Single precision is enabled with a single call **before** the first mesh or
+state is created:
+
+.. code-block:: python
+
+  from magnumnp import *
+  set_precision("single")
+
+  mesh = Mesh(n, dx)
+  state = State(mesh)
+
+Calling :code:`set_precision` after a mesh has been created raises an error,
+since already existing tensors keep their dtype and precisions would silently
+mix.
+
 Torch Global
 ============
-Since *magnum.np* 2.0 the floating point precission is modified by setting PyTorch defaults. E.g.:
+Alternatively, the floating point precision can be modified by setting PyTorch
+defaults directly. E.g.:
 
 .. code-block:: python
 
@@ -65,7 +89,7 @@ Because materials are defined as Python dictionaries its items are accessed usin
 
   state.material["A"] = 1.
 
-If the material is homogeneous this internally uses torch.tensor.expand to create the tensor [nx,ny,nz,1] and save memory.
+If the material is homogeneous this internally uses torch.tensor.expand to create the tensor [nx,ny,nz,1] and save memory. Such parameters are stored copy-on-write: an indexed write like :code:`state.material["Ms"][domain] = 0.` transparently converts them into a dense tensor-field. Other in-place operations (e.g. :code:`state.material["Ms"] *= 2.`) on a never-written homogeneous parameter raise an error; call :code:`state.material.materialize("Ms")` first in that case.
 
 Location-Dependent Materials
 ****************************

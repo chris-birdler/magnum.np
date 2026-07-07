@@ -22,7 +22,7 @@ import subprocess
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "normalize", "randM", "Expression", "accumulate_h"]
+__all__ = ["complex_dtype", "normalize", "randM", "Expression", "accumulate_h", "set_precision"]
 
 
 complex_dtype = {
@@ -30,6 +30,50 @@ complex_dtype = {
     torch.float32: torch.complex64,
     torch.float64: torch.complex128
     }
+
+
+def set_precision(precision, force = False):
+    r"""
+    Set the global floating point precision.
+
+    magnum.np defaults to double precision. Single precision halves the
+    memory consumption and is considerably faster (especially on GPUs,
+    where the FP64 throughput is a fraction of FP32), while the demag /
+    Oersted kernels are still evaluated in double precision internally.
+    Single precision is usually sufficient for LLG time integration;
+    tightly converged energy minimization or comparing energies of nearly
+    degenerate states may still require double precision.
+
+    Needs to be called before the first :class:`Mesh` or :class:`State`
+    is created, since the dtype is baked into the created tensors (which
+    would silently mix precisions otherwise).
+
+    :param precision: "single" / "float32" or "double" / "float64"
+    :type precision: str
+    :param force: skip the mesh-already-created check (use with care)
+    :type force: bool, optional
+
+    :Example:
+        .. code::
+            from magnumnp import *
+            set_precision("single")
+
+            mesh = Mesh(n, dx)
+            state = State(mesh)
+    """
+    dtypes = {"single": torch.float32, "float32": torch.float32,
+              "double": torch.float64, "float64": torch.float64}
+    if precision not in dtypes:
+        raise ValueError("Unknown precision '%s' (use one of %s)" % (precision, sorted(dtypes.keys())))
+
+    from magnumnp.common import mesh as _mesh
+    if _mesh._MESH_CREATED and not force:
+        raise RuntimeError("set_precision() has to be called before the first Mesh/State is created "
+                           "(existing tensors keep their dtype, which would silently mix precisions). "
+                           "Use force=True to override.")
+
+    torch.set_default_dtype(dtypes[precision])
+    logging.info_green("[magnum.np] floating point precision: %s" % precision)
 
 
 def accumulate_h(fields):

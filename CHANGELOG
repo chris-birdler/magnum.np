@@ -1,3 +1,21 @@
+unreleased
+- added set_precision("single"/"double") for opt-in single precision (double stays the default)
+- homogeneous material parameters are stored as O(1) copy-on-write expanded views;
+  indexed writes (material["Ms"][domain] = ...) materialize them transparently, other
+  in-place operations on a never-written homogeneous parameter now raise and require
+  Material.materialize(key) first
+- demag/Oersted/VectorPotential kernels are now always evaluated on the CPU in chunks
+  (new chunk_cells option), which removes the large device memory spike during setup;
+  values are unchanged (cached kernel files remain compatible)
+- reduced allocations and GPU synchronization in LLGSolver, RKF45/56, MinimizerBB,
+  SD_solver and Minimizer_LBFGS; constant ExternalField and ThermalField prefactors
+  are cached; non-equidistant demag uses a batched einsum instead of a python loop
+- fixed discarded nan_to_num results in LLGWithLESolver (the C==0 NaN guard was a no-op)
+- fixed Minimizer_LBFGS tensor aliasing and hard-coded float64 scratch tensors
+- ScalarLogger defaults to fsync_every=100 (rows are still flushed every write);
+  FieldLogger no longer rewrites the whole .pvd document through minidom on every log
+- added bench/ with GPU benchmark scripts and a vast.ai setup guide
+
 2.2.0 [2026-02-13]
 - added spectrum(), projection() and absorption() to EigenResult
 - added eigensolver demos run_carlotti.py and run_bilayer.py
