@@ -28,15 +28,26 @@ class ThermalField(FieldTerm):
     parameters = ["T"]
     def __init__(self, domain=None, **kwargs):
         self._step = None
+        self._alpha_ref = None
+        self._Ms_ref = None
         super().__init__(**kwargs)
 
     @timedmethod
     #@torch.compile
     def h(self, state):
         if state._step != self._step: # update random field
-            #self._sigma = torch.normal(0., 1., size = state.m.shape) # creates tensor on CPU by default
-            self._sigma = torch.normal(0., 1., size = state.m.shape).to(state.device)
+            self._sigma = torch.normal(0., 1., size = state.m.shape, device = state.m.device, dtype = state.m.dtype)
             self._step = state._step
 
-        h = self._sigma * torch.sqrt(2. * state.material["alpha"]  * constants.kb * state.T / (constants.mu_0 * state.material["Ms"] * constants.gamma * state.mesh.cell_volumes * state._dt))
-        return h.nan_to_num(posinf=0, neginf=0)
+        # cache the time-invariant prefactor; constant material parameters return
+        # the identical tensor object on every access, so an identity check is
+        # sufficient (state-dependent parameters invalidate on every call)
+        alpha = state.material["alpha"]
+        Ms = state.material["Ms"]
+        if self._alpha_ref is not alpha or self._Ms_ref is not Ms:
+            self._pref = torch.sqrt(2. * alpha * constants.kb / (constants.mu_0 * Ms * constants.gamma * state.mesh.cell_volumes))
+            self._alpha_ref, self._Ms_ref = alpha, Ms
+
+        T = torch.as_tensor(state.T, dtype=state.m.dtype, device=state.m.device)
+        h = self._sigma * self._pref * (T / state._dt)**0.5
+        return h.nan_to_num_(posinf=0, neginf=0)
