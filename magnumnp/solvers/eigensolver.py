@@ -115,21 +115,23 @@ class EigenSolver(object):
         # distinct eigenvalue, so ARPACK's convergence depends on the start
         # vector and on floating-point noise ("no shifts could be applied").
         # Mitigations: a seeded random start vector (an all-ones v0 collapses
-        # the Krylov space for symmetric problems), an enlarged Krylov basis
-        # (ncv), and a bounded retry with fresh seeded start vectors.
-        ncv = min(2*N, max(6*k + 1, 61))
+        # the Krylov space for symmetric problems) and a bounded retry with
+        # fresh start vectors and an enlarged Krylov basis (ncv). The first
+        # attempt uses scipy's default ncv, so well-conditioned spectra pay
+        # no extra cost.
         last_err = None
         for attempt in range(5):
             v0 = np.random.default_rng(42 + attempt).standard_normal(2*N)
+            ncv = None if attempt == 0 else min(2*N, max(6*k + 1, 61))
             try:
                 evals, evecs2D = eigs(D0, k = 2*k, which = 'SM', tol = tol, v0 = v0, ncv = ncv)
                 break
             except ArpackError as e: # includes ArpackNoConvergence
-                logging.warning("[EigenSolver] ARPACK failed (attempt %d/5): %s. Retrying with a new start vector." % (attempt+1, str(e).splitlines()[0]))
+                logging.warning("[EigenSolver] ARPACK failed (attempt %d/5): %s. Retrying with a new start vector and enlarged Krylov basis." % (attempt+1, str(e).splitlines()[0]))
                 last_err = e
         else:
             raise last_err
-        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol, v0 = v0, ncv = ncv)
+        #evals, evecs2D = eigs(D0, k = 2*k, sigma = 0, which = 'LM', tol = tol, v0 = v0)
 
         evalvecs_sorted = sorted(zip(evals.imag,evecs2D.T), key=lambda x: np.abs(x[0]))
         evals = np.array([x[0] for x in evalvecs_sorted if x[0] > 1000.])
