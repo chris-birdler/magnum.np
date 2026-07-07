@@ -53,6 +53,7 @@ def vector_far(x, y, z, dx, dy, dz):
     return res * dx*dy*dz / (4.*np.pi)
 
 def vector_func(x, y, z, dx, dy, dz, p):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
     res = vector_far(x, y, z, dx, dy, dz)
     near = (x**2 + y**2 + z**2) / (dx**2 + dy**2 + dz**2) < p**2
     res[near] = seidov(x[near], y[near], z[near], dx, dy, dz)
@@ -72,19 +73,29 @@ class VectorPotential(object):
     :param p: number of next neighbors for near field via Seidov's equations (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20, cache_dir = None):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 4<<20):
         self._p = p
         self._cache_dir = cache_dir
+        self._chunk_cells = chunk_cells
 
     def _init_A_component(self, state):
         dx = np.array(state.mesh.dx)
 
+        # the kernel is always evaluated on the CPU in double precision and
+        # only the final rfft component is moved to the target device by the
+        # caller; 1-D coordinate vectors + broadcasting replace the full
+        # padded meshgrids, chunking bounds the elementwise temporaries
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
-        ij = torch.meshgrid(*ij,indexing='ij')
-        x, y, z = [ij[ind]*dx[ind] for ind in range(3)]
+        coords = []
+        for i, n in enumerate(shape):
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device="cpu") * dx[i] # local indices
+            coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
+        x, y, z = coords
 
-        Ac = vector_func(x, y, z, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
+        Ac = torch.zeros(shape, dtype=torch.float64, device="cpu")
+        nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
+        for i0 in range(0, shape[0], nc):
+            Ac[i0:i0+nc] = vector_func(x[i0:i0+nc], y, z, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -103,13 +114,11 @@ class VectorPotential(object):
             logging.info("[DEMAG]: Use cached VectorPotential kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()
-            torch.set_default_dtype(torch.float64) # always use double precision
             time_kernel = time()
 
-            Axx = self._init_A_component(state).to(dtype=complex_dtype[dtype])
+            Axx = self._init_A_component(state).to(dtype=complex_dtype[dtype], device=state.device)
 
             logging.info(f"[DEMAG]: Time calculation of VectorPotential kernel = {time() - time_kernel} s")
-            torch.set_default_dtype(dtype) # restore dtype
 
             # cache VectorPotential tensor
             if self._cache_dir != None:
