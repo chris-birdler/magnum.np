@@ -1,4 +1,4 @@
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, accumulate_h
 import torch
 
 __all__ = ["MinimizerBB"]
@@ -26,15 +26,19 @@ class MinimizerBB(object):
         return sum([term.E(state) for term in self._terms])
 
     def h(self, state):
-        return sum([term.h(state) for term in self._terms])
+        return accumulate_h(term.h(state) for term in self._terms)
 
     def dm(self, state, h):
         return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
+    @torch.compile
     def _midpoint(self, m, h, tau):
         """
         Solving the the semi-implicit midpoint scheme:
             m_i+1 = m_i + tau * (m_i + m_i+1)/2 x (m_i x Heff[m_i])
+
+        tau needs to be a 0-dim tensor, otherwise dynamo re-specializes
+        on each new step-size value and recompiles every iteration.
 
         see "Abert, 'Efficient Energyminimization in Finite-Difference Micromagnetics', 2014"
         see "Goldfarb, 'A Curvilinear Search Method for p-Harmonic Flows on Spheres', 2009"
@@ -68,7 +72,7 @@ class MinimizerBB(object):
 
     @timedmethod
     def minimize(self, state, maxiter = 2000, dm_tol = 1., tau_min = 1e-13, tau_max = 1e-5):
-        tau = tau_min
+        tau = torch.tensor(tau_min) # 0-dim tensor (avoids re-specialization of compiled _midpoint)
         steps = 0
         dm_max = 1e18
         m0 = state.m.clone()
@@ -87,24 +91,26 @@ class MinimizerBB(object):
             dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
             dm_diff = dm - dm0
 
-            # compute dm_max as convergence indicator
-            dm_max = dm.abs().max()
-            if dm_max < dm_tol:
-                logging.info_green("[MinimizerBB] Successfully converged (iter=%d, dm_tol = %g)" % (i, dm_tol))
-                return True
-
             # next stepsize (alternate tau1 and tau2)
             if (i % 2 == 0):
                 tau = (m_diff*m_diff).sum() / (m_diff*dm_diff).sum()
             else:
                 tau = (m_diff*dm_diff).sum() / (dm_diff*dm_diff).sum()
-            tau = max(min(abs(tau), tau_max), tau_min) #* tau_sign
+            tau = tau.abs().clamp(tau_min, tau_max) #* tau_sign
 
-            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (i, tau, dm_max))
+            # compute dm_max as convergence indicator (single device sync per iteration)
+            tau_f, dm_max = torch.stack([tau, dm.abs().max()]).tolist()
+            if dm_max < dm_tol:
+                logging.info_green("[MinimizerBB] Successfully converged (iter=%d, dm_tol = %g)" % (i, dm_tol))
+                return True
 
-            m0 = state.m.clone()
-            h0 = h.clone()
-            dm0 = dm.clone()
+            logging.info_blue("[MinimizerBB] Step: %d, Tau: %.5g, dm_max: %.5g" % (i, tau_f, dm_max))
+
+            # h, dm are freshly allocated and state.m is rebound (never mutated
+            # in place), so the previous values can be kept without a clone
+            m0 = state.m
+            h0 = h
+            dm0 = dm
 
         logging.warning("[MinimizerBB] Terminated after maxiter = %d (dm = %g, dm_tol = %g)" % (maxiter, dm_max, dm_tol))
         return False

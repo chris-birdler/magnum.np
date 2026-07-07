@@ -16,11 +16,21 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants, normalize
+from magnumnp.common import logging, timedmethod, constants, normalize, accumulate_h
 from .ode_solvers import RKF45
 import torch
 
 __all__ = ["LLGSolver"]
+
+@torch.compile
+def _llg_rhs(m, h, alpha, no_precession: bool):
+    gamma_prime = constants.gamma / (1. + alpha**2)
+    cross_m_h = torch.linalg.cross(m, h)
+    dm = -alpha * gamma_prime * torch.linalg.cross(m, cross_m_h)
+    if not no_precession:
+        dm = dm - gamma_prime * cross_m_h
+    return dm
+
 
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, no_precession = False, **kwargs):
@@ -55,18 +65,9 @@ class LLGSolver(object):
         state.m = x
         alpha = alpha or state.material["alpha"]
 
-        gamma_prime = constants.gamma / (1. + alpha**2)
-        alpha_prime = alpha * gamma_prime
+        h = accumulate_h(term.h(state) for term in self._terms)
 
-        h = sum([term.h(state) for term in self._terms])
-
-        cross_m_h = torch.linalg.cross(state.m, h)
-
-        dm = -alpha_prime * torch.linalg.cross(state.m, cross_m_h)
-        if not self._no_precession:
-            dm -= gamma_prime * cross_m_h
-
-        return dm
+        return _llg_rhs(state.m, h, alpha, self._no_precession)
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
@@ -75,7 +76,7 @@ class LLGSolver(object):
     def step(self, state, dt, **kwargs):
         state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, **kwargs)
         normalize(state.m)
-        logging.info_blue("[LLG] step: dt= %g  t=%g" % (dt, state.t))
+        logging.info_blue("[LLG] step: dt= %g  t=%g", dt, state.t) # lazy formatting avoids a device sync if filtered
 
     @timedmethod
     def solve(self, state, tt, **kwargs):
@@ -94,8 +95,8 @@ class LLGSolver(object):
         for i in range(maxiter):
             state.t, state.m = self._solver.step(state.t, state.m, dt, state=state, alpha = 1.0) #, no_precession = True) # no_precession requires more iterations for SP4 demo!?
 
-            dm = self.dm(state.t, state.m, state=state, alpha = 1.0).abs().max() / constants.gamma # use same scaling as within minimizer
-            logging.info_blue("[LLG] relax: i=%d t=%g |dm|=%g" % (i, state.t-t0, dm))
+            dm = float(self.dm(state.t, state.m, state=state, alpha = 1.0).abs().max()) / constants.gamma # use same scaling as within minimizer
+            logging.info_blue("[LLG] relax: i=%d t=%g |dm|=%g", i, state.t-t0, dm)
             if dm < dm_tol:
                 logging.info_green("[LLG] relax: Successfully converged (iter=%d, dm_tol = %g)" % (i, dm_tol))
                 state.t = t0

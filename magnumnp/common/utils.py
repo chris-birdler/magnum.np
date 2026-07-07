@@ -22,7 +22,7 @@ import subprocess
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "normalize", "randM", "Expression"]
+__all__ = ["complex_dtype", "normalize", "randM", "Expression", "accumulate_h"]
 
 
 complex_dtype = {
@@ -30,6 +30,29 @@ complex_dtype = {
     torch.float32: torch.complex64,
     torch.float64: torch.complex128
     }
+
+
+def accumulate_h(fields):
+    r"""
+    Helper function to sum up field contributions with minimal allocations.
+
+    Consumes the iterable lazily and accumulates in place, so at most two
+    full fields are alive at the same time (in contrast to sum([...]), which
+    materializes all contributions and allocates a new tensor for each add).
+    The first field is never modified, since field terms may return cached
+    or shared tensors.
+    """
+    it = iter(fields)
+    try:
+        total = next(it)
+    except StopIteration:
+        raise ValueError("accumulate_h() requires at least one field contribution")
+    for i, f in enumerate(it):
+        if i == 0:
+            total = total + f # allocate the accumulator; never mutate the first field
+        else:
+            total.add_(f)
+    return total
 
 
 def normalize(data):

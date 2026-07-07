@@ -16,7 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from magnumnp.common import logging, timedmethod, constants
+from magnumnp.common import logging, timedmethod, constants, accumulate_h
 import torch
 
 __all__ = ["SD_solver"]
@@ -54,9 +54,9 @@ class SD_solver(object):
         self._samples = samples
 
     def _dm(self, state):
-        h = sum([term.h(state) for term in self._terms])
+        h = accumulate_h(term.h(state) for term in self._terms)
         return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
-    
+
     def minimize(self, state):
         step = 0
         dm_max = 1e18
@@ -66,7 +66,7 @@ class SD_solver(object):
         tau = 1e-7
 
         while len(last_dm_max) < self._samples or max(last_dm_max) > self._dm_max:
-            h = sum([term.h(state) for term in self._terms])
+            h = accumulate_h(term.h(state) for term in self._terms)
             dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
             m_next = state.m - tau*dm
@@ -74,12 +74,12 @@ class SD_solver(object):
             # update state
             state.m = m_next
             
-            dm_max = dm.max()
+            dm_max = float(dm.max()) # single device sync per iteration
             last_dm_max.append(dm_max)
             if len(last_dm_max) > self._samples: last_dm_max.pop(0)
 
-            E = sum([term.E(state) for term in self._terms])
-            
+            E = float(sum([term.E(state) for term in self._terms]))
+
             logging.info_blue("Tau: %.5g, dm_max: %.5g, E: %.5g" % (tau, dm_max, E))
 
             # increase step count
