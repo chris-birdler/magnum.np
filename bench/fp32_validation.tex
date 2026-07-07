@@ -137,6 +137,31 @@ kernel evaluated on GPU vs.\ CPU & unit-test tolerances & ULP-level differences 
 (fp64, CPU unless noted).}
 \end{table}
 
+\paragraph{Trajectory-level equivalence (old vs.\ new code).}
+Beyond kernel-level identity, the full time integration of the branch was compared
+against unmodified \texttt{main} on the V100: identical SP4-type problems
+(demag + exchange + external field, 520 accepted LLG steps) were integrated with
+both code versions at both precisions. The endpoint magnetization averages agree
+to machine-precision level, i.e.\ the optimizations do not alter the computed
+physics:
+
+\begin{table}[h]\centering\small
+\begin{tabular}{lcc}
+\toprule
+problem & precision & $\max_i \lvert \langle m_i\rangle_\texttt{main} - \langle m_i\rangle_\text{branch} \rvert$ \\
+\midrule
+SP4 $200{\times}50{\times}1$ & fp64 & $6.7\cdot10^{-12}$ \\
+SP4 $500{\times}125{\times}2$ & fp64 & $1.9\cdot10^{-12}$ \\
+SP4 $200{\times}50{\times}1$ & fp32 & $1.5\cdot10^{-8}$ \\
+SP4 $500{\times}125{\times}2$ & fp32 & $1.5\cdot10^{-8}$ \\
+\bottomrule
+\end{tabular}
+\caption{Endpoint agreement of $\langle \vec m\rangle$ after 520 LLG steps between
+baseline (\texttt{main@ff6507a}) and optimized branch, V100, identical problems.
+The residuals sit at the accumulation floor of the respective precision.}
+\label{tab:oldvsnew}
+\end{table}
+
 \section{Test-suite results}
 \label{sec:suites}
 
@@ -314,6 +339,47 @@ demag $h()$ $128^2{\times}8$ (fp32) & ms/call & 1.13 & 0.70 & $-38\%$ \\
 
 The batched single-FFT demag variant was evaluated and \emph{rejected}: it is
 slower than the per-component FFT loop at both precisions on both CPU and V100.
+
+\section{Verification summary and scope}
+\label{sec:matrix}
+
+Table~\ref{tab:matrix} consolidates all verification layers of this campaign.
+
+\begin{table}[h]\centering\small
+\begin{tabular}{p{9.2cm}l}
+\toprule
+verification layer & status \\
+\midrule
+Refactored numerics vs.\ reference implementations (demag kernels, non-equidistant einsum, RuX coefficients, \texttt{DemagFieldPBC}) & bitwise / machine precision \ok \\
+Old-vs-new physics trajectories (SP4, V100, both precisions, Tab.~\ref{tab:oldvsnew}) & $\le 1.5\cdot10^{-8}$ after 520 steps \ok \\
+Unit suite, CPU (139 tests incl.\ 7 new) & 1 failure, \preexisting{} on \texttt{main} \ok \\
+Unit suite, V100 & 2 failures: same \preexisting{} + root-caused ARPACK flake \ok \\
+Demos integration suite (12 end-to-end problems incl.\ SP4/SP5) & all pass (CPU) \ok \\
+fp32 validity (dedicated trajectory test + 13.8\,M-cell production run) & Secs.~\ref{sec:fp32tests}, \ref{sec:composite} \ok \\
+Adversarial multi-agent code review (high effort) & 10 findings $\to$ 8 fixed with regression tests, 2 documented \ok \\
+Performance non-regression (V100 + CPU benchmark sweeps) & 1 regression found, fixed, re-confirmed \ok \\
+\bottomrule
+\end{tabular}
+\caption{Verification matrix of the \texttt{perf/memory-optimizations} branch.}
+\label{tab:matrix}
+\end{table}
+
+\paragraph{Explicitly outside the verified scope.}
+\begin{enumerate}
+\item The project GitLab CI has not yet run on the branch (it repeats the unit
+      and demo suites on the project runners) and should gate the merge as usual.
+\item The demo suite was executed on CPU only; on the GPU, coverage comes from
+      the unit suite and the benchmarks.
+\item Two intentional behavior changes ship with the branch and must be
+      communicated in the merge request: copy-on-write material parameters
+      (chained or non-indexed in-place writes on never-written homogeneous
+      parameters now require \texttt{Material.materialize()}), and the
+      now-functional NaN guard in \texttt{LLGWithLESolver} (previously a no-op).
+\item Deliberately unchanged, pre-existing issues: the \texttt{zero\_origin}
+      far-field kernel defect (pseudo-PBC images / far non-equidistant layer
+      pairs) and the rkky unit-test failure; both are documented and proposed
+      as separate fixes.
+\end{enumerate}
 
 \section{Conclusions and recommendations}
 \label{sec:conclusions}
