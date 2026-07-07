@@ -6,6 +6,19 @@
 magnum.np 2.2.0
 #####################################
 
+.. note::
+   **About this repository:** this is a performance-optimized fork of the original
+   `magnum.np <https://gitlab.com/magnum.np/magnum.np>`__ project by the magnum.np team
+   (see `AUTHORS <AUTHORS>`__), maintained by Christoph Vogler. Modifications
+   (2026, see `CHANGELOG <CHANGELOG>`__ and branch ``perf/memory-optimizations``) comprise:
+   opt-in single precision (``set_precision``), copy-on-write material parameters,
+   chunked low-memory demag/Oersted kernel setup, reduced per-step allocations and
+   GPU synchronization, and a detailed fp32 validation report
+   (`bench/fp32_validation.pdf <bench/fp32_validation.pdf>`__).
+   Like the original, this fork is licensed under the
+   `GNU General Public License v3 <LICENSE>`__; all original copyright notices are retained.
+   Modified files are © 2026 Christoph Vogler, licensed under the same terms.
+
 *magnum.np* is a Python library for the solution of micromagnetic problems with the finite-difference
 method. It implements state-of-the-art algorithms and is based on `pytorch <http://www.pytorch.org/>`__,
 which allows to seamlessly run code either on GPU or on CPU. Simulation scripts are written in
