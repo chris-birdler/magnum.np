@@ -1,0 +1,221 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{parskip}
+
+\definecolor{codegray}{gray}{0.95}
+\definecolor{kaminrot}{HTML}{9B111E}
+\usepackage{sectsty}
+\allsectionsfont{\color{kaminrot}}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  keywordstyle=\color{kaminrot}\bfseries,
+  commentstyle=\color{gray}\itshape,
+  breaklines=true,
+  frame=single,
+  framerule=0pt,
+  xleftmargin=0.5em,
+  aboveskip=1em,
+  belowskip=1em
+}
+
+\title{\color{kaminrot}Per-Pulver-Auswertung von BH-Loops\\
+\large Losses und $B_\mathrm{peak}$ pro Pulversorte in magnum.np}
+\author{}
+\date{17.\,Juli 2026}
+
+\begin{document}
+\maketitle
+
+\noindent\textbf{Setup:} Pulver-Simulation mit gro"sen Partikeln (4\,\textmu m) auf fcc-Gitterpl"atzen und kleinen Partikeln (1\,\textmu m) in den Zwickeln, Mischungsverh"altnis 70:30. BH-Loop mit AC-Feld in $x$-Richtung. Gesucht: Losses und $B_\mathrm{peak}$ pro Pulversorte.
+
+\section{Was \texttt{average(m $\cdot$ Ms $\cdot$ filter)} wirklich liefert}
+
+Der \texttt{ScalarLogger} schickt jeden Tensor durch \texttt{state.avg()}, und das ist auf "aquidistanten Meshes ein Mittelwert "uber \emph{alle} Zellen des Meshes (\texttt{state.py:159}, \texttt{scalar\_logger.py:105}). Man erh"alt also nicht die mittlere Magnetisierung \emph{im} Pulver $i$, sondern deren Beitrag zum Gesamtvolumen:
+\begin{equation}
+\langle M_s\, m\, f_i \rangle_\text{mesh} \;=\; \varphi_i \, M_i
+\qquad\text{mit } \varphi_i = \text{Volumenanteil der Phase } i .
+\end{equation}
+F"ur per-Pulver-Gr"o"sen muss durch \texttt{state.avg(filter\_i)} geteilt werden.
+
+\textbf{Sanity-Checks:}
+\begin{enumerate}
+  \item Das phasennormierte $J_i^\text{peak} = \mu_0 M_i^\text{peak}$ muss $\le \mu_0 M_s$ der jeweiligen Phase sein. Wenn nicht, stimmt Filter oder Normierung nicht.
+  \item Ohne Normierung w"are das kleine Pulver durch den 30\,\%-Anteil ohnehin um Faktor ${\sim}2{,}3$ unterdr"uckt. Wenn es trotzdem gr"o"ser aussieht: zuerst die Filter pr"ufen.
+\end{enumerate}
+
+\section{Ben"otigte Outputs}
+
+Zus"atzlich zum bisherigen Output braucht man das \textbf{gefilterte, phasennormierte Entmagnetisierungsfeld}:
+
+\begin{lstlisting}
+mu0 = constants.mu_0
+phi_L = state.avg(filter_L)   # Volumenanteile, einmal berechnen
+phi_S = state.avg(filter_S)
+
+logger = ScalarLogger("data/loop.dat", [
+    't', external.h,                                # H_ext(t)
+    ('J_L', lambda s: mu0 * s.material["Ms"] * s.m * filter_L / phi_L),
+    ('J_S', lambda s: mu0 * s.material["Ms"] * s.m * filter_S / phi_S),
+    ('h_L', lambda s: (demag.h(s) + external.h(s)) * filter_L / phi_L),
+    ('h_S', lambda s: (demag.h(s) + external.h(s)) * filter_S / phi_S),
+])
+\end{lstlisting}
+
+Daraus in der Auswertung:
+
+\paragraph{$B$ pro Pulver.} Mit dem \emph{lokalen} Feld:
+\begin{equation}
+B_i \;=\; \mu_0 \langle H \rangle_i + J_i ,
+\qquad
+\langle H \rangle_i = H_\text{ext} + \langle H_\text{demag} \rangle_i .
+\end{equation}
+$\mu_0 (H_\text{ext} + M_i)$ ist \emph{nicht} die Flussdichte im Partikel: Im weichmagnetischen Partikel ist das Entmagnetisierungsfeld gro"s (Gr"o"senordnung $-M/3$ f"ur die Kugel, plus Streufelder der Nachbarn) und f"ur beide Sorten verschieden. Das kann die Reihenfolge der $B_\mathrm{peak}$-Werte deutlich verschieben.
+
+\paragraph{Losses pro Pulver.} Ringintegral "uber genau eine Periode (nach dem Einschwingen), numerisch per Trapezregel:
+\begin{equation}
+w_i \;=\; \oint H_x \, \mathrm{d}J_{i,x}
+\qquad\text{(pro Einheit Phasenvolumen, pro Zyklus)},
+\end{equation}
+absolute Verluste: $W_i = w_i \cdot \varphi_i V$.
+
+\section{$H_\text{ext}$ oder Streufelder dazu?}
+
+Beides ist \glqq richtig\grqq, aber f"ur verschiedene Fragen:
+
+\paragraph{(i) Gesamt-Loop / Gesamtverluste.} $H_\text{ext}$ ist \emph{exakt} richtig:
+\begin{equation}
+w_\text{tot} \;=\; \mu_0 \oint H_\text{ext} \, \mathrm{d}M_\text{tot} .
+\end{equation}
+"Uber einen geschlossenen Zyklus ist die Streufeldenergie eine Zustandsfunktion und tr"agt netto nichts bei.
+
+\paragraph{(ii) Per-Pulver mit $H_\text{ext}$.}
+\begin{equation}
+w_i \;=\; \mu_0 \oint H_\text{ext} \, \mathrm{d}M_i
+\end{equation}
+ist die \emph{vom externen Feld in Phase $i$ eingebrachte Arbeit}. Die Summe ergibt exakt den Gesamtverlust (guter Konsistenz-Check!):
+\begin{equation}
+\varphi_L\, w_L + \varphi_S\, w_S \;=\; w_\text{tot} .
+\end{equation}
+Aber: Diese Zerlegung ignoriert magnetostatischen Energietransfer zwischen den Sorten. Energie, die "uber das Feld des gro"sen Pulvers ins kleine gepumpt (oder umgekehrt) und \emph{dort} dissipiert wird, landet in der falschen Spalte.
+
+\paragraph{(iii) Per-Pulver tats"achliche Dissipation.} Daf"ur braucht man das lokale Feld:
+\begin{equation}
+w_i^\text{dis} \;\approx\; \oint \langle H \rangle_{i,x} \, \mathrm{d}J_{i,x} ,
+\qquad
+\langle H \rangle_i = H_\text{ext} + \langle H_\text{demag} \rangle_i .
+\end{equation}
+Dabei einfach das volle \texttt{demag.h} filtern, nicht nach Quelle trennen: Der Eigenanteil hebt sich "uber den geschlossenen Zyklus n"aherungsweise weg, "ubrig bleibt effektiv der Streufeldbeitrag der jeweils anderen Sorte. Kleine Einschr"ankung: $\langle H \rangle_i \, \mathrm{d}\langle M \rangle_i$ ist das Produkt der Mittelwerte statt des Mittelwerts des Produkts, also eine N"aherung --- f"ur die Frage \glqq welche Sorte dissipiert wie viel\grqq{} aber der pragmatische Standardweg.
+
+Die Differenz zwischen (ii) und (iii) ist gerade der Energietransfer zwischen den Pulvern --- die auszurechnen lohnt sich, bevor man das Ranking interpretiert.
+
+\paragraph{Muss der Eigenanteil aus dem Demagfeld herausgerechnet werden?}
+Nein --- und die Begr"undung ist \emph{nicht}, dass er klein w"are (das ist er nicht: im Partikel von der Gr"o"senordnung $-M/3$). Entscheidend ist, dass sein Beitrag zum Ringintegral "uber einen geschlossenen Zyklus exakt verschwindet, weil die Selbstenergie eine Zustandsfunktion der eigenen Konfiguration ist. Mit
+\begin{equation}
+E_i^\text{self} \;=\; -\frac{\mu_0}{2} \int_{V_i} H_\mathrm{d}[M_i] \cdot M_i \,\mathrm{d}V
+\end{equation}
+gilt wegen der Symmetrie des Demag-Operators
+\begin{equation}
+\mu_0 \oint \int_{V_i} H_\mathrm{d}[M_i] \cdot \mathrm{d}M \,\mathrm{d}V
+\;=\; -\oint \mathrm{d}E_i^\text{self} \;=\; 0
+\qquad \text{(exakt, da die Konfiguration zur"uckkehrt).}
+\end{equation}
+Der Eigenanteil ist also konservativ, nicht klein --- er leistet "uber den Zyklus netto keine Arbeit.
+
+\emph{Warum leistet das Self-Feld netto keine Arbeit, obwohl $M$ Hysterese zeigt?} Hysterese ist eine Doppeldeutigkeit von $M$ gegen"uber $H_\text{ext}$: Bei demselben $H_\text{ext}$ sind auf Auf- und Abw"artsast verschiedene $M$ m"oglich, weil $H_\text{ext}$ eine unabh"angige, von au"sen aufgepr"agte Gr"o"se ist. Das Self-Feld ist dagegen eine \emph{eindeutige} Funktion der momentanen Konfiguration --- dieselbe Magnetisierungsverteilung erzeugt immer dasselbe Self-Feld. Es wirkt wie eine Feder an der Magnetisierung: Auf dem aufsteigenden Ast wird Arbeit gegen das Self-Feld geleistet und als Streufeldenergie \emph{gespeichert}, auf dem absteigenden Ast kommt genau diese Energie zur"uck. Formal ist $H_\mathrm{d}[M]\cdot\mathrm{d}M$ ein totales Differential der Selbstenergie (Gl.~9), $H_\text{ext}\cdot\mathrm{d}M$ dagegen nicht --- deshalb hat die eine Schleife zwingend Fl"ache null, die andere nicht. Die Verlustenergie stammt aus der D"ampfung: An Instabilit"aten (Nukleation, Depinning) springt die Magnetisierung dynamisch ins n"achste Minimum, und die Energiedifferenz wird "uber den $\alpha$-Term der LLG zu W"arme. Das Demag-Feld formt die Energielandschaft mit --- es bestimmt, \emph{wie viel} dissipiert wird --- tr"agt aber als Zustandsfunktion zum Ringintegral netto nichts bei. Voraussetzung ist, dass die \emph{gesamte} Konfiguration zur"uckkehrt (Zelle f"ur Zelle, nicht nur der Mittelwert) --- im eingeschwungenen AC-Zyklus erf"ullt; daher die letzte volle Periode auswerten, nicht die Neukurve.
+
+Eine N"aherung entsteht erst durch die Phasen\emph{mittelung}: Das Integral
+$\oint \langle H^\text{self} \rangle_i \, \mathrm{d}\langle M \rangle_i$
+verschwindet nur dann exakt, wenn $\langle H^\text{self} \rangle_i$ eine eindeutige Funktion von $\langle M \rangle_i$ ist. Im Mean-Field-Bild,
+\begin{equation}
+\langle H^\text{self} \rangle_i \;\approx\; -N_\text{eff} \, \langle M \rangle_i ,
+\end{equation}
+ist die R"uckstellung linear und die eingeschlossene Fl"ache exakt null. Ein Restbeitrag bleibt, wenn die interne Dom"anenkonfiguration bei gleichem $\langle M \rangle$ auf Auf- und Abw"artsast verschieden ist --- dann ist die Kurve $\langle H^\text{self} \rangle$ vs.\ $\langle M \rangle$ selbst hysteretisch. \emph{Dieser Rest} ist die Kleinheitsannahme, typischerweise klein gegen die Loop-Fl"ache.
+
+Wer es exakt will, hat zwei Optionen:
+\begin{enumerate}
+  \item \textbf{Quellentrennung "uber die Linearit"at des Demag-Operators:} $H_\mathrm{d}^\text{total} = H_\mathrm{d}[\text{nur gro"ses Pulver}] + H_\mathrm{d}[\text{nur kleines Pulver}]$. Das Kreuzfeld auf Phase $i$ erh"alt man, indem man das Demagfeld mit genulltem $M_s$ der eigenen Phase auswertet (eine zus"atzliche Demag-Auswertung pro Logpunkt, oder Postprocessing "uber gespeicherte $m$-Snapshots).
+  \item \textbf{Lokale LLG-Dissipation direkt loggen:}
+  \begin{equation}
+  p_\text{dis} \;=\; \frac{\alpha \gamma \mu_0 M_s}{1+\alpha^2}\, \left| m \times H_\text{eff} \right|^2 ,
+  \end{equation}
+  gefiltert pro Phase. Das ist die exakte Dissipationsdichte der LLG-Dynamik und macht die Zuordnung eindeutig, ganz ohne Feld-Zerlegung.
+\end{enumerate}
+
+Wichtig: F"ur $B_i$ (Gl.~2) bleibt der Eigenanteil selbstverst"andlich enthalten --- die Wegheb-Eigenschaft betrifft nur das Verlust-Ringintegral, nicht die Flussdichte im Partikel.
+
+\section{Exakte Quellentrennung im Logger}
+
+Der Demag-Operator ist linear in $M_s\,m$ (\texttt{demagPBC.py:72} rechnet $\mathrm{FFT}(M_s\, m)$ mal Kernel), also gilt \emph{exakt}
+\begin{equation}
+H_\mathrm{d}^\text{total} \;=\; H_\mathrm{d}[\text{nur gro"ses Pulver}] \;+\; H_\mathrm{d}[\text{nur kleines Pulver}] .
+\end{equation}
+Es gen"ugt daher \emph{eine} zus"atzliche Demag-Auswertung mit maskierter Magnetisierung; der Rest ergibt sich als Differenz. \texttt{state.m} hat keinen speziellen Setter (kein Normalisieren, kein $M$-Caching im Feldterm --- nur der $N$-Tensor ist gecacht und h"angt nicht von $m$ ab), deshalb funktioniert tempor"ares Maskieren sauber:
+
+\begin{lstlisting}
+def demag_h_partial(state, filt):
+    """Demagfeld, das nur von der Magnetisierung in filt erzeugt wird."""
+    m_full = state.m
+    try:
+        state.m = m_full * filt      # nur Quellphase behalten
+        return demag.h(state)
+    finally:
+        state.m = m_full             # Originalobjekt wiederherstellen
+
+logger = ScalarLogger("data/loop.dat", [
+    't', external.h,
+    ('J_L',  lambda s: mu0 * s.material["Ms"] * s.m * filter_L / phi_L),
+    ('J_S',  lambda s: mu0 * s.material["Ms"] * s.m * filter_S / phi_S),
+    ('hd_L', lambda s: s.h_demag  * filter_L / phi_L),  # volles Feld in L
+    ('hd_S', lambda s: s.h_demag  * filter_S / phi_S),
+    ('hL_L', lambda s: s.h_from_L * filter_L / phi_L),  # Eigenfeld L
+    ('hL_S', lambda s: s.h_from_L * filter_S / phi_S),  # Kreuzfeld L -> S
+])
+
+for i in tqdm(torch.arange(0, T, dt)):
+    llg.step(state, dt)
+    state.h_demag  = demag.h(state)                    # 1 FFT-Faltung
+    state.h_from_L = demag_h_partial(state, filter_L)  # 1 weitere
+    logger << state
+\end{lstlisting}
+
+Damit sind alle vier Anteile verf"ugbar, zwei davon per Subtraktion im Postprocessing (exakt bis auf Float-Rundung):
+\begin{center}
+\begin{tabular}{lll}
+\textbf{Anteil} & \textbf{Quelle $\to$ Ort} & \textbf{Spalte} \\[2pt]
+Eigenfeld im gro"sen Pulver   & L $\to$ L & \texttt{hL\_L} \\
+Kreuzfeld im kleinen Pulver   & L $\to$ S & \texttt{hL\_S} \\
+Kreuzfeld im gro"sen Pulver   & S $\to$ L & \texttt{hd\_L} $-$ \texttt{hL\_L} \\
+Eigenfeld im kleinen Pulver   & S $\to$ S & \texttt{hd\_S} $-$ \texttt{hL\_S} \\
+\end{tabular}
+\end{center}
+
+\textbf{Kosten:} eine zus"atzliche FFT-Faltung pro Logpunkt. Ein LLG-Schritt macht intern mehrere RHS-Auswertungen mit je einer Demag-Faltung, das f"allt also kaum ins Gewicht (mit \texttt{every=} im Logger vernachl"assigbar). \textbf{Alternative ohne Eingriff in den Run:} $m$-Snapshots als VTI speichern und die Partialfelder offline mit derselben Maskierungs-Idee berechnen --- f"ur glatte Ringintegrale braucht das aber ausreichende Zeitaufl"osung.
+
+\textbf{Konsistenz-Check Energietransfer:} Mit den Kreuzfeldern l"asst sich der Energietransfer zwischen den Sorten direkt berechnen, $\oint \langle h_\text{cross}\rangle_i \,\mathrm{d}J_i$. Die beiden Transferterme m"ussen sich "uber den geschlossenen Zyklus (bis auf die Mittelungs-N"aherung aus Abschnitt~3) gegenseitig aufheben.
+
+\section{Warum das Ergebnis trotzdem plausibel ist}
+
+\glqq Losses h"angen stark von $B_\mathrm{peak}$ ab\grqq{} (Steinmetz-Denke) gilt f"ur \emph{ein} Material bei variierender Amplitude --- nicht beim Vergleich zweier verschiedener Mikrostrukturen. Die Loop-Fl"ache ist Amplitude $\times$ Breite, und die Breite unterscheidet sich hier systematisch:
+
+\begin{itemize}
+  \item Die 1-\textmu m-Partikel sitzen in den Zwickeln zwischen den gro"sen Kugeln und wirken als \textbf{Flussbr"ucken}: Der Fluss der gro"sen Nachbarn wird durch sie hindurchgeb"undelt $\Rightarrow$ lokal h"oheres $B$ (der beobachtete hohe $B_\mathrm{peak}$). Gleichzeitig sind sie durch die Streufelder der gro"sen Nachbarn stark vorgespannt: Ihre lokale Schleife ist geschert und fast reversibel $\Rightarrow$ kleine Fl"ache trotz gro"ser Amplitude.
+  \item Die 4-\textmu m-Partikel sind gro"s genug f"ur Dom"anenw"ande und Vortex-Zust"ande. Sie schalten "uber Nukleation und Pinning $\Rightarrow$ breite Schleife $\Rightarrow$ h"ohere Verluste trotz kleinerem $B_\mathrm{peak}$.
+\end{itemize}
+
+Also kein Widerspruch --- aber in dieser Reihenfolge verifizieren:
+\begin{enumerate}
+  \item Normierung fixen (Abschnitt~1),
+  \item $B$ mit lokalem Feld neu berechnen (Abschnitt~2),
+  \item Losses einmal mit $H_\text{ext}$ und einmal mit $\langle H \rangle_i$ rechnen und pr"ufen, ob das Ranking in beiden Varianten bestehen bleibt.
+\end{enumerate}
+
+\end{document}
