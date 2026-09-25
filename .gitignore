@@ -4,3 +4,10 @@
 !demos/inverse_magnetization_reconstruction/data/m_true.vti
 
 experiments/
+
+# outputs of the demo simulations (never commit simulation results). The reference files in demos/*/data/
+# that are already tracked stay tracked. Add a new reference file with `git add -f`.
+/data/
+demos/data/
+demos/*/data/*
+!demos/*/data/.gitignore
