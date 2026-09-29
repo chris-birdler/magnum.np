@@ -4,3 +4,4 @@
 !demos/inverse_magnetization_reconstruction/data/m_true.vti
 
 experiments/
+*.egg-info/
