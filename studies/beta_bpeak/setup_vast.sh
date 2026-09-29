@@ -14,8 +14,15 @@ DIR=${DIR:-$HOME/magnum.np}
 
 if [ ! -d "$DIR/.git" ]; then
     git clone --depth 1 -b "$BRANCH" "$REPO" "$DIR"
+    cd "$DIR"
+else
+    # existing clone: take the pushed state of the branch (runs/ is untracked and stays)
+    cd "$DIR"
+    git fetch --depth 1 origin "$BRANCH"
+    git checkout -f -B "$BRANCH" FETCH_HEAD   # -f: discard local edits of tracked files
 fi
-cd "$DIR"
+echo "code: $(git rev-parse HEAD) ($BRANCH)"
+git status --porcelain --untracked-files=no | sed 's/^/  changed: /'
 
 # do NOT let pip replace the CUDA torch of the image
 pip install --no-deps -e .
@@ -45,3 +52,4 @@ echo
 echo "Setup complete. Next:"
 echo "  cd $DIR/studies/beta_bpeak"
 echo "  python run_queue.py jobs/bench.txt --gpus 0"
+echo "  python run_queue.py jobs/pilot.txt --gpus 0,1,2,3"

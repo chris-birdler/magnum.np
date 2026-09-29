@@ -1,18 +1,6 @@
 """
 Additional field terms for the beta(B_peak) study.
 
-StressAnisotropyField
-    Magnetoelastic energy of an isotropic magnetostrictive material in a
-    prescribed (frozen) stress field:
-
-        e_me = -(3/2) * lambda_s * sum_ij sigma_ij m_i m_j        [J/m^3]
-        h    =  3 * lambda_s / (mu0 * Ms) * (sigma . m)            [A/m]
-
-    Isotropic lambda_s is an approximation (single crystals have
-    lambda_100 != lambda_111). The hydrostatic part of sigma adds a constant
-    (|m| = 1) and has no effect. The term is linear in m, so the energy of
-    LinearFieldTerm (-1/2 mu0 Ms m.h) is correct.
-
 SinusoidalDrive
     Homogeneous AC field  H(t) = H_amp * sin(2 pi f (t - t0)) * e.
     H_amp, f and t0 are plain Python floats that the driver changes between
@@ -21,39 +9,9 @@ SinusoidalDrive
 """
 import math
 import torch
-from magnumnp import constants, LinearFieldTerm, timedmethod
+from magnumnp import constants, timedmethod
 
-__all__ = ["StressAnisotropyField", "SinusoidalDrive"]
-
-
-class StressAnisotropyField(LinearFieldTerm):
-    def __init__(self, sigma, lambda_s, **kwargs):
-        """
-        :param sigma:    stress field, tensor [nx,ny,nz,6] in Pa (Voigt order
-                         xx, yy, zz, yz, xz, xy); set it to 0 in the void
-        :param lambda_s: saturation magnetostriction (float or [nx,ny,nz,1])
-        """
-        super().__init__(**kwargs)
-        self._sigma = sigma
-        self._lambda_s = lambda_s
-        self._c = None
-
-    def _init(self, state):
-        Ms = state.material["Ms"]
-        c = 3.0 * self._lambda_s * self._sigma.to(dtype=state.dtype) / (constants.mu_0 * Ms)
-        self._c = c.nan_to_num(posinf=0., neginf=0.).contiguous()
-
-    @timedmethod
-    def h(self, state):
-        if self._c is None:
-            self._init(state)
-        c = self._c
-        m = state.m
-        mx, my, mz = m[..., 0], m[..., 1], m[..., 2]
-        # c: [..., 0]=xx 1=yy 2=zz 3=yz 4=xz 5=xy
-        return torch.stack([c[..., 0]*mx + c[..., 5]*my + c[..., 4]*mz,
-                            c[..., 5]*mx + c[..., 1]*my + c[..., 3]*mz,
-                            c[..., 4]*mx + c[..., 3]*my + c[..., 2]*mz], dim=-1)
+__all__ = ["SinusoidalDrive"]
 
 
 class SinusoidalDrive(object):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Job lists of the beta(B_peak) study (fictitious material, reduced units) and
-a cost estimate.
+Job lists of the beta(B_peak) study (fictitious nanocrystalline powder,
+reduced units) and a cost estimate.
 
     python jobs.py                  # writes jobs/*.txt, prints the cost table
     python jobs.py --speedup 2.2    # cost for a GPU 2.2x faster than a V100
@@ -9,12 +9,22 @@ a cost estimate.
 Job file format: one job per line, "<name> <run_loops.py arguments>", sorted
 by estimated cost (largest first).
 
+Groups:
+  bench     1 cycle of a d/l_ex = 300 run (timing -> calibrate the cost model)
+  meshtest  d/l_ex = 96, dx = 3 / 2 / 1.5 l_ex, floor (Q_eff = 0) and L_eff = 12:
+            does the grid pin the unresolved vortex cores? Runs BEFORE the pilot.
+  pilot   d/l_ex = 150, 4 amplitudes: pinning signal against the floor, mesh,
+          damping, drive direction, frequency, realisation scatter. The
+          production matrix is decided after the pilot (HANDOVER.md).
+
 Cost model (CALIBRATE with jobs/bench.txt, then change the defaults):
   steps/cycle = 2 pi / (f_rel * dt_tau),  dt_tau = dt * gamma Ms
-                dt_tau = 0.6 at dx = 3 l_ex (CPU test: 0.69), scales with (dx/l_ex)^2
+                dt_tau = 0.6 at dx = 3 l_ex, scales with (dx/l_ex)^2
   s/step      = s_per_step_Mcell * n_cells / 1e6 / speedup
                 (0.011: V100 fp32, RKF45, from bench/fp32_validation)
   cycles      = 1 + n_amp * cycles_avg
+                cycles_avg = 3.5: with 10 % scatter per cycle (target, dW_tol = 0.10)
+                about half of the stages need the 4th cycle
 The unit "V100-h" is only a cost unit. Any fp32 GPU can run the jobs.
 """
 import argparse
@@ -24,44 +34,48 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from geometry import a_from          # noqa: E402
-from units import F_REL_DEFAULT      # noqa: E402
+from anisotropy_model import box_edge   # noqa: E402
+from units import F_REL_DEFAULT         # noqa: E402
 
-BASE = dict(d_lex=300.0, dx_lex=3.0, phi=0.65, Q=0.02, aniso="uniaxial", kappa=0.008, xi_lex=15.0,
-            alpha=0.1, n_amp=9, h_factor=0.5, cycles_per_amp=3, max_cycles_per_amp=4, samples=256,
-            precision="single", seed=1)
+BASE = dict(d_lex=300.0, dx_lex=3.0, phi=0.65, Leff_lex=18.0, r_p=0.0,
+            alpha=0.02, n_amp=9, h_factor=0.5, cycles_per_amp=3, max_cycles_per_amp=4, dW_tol=0.10,
+            samples=256, precision="single", seed=1)
+PILOT = dict(BASE, d_lex=150.0, n_amp=4, h_factor=0.25)
+MESHTEST = dict(PILOT, d_lex=96.0)      # a = 144 l_ex: a, a/2 and L_eff on cell faces for dx = 3, 2, 1.5
 
 
-def job(name, **kw):
-    a = dict(BASE)
+def job(base, name, **kw):
+    a = dict(base)
     a.update(kw)
     return name, a
 
 
 def matrix():
-    bench = [job("bench_base", max_cycles=1, relax_tau=100.0)]
+    bench = [job(BASE, "bench_base", max_cycles=1, relax_tau=100.0)]
 
-    prod = []
-    for k in (0.0, 0.0025, 0.008, 0.025):                       # pinning strength (base: 0.008)
-        prod.append(job("P_kappa%05.0f" % (k * 1e5), kappa=k))
-    for dl in (150.0, 225.0):                                   # particle size
-        prod.append(job("P_d%03.0f" % dl, d_lex=dl))
-    for ph in (0.47, 0.71):                                     # fill factor
-        prod.append(job("P_phi%03.0f" % (ph * 100), phi=ph))
-    prod.append(job("P_Q010", Q=0.01))                          # anisotropy
-    for s in (2, 3):                                            # realisations (stress field, initial m)
-        prod.append(job("P_seed%d" % s, seed=s))
+    meshtest = []
+    for dx in (3.0, 2.0, 1.5):
+        tag = ("%g" % dx).replace(".", "")
+        meshtest.append(job(MESHTEST, "M_floor_dx%s" % tag, Q_eff=0.0, dx_lex=dx))
+        meshtest.append(job(MESHTEST, "M_L12_dx%s" % tag, Leff_lex=12.0, dx_lex=dx))
 
-    ctrl = []
-    ctrl.append(job("C_d150_kappa0", d_lex=150.0, kappa=0.0))                   # floor, dx = 3 l_ex
-    ctrl.append(job("C_d150_kappa0_dx2", d_lex=150.0, kappa=0.0, dx_lex=2.0))   # floor, dx = 2 l_ex
-    ctrl.append(job("C_d150_dx2", d_lex=150.0, dx_lex=2.0))                     # signal, dx = 2 l_ex
-    ctrl.append(job("C_fhalf", f_rel=F_REL_DEFAULT / 2.0))                      # quasi-static check
-    return {"bench": bench, "production": prod, "control": ctrl}
+    pilot = []
+    for L in (12.0, 18.0, 24.0, 30.0):                              # Q_eff = 6.9e-3 ... 1.1e-3
+        pilot.append(job(PILOT, "T_L%02.0f" % L, Leff_lex=L))
+    pilot.append(job(PILOT, "T_floor", Q_eff=0.0))                   # no anisotropy: floor
+    for rp in (1.0, 3.0):                                           # particle-scale stress
+        pilot.append(job(PILOT, "T_L18_rp%.0f" % rp, r_p=rp))
+    pilot.append(job(PILOT, "T_L18_alpha010", alpha=0.1))           # damping loss
+    pilot.append(job(PILOT, "T_L18_d111", direction=[1.0, 1.0, 1.0]))  # cube lattice vs drive
+    pilot.append(job(PILOT, "T_L18_f2", f_rel=2.0 * F_REL_DEFAULT))  # dynamic share (pair with T_L18)
+    pilot.append(job(PILOT, "T_L30_dx2", Leff_lex=30.0, dx_lex=2.0))  # mesh, same cubes as T_L30
+    pilot.append(job(PILOT, "T_L30_seed2", Leff_lex=30.0, seed=2))    # realisation scatter
+    return {"bench": bench, "meshtest": meshtest, "pilot": pilot}
 
 
 def n_cells(a):
-    N = int(round(a_from(a["d_lex"], a["phi"]) / a["dx_lex"]))
+    a_lex, _ = box_edge(a["d_lex"], a["phi"])
+    N = int(round(a_lex / a["dx_lex"]))
     return N, N**3
 
 
@@ -79,6 +93,8 @@ def to_cli(a):
     for k, v in a.items():
         if v is True:
             parts.append("--%s" % k)
+        elif isinstance(v, (list, tuple)):
+            parts.append("--%s %s" % (k, " ".join(repr(float(x)) for x in v)))
         else:
             parts.append("--%s %s" % (k, repr(v) if isinstance(v, float) else v))
     return " ".join(parts)
@@ -88,7 +104,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--s_per_step_Mcell", type=float, default=0.011)
     ap.add_argument("--dt_tau", type=float, default=0.6)
-    ap.add_argument("--cycles_avg", type=float, default=3.3)
+    ap.add_argument("--cycles_avg", type=float, default=3.5)
     ap.add_argument("--speedup", type=float, default=1.0)
     ap.add_argument("--outdir", default=str(HERE / "jobs"))
     a = ap.parse_args()

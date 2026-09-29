@@ -12,13 +12,16 @@ Touching spheres:  d = a / sqrt(2)  ->  phi_max = 0.7405
 
 Rules that this module enforces:
   * spheres must not overlap (d < a/sqrt(2)),
-  * no two voxels of DIFFERENT particles can be face neighbours
-    (else the exchange term couples the particles through the contact).
+  * no two voxels of DIFFERENT particles can touch, not even at an edge or a
+    corner (26-neighbourhood): at least one void cell lies between any two
+    particles. The exchange stencil of magnum.np couples only face
+    neighbours, but an edge or corner contact is not a physical gap and
+    gives extreme stray fields.
 """
 import math
 import numpy as np
 
-__all__ = ["fcc_box", "phi_from", "a_from", "random_rotations", "FCC_SITES"]
+__all__ = ["fcc_box", "phi_from", "a_from", "FCC_SITES"]
 
 FCC_SITES = np.array([[0.0, 0.0, 0.0],
                       [0.0, 0.5, 0.5],
@@ -83,26 +86,16 @@ def fcc_box(N, d, dx):
 
 
 def _check_no_contact(ids):
-    """Fail if voxels of different particles are face neighbours (periodic)."""
-    for axis in range(3):
-        nb = np.roll(ids, 1, axis=axis)
-        contact = (ids >= 0) & (nb >= 0) & (ids != nb)
-        if np.any(contact):
-            raise ValueError("Particles touch on the voxel grid (axis %d, %d faces). "
-                             "Use a smaller d or a finer dx." % (axis, int(contact.sum())))
+    """Fail if voxels of different particles touch at a face, an edge or a
+    corner (26-neighbourhood, periodic)."""
+    for sx in (-1, 0, 1):
+        for sy in (-1, 0, 1):
+            for sz in (-1, 0, 1):
+                if (sx, sy, sz) == (0, 0, 0):
+                    continue
+                nb = np.roll(ids, (sx, sy, sz), axis=(0, 1, 2))
+                contact = (ids >= 0) & (nb >= 0) & (ids != nb)
+                if np.any(contact):
+                    raise ValueError("Particles touch on the voxel grid (shift %s, %d cells). "
+                                     "Use a smaller d or a finer dx." % ((sx, sy, sz), int(contact.sum())))
 
-
-def random_rotations(n, seed):
-    """
-    n uniformly distributed random rotation matrices (Haar measure).
-    Row vectors R[i,0], R[i,1], R[i,2] are the cubic axes of crystal i.
-    """
-    rng = np.random.default_rng(seed)
-    R = np.empty((n, 3, 3))
-    for i in range(n):
-        q, r = np.linalg.qr(rng.standard_normal((3, 3)))
-        q = q * np.sign(np.diag(r))       # unique QR -> Haar distribution
-        if np.linalg.det(q) < 0.0:
-            q[:, 0] = -q[:, 0]            # proper rotation
-        R[i] = q.T
-    return R

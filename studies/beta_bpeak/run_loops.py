@@ -1,10 +1,19 @@
 #!/usr/bin/env python
 """
-AC BH-loops of a periodic FCC powder model (fictitious material, reduced units).
+AC BH-loops of a periodic FCC powder model (fictitious nanocrystalline
+material, reduced units).
 
 Inputs are dimensionless (see units.py). Js and A only select the SI unit
 system of the output (default Js = 1.5 T, A = 10 pJ/m -> l_ex = 3.34 nm,
 f/f_M default -> 30 MHz).
+
+Anisotropy (see anisotropy_model.py): only
+  * Herzer residual anisotropy: cubes of edge L_eff with random easy axes,
+    Q_eff = K_eff/K_d = (l_ex/L_eff)^2,
+  * residual stress on the particle scale: K_p = r_p K_eff per particle,
+    deterministic axes.
+Box edge a is a multiple of 12 l_ex and L_eff a multiple of 6 l_ex, so that
+dx = 3, 2 and 1.5 l_ex see the same cubes. d is adjusted (<= 2.5 %) to keep phi.
 
 One run = one parameter set:
   1. random initial magnetization, short relaxation at H = 0,
@@ -12,6 +21,7 @@ One run = one parameter set:
   3. descending drive amplitudes h = H/Ms (geometric series). Each amplitude
      runs at least cycles_per_amp cycles, then more (up to
      max_cycles_per_amp) until the cycle is steady (closure_tol, dW_tol).
+     dW_tol = 0.10 is the target scatter of w from cycle to cycle.
      The descending series is also an AC demagnetization. The first cycle of
      each amplitude is a transient; analyze.py averages the other cycles.
 
@@ -39,16 +49,22 @@ to find nucleation/annihilation events.
 Precision: set_precision() before the mesh; state.t in float64 (fp32 time
 gives ~1 % errors in the accumulated time step); diagnostics in float64.
 
+Robustness: checkpoint.pt and summary.json are written atomically (tmp file
++ rename). A resume stops with an error if the physics or protocol arguments
+differ from the run that wrote the checkpoint.
+
 Example (benchmark, 1 cycle):
-    CUDA_DEVICE=0 python run_loops.py --d_lex 300 --kappa 0.008 --max_cycles 1 --out runs/bench
+    CUDA_DEVICE=0 python run_loops.py --d_lex 300 --Leff_lex 18 --max_cycles 1 --out runs/bench
 """
 import argparse
 import json
 import math
+import os
 import pathlib
 import subprocess
 import sys
 import time
+import warnings
 
 import numpy as np
 
@@ -59,7 +75,9 @@ from units import units, F_REL_DEFAULT, JS_REF, A_REF, MU0   # noqa: E402
 
 _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed trapz
 
-AXES_SEEDS = {1: 16295, 2: 13903, 3: 6982}   # representative cubic orientation sets (see HANDOVER.md)
+# arguments that do not change the physics or the protocol (allowed to differ on resume)
+RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
+               "allow_new_commit"}
 
 
 def parse_args(argv=None):
@@ -67,15 +85,16 @@ def parse_args(argv=None):
     g = p.add_argument_group("reduced geometry")
     g.add_argument("--d_lex", type=float, required=True, help="particle diameter / l_ex")
     g.add_argument("--dx_lex", type=float, default=3.0, help="cell size / l_ex")
-    g.add_argument("--phi", type=float, default=0.65, help="target packing fraction (N = round(a/dx))")
-    g.add_argument("--N", type=int, default=None, help="cells per edge (overrides --phi)")
+    g.add_argument("--phi", type=float, default=0.65, help="packing fraction (exact; d is adjusted to the box quantum)")
+    g.add_argument("--a_quant", type=float, default=12.0, help="box edge quantum / l_ex (0 = off)")
 
     g = p.add_argument_group("reduced material")
-    g.add_argument("--Q", type=float, default=0.02, help="anisotropy K/K_d")
-    g.add_argument("--aniso", choices=["uniaxial", "cubic"], default="uniaxial")
-    g.add_argument("--kappa", type=float, default=0.0, help="random stress anisotropy K_sigma,rms / K_d")
-    g.add_argument("--xi_lex", type=float, default=15.0, help="stress correlation length / l_ex")
-    g.add_argument("--alpha", type=float, default=0.1, help="Gilbert damping (numerical choice)")
+    g.add_argument("--Leff_lex", type=float, default=18.0,
+                   help="Herzer exchange length L_eff / l_ex = cube edge (multiple of 6 for mesh-identical cubes)")
+    g.add_argument("--Q_eff", type=float, default=None,
+                   help="K_eff / K_d (default (l_ex/L_eff)^2 = Herzer; 0 = no Herzer anisotropy)")
+    g.add_argument("--r_p", type=float, default=0.0, help="particle-scale stress anisotropy K_p / K_eff")
+    g.add_argument("--alpha", type=float, default=0.02, help="Gilbert damping (numerical choice, see HANDOVER)")
     g.add_argument("--ms_void", type=float, default=1e-8, help="Ms_void / Ms (must be > 0)")
 
     g = p.add_argument_group("unit system (only for SI output)")
@@ -83,7 +102,7 @@ def parse_args(argv=None):
     g.add_argument("--A", type=float, default=A_REF, help="exchange stiffness [J/m]")
 
     g = p.add_argument_group("seeds")
-    g.add_argument("--seed", type=int, default=1, help="realisation: stress field, initial m, cubic axes set")
+    g.add_argument("--seed", type=int, default=1, help="realisation: cube axes and offsets, initial m")
 
     g = p.add_argument_group("drive / protocol (reduced)")
     g.add_argument("--f_rel", type=float, default=F_REL_DEFAULT, help="f / f_M (default: 30 MHz at Js = 1.5 T)")
@@ -97,7 +116,8 @@ def parse_args(argv=None):
     g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per amplitude (1st = transient)")
     g.add_argument("--max_cycles_per_amp", type=int, default=4)
     g.add_argument("--closure_tol", type=float, default=0.02)
-    g.add_argument("--dW_tol", type=float, default=0.03)
+    g.add_argument("--dW_tol", type=float, default=0.10,
+                   help="target scatter of w per cycle (relative); the next cycle runs if |dW|/W is larger")
     g.add_argument("--samples", type=int, default=256, help="samples per cycle (>= 256 for the energy balance)")
     g.add_argument("--relax_tau", type=float, default=500.0, help="relaxation time at H = 0 in units 1/(gamma Ms)")
 
@@ -110,32 +130,40 @@ def parse_args(argv=None):
     g.add_argument("--max_cycles", type=int, default=None, help="stop after this many cycles (benchmark)")
     g.add_argument("--vti", action="store_true", help="write m as .vti after each stage")
     g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
-    g.add_argument("--no_resume", action="store_true")
+    g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
+    g.add_argument("--allow_new_commit", action="store_true",
+                   help="resume although the code (git commit) changed since the checkpoint")
     g.add_argument("--init_from", type=str, default=None, help="start from m of this checkpoint (no relaxation)")
     g.add_argument("--timer", action="store_true")
     return p.parse_args(argv)
 
 
 def git_commit():
+    """HEAD commit; '-dirty' if tracked files of the study or the library have local changes."""
     try:
-        return subprocess.check_output(["git", "-C", str(HERE), "rev-parse", "HEAD"], text=True).strip()
+        h = subprocess.check_output(["git", "-C", str(HERE), "rev-parse", "HEAD"], text=True).strip()
+        dirty = subprocess.check_output(["git", "-C", str(HERE), "status", "--porcelain", "--untracked-files=no",
+                                         "--", str(HERE), str(HERE.parent.parent / "magnumnp")], text=True).strip()
+        return h + ("-dirty" if dirty else "")
     except Exception:
         return "unknown"
 
 
-def uniaxial_axes(direction):
-    """Deterministic easy axes of the 4 particles: cos(theta) = 1/8, 3/8, 5/8, 7/8
-    to the drive direction (midpoint rule for an isotropic distribution),
-    azimuths 0, 90, 180, 270 deg around the drive."""
-    e = np.asarray(direction, float); e /= np.linalg.norm(e)
-    t = np.array([0.0, 0.0, 1.0]) if abs(e[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
-    e1 = np.cross(e, t); e1 /= np.linalg.norm(e1)
-    e2 = np.cross(e, e1)
-    ax = []
-    for c, psi in zip((1/8, 3/8, 5/8, 7/8), (0.0, 0.5 * math.pi, math.pi, 1.5 * math.pi)):
-        s = math.sqrt(1.0 - c * c)
-        ax.append(c * e + s * (math.cos(psi) * e1 + math.sin(psi) * e2))
-    return np.array(ax)
+def write_atomic(path, text):
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def save_atomic(obj, path):
+    import torch
+    tmp = path.with_name(path.name + ".tmp")
+    torch.save(obj, tmp)
+    os.replace(tmp, path)
+
+
+def is_multiple(x, q, tol=1e-9):
+    return abs(x / q - round(x / q)) < tol
 
 
 def build_stages(args, phi):
@@ -157,7 +185,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
 
     from magnumnp import (set_precision, set_log_level, Mesh, State, constants, Timer,
-                          DemagFieldPBC, ExchangeField, CubicAnisotropyField2, UniaxialAnisotropyField,
+                          DemagFieldPBC, ExchangeField, UniaxialAnisotropyField,
                           LLGSolver, accumulate_h, write_vti)
     import torch
     set_log_level(25)
@@ -165,18 +193,22 @@ def main(argv=None):
     if args.timer:
         Timer.enable()
 
-    from geometry import fcc_box, a_from, random_rotations
-    from stress import random_stress_field
-    from field_terms_extra import StressAnisotropyField, SinusoidalDrive
+    from geometry import fcc_box
+    from anisotropy_model import box_edge, cube_axes, particle_axes, CUBE_QUANT
+    from field_terms_extra import SinusoidalDrive
 
     # --- units -------------------------------------------------------------
     U = units(args.Js, args.A)
     Ms, Kd, lex = U["Ms"], U["Kd"], U["l_ex"]
-    d, dx, xi = args.d_lex * lex, args.dx_lex * lex, args.xi_lex * lex
     freq = args.f_rel * U["f_M"]
 
-    # --- geometry ----------------------------------------------------------
-    N = args.N if args.N is not None else int(round(a_from(d, args.phi) / dx))
+    # --- geometry (box edge quantized, d adjusted to keep phi) --------------
+    a_lex, d_lex = box_edge(args.d_lex, args.phi, args.a_quant)
+    N = int(round(a_lex / args.dx_lex))
+    if not is_multiple(a_lex, args.dx_lex):
+        warnings.warn("a = %g l_ex is not a multiple of dx = %g l_ex: a -> %g l_ex" % (a_lex, args.dx_lex, N * args.dx_lex))
+        a_lex = N * args.dx_lex
+    d, dx = d_lex * lex, args.dx_lex * lex
     geo = fcc_box(N, d, dx)
     ids = geo["ids"]
     mag = ids >= 0
@@ -191,48 +223,46 @@ def main(argv=None):
         return torch.tensor(a, dtype=dt_, device=dev)
 
     mag4 = mag[..., None]
-    K = args.Q * Kd
     state.material = {"alpha": args.alpha}
     state.material["Ms"] = T(np.where(mag4, Ms, args.ms_void * Ms))
     state.material["A"] = T(np.where(mag4, args.A, 0.0))
 
     e_d = np.asarray(args.direction, float); e_d /= np.linalg.norm(e_d)
-    if args.aniso == "uniaxial":
-        axes = uniaxial_axes(e_d)                                    # [4,3]
-        ku_ax = np.zeros((N, N, N, 3)); ku_ax[...] = [1.0, 0.0, 0.0]
-        for p in range(4):
-            ku_ax[ids == p] = axes[p]
-        state.material["Ku"] = T(np.where(mag4, K, 0.0))
-        state.material["Ku_axis"] = T(ku_ax)
-        aniso_term = UniaxialAnisotropyField()
-        cth = np.abs(axes @ e_d)
-        axes_stats = {"cos_theta": cth.tolist(), "Ea_over_K_mean": float(np.mean(1.0 - cth**2))}
-    else:
-        R = random_rotations(4, AXES_SEEDS.get(args.seed, args.seed))
-        ax1 = np.zeros((N, N, N, 3)); ax1[...] = [1.0, 0.0, 0.0]
-        ax2 = np.zeros((N, N, N, 3)); ax2[...] = [0.0, 1.0, 0.0]
-        for p in range(4):
-            ax1[ids == p] = R[p, 0]
-            ax2[ids == p] = R[p, 1]
-        state.material["Kc1"] = T(np.where(mag4, K, 0.0))
-        state.material["Kc2"] = 0.0
-        state.material["Kc3"] = 0.0
-        state.material["Kc_axis1"] = T(ax1)
-        state.material["Kc_axis2"] = T(ax2)
-        aniso_term = CubicAnisotropyField2()
-        cth = np.abs(R @ e_d)
-        Ea = cth[:, 0]**2 * cth[:, 1]**2 + cth[:, 1]**2 * cth[:, 2]**2 + cth[:, 2]**2 * cth[:, 0]**2
-        axes_stats = {"Ea_over_K_mean": float(Ea.mean()), "cos_easy_mean": float(cth.max(1).mean())}
+    L = args.Leff_lex
+    Q_eff = args.Q_eff if args.Q_eff is not None else 1.0 / L**2
+    K_eff = Q_eff * Kd
+    K_p = args.r_p * K_eff
+    if not (is_multiple(L, CUBE_QUANT) and is_multiple(L, args.dx_lex)):
+        warnings.warn("L_eff = %g l_ex is not a multiple of %g and of dx: the cubes depend on the mesh" % (L, CUBE_QUANT))
+    if L < 3.0 * args.dx_lex:
+        warnings.warn("L_eff = %g l_ex is less than 3 cells: the anisotropy cubes are not resolved" % L)
+    Q_max = Q_eff + args.r_p * Q_eff                     # cube and particle axes parallel
+    delta_min = 1.0 / math.sqrt(Q_max) if Q_max > 0 else float("inf")
+    if delta_min < 2.0 * args.dx_lex:
+        warnings.warn("local wall width %.3g l_ex < 2 cells: walls are not resolved" % delta_min)
 
-    # --- field terms -------------------------------------------------------
-    terms = [DemagFieldPBC(), ExchangeField(), aniso_term]
-    if args.kappa > 0.0:
-        # unit-rms Gaussian tensor field s_ij; energy e = -K_sigma * sum_ij s_ij m_i m_j
-        # (StressAnisotropyField: e = -(3/2) lambda_s sigma.m.m  ->  lambda_s = 2/3, sigma = K_sigma * s)
-        s = random_stress_field(N, dx, xi, 1.0, args.seed, mask=mag)
-        s[~mag] = 0.0
-        terms.append(StressAnisotropyField(T(s * args.kappa * Kd), 2.0 / 3.0))
-        del s
+    terms = [DemagFieldPBC(), ExchangeField()]
+    n_cubes = [0, 0, 0, 0]
+    if K_eff > 0.0:
+        ax_c, n_cubes = cube_axes(ids, args.dx_lex, a_lex, d_lex, L, args.seed)
+        state.material["Ku"] = T(np.where(mag4, K_eff, 0.0))
+        state.material["Ku_axis"] = T(ax_c)
+        terms.append(UniaxialAnisotropyField())
+        del ax_c
+    ax_p = particle_axes(e_d)
+    if K_p > 0.0:
+        kp_ax = np.zeros((N, N, N, 3))
+        for p in range(4):
+            kp_ax[ids == p] = ax_p[p]
+        state.material["Kp"] = T(np.where(mag4, K_p, 0.0))
+        state.material["Kp_axis"] = T(kp_ax)
+        terms.append(UniaxialAnisotropyField(Ku="Kp", Ku_axis="Kp_axis"))
+        del kp_ax
+    aniso_info = {"Q_eff": Q_eff, "K_eff": K_eff, "L_eff": L * lex, "L_over_dx": L / args.dx_lex,
+                  "K_p": K_p, "Q_p": args.r_p * Q_eff, "cos_theta_p": np.abs(ax_p @ e_d).tolist(),
+                  "delta_min_lex": delta_min, "delta_min_over_dx": delta_min / args.dx_lex,
+                  "n_cubes_per_particle": [int(n) for n in n_cubes]}
+
     drive = SinusoidalDrive(state, tuple(e_d))
     terms.append(drive)
     llg = LLGSolver(terms, atol=args.atol)
@@ -266,24 +296,38 @@ def main(argv=None):
         return Mpar, Mvec.cpu().numpy(), Mp.cpu().numpy(), p_dis, cmin, n60
 
     # --- config ------------------------------------------------------------
-    stages = build_stages(args, phi)
+    stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
     config = dict(vars(args))
     config.update({"units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
-                   "d": d, "dx": dx, "xi": xi, "a": geo["a"], "gap_nom_lex": geo["gap_nom"] / lex,
-                   "freq": freq, "K": K, "K_sigma": args.kappa * Kd,
-                   "delta0_lex": (1.0 / math.sqrt(args.Q)) if args.Q > 0 else None,
-                   "delta0_over_dx": (1.0 / math.sqrt(args.Q) / args.dx_lex) if args.Q > 0 else None,
-                   "axes_stats": axes_stats, "stages": stages, "git_commit": git_commit(),
+                   "a_lex": a_lex, "d_lex_used": d_lex, "d": d, "dx": dx, "a": geo["a"],
+                   "gap_nom_lex": geo["gap_nom"] / lex, "gap_cells": geo["gap_nom"] / dx,
+                   "freq": freq, "anisotropy": aniso_info, "stages": stages, "git_commit": git_commit(),
                    "torch": torch.__version__, "device": str(dev),
                    "gpu": torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"})
-    (out / "config.json").write_text(json.dumps(config, indent=1))
 
     # --- resume or initialise ---------------------------------------------
     ckpt = out / "checkpoint.pt"
     summ_file = out / "summary.json"
+    cfg_file = out / "config.json"
+    resume = ckpt.exists() and summ_file.exists() and not args.no_resume
+    if resume and cfg_file.exists():
+        old = json.loads(cfg_file.read_text())
+        diff = [k for k in vars(args) if k not in RUN_CONTROL and old.get(k) != config[k]]
+        if diff:
+            sys.exit("ERROR: resume with other arguments than the checkpoint run: %s. "
+                     "Use --no_resume or another --out." % ", ".join("%s %r -> %r" % (k, old.get(k), config[k]) for k in diff))
+        if old.get("git_commit") != config["git_commit"] and not args.allow_new_commit:
+            sys.exit("ERROR: the code changed since the checkpoint (%s -> %s). One run would mix two code "
+                     "versions. Use --no_resume, or --allow_new_commit if the change does not touch the physics."
+                     % (old.get("git_commit"), config["git_commit"]))
+    if args.no_resume:
+        for f in [ckpt, summ_file, out / "DONE"] + list(out.glob("samples_*.csv")) + list(out.glob("ckpt_*.pt")):
+            f.unlink(missing_ok=True)
+    write_atomic(cfg_file, json.dumps(config, indent=1))
+
     summary = {"stages": []}
     first_stage = 0
-    if ckpt.exists() and summ_file.exists() and not args.no_resume:
+    if resume:
         c = torch.load(ckpt, map_location=dev)
         state.m = c["m"].to(dtype=dt_, device=dev)
         summary = json.loads(summ_file.read_text())
@@ -295,7 +339,7 @@ def main(argv=None):
         state.m = c["m"].to(dtype=dt_, device=dev)
         print("[init] m from %s" % args.init_from, flush=True)
     else:
-        rng = np.random.default_rng(args.seed)
+        rng = np.random.default_rng([args.seed, 0])      # own stream (cube axes use [seed, 1000 + p])
         m0 = rng.standard_normal((N, N, N, 3))
         m0 /= np.linalg.norm(m0, axis=-1, keepdims=True)
         state.m = T(m0)
@@ -321,7 +365,7 @@ def main(argv=None):
         drive.t0 = 0.0
         drive.H_amp = st["h_amp"] * Ms
         rec = {"name": st["name"], "h_amp": st["h_amp"], "H_amp": st["h_amp"] * Ms,
-               "measure": st["measure"], "cycles": []}
+               "measure": st["measure"], "git_commit": config["git_commit"], "cycles": []}
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
         fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
 
@@ -383,19 +427,23 @@ def main(argv=None):
                 if not st["measure"]:
                     complete = True
                     break
-                steady = (cyc["closure"] < args.closure_tol and cyc.get("dW_rel", 1.0) < args.dW_tol)
+                closed = cyc["closure"] < args.closure_tol
+                in_scatter = cyc.get("dW_rel", 1.0) < args.dW_tol
+                steady = closed and in_scatter
                 if steady or ci >= args.max_cycles_per_amp:
                     rec["steady"] = bool(steady)
+                    rec["closed"] = bool(closed)
+                    rec["in_scatter"] = bool(in_scatter)
                     complete = True
                     break
         fcsv.close()
 
         rec["complete"] = complete
         summary["stages"].append(rec)
-        summ_file.write_text(json.dumps(summary, indent=1))
+        write_atomic(summ_file, json.dumps(summary, indent=1))
         if not complete:
             break
-        torch.save({"m": state.m.detach().cpu(), "next_stage": si + 1}, ckpt)
+        save_atomic({"m": state.m.detach().cpu(), "next_stage": si + 1}, ckpt)
         if args.keep_stage_ckpt:
             torch.save({"m": state.m.detach().cpu(), "next_stage": si + 1},
                        out / ("ckpt_%02d_%s.pt" % (si, st["name"])))
@@ -403,7 +451,7 @@ def main(argv=None):
             write_vti({"m": state.m}, str(out / ("m_%02d_%s.vti" % (si, st["name"]))), state)
 
     if args.max_cycles is None or cycles_done < args.max_cycles:
-        (out / "DONE").write_text("ok\n")
+        write_atomic(out / "DONE", "ok\n")
     if args.timer:
         Timer.print_report()
 
