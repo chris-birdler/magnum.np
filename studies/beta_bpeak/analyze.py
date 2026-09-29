@@ -1,24 +1,24 @@
 #!/usr/bin/env python
 """
-Evaluate runs of run_loops.py: W(B_peak), P(B_peak) and beta_eff(B_peak).
+Evaluate runs of run_loops.py in reduced units:
+w = W/K_d per cycle versus b_peak = B_peak/Js, and beta_eff = d ln w / d ln b.
 
-    python analyze.py runs/*                   # table + all_runs.csv + plots
-    python analyze.py --pair runs/X_f30 runs/X_f15   # frequency separation
+    python analyze.py runs/*                          # tables, features, all_runs.csv, plot
+    python analyze.py --pair runs/P_kappa00800 runs/C_fhalf   # frequency separation
 
-Per run and measured amplitude, W and B_peak are the MEAN over all cycles
-except the first one (the first cycle after an amplitude change is a
-transient). W_err is the standard error of that mean (cycle-to-cycle scatter;
-it is not small for 4 particles, see HANDOVER.md).
+Per run and amplitude, w and b_peak are the MEAN over all cycles except the
+first one (transient). w_err is the standard error of that mean.
 
-beta_eff is the local slope d ln W / d ln B_peak (central differences on the
-log-log data, one-sided at the ends). With a constant frequency, the slope of
-the loss power P = f W is the same.
+Flags per amplitude:
+  !   stage not steady (max_cycles_per_amp reached)
+  *   energy balance |w_dis/w_loop - 1| > 2 %
+  #   jump in the number of large-angle neighbour pairs during the measured
+      cycles (> 20 % change): vortex-core / Bloch-point events -> mesh dependent
 
-Frequency separation (--pair): with W(f) = W_h + c f (quasi-static part plus
-a part linear in f, e.g. LLG damping, relaxation), two runs that differ ONLY
-in the frequency give
-    W_h = (f2 W(f1) - f1 W(f2)) / (f2 - f1).
-The stages are matched by name (same drive amplitudes).
+Features per run (for the ranking of the parameters): beta at fixed
+b = 0.01, 0.03, 0.1, 0.3 (log interpolation), beta_max and b at beta_max.
+
+Frequency separation (--pair): W(f) = W_h + c f  ->  W_h = (f2 W1 - f1 W2)/(f2 - f1).
 """
 import argparse
 import csv
@@ -29,6 +29,8 @@ import sys
 
 import numpy as np
 
+B_REF = (0.01, 0.03, 0.1, 0.3)
+
 
 def load_run(d):
     d = pathlib.Path(d)
@@ -38,28 +40,29 @@ def load_run(d):
     for st in summ["stages"]:
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
-        cyc = st["cycles"][1:] if len(st["cycles"]) > 1 else st["cycles"]   # drop the transient cycle
-        W = np.array([c["W_loop"] for c in cyc])
-        rows.append({"stage": st["name"], "H_amp": st["H_amp"],
-                     "B_peak": float(np.mean([c["B_peak"] for c in cyc])),
-                     "W_loop": float(W.mean()),
-                     "W_err": float(W.std(ddof=1) / math.sqrt(len(W))) if len(W) > 1 else float("nan"),
-                     "W_dis": float(np.mean([c["W_dis"] for c in cyc])),
+        cyc = st["cycles"][1:] if len(st["cycles"]) > 1 else st["cycles"]
+        w = np.array([c["w_loop"] for c in cyc])
+        n60 = [c.get("n_pairs_gt60", 0) for c in cyc]
+        rows.append({"stage": st["name"], "h_amp": st["h_amp"],
+                     "b_peak": float(np.mean([c["b_peak"] for c in cyc])),
+                     "w_loop": float(w.mean()),
+                     "w_err": float(w.std(ddof=1) / math.sqrt(len(w))) if len(w) > 1 else float("nan"),
+                     "w_dis": float(np.mean([c["w_dis"] for c in cyc])),
                      "closure": cyc[-1]["closure"], "dW_rel": cyc[-1].get("dW_rel", float("nan")),
                      "steady": st.get("steady", False), "n_cycles": len(st["cycles"]),
-                     "mean_dt": float(np.mean([c["mean_dt"] for c in cyc])),
-                     "wall_s": float(sum(c["wall_s"] for c in st["cycles"]))})
-    rows.sort(key=lambda r: r["B_peak"])
-    add_beta(rows, "W_loop", "beta")
+                     "frac_gt60": float(max(c.get("frac_pairs_gt60", 0.0) for c in cyc)),
+                     "n60_jump": bool(max(n60) > 1.2 * max(min(n60), 1)),
+                     "mean_dt": float(np.mean([c["mean_dt"] for c in cyc]))})
+    rows.sort(key=lambda r: r["b_peak"])
+    add_beta(rows, "w_loop", "beta")
     for r in rows:
-        r["P_kW_m3"] = cfg["freq"] * r["W_loop"] / 1e3
-        r["balance"] = r["W_dis"] / r["W_loop"] if r["W_loop"] != 0 else float("nan")
+        r["balance"] = r["w_dis"] / r["w_loop"] if r["w_loop"] != 0 else float("nan")
     return cfg, rows
 
 
 def add_beta(rows, key, out_key):
     n = len(rows)
-    lb = [math.log(r["B_peak"]) for r in rows]
+    lb = [math.log(r["b_peak"]) for r in rows]
     lw = [math.log(r[key]) if r[key] > 0 else float("nan") for r in rows]
     for i in range(n):
         if n < 2:
@@ -68,28 +71,54 @@ def add_beta(rows, key, out_key):
         rows[i][out_key] = (lw[j1] - lw[j0]) / (lb[j1] - lb[j0])
 
 
+def features(rows):
+    f = {}
+    if len(rows) < 2:
+        return f
+    lb = np.log([r["b_peak"] for r in rows])
+    be = np.array([r["beta"] for r in rows])
+    for b in B_REF:
+        lbr = math.log(b)
+        f["beta@b=%g" % b] = float(np.interp(lbr, lb, be)) if lb[0] <= lbr <= lb[-1] else float("nan")
+    i = int(np.nanargmax(be))
+    f["beta_max"], f["b_at_beta_max"] = float(be[i]), float(rows[i]["b_peak"])
+    return f
+
+
 def label(cfg):
-    return ("d=%.2fum phi=%.3f sig=%.0fMPa xi=%.0fnm K1=%.0fk f=%.0fMHz %s seed=%d/%d" %
-            (cfg["d"] * 1e6, cfg["phi_vox"], cfg["sigma_rms"] / 1e6, cfg["xi"] * 1e9, cfg["K1"] / 1e3,
-             cfg["freq"] / 1e6, cfg["precision"], cfg["seed_axes"], cfg["seed_stress"]))
+    return ("d/lex=%g phi=%.3f Q=%g(%s) kappa=%g xi/lex=%g dx/lex=%g f/fM=%.3g seed=%d" %
+            (cfg["d_lex"], cfg["phi_vox"], cfg["Q"], cfg["aniso"][:3], cfg["kappa"], cfg["xi_lex"],
+             cfg["dx_lex"], cfg["f_rel"], cfg["seed"]))
+
+
+def flags(r):
+    s = "" if r["steady"] else "!"
+    if abs(r["balance"] - 1.0) > 0.02:
+        s += "*"
+    if r["n60_jump"]:
+        s += "#"
+    return s
 
 
 def print_table(name, cfg, rows):
     print("\n== %s\n   %s" % (name, label(cfg)))
-    print("   %-6s %10s %10s %11s %8s %11s %7s %6s %8s %6s %3s" %
-          ("stage", "H [A/m]", "B_pk [T]", "W [J/m3]", "W_err", "P [kW/m3]", "beta", "Wd/W", "closure", "dW", "n"))
+    print("   %-6s %9s %9s %10s %8s %7s %6s %8s %7s %3s %s" %
+          ("stage", "h", "b_peak", "w_loop", "w_err", "beta", "wd/w", "closure", "f>60", "n", "flags"))
     for r in rows:
-        print("   %-6s %10.4g %10.4g %11.4g %8.2g %11.4g %7.3f %6.3f %8.2g %6.2g %3d%s" %
-              (r["stage"], r["H_amp"], r["B_peak"], r["W_loop"], r["W_err"], r["P_kW_m3"], r["beta"],
-               r["balance"], r["closure"], r["dW_rel"], r["n_cycles"], "" if r["steady"] else " !"))
+        print("   %-6s %9.4g %9.4g %10.4g %8.2g %7.3f %6.3f %8.2g %7.2g %3d %s" %
+              (r["stage"], r["h_amp"], r["b_peak"], r["w_loop"], r["w_err"], r["beta"], r["balance"],
+               r["closure"], r["frac_gt60"], r["n_cycles"], flags(r)))
+    f = features(rows)
+    if f:
+        print("   features: " + "  ".join("%s=%.3g" % kv for kv in f.items()))
 
 
 def pair(d1, d2):
     c1, r1 = load_run(d1)
     c2, r2 = load_run(d2)
-    f1, f2 = c1["freq"], c2["freq"]
-    ignore = {"freq", "out", "max_cycles", "stages", "git_commit", "torch", "device", "gpu",
-              "no_resume", "timer", "vti"}
+    f1, f2 = c1["f_rel"], c2["f_rel"]
+    ignore = {"f_rel", "freq", "out", "max_cycles", "stages", "git_commit", "torch", "device", "gpu",
+              "no_resume", "timer", "vti", "keep_stage_ckpt", "init_from"}
     diff = [k for k in c1 if k not in ignore and c1.get(k) != c2.get(k)]
     if diff:
         print("WARNING: runs differ in more than the frequency: %s" % diff)
@@ -99,20 +128,20 @@ def pair(d1, d2):
         b = m2.get(a["stage"])
         if b is None:
             continue
-        W_h = (f2 * a["W_loop"] - f1 * b["W_loop"]) / (f2 - f1)
-        out.append({"stage": a["stage"], "B_peak": 0.5 * (a["B_peak"] + b["B_peak"]),
-                    "dB_rel": abs(a["B_peak"] - b["B_peak"]) / a["B_peak"],
-                    "W_f1": a["W_loop"], "W_f2": b["W_loop"], "W_h": W_h,
-                    "dyn_share_f1": 1.0 - W_h / a["W_loop"]})
-    out.sort(key=lambda r: r["B_peak"])
-    add_beta(out, "W_h", "beta_h")
-    add_beta(out, "W_f1", "beta_f1")
-    print("\n== frequency separation  f1=%.3g Hz  f2=%.3g Hz" % (f1, f2))
-    print("   %-6s %10s %8s %11s %11s %11s %8s %7s %7s" %
-          ("stage", "B_pk [T]", "dB/B", "W(f1)", "W(f2)", "W_h", "dyn(f1)", "beta_h", "beta_f1"))
+        w_h = (f2 * a["w_loop"] - f1 * b["w_loop"]) / (f2 - f1)
+        out.append({"stage": a["stage"], "b_peak": 0.5 * (a["b_peak"] + b["b_peak"]),
+                    "db_rel": abs(a["b_peak"] - b["b_peak"]) / a["b_peak"],
+                    "w_f1": a["w_loop"], "w_f2": b["w_loop"], "w_h": w_h,
+                    "dyn_share_f1": 1.0 - w_h / a["w_loop"]})
+    out.sort(key=lambda r: r["b_peak"])
+    add_beta(out, "w_h", "beta_h")
+    add_beta(out, "w_f1", "beta_f1")
+    print("\n== frequency separation  f1/fM=%.3g  f2/fM=%.3g" % (f1, f2))
+    print("   %-6s %9s %7s %10s %10s %10s %8s %7s %7s" %
+          ("stage", "b_peak", "db/b", "w(f1)", "w(f2)", "w_h", "dyn(f1)", "beta_h", "beta_f1"))
     for r in out:
-        print("   %-6s %10.4g %8.2g %11.4g %11.4g %11.4g %8.2f %7.3f %7.3f" %
-              (r["stage"], r["B_peak"], r["dB_rel"], r["W_f1"], r["W_f2"], r["W_h"],
+        print("   %-6s %9.4g %7.2g %10.4g %10.4g %10.4g %8.2f %7.3f %7.3f" %
+              (r["stage"], r["b_peak"], r["db_rel"], r["w_f1"], r["w_f2"], r["w_h"],
                r["dyn_share_f1"], r["beta_h"], r["beta_f1"]))
     return out
 
@@ -128,15 +157,15 @@ def plot(results, path):
     for name, cfg, rows in results:
         if not rows:
             continue
-        B = [r["B_peak"] for r in rows]
-        ax1.errorbar(B, [r["W_loop"] for r in rows], yerr=[r["W_err"] for r in rows],
-                     fmt="o-", ms=3, capsize=2, label=label(cfg))
-        ax1.set_xscale("log"); ax1.set_yscale("log")
-        ax2.semilogx(B, [r["beta"] for r in rows], "o-", ms=3)
-    ax1.set_xlabel("B_peak [T]"); ax1.set_ylabel("W per cycle [J/m$^3$]")
-    ax2.set_xlabel("B_peak [T]"); ax2.set_ylabel(r"$\beta_\mathrm{eff}$ = d ln W / d ln B")
-    for b in (2.0, 3.0):
-        ax2.axhline(b, color="0.7", lw=0.8, ls="--")
+        b = [r["b_peak"] for r in rows]
+        ax1.errorbar(b, [r["w_loop"] for r in rows], yerr=[r["w_err"] for r in rows],
+                     fmt="o-", ms=3, capsize=2, label=name)
+        ax2.semilogx(b, [r["beta"] for r in rows], "o-", ms=3, label=name)
+    ax1.set_xscale("log"); ax1.set_yscale("log")
+    ax1.set_xlabel("b = B_peak / Js"); ax1.set_ylabel("w = W / K_d per cycle")
+    ax2.set_xlabel("b = B_peak / Js"); ax2.set_ylabel(r"$\beta_\mathrm{eff}$ = d ln w / d ln b")
+    for v in (2.0, 3.0):
+        ax2.axhline(v, color="0.7", lw=0.8, ls="--")
     ax1.legend(fontsize=6)
     fig.tight_layout()
     fig.savefig(path, dpi=150)
@@ -148,7 +177,7 @@ def main():
     ap.add_argument("runs", nargs="*")
     ap.add_argument("--pair", nargs=2, metavar=("RUN_F1", "RUN_F2"))
     ap.add_argument("--csv", default="all_runs.csv")
-    ap.add_argument("--plot", default="beta_vs_B.png")
+    ap.add_argument("--plot", default="beta_vs_b.png")
     a = ap.parse_args()
 
     if a.pair:
@@ -163,18 +192,17 @@ def main():
         cfg, rows = load_run(p)
         results.append((p.name, cfg, rows))
         print_table(p.name, cfg, rows)
-
     if not results:
         sys.exit("no runs with summary.json found")
-    keys = ["run", "d", "phi_vox", "sigma_rms", "xi", "K1", "freq", "precision", "dx",
-            "seed_axes", "seed_stress"]
+
+    keys = ["d_lex", "phi_vox", "Q", "aniso", "kappa", "xi_lex", "dx_lex", "f_rel", "seed"]
+    rk = [k for k in results[0][2][0].keys()] if results[0][2] else []
     with open(a.csv, "w", newline="") as f:
         w = csv.writer(f)
-        rk = list(results[0][2][0].keys()) if results[0][2] else []
-        w.writerow(keys + rk)
+        w.writerow(["run"] + keys + rk)
         for name, cfg, rows in results:
             for r in rows:
-                w.writerow([name] + [cfg.get(k) for k in keys[1:]] + [r[k] for k in rk])
+                w.writerow([name] + [cfg.get(k) for k in keys] + [r[k] for k in rk])
     print("\ncsv: %s" % a.csv)
     plot(results, a.plot)
 

@@ -1,44 +1,50 @@
 #!/usr/bin/env python
 """
-AC BH-loops of a periodic FCC powder model for the beta(B_peak) study.
+AC BH-loops of a periodic FCC powder model (fictitious material, reduced units).
 
-One run = one parameter set. The run does:
+Inputs are dimensionless (see units.py). Js and A only select the SI unit
+system of the output (default Js = 1.5 T, A = 10 pJ/m -> l_ex = 3.34 nm,
+f/f_M default -> 30 MHz).
+
+One run = one parameter set:
   1. random initial magnetization, short relaxation at H = 0,
-  2. one (or more) saturating cycle(s)  -> resets the domain topology,
-  3. descending drive amplitudes (geometric series). Each amplitude runs
-     at least cycles_per_amp cycles, then more cycles (up to
+  2. one saturating cycle -> resets the domain topology,
+  3. descending drive amplitudes h = H/Ms (geometric series). Each amplitude
+     runs at least cycles_per_amp cycles, then more (up to
      max_cycles_per_amp) until the cycle is steady (closure_tol, dW_tol).
-     The descending series is at the same time an AC demagnetization.
-     The first cycle of each amplitude is a transient; analyze.py averages
-     the other cycles.
-     (--order ascending: saturating cycle, AC demag down to the smallest
-     amplitude with 1 cycle each, then measure with ascending amplitudes.)
+     The descending series is also an AC demagnetization. The first cycle of
+     each amplitude is a transient; analyze.py averages the other cycles.
 
-For each cycle the script writes (see summary.json):
-  B_peak   half peak-to-peak of the macroscopic flux density  [T]
-  W_loop   loop energy  oint H dB = mu0 oint H dM_x           [J/m^3 per cycle]
-  W_dis    LLG dissipation  int <p_dis> dt over the cycle     [J/m^3 per cycle]
-  closure  |M(end) - M(start)| / M_peak   (M along the drive)  [-]
-  dW_rel   |W_loop(c) - W_loop(c-1)| / W_loop(c)              [-]
-All energies are per unit volume of the CORE (voids included).
+Per cycle (summary.json), SI and reduced:
+  B_peak, b_peak = B_peak/Js      half peak-to-peak flux density (core average)
+  W_loop, w_loop = W_loop/K_d     oint H dB = mu0 oint H dM   (per cycle)
+  W_dis,  w_dis                   LLG dissipation int <p_dis> dt (per cycle)
+  closure                         |M(end)-M(start)| / M_peak
+  dW_rel                          |W(c) - W(c-1)| / W(c)
+  max_angle_deg                   largest angle between neighbour cells of the
+                                  same particle during the cycle
+  n_pairs_gt60, frac_pairs_gt60   largest number (fraction) of neighbour pairs with
+                                  > 60 deg during the cycle; per sample in the csv.
+                                  Jumps in the per-sample count show nucleation or
+                                  annihilation of vortex cores / Bloch points
+Energies are per unit volume of the CORE (voids included).
 
-Energy balance check: for a closed cycle W_loop == W_dis (the stray-field,
-exchange and anisotropy energies are state functions). A difference shows
-insufficient sampling, an open cycle or integrator errors.
+Validity diagnostics: W_loop == W_dis for a closed cycle (energy balance).
+Pairs with > 60 deg mark structures that the grid does not resolve (vortex
+cores, Bloch lines, Bloch points). At dx = 3 l_ex a vortex core is narrower
+than one cell, so max_angle_deg is close to 180 deg whenever a vortex exists
+(CPU test). Use frac_pairs_gt60 and its per-sample jumps, not max_angle_deg,
+to find nucleation/annihilation events.
 
-Precision: set_precision() is called before the mesh is created. state.t is
-kept in float64 on purpose (fp32 time would give ~1 % errors in the time
-step accumulation, see HANDOVER.md). All diagnostic averages and the loop
-integrals are accumulated in float64.
+Precision: set_precision() before the mesh; state.t in float64 (fp32 time
+gives ~1 % errors in the accumulated time step); diagnostics in float64.
 
 Example (benchmark, 1 cycle):
-    CUDA_DEVICE=0 python run_loops.py --d 0.5e-6 --N 72 --dx 10.2569e-9 \
-        --sigma_rms 150e6 --max_cycles 1 --out runs/bench_N72
+    CUDA_DEVICE=0 python run_loops.py --d_lex 300 --kappa 0.008 --max_cycles 1 --out runs/bench
 """
 import argparse
 import json
 import math
-import os
 import pathlib
 import subprocess
 import sys
@@ -49,67 +55,64 @@ import numpy as np
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-MU0 = 1.2566370614e-6
+from units import units, F_REL_DEFAULT, JS_REF, A_REF, MU0   # noqa: E402
+
 _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed trapz
+
+AXES_SEEDS = {1: 16295, 2: 13903, 3: 6982}   # representative cubic orientation sets (see HANDOVER.md)
 
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    g = p.add_argument_group("geometry")
-    g.add_argument("--d", type=float, required=True, help="particle diameter [m]")
-    g.add_argument("--dx", type=float, required=True, help="cell size [m]")
-    g.add_argument("--N", type=int, default=None, help="cells per edge (a = N*dx); alternative: --phi")
-    g.add_argument("--phi", type=float, default=None, help="target packing fraction (N = round(a/dx))")
+    g = p.add_argument_group("reduced geometry")
+    g.add_argument("--d_lex", type=float, required=True, help="particle diameter / l_ex")
+    g.add_argument("--dx_lex", type=float, default=3.0, help="cell size / l_ex")
+    g.add_argument("--phi", type=float, default=0.65, help="target packing fraction (N = round(a/dx))")
+    g.add_argument("--N", type=int, default=None, help="cells per edge (overrides --phi)")
 
-    g = p.add_argument_group("material (defaults: FeSiCr assumption, see HANDOVER.md)")
-    g.add_argument("--Js", type=float, default=1.80, help="mu0*Ms [T]")
-    g.add_argument("--A", type=float, default=15e-12, help="exchange stiffness [J/m]")
-    g.add_argument("--K1", type=float, default=30e3, help="cubic anisotropy K1 [J/m^3]")
-    g.add_argument("--lambda_s", type=float, default=5e-6, help="isotropic saturation magnetostriction [-]")
-    g.add_argument("--alpha", type=float, default=0.1, help="Gilbert damping (numerical choice, see HANDOVER.md)")
-    g.add_argument("--Js_void", type=float, default=1e-8, help="mu0*Ms in the void [T] (must be > 0)")
+    g = p.add_argument_group("reduced material")
+    g.add_argument("--Q", type=float, default=0.02, help="anisotropy K/K_d")
+    g.add_argument("--aniso", choices=["uniaxial", "cubic"], default="uniaxial")
+    g.add_argument("--kappa", type=float, default=0.0, help="random stress anisotropy K_sigma,rms / K_d")
+    g.add_argument("--xi_lex", type=float, default=15.0, help="stress correlation length / l_ex")
+    g.add_argument("--alpha", type=float, default=0.1, help="Gilbert damping (numerical choice)")
+    g.add_argument("--ms_void", type=float, default=1e-8, help="Ms_void / Ms (must be > 0)")
 
-    g = p.add_argument_group("stress field")
-    g.add_argument("--sigma_rms", type=float, default=0.0, help="rms of each stress component [Pa]")
-    g.add_argument("--xi", type=float, default=50e-9, help="stress correlation length [m]")
+    g = p.add_argument_group("unit system (only for SI output)")
+    g.add_argument("--Js", type=float, default=JS_REF, help="mu0 Ms [T]")
+    g.add_argument("--A", type=float, default=A_REF, help="exchange stiffness [J/m]")
 
     g = p.add_argument_group("seeds")
-    g.add_argument("--seed_axes", type=int, default=16295, help="orientation set (see jobs.AXES_SEEDS)")
-    g.add_argument("--seed_stress", type=int, default=1)
-    g.add_argument("--seed_m", type=int, default=1)
+    g.add_argument("--seed", type=int, default=1, help="realisation: stress field, initial m, cubic axes set")
 
-    g = p.add_argument_group("drive / protocol")
-    g.add_argument("--freq", type=float, default=30e6, help="drive frequency [Hz]")
+    g = p.add_argument_group("drive / protocol (reduced)")
+    g.add_argument("--f_rel", type=float, default=F_REL_DEFAULT, help="f / f_M (default: 30 MHz at Js = 1.5 T)")
     g.add_argument("--direction", type=float, nargs=3, default=[1.0, 0.0, 0.0])
-    g.add_argument("--H_sat", type=float, default=None, help="saturating amplitude [A/m] (default (1-phi)*Ms)")
-    g.add_argument("--n_sat", type=int, default=1, help="number of saturating cycles")
-    g.add_argument("--H_max", type=float, default=None, help="largest measured amplitude [A/m] (default (1-phi)*Ms/3)")
-    g.add_argument("--H_factor", type=float, default=0.5, help="ratio of neighbouring amplitudes")
-    g.add_argument("--n_amp", type=int, default=9, help="number of measured amplitudes")
-    g.add_argument("--H_list", type=float, nargs="*", default=None, help="explicit amplitudes [A/m] (overrides H_max/H_factor/n_amp)")
-    g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per measured amplitude (1st = transient)")
-    g.add_argument("--max_cycles_per_amp", type=int, default=4, help="maximum cycles per measured amplitude")
-    g.add_argument("--closure_tol", type=float, default=0.02, help="steady if |M_end-M_start|/M_peak < tol ...")
-    g.add_argument("--dW_tol", type=float, default=0.03, help="... and |W_c - W_(c-1)|/W_c < tol")
-    g.add_argument("--order", choices=["descending", "ascending"], default="descending")
-    g.add_argument("--samples", type=int, default=256, help="samples per cycle")
-    g.add_argument("--relax_time", type=float, default=2e-9, help="relaxation at H=0 before the protocol [s]")
+    g.add_argument("--h_sat", type=float, default=None, help="saturating amplitude H/Ms (default 1-phi)")
+    g.add_argument("--n_sat", type=int, default=1)
+    g.add_argument("--h_max", type=float, default=None, help="largest measured H/Ms (default (1-phi)/3)")
+    g.add_argument("--h_factor", type=float, default=0.5)
+    g.add_argument("--n_amp", type=int, default=9)
+    g.add_argument("--h_list", type=float, nargs="*", default=None, help="explicit amplitudes H/Ms")
+    g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per amplitude (1st = transient)")
+    g.add_argument("--max_cycles_per_amp", type=int, default=4)
+    g.add_argument("--closure_tol", type=float, default=0.02)
+    g.add_argument("--dW_tol", type=float, default=0.03)
+    g.add_argument("--samples", type=int, default=256, help="samples per cycle (>= 256 for the energy balance)")
+    g.add_argument("--relax_tau", type=float, default=500.0, help="relaxation time at H = 0 in units 1/(gamma Ms)")
 
     g = p.add_argument_group("numerics")
     g.add_argument("--precision", choices=["single", "double"], default="single")
     g.add_argument("--atol", type=float, default=1e-5, help="RKF45 tolerance")
 
     g = p.add_argument_group("run control / output")
-    g.add_argument("--out", type=str, required=True, help="output directory")
+    g.add_argument("--out", type=str, required=True)
     g.add_argument("--max_cycles", type=int, default=None, help="stop after this many cycles (benchmark)")
     g.add_argument("--vti", action="store_true", help="write m as .vti after each stage")
-    g.add_argument("--keep_stage_ckpt", action="store_true",
-                   help="keep m after every stage as ckpt_<k>_<stage>.pt (for --init_from)")
-    g.add_argument("--no_resume", action="store_true", help="ignore an existing checkpoint")
-    g.add_argument("--init_from", type=str, default=None,
-                   help="start from m of this checkpoint.pt (no relaxation); e.g. with --n_sat 0 "
-                        "--H_list <small amplitudes> --precision double to repeat the smallest amplitudes in fp64")
-    g.add_argument("--timer", action="store_true", help="print the magnum.np timer report at the end")
+    g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
+    g.add_argument("--no_resume", action="store_true")
+    g.add_argument("--init_from", type=str, default=None, help="start from m of this checkpoint (no relaxation)")
+    g.add_argument("--timer", action="store_true")
     return p.parse_args(argv)
 
 
@@ -120,22 +123,31 @@ def git_commit():
         return "unknown"
 
 
-def build_stages(args, Ms, phi):
-    H_sat = args.H_sat if args.H_sat is not None else (1.0 - phi) * Ms
-    if args.H_list:
-        amps = sorted(args.H_list, reverse=True)
+def uniaxial_axes(direction):
+    """Deterministic easy axes of the 4 particles: cos(theta) = 1/8, 3/8, 5/8, 7/8
+    to the drive direction (midpoint rule for an isotropic distribution),
+    azimuths 0, 90, 180, 270 deg around the drive."""
+    e = np.asarray(direction, float); e /= np.linalg.norm(e)
+    t = np.array([0.0, 0.0, 1.0]) if abs(e[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
+    e1 = np.cross(e, t); e1 /= np.linalg.norm(e1)
+    e2 = np.cross(e, e1)
+    ax = []
+    for c, psi in zip((1/8, 3/8, 5/8, 7/8), (0.0, 0.5 * math.pi, math.pi, 1.5 * math.pi)):
+        s = math.sqrt(1.0 - c * c)
+        ax.append(c * e + s * (math.cos(psi) * e1 + math.sin(psi) * e2))
+    return np.array(ax)
+
+
+def build_stages(args, phi):
+    h_sat = args.h_sat if args.h_sat is not None else (1.0 - phi)
+    if args.h_list:
+        amps = sorted(args.h_list, reverse=True)
     else:
-        H_max = args.H_max if args.H_max is not None else (1.0 - phi) * Ms / 3.0
-        amps = [H_max * args.H_factor**k for k in range(args.n_amp)]
-    stages = [{"name": "sat", "H_amp": H_sat, "n_cycles": args.n_sat, "measure": False}]
-    if args.order == "descending":
-        stages += [{"name": "amp%02d" % k, "H_amp": H, "n_cycles": args.cycles_per_amp, "measure": True}
-                   for k, H in enumerate(amps)]
-    else:
-        stages += [{"name": "demag%02d" % k, "H_amp": H, "n_cycles": 1, "measure": False}
-                   for k, H in enumerate(amps)]
-        stages += [{"name": "amp%02d" % k, "H_amp": H, "n_cycles": args.cycles_per_amp, "measure": True}
-                   for k, H in reversed(list(enumerate(amps)))]
+        h_max = args.h_max if args.h_max is not None else (1.0 - phi) / 3.0
+        amps = [h_max * args.h_factor**k for k in range(args.n_amp)]
+    stages = [{"name": "sat", "h_amp": h_sat, "n_cycles": args.n_sat, "measure": False}]
+    stages += [{"name": "amp%02d" % k, "h_amp": h, "n_cycles": args.cycles_per_amp, "measure": True}
+               for k, h in enumerate(amps)]
     return stages
 
 
@@ -144,10 +156,9 @@ def main(argv=None):
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    # --- magnum.np import and precision (before any Mesh / State) ---------
     from magnumnp import (set_precision, set_log_level, Mesh, State, constants, Timer,
-                          DemagFieldPBC, ExchangeField, CubicAnisotropyField2, LLGSolver,
-                          accumulate_h, write_vti)
+                          DemagFieldPBC, ExchangeField, CubicAnisotropyField2, UniaxialAnisotropyField,
+                          LLGSolver, accumulate_h, write_vti)
     import torch
     set_log_level(25)
     set_precision(args.precision)
@@ -158,90 +169,111 @@ def main(argv=None):
     from stress import random_stress_field
     from field_terms_extra import StressAnisotropyField, SinusoidalDrive
 
+    # --- units -------------------------------------------------------------
+    U = units(args.Js, args.A)
+    Ms, Kd, lex = U["Ms"], U["Kd"], U["l_ex"]
+    d, dx, xi = args.d_lex * lex, args.dx_lex * lex, args.xi_lex * lex
+    freq = args.f_rel * U["f_M"]
+
     # --- geometry ----------------------------------------------------------
-    if (args.N is None) == (args.phi is None):
-        raise SystemExit("Give exactly one of --N or --phi.")
-    N = args.N if args.N is not None else int(round(a_from(args.d, args.phi) / args.dx))
-    geo = fcc_box(N, args.d, args.dx)
+    N = args.N if args.N is not None else int(round(a_from(d, args.phi) / dx))
+    geo = fcc_box(N, d, dx)
     ids = geo["ids"]
     mag = ids >= 0
     phi = geo["phi_vox"]
 
-    Ms = args.Js / MU0
-    Ms_void = args.Js_void / MU0
-
-    mesh = Mesh((N, N, N), (args.dx, args.dx, args.dx), pbc=(1, 1, 1))
+    mesh = Mesh((N, N, N), (dx, dx, dx), pbc=(1, 1, 1))
     state = State(mesh)
     dt_ = state.dtype
     dev = state.device
 
-    def T(a):  # numpy -> tensor with run dtype on the run device
+    def T(a):
         return torch.tensor(a, dtype=dt_, device=dev)
 
     mag4 = mag[..., None]
+    K = args.Q * Kd
     state.material = {"alpha": args.alpha}
-    state.material["Ms"] = T(np.where(mag4, Ms, Ms_void))
+    state.material["Ms"] = T(np.where(mag4, Ms, args.ms_void * Ms))
     state.material["A"] = T(np.where(mag4, args.A, 0.0))
-    state.material["Kc1"] = T(np.where(mag4, args.K1, 0.0))
-    state.material["Kc2"] = 0.0
-    state.material["Kc3"] = 0.0
 
-    R = random_rotations(4, args.seed_axes)          # [4,3,3], rows = cubic axes
-    ax1 = np.zeros((N, N, N, 3)); ax1[...] = [1.0, 0.0, 0.0]
-    ax2 = np.zeros((N, N, N, 3)); ax2[...] = [0.0, 1.0, 0.0]
-    for p in range(4):
-        ax1[ids == p] = R[p, 0]
-        ax2[ids == p] = R[p, 1]
     e_d = np.asarray(args.direction, float); e_d /= np.linalg.norm(e_d)
-    cth = np.abs(R @ e_d)                                          # [4,3] |cos| field vs cubic axes
-    Ea = cth[:, 0]**2 * cth[:, 1]**2 + cth[:, 1]**2 * cth[:, 2]**2 + cth[:, 2]**2 * cth[:, 0]**2
-    axes_stats = {"Ea_over_K1": Ea.tolist(), "Ea_over_K1_mean": float(Ea.mean()),
-                  "cos_easy": cth.max(1).tolist(), "cos_easy_mean": float(cth.max(1).mean())}
-    state.material["Kc_axis1"] = T(ax1)
-    state.material["Kc_axis2"] = T(ax2)
+    if args.aniso == "uniaxial":
+        axes = uniaxial_axes(e_d)                                    # [4,3]
+        ku_ax = np.zeros((N, N, N, 3)); ku_ax[...] = [1.0, 0.0, 0.0]
+        for p in range(4):
+            ku_ax[ids == p] = axes[p]
+        state.material["Ku"] = T(np.where(mag4, K, 0.0))
+        state.material["Ku_axis"] = T(ku_ax)
+        aniso_term = UniaxialAnisotropyField()
+        cth = np.abs(axes @ e_d)
+        axes_stats = {"cos_theta": cth.tolist(), "Ea_over_K_mean": float(np.mean(1.0 - cth**2))}
+    else:
+        R = random_rotations(4, AXES_SEEDS.get(args.seed, args.seed))
+        ax1 = np.zeros((N, N, N, 3)); ax1[...] = [1.0, 0.0, 0.0]
+        ax2 = np.zeros((N, N, N, 3)); ax2[...] = [0.0, 1.0, 0.0]
+        for p in range(4):
+            ax1[ids == p] = R[p, 0]
+            ax2[ids == p] = R[p, 1]
+        state.material["Kc1"] = T(np.where(mag4, K, 0.0))
+        state.material["Kc2"] = 0.0
+        state.material["Kc3"] = 0.0
+        state.material["Kc_axis1"] = T(ax1)
+        state.material["Kc_axis2"] = T(ax2)
+        aniso_term = CubicAnisotropyField2()
+        cth = np.abs(R @ e_d)
+        Ea = cth[:, 0]**2 * cth[:, 1]**2 + cth[:, 1]**2 * cth[:, 2]**2 + cth[:, 2]**2 * cth[:, 0]**2
+        axes_stats = {"Ea_over_K_mean": float(Ea.mean()), "cos_easy_mean": float(cth.max(1).mean())}
 
     # --- field terms -------------------------------------------------------
-    terms = [DemagFieldPBC(), ExchangeField(), CubicAnisotropyField2()]
-    sig_rms_real = 0.0
-    if args.sigma_rms > 0.0 and args.lambda_s != 0.0:
-        sig = random_stress_field(N, args.dx, args.xi, args.sigma_rms, args.seed_stress, mask=mag)
-        sig[~mag] = 0.0
-        sig_rms_real = float(sig[mag].std())
-        terms.append(StressAnisotropyField(T(sig), args.lambda_s))
-        del sig
-    drive = SinusoidalDrive(state, tuple(args.direction))
+    terms = [DemagFieldPBC(), ExchangeField(), aniso_term]
+    if args.kappa > 0.0:
+        # unit-rms Gaussian tensor field s_ij; energy e = -K_sigma * sum_ij s_ij m_i m_j
+        # (StressAnisotropyField: e = -(3/2) lambda_s sigma.m.m  ->  lambda_s = 2/3, sigma = K_sigma * s)
+        s = random_stress_field(N, dx, xi, 1.0, args.seed, mask=mag)
+        s[~mag] = 0.0
+        terms.append(StressAnisotropyField(T(s * args.kappa * Kd), 2.0 / 3.0))
+        del s
+    drive = SinusoidalDrive(state, tuple(e_d))
     terms.append(drive)
     llg = LLGSolver(terms, atol=args.atol)
 
-    # --- diagnostics helpers ----------------------------------------------
-    Ms_t = state.material["Ms"]                                  # [N,N,N,1]
-    ids_t = torch.tensor(ids.astype(np.int64) + 1, device=dev).reshape(-1)   # 0 = void
+    # --- diagnostics -------------------------------------------------------
+    Ms_t = state.material["Ms"]
+    ids_t = torch.tensor(ids.astype(np.int64) + 1, device=dev).reshape(-1)
     counts = torch.bincount(ids_t, minlength=5).double()[1:]
-    e_dir = torch.tensor(args.direction, dtype=torch.float64)
-    e_dir = (e_dir / torch.linalg.norm(e_dir)).to(dev)
+    e_t = torch.tensor(e_d, dtype=torch.float64, device=dev)
     p_coef = args.alpha * constants.gamma * constants.mu_0 / (1.0 + args.alpha**2)
+    ids_n = torch.tensor(ids.astype(np.int64), device=dev)
+    pair_masks = [(ids_n >= 0) & (ids_n == torch.roll(ids_n, 1, dims=ax)) for ax in range(3)]
+    n_pairs = int(sum(int(pm.sum()) for pm in pair_masks))
+    cos60 = 0.5
 
     @torch.no_grad()
     def diagnostics():
         m = state.m
-        Mvec = (Ms_t * m).double().mean(dim=(0, 1, 2))                     # [3] A/m, mesh average
-        Mpar = float(torch.dot(Mvec, e_dir))
-        m_par = (m.double() * e_dir).sum(-1).reshape(-1) * Ms_t.double().reshape(-1)
-        Mp = (torch.bincount(ids_t, weights=m_par, minlength=5)[1:] / counts)  # per particle, A/m
+        Mvec = (Ms_t * m).double().mean(dim=(0, 1, 2))
+        Mpar = float(torch.dot(Mvec, e_t))
+        m_par = (m.double() * e_t).sum(-1).reshape(-1) * Ms_t.double().reshape(-1)
+        Mp = torch.bincount(ids_t, weights=m_par, minlength=5)[1:] / counts
         H = accumulate_h(term.h(state) for term in terms)
         mxH = torch.linalg.cross(m, H)
         p_dis = float((p_coef * Ms_t * (mxH * mxH).sum(-1, keepdim=True)).double().mean())
-        return Mpar, Mvec.cpu().numpy(), Mp.cpu().numpy(), p_dis
+        cmin, n60 = 1.0, 0
+        for ax in range(3):
+            c = (m * torch.roll(m, 1, dims=ax)).sum(-1)[pair_masks[ax]]
+            cmin = min(cmin, float(c.min()))
+            n60 += int((c < cos60).sum())
+        return Mpar, Mvec.cpu().numpy(), Mp.cpu().numpy(), p_dis, cmin, n60
 
     # --- config ------------------------------------------------------------
-    stages = build_stages(args, Ms, phi)
+    stages = build_stages(args, phi)
     config = dict(vars(args))
-    config.update({"N_used": N, "a": geo["a"], "phi_nom": geo["phi_nom"], "phi_vox": phi,
-                   "gap_nom": geo["gap_nom"], "d_cells": geo["d_cells"], "Ms": Ms,
-                   "sigma_rms_realised": sig_rms_real, "n_cells": N**3, "axes_stats": axes_stats,
-                   "l_ex": math.sqrt(2 * args.A / (MU0 * Ms**2)),
-                   "delta_wall": math.sqrt(args.A / args.K1) if args.K1 > 0 else None,
-                   "stages": stages, "git_commit": git_commit(),
+    config.update({"units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
+                   "d": d, "dx": dx, "xi": xi, "a": geo["a"], "gap_nom_lex": geo["gap_nom"] / lex,
+                   "freq": freq, "K": K, "K_sigma": args.kappa * Kd,
+                   "delta0_lex": (1.0 / math.sqrt(args.Q)) if args.Q > 0 else None,
+                   "delta0_over_dx": (1.0 / math.sqrt(args.Q) / args.dx_lex) if args.Q > 0 else None,
+                   "axes_stats": axes_stats, "stages": stages, "git_commit": git_commit(),
                    "torch": torch.__version__, "device": str(dev),
                    "gpu": torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"})
     (out / "config.json").write_text(json.dumps(config, indent=1))
@@ -256,41 +288,42 @@ def main(argv=None):
         state.m = c["m"].to(dtype=dt_, device=dev)
         summary = json.loads(summ_file.read_text())
         first_stage = c["next_stage"]
-        summary["stages"] = summary["stages"][:first_stage]   # drop an incomplete (benchmark) stage
+        summary["stages"] = summary["stages"][:first_stage]
         print("[resume] from stage %d" % first_stage, flush=True)
     elif args.init_from:
         c = torch.load(args.init_from, map_location=dev)
         state.m = c["m"].to(dtype=dt_, device=dev)
         print("[init] m from %s" % args.init_from, flush=True)
     else:
-        rng = np.random.default_rng(args.seed_m)
+        rng = np.random.default_rng(args.seed)
         m0 = rng.standard_normal((N, N, N, 3))
         m0 /= np.linalg.norm(m0, axis=-1, keepdims=True)
         state.m = T(m0)
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()
-        llg.step(state, args.relax_time)
-        print("[relax] %.3g s done in %.1f s wall" % (args.relax_time, time.time() - t_w), flush=True)
+        llg.step(state, args.relax_tau * U["t_M"])
+        print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
 
     # --- protocol ----------------------------------------------------------
-    period = 1.0 / args.freq
+    period = 1.0 / freq
     dt_s = period / args.samples
-    drive.freq = args.freq
+    drive.freq = freq
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
 
     for si in range(first_stage, len(stages)):
         st = stages[si]
-        if st["n_cycles"] <= 0:          # e.g. --n_sat 0
-            summary["stages"].append({"name": st["name"], "H_amp": st["H_amp"], "measure": st["measure"],
+        if st["n_cycles"] <= 0:
+            summary["stages"].append({"name": st["name"], "h_amp": st["h_amp"], "measure": st["measure"],
                                       "cycles": [], "complete": True})
             continue
-        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)   # small t -> small rounding
+        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.t0 = 0.0
-        drive.H_amp = st["H_amp"]
-        rec = {"name": st["name"], "H_amp": st["H_amp"], "measure": st["measure"], "cycles": []}
+        drive.H_amp = st["h_amp"] * Ms
+        rec = {"name": st["name"], "h_amp": st["h_amp"], "H_amp": st["h_amp"] * Ms,
+               "measure": st["measure"], "cycles": []}
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
-        fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3\n")
+        fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
 
         ci = 0
         complete = False
@@ -300,31 +333,37 @@ def main(argv=None):
             t_w = time.time()
             steps0 = state._step
             rows = []
-            t = float(state.t)
-            Mpar, Mv, Mp, pd = diagnostics()
-            rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp))
+            cmin_c, n60_c = 1.0, 0
+
+            def sample():
+                nonlocal cmin_c, n60_c
+                t = float(state.t)
+                Mpar, Mv, Mp, pd, cmin, n60 = diagnostics()
+                cmin_c, n60_c = min(cmin_c, cmin), max(n60_c, n60)
+                rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
+
+            sample()
             for k in range(args.samples):
                 llg.step(state, dt_s)
-                t = float(state.t)
-                Mpar, Mv, Mp, pd = diagnostics()
-                rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp))
+                sample()
             wall = time.time() - t_w
             steps = state._step - steps0
 
-            a = np.array(rows)                  # float64
+            a = np.array(rows)
             t_a, H_a, M_a, p_a = a[:, 0], a[:, 1], a[:, 2], a[:, 6]
             B_a = MU0 * (H_a + M_a)
-            W_loop = float(_trapz(H_a, B_a))  # = mu0 oint H dM (H dH closes)
+            W_loop = float(_trapz(H_a, B_a))
             W_dis = float(_trapz(p_a, t_a))
             M_peak = float(0.5 * (M_a.max() - M_a.min()))
+            B_peak = float(0.5 * (B_a.max() - B_a.min()))
             cyc = {"cycle": ci,
-                   "B_peak": float(0.5 * (B_a.max() - B_a.min())),
-                   "H_peak": float(0.5 * (H_a.max() - H_a.min())),
-                   "M_peak": M_peak,
-                   "W_loop": W_loop, "W_dis": W_dis,
+                   "B_peak": B_peak, "b_peak": B_peak / args.Js,
+                   "H_peak": float(0.5 * (H_a.max() - H_a.min())), "M_peak": M_peak,
+                   "W_loop": W_loop, "W_dis": W_dis, "w_loop": W_loop / Kd, "w_dis": W_dis / Kd,
                    "closure": float(abs(M_a[-1] - M_a[0]) / max(M_peak, 1e-30)),
-                   "steps": int(steps), "wall_s": wall,
-                   "mean_dt": period / max(steps, 1)}
+                   "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin_c))))),
+                   "n_pairs_gt60": int(n60_c), "frac_pairs_gt60": n60_c / max(n_pairs, 1),
+                   "steps": int(steps), "wall_s": wall, "mean_dt": period / max(steps, 1)}
             if ci > 0:
                 W_prev = rec["cycles"][-1]["W_loop"]
                 cyc["dW_rel"] = float(abs(W_loop - W_prev) / max(abs(W_loop), 1e-300))
@@ -333,21 +372,18 @@ def main(argv=None):
                 fcsv.write("%d," % ci + ",".join("%.9e" % v for v in (*r[:3], *r[3:6], MU0 * (r[1] + r[2]), *r[6:])) + "\n")
             fcsv.flush()
             cycles_done += 1
-            print("[%s c%d] H=%.4g A/m  B_peak=%.4g T  W_loop=%.4g  W_dis=%.4g J/m3  closure=%.2g  dW=%s  "
-                  "steps=%d  dt=%.3g ps  wall=%.0f s" %
-                  (st["name"], ci, st["H_amp"], cyc["B_peak"], W_loop, W_dis, cyc["closure"],
-                   ("%.2g" % cyc["dW_rel"]) if "dW_rel" in cyc else "-",
+            print("[%s c%d] h=%.4g  b_peak=%.4g  w_loop=%.4g  w_dis=%.4g  closure=%.2g  dW=%s  "
+                  "max_angle=%.0f deg  steps=%d  dt=%.3g ps  wall=%.0f s" %
+                  (st["name"], ci, st["h_amp"], cyc["b_peak"], cyc["w_loop"], cyc["w_dis"], cyc["closure"],
+                   ("%.2g" % cyc["dW_rel"]) if "dW_rel" in cyc else "-", cyc["max_angle_deg"],
                    steps, 1e12 * cyc["mean_dt"], wall), flush=True)
             ci += 1
 
-            # stop criterion: fixed count for non-measured stages; for measured
-            # stages at least n_cycles, then until the cycle is steady
             if ci >= st["n_cycles"]:
                 if not st["measure"]:
                     complete = True
                     break
-                steady = (cyc["closure"] < args.closure_tol and
-                          cyc.get("dW_rel", 1.0) < args.dW_tol)
+                steady = (cyc["closure"] < args.closure_tol and cyc.get("dW_rel", 1.0) < args.dW_tol)
                 if steady or ci >= args.max_cycles_per_amp:
                     rec["steady"] = bool(steady)
                     complete = True

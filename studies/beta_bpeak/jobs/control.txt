@@ -1,0 +1,4 @@
+C_fhalf --d_lex 300.0 --dx_lex 3.0 --phi 0.65 --Q 0.02 --aniso uniaxial --kappa 0.008 --xi_lex 15.0 --alpha 0.1 --n_amp 9 --h_factor 0.5 --cycles_per_amp 3 --max_cycles_per_amp 4 --samples 256 --precision single --seed 1 --f_rel 0.00035682486661433715
+C_d150_kappa0_dx2 --d_lex 150.0 --dx_lex 2.0 --phi 0.65 --Q 0.02 --aniso uniaxial --kappa 0.0 --xi_lex 15.0 --alpha 0.1 --n_amp 9 --h_factor 0.5 --cycles_per_amp 3 --max_cycles_per_amp 4 --samples 256 --precision single --seed 1
+C_d150_dx2 --d_lex 150.0 --dx_lex 2.0 --phi 0.65 --Q 0.02 --aniso uniaxial --kappa 0.008 --xi_lex 15.0 --alpha 0.1 --n_amp 9 --h_factor 0.5 --cycles_per_amp 3 --max_cycles_per_amp 4 --samples 256 --precision single --seed 1
+C_d150_kappa0 --d_lex 150.0 --dx_lex 3.0 --phi 0.65 --Q 0.02 --aniso uniaxial --kappa 0.0 --xi_lex 15.0 --alpha 0.1 --n_amp 9 --h_factor 0.5 --cycles_per_amp 3 --max_cycles_per_amp 4 --samples 256 --precision single --seed 1

@@ -123,3 +123,20 @@ def test_drive_value_matches_field():
     v = drv.value(9e-9)
     assert h.shape == (2, 2, 2, 3)
     assert abs(float(torch.linalg.norm(h[0, 0, 0])) - abs(v)) < 1e-9 * 1e4
+
+
+def test_units_defaults():
+    from units import units, F_REL_DEFAULT
+    U = units()
+    assert abs(U["l_ex"] - 3.34e-9) < 0.01e-9
+    assert abs(U["f_M"] / 1.5 - 28.0e9) < 0.1e9          # 28 GHz/T
+    assert abs(F_REL_DEFAULT * U["f_M"] - 30e6) < 1.0
+    assert abs(U["Kd"] - 0.5 * U["Js"] ** 2 / 1.2566370614e-6) < 1e-6 * U["Kd"]
+
+
+def test_uniaxial_axes_isotropic_midpoints():
+    from run_loops import uniaxial_axes
+    ax = uniaxial_axes((1.0, 0.0, 0.0))
+    assert np.allclose(np.linalg.norm(ax, axis=1), 1.0)
+    assert np.allclose(np.sort(np.abs(ax[:, 0])), [1/8, 3/8, 5/8, 7/8])
+    assert abs(np.mean(1 - ax[:, 0] ** 2) - 2/3) < 0.01      # <sin^2 theta> of an isotropic powder
