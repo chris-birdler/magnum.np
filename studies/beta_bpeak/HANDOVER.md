@@ -71,6 +71,8 @@ increase of the total loss.
 | Precision | fp32 (`set_precision("single")`), time in fp64 | 2× faster, validated in `bench/fp32_validation.pdf`; check fp32 vs fp64 at small B |
 | Stress model | Gaussian random field, 6 components, σ_rms per component, correlation length ξ | 2 parameters, can be calibrated with XRD micro-strain |
 | Drive | homogeneous, along x ([100] of the cube) | crystal axes are random per particle |
+| Crystal axes | one single crystal per particle; 3 fixed orientation sets `AXES_SEEDS = {1: 16295, 2: 13903, 3: 6982}` (jobs.py); all main series use set 1 | the sets are selected so that the statistics along the drive are those of an isotropic powder (E_a/K1 = 0.20, nearest-easy-axis cos = 0.83, see note N9). A random set of 4 is too unreliable: the first choice (seed 1) was a 2.7σ outlier |
+| No supercell | 1 FCC cell (4 particles), no 2×2×2 supercell | per cost, a supercell gives the same statistics as more cycles/seeds; it does not remove the systematic limitations (section 10). Decision Chris, 2026-09-29 |
 | GPU | RTX 5090 (verified hosts on vast.ai) for fp32; fp64 runs only on V100/A100/H100 | best price per V100-hour; consumer GPUs have 1/64 FP64 |
 
 ## 4. Material values
@@ -209,6 +211,16 @@ Not physically relevant, only a code test.
   in-place to a homogeneous parameter without `Material.materialize()`.
 - N8. The stress field is set to 0 in the void and normalised on the
   magnetic cells only. It does not satisfy div σ = 0.
+- N9. Orientation statistics of 4 crystals (Monte Carlo): E_a/K1 along the
+  field = 0.20 ± 22 % (1 crystal: ± 44 %), nearest-easy-axis cos = 0.83 ± 6 %.
+  `config.json` → `axes_stats` records the values of each run. The
+  orientation is important mainly at large B (Q = K1/K_d ≈ 0.02). A factor
+  that does not depend on B cancels in β = d ln W/d ln B.
+- N10. Statistical error of β: with a relative scatter δ of W per amplitude
+  and an amplitude ratio r, δβ ≈ √2 δ / ln r. δ = 10 %, r = 2 → δβ ≈ 0.2.
+  This is large compared to the β range 2 … 3. Watch `W_err` in the
+  validation runs; if δβ > 0.1, add cycles at the important amplitudes (not
+  a supercell, see section 3).
 
 ## 10. Known limitations
 
@@ -229,6 +241,12 @@ Not physically relevant, only a code test.
    factor 0.7 only in the interesting B range, fewer seeds).
 5. Optional: Py reference (λs ≈ 0, K1 = 0) with d up to 2 µm at 10 nm cells, to
    see β from magnetostatics and nucleation only.
+6. **Positive control (proposed, not decided):** with λs = 5·10⁻⁶ the stress
+   anisotropy is only K_σ,rms = 1.1 kJ/m³ (150 MPa) … 3 kJ/m³ (400 MPa) ≪ K1.
+   Estimated pinning curvature Δγ_w/ξ² ≈ 2 … 5·10¹⁰ N/m³ < k_ms ≳ 10¹¹ N/m³.
+   The model thus predicts only a small σ effect for FeSiCr. Proposal: 1 run
+   with λs = 25·10⁻⁶ (FeNi50-like), σ_rms = 400 MPa, d = 1 µm (≈ 4 V100-h) to
+   show that the mechanism works in the model at all.
 
 ## 12. Expected deliverables from Claude Code
 

@@ -29,9 +29,17 @@ BASE = dict(Js=1.80, A=15e-12, K1=30e3, lambda_s=5e-6, alpha=0.1, xi=50e-9,
             samples=256, precision="single")
 
 
+# Orientation sets of the 4 crystals, selected from seeds 1..20000 so that the
+# statistics along the drive (x) are close to an isotropic powder:
+# E_a/K1 = mean(a1^2 a2^2 + a2^2 a3^2 + a3^2 a1^2) = 0.20 (std 0.087),
+# nearest-easy-axis cosine = 0.831 (std 0.100).  Seed 1 was a 2.7-sigma outlier
+# (all 4 crystals with an easy axis within 22 deg of the field: E_a/K1 = 0.083).
+AXES_SEEDS = {1: 16295, 2: 13903, 3: 6982}
+
+
 def job(name, d, N, dx=DX, sigma=0.0, seed=1, **kw):
     a = dict(BASE)
-    a.update(d=d, N=N, dx=dx, sigma_rms=sigma, seed_axes=seed, seed_stress=seed, seed_m=seed)
+    a.update(d=d, N=N, dx=dx, sigma_rms=sigma, seed_axes=AXES_SEEDS[seed], seed_stress=seed, seed_m=seed)
     a.update(kw)
     return name, a
 

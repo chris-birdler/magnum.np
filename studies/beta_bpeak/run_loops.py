@@ -74,7 +74,7 @@ def parse_args(argv=None):
     g.add_argument("--xi", type=float, default=50e-9, help="stress correlation length [m]")
 
     g = p.add_argument_group("seeds")
-    g.add_argument("--seed_axes", type=int, default=1)
+    g.add_argument("--seed_axes", type=int, default=16295, help="orientation set (see jobs.AXES_SEEDS)")
     g.add_argument("--seed_stress", type=int, default=1)
     g.add_argument("--seed_m", type=int, default=1)
 
@@ -192,6 +192,11 @@ def main(argv=None):
     for p in range(4):
         ax1[ids == p] = R[p, 0]
         ax2[ids == p] = R[p, 1]
+    e_d = np.asarray(args.direction, float); e_d /= np.linalg.norm(e_d)
+    cth = np.abs(R @ e_d)                                          # [4,3] |cos| field vs cubic axes
+    Ea = cth[:, 0]**2 * cth[:, 1]**2 + cth[:, 1]**2 * cth[:, 2]**2 + cth[:, 2]**2 * cth[:, 0]**2
+    axes_stats = {"Ea_over_K1": Ea.tolist(), "Ea_over_K1_mean": float(Ea.mean()),
+                  "cos_easy": cth.max(1).tolist(), "cos_easy_mean": float(cth.max(1).mean())}
     state.material["Kc_axis1"] = T(ax1)
     state.material["Kc_axis2"] = T(ax2)
 
@@ -233,7 +238,7 @@ def main(argv=None):
     config = dict(vars(args))
     config.update({"N_used": N, "a": geo["a"], "phi_nom": geo["phi_nom"], "phi_vox": phi,
                    "gap_nom": geo["gap_nom"], "d_cells": geo["d_cells"], "Ms": Ms,
-                   "sigma_rms_realised": sig_rms_real, "n_cells": N**3,
+                   "sigma_rms_realised": sig_rms_real, "n_cells": N**3, "axes_stats": axes_stats,
                    "l_ex": math.sqrt(2 * args.A / (MU0 * Ms**2)),
                    "delta_wall": math.sqrt(args.A / args.K1) if args.K1 > 0 else None,
                    "stages": stages, "git_commit": git_commit(),
