@@ -244,6 +244,26 @@ Evaluation (the last 6 of 12 cycles):
 2. Mesh: the same tolerances as in 7.1 (level ±0.15, slope ±0.2, 90 %).
 3. Damping: compare α = 0.02 and 0.1 (steady time and loss level).
 
+**Result (2026-09-30, last 6 of 12 cycles):**
+
+| Run pair | level ln(w_A/w_B) | Δβ | Note |
+|---|---|---|---|
+| α = 0.1: dx 3 vs 1.5 (L12) | −0.16 ± 0.04 | +0.08 ± 0.06 (PASS) | both steady: scatter 2 … 8 %, drift < 1 % per cycle |
+| α = 0.02: dx 3 vs 1.5 (L12) | +0.56 ± 0.08 (w_dis) | −0.01 ± 0.11 (PASS) | dx 1.5 not steady: scatter of w_loop up to 92 % |
+| α = 0.02: dx 3 vs 1.5 (floor) | +0.63 ± 0.06 | −0.02 ± 0.08 (PASS) | |
+| dx 3: α 0.1 vs 0.02 | −0.12 ± 0.05 | +0.12 ± 0.07 | at dx = 3 the loss hardly depends on α |
+| dx 1.5: α 0.1 vs 0.02 | +0.59 ± 0.07 | +0.04 ± 0.10 | at dx = 1.5 and α = 0.02 the cycles do not settle |
+
+Conclusions:
+- The slope β does not depend on the mesh (Δβ ≤ 0.1 in all pairs). The
+  predicted 10× grid pinning of the cores does not occur.
+- With α = 0.1 the model is steady and mesh-independent (level −16 %, Δβ
+  +0.08). With α = 0.02 the fine mesh does not settle within 12 cycles and
+  gives about half the loss.
+- Thus α = 0.1 is the better choice: steady cycles (scatter below the 10 %
+  target) and mesh independence. The damping loss at dx = 3 is small
+  (α 0.02 → 0.1 changes w by −12 %).
+
 ### 7.3 Numerical floor test (d/l_ex = 96, dx = 3, virgin state, ascending, ≈ 4.2 V100-h)
 
 The loops in the study range are small: at 23 mT the mesh test gave w ≈ 10⁻⁷
@@ -268,6 +288,11 @@ PASS: at 9, 50 and 150 mT the mean w of the reference is within ±15 % of the
 best run (90 % interval), for w_loop and for w_dis. If it fails: the smallest
 setting that passes sets atol and precision for the pilot (cost to Chris).
 
+**Result (2026-09-30): PASS.** fp32 / atol 10⁻⁵ vs fp64 / atol 10⁻⁶: level
+−0.012 ± 0.036, Δβ −0.012 ± 0.032. At 9 and 50 mT all four settings agree to
+better than 1 %. Energy balance w_dis/w_loop within 2 %. fp32 and atol 10⁻⁵
+stay. (fp64 on the small grid cost only ≈ 0.3 h, not the modelled 1.7 h.)
+
 ### 7.4 Initial-state test (d/l_ex = 96, L_eff = 12, ≈ 2.6 V100-h)
 
 Question: does the loss in the study range depend on how the demagnetized
@@ -288,6 +313,26 @@ Evaluation (`--skip 2`, both `--w loop` and `--w dis`):
   vortices and Bloch points; the grid can hold some of them. Compare
   `init.n_pairs_gt60` and `init.E_over_Kd` in summary.json and the loss.
 - Offsets: `o` flags in A and B must be absent.
+
+**Result (2026-09-30, α = 0.02, `--skip 2`):**
+
+| Pair | level | Δβ | Offset at 9 / 50 / 150 mT |
+|---|---|---|---|
+| A dx 3 vs B dx 3 | +0.12 ± 0.04 | −0.10 ± 0.03 | A: −0.53 / −0.09 / −0.04; B: +0.11 / +0.02 / 0.00 |
+| A dx 3 vs C dx 3 | −0.37 ± 0.07 | −0.43 ± 0.06 | C: −0.80 / −0.15 / −0.05 |
+| A dx 3 vs A dx 1.5 | −0.61 ± 0.07 | +0.46 ± 0.06 | A dx 1.5: +0.03 / +0.02 / 0.00 |
+
+Conclusions:
+- C (present protocol) is out: minor loops around a remanent state (offset
+  up to −0.80), Δβ = −0.4.
+- A at dx = 3 is not a clean virgin state: the relaxation (5000 iterations,
+  not converged) leaves 17 unresolved large-angle pairs and a net M of
+  ≈ −0.003 Ms. This is comparable to the 9 mT loop amplitude (offset −0.53).
+  At dx = 1.5 the virgin state has no such pairs and M ≈ 0. Thus A depends
+  on the mesh through the initial state.
+- B (AC demagnetization) is steady (scatter 0.7 … 11 %) and nearly centred.
+- The tests ran with α = 0.02. After the steady test, α = 0.1 is preferred.
+  Open: A and B with α = 0.1 at dx = 3 and 1.5 (section 12).
 
 ### 7.5 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
@@ -364,10 +409,9 @@ at d/l_ex = 150 (pilot).
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. After the pilot: α = 0.02 confirmed or not.
-4. Initial state and amplitude order (after the initial-state test 7.4):
-   A (virgin, ascending), B (AC demagnetization, ascending, +17 cycles per run)
-   or C (present). The pilot and production jobs still use the default
-   protocol of jobs.py BASE and must be set after this decision.
+4. Initial state and damping (after the tests 7.2 … 7.4): C is out; α = 0.1
+   is preferred. Proposed next test: A and B with α = 0.1 at dx = 3 and 1.5
+   (9 / 50 / 150 mT). Then set protocol and α in jobs.py BASE for the pilot.
 5. Audit points that wait for the mesh test (then Chris decides):
    - separate the hysteresis loss w_h from the damping loss for every point
      (w_h = 2 w(f) − w(2f), +50 % cost), because the damping loss can move β by 0.2 … 0.5;

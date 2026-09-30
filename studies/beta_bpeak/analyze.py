@@ -47,7 +47,8 @@ Features per run (for the ranking of the parameters): beta at B_peak = 10,
 agree on average; w_dis scatters less when the cycles are not periodic.
 
 Comparison (--compare A B): ln w of B is interpolated (linear in ln b) to
-the b values of A inside the common b range. A weighted fit
+the b values of A inside the common b range (up to 10 % outside it by linear
+extrapolation of the end segment). A weighted fit
 d(b) = ln w_A - ln w_B = c0 + d_beta * (ln b - <ln b>) gives the level
 difference c0 (relative change of w) and the change of the slope d_beta, with
 errors. Verdict against tolerances fixed before the runs (--tol_lnw, --tol_beta):
@@ -394,7 +395,8 @@ def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2):
     print("   %-6s %9s %10s %10s %8s %6s" % ("stage", "b(A)", "ln w A", "ln w B(b)", "d", "+-"))
     for r in r1:
         lb = math.log(r["b_peak"])
-        if not (lb2.min() <= lb <= lb2.max()) or r["w_loop"] <= 0:
+        # inside the b range of B, or at most 10 % outside (linear extrapolation of the end segment)
+        if not (lb2.min() - 0.1 <= lb <= lb2.max() + 0.1) or r["w_loop"] <= 0 or len(lb2) < 2:
             continue
         j = int(np.clip(np.searchsorted(lb2, lb), 1, len(lb2) - 1))
         t = (lb - lb2[j - 1]) / (lb2[j] - lb2[j - 1])
