@@ -375,9 +375,18 @@ Conclusions:
   At small fields the coarse grid holds structures in place that move on
   the fine grid (this agrees with the mesh test: at 23 mT dx = 1.5 dissipated
   5 … 10× more).
-- The AC demagnetization of 4 particles ends with a net M of the order of
-  the 9 mT loop amplitude (offset ±0.6 … 1.3). The virgin state A at
-  dx = 1.5 is clean (no large-angle pairs, M ≈ 0, offsets ≤ 0.02).
+- The AC demagnetization of 4 particles ends with a net M of ≈ 0.35 % Ms
+  (offset ±0.6 … 1.3 relative to the 9 mT loop). The virgin state A at
+  dx = 1.5 has M ≈ 0.02 % Ms (offsets ≤ 0.02).
+- Correction (Chris): this net M does not matter for the loss. At 9 mT, where
+  the offset is largest, B and A give the same w (ratio 1.03). At 50 and
+  150 mT, where the offset is small, B is 35 % higher. Thus A and B differ by
+  the domain configuration of the demagnetized state, not by the net M. B is
+  not out. Open: is this 35 % a real difference or the scatter between
+  initial states (C_dx15_is2 in 7.6 answers this)?
+- The AC demagnetization does not remove the structures that the coarse grid
+  holds (dx = 3: ≈ 21 large-angle pairs after the demagnetization, as after
+  the random start). At dx = 1.5 neither A nor B has such structures.
 - Open: is dx = 1.5 converged at 9 mT? And the cost: a run at d/l_ex = 300
   costs 6 V100-h at dx = 3, 26 at dx = 2 and 72 at dx = 1.5 (section 12).
 
@@ -396,6 +405,9 @@ on 6 l_ex blocks in physical coordinates), B_peak = 9 / 20 / 50 mT ascending,
 Evaluation (`--skip 2`): `--compare` C_dx2 and C_dx15 against C_dx1 (level
 ±0.15, Δβ ±0.2); C_dx15 vs C_dx15_is2 gives the scale of the initial-state
 scatter; the 50 mT w of C_dx15_direct50 vs C_dx15 (±15 %).
+Also decide A vs B: if the difference A (D_A_dx15) vs B (D_B_dx15) of 7.5
+(level +0.21, Δβ +0.11) lies within the initial-state scatter, A and B are
+equivalent (then A: no demagnetizing cycles; B: the measurement standard).
 
 ### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
