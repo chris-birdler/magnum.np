@@ -30,7 +30,7 @@ Groups:
             random m on 6 l_ex blocks), B_peak = 9 / 20 / 50 mT: mesh convergence
             dx = 2 / 1.5 / 1; at dx = 1.5 also a second initial state (init_seed 2)
             and 50 mT directly from the virgin state (is the ascending history needed?).
-  scatter   as conv at dx = 1.5, B_peak = 9 / 50 mT, seeds 3 and 4 (other cubes and
+  scatter   as conv at dx = 1.5, B_peak = 9 / 50 mT, seeds 3, 4, 5 (other cubes and
             other initial states): realisation scatter (uses the free GPU during C_dx1).
   demagtest same geometry, alpha = 0.1, B_peak = 9 / 50 / 150 mT: AC demagnetization at
             f and at 4 f (only the end state counts), dx = 3 and 1.5, and the
@@ -148,7 +148,7 @@ def matrix():
         conv.append(job(CV, "C_dx%s" % ("%g" % dx).replace(".", ""), dx_lex=dx))
     conv.append(job(CV, "C_dx15_is2", dx_lex=1.5, init_seed=2))
     conv.append(job(CV, "C_dx15_direct50", dx_lex=1.5, b_list=b_of_mT(50), n_amp=1))
-    scatter = [job(CV, "R_dx15_s%d" % sd, dx_lex=1.5, seed=sd, b_list=b_of_mT(9, 50), n_amp=2) for sd in (3, 4)]
+    scatter = [job(CV, "R_dx15_s%d" % sd, dx_lex=1.5, seed=sd, b_list=b_of_mT(9, 50), n_amp=2) for sd in (3, 4, 5)]
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter, "pilot": pilot}
 
