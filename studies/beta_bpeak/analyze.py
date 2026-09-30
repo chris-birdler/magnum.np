@@ -10,7 +10,9 @@ w = W/K_d per cycle versus b_peak = B_peak/Js, and beta_eff = d ln w / d ln b.
     python analyze.py --cycles runs/S_L12_dx15                  # per-cycle table and drift
 
 Per run and amplitude, w and b_peak are the MEAN over the cycles after the
-first SKIP cycles (--skip, default 1: the first cycle is a transient).
+first SKIP cycles (--skip, default 1: the first cycle is a transient). If
+run_loops corrected the drive after cycle 0 (--b_list), at least 2 cycles are
+discarded.
 
 
 Errors (target: 10 % scatter of w from cycle to cycle, S_TARGET):
@@ -95,7 +97,8 @@ def load_run(d):
     for st in summ["stages"]:
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
-        cyc = st["cycles"][SKIP:] if len(st["cycles"]) > SKIP else st["cycles"][-1:]
+        skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP      # drive corrected after cycle 0
+        cyc = st["cycles"][skip:] if len(st["cycles"]) > skip else st["cycles"][-1:]
         w = np.array([c[WKEY] for c in cyc])
         if len(w) > 1 and np.all(w > 0):
             lw = np.log(w)
@@ -410,14 +413,17 @@ def cycles(d):
     for st in summ["stages"]:
         if not st.get("measure"):
             continue
-        print("   %s  h = %.4g" % (st["name"], st["h_amp"]))
+        skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP
+        print("   %s  h = %.4g%s" % (st["name"], st["h_amp"],
+                                    "  (corrected after cycle 0 from %.4g)" % st["h_amp_initial"]
+                                    if "h_amp_initial" in st else ""))
         print("     %3s %9s %11s %11s %7s %8s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure", "n60"))
         for c in st["cycles"]:
             print("     %3d %9.4g %11.4g %11.4g %7.3f %8.4f %5d%s" %
                   (c["cycle"], c["b_peak"], c["w_loop"], c["w_dis"],
                    c["w_dis"] / c["w_loop"] if c["w_loop"] else float("nan"), c["closure"],
-                   c.get("n_pairs_gt60", 0), "" if c["cycle"] >= SKIP else "   (skipped)"))
-        kept = st["cycles"][SKIP:]
+                   c.get("n_pairs_gt60", 0), "" if c["cycle"] >= skip else "   (skipped)"))
+        kept = st["cycles"][skip:]
         if len(kept) >= 3:
             for key in ("w_loop", "w_dis"):
                 w = np.array([c[key] for c in kept])

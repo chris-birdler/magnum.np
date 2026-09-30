@@ -57,8 +57,8 @@ def b_of_mT(*mT):
     return [round(x / 1000.0 / JS_T, 6) for x in mT]
 
 
-B_STUDY = b_of_mT(150, 100, 70, 50, 35, 20, 10)    # production amplitudes
-B_PILOT = b_of_mT(150, 100, 50, 25, 10)
+B_STUDY = b_of_mT(150, 100, 70, 50, 35, 20, 9)     # production amplitudes (9 mT: 10 mT inside the range)
+B_PILOT = b_of_mT(150, 100, 50, 25, 9)
 
 BASE = dict(d_lex=300.0, dx_lex=3.0, phi=0.65, Leff_lex=18.0, r_p=0.0,
             alpha=0.02, b_list=B_STUDY, n_amp=len(B_STUDY), cycles_per_amp=7, max_cycles_per_amp=7,

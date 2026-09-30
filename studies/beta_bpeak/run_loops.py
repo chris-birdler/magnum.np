@@ -22,6 +22,9 @@ One run = one parameter set:
      runs at least cycles_per_amp cycles, then more (up to
      max_cycles_per_amp) until the cycle is steady (closure_tol, dW_tol).
      dW_tol = 0.10 is the target scatter of w from cycle to cycle.
+     With --b_list the drive of a stage is set from b/h of the stage before
+     and corrected once after cycle 0 with b/h of cycle 0 (analyze.py then
+     discards cycles 0 and 1).
      The descending series is also an AC demagnetization. The first cycle of
      each amplitude is a transient; analyze.py averages the other cycles.
 
@@ -441,6 +444,19 @@ def main(argv=None):
                    ("%.2g" % cyc["dW_rel"]) if "dW_rel" in cyc else "-", cyc["max_angle_deg"],
                    steps, 1e12 * cyc["mean_dt"], wall), flush=True)
             ci += 1
+
+            if ci == 1 and st.get("b_target") is not None and st["n_cycles"] > 1:
+                # correct the drive with b/h of the first cycle (it is discarded anyway);
+                # the change happens at a zero crossing of the field
+                # factor limited to 0.67 ... 1.5: cycle 0 is a transient (V100 data: b of cycle 0
+                # within +-4 % of the later cycles), an outlier must not spoil the stage
+                h_new = st["h_amp"] * min(1.5, max(1.0 / 1.5, st["b_target"] / cyc["b_peak"]))
+                rec["h_amp_initial"] = st["h_amp"]
+                st = dict(st, h_amp=h_new)
+                drive.H_amp = h_new * Ms
+                rec["h_amp"], rec["H_amp"] = h_new, h_new * Ms
+                print("[%s] drive corrected: h %.4g -> %.4g (b target %.4g, b in cycle 0 %.4g)" %
+                      (st["name"], rec["h_amp_initial"], h_new, st["b_target"], cyc["b_peak"]), flush=True)
 
             if ci >= st["n_cycles"]:
                 if not st["measure"]:

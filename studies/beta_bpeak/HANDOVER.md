@@ -99,8 +99,9 @@ Physics background (short):
 | Mesh-identical cubes | box edge a = multiple of 12 l_ex, L_eff = multiple of 6 l_ex | dx = 3, 2 and 1.5 see exactly the same cubes (tested on a common fine grid, with a negative control); d is adjusted by ≤ 2.5 % to keep φ exact |
 | Contacts | at least one void cell between particles (no face, edge or corner contact) | no exchange coupling, no extreme stray fields at contacts; at d/l_ex = 150 and dx = 3, φ = 0.69 and 0.71 are not possible |
 | Size | d/l_ex = 300 (1 µm), fixed | Chris |
-| Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 10 mT (`--b_list`); the drive of each stage comes from the measured b/h of the stage before | study range 10 … 150 mT; no time on saturation |
-| Protocol | 1 saturating cycle (reset), then the amplitudes above, 7 cycles each (fixed), first cycle discarded | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
+| Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 9 mT (`--b_list`; 9 mT keeps 10 mT inside the range). The drive of each stage comes from b/h of the stage before and is corrected once after cycle 0 with b/h of cycle 0 (factor limited to 0.67 … 1.5) | study range 10 … 150 mT; no time on saturation. b of cycle 0 is within ±4 % of the later cycles (V100 data), thus each stage hits its target to ≈ 4 % |
+| Drive | sinusoidal H (not controlled B) | below 150 mT the core is almost linear: B(t) has 0.2 … 3 % harmonics, b varies by 0.1 … 3 % from cycle to cycle (mesh test data). Thus sinusoidal H ≈ sinusoidal B (Steinmetz condition) |
+| Protocol | 1 saturating cycle (reset), then the amplitudes above, 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
 | Damping | α = 0.02 | 5× less artificial damping loss than α = 0.1 at the same cost per step; the pilot checks it |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
@@ -261,7 +262,7 @@ PASS: at 10, 50 and 150 mT the mean w of the reference is within ±15 % of the
 best run (90 % interval), for w_loop and for w_dis. If it fails: the smallest
 setting that passes sets atol and precision for the pilot (cost to Chris).
 
-### 7.4 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 10 mT, 7 cycles, ≈ 11 V100-h)
+### 7.4 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
@@ -275,13 +276,13 @@ particle. Thus the realisation scatter is larger than in production.
 | T_L18_f2 vs T_L18 (`--pair`) | dynamic share at α = 0.02 | dynamic share < 30 % or less than 2 errors at small b | ask Chris (lower f or use β from w_h) |
 | T_L18_d111 vs T_L18 | do the cube faces cause a preferred direction? | difference within the scatter | ask Chris (option: equal truncated octahedra) |
 | T_L18_rp1, T_L18_rp3 | does the particle-scale stress change β? | — (Chris selects the r_p level) | — |
-| all | scatter of the mean | error of ln w per amplitude ≤ 0.1 (mean over 6 cycles) | more cycles cost budget: ask Chris |
+| all | scatter of the mean | error of ln w per amplitude ≤ 0.1 (mean over 5 cycles) | more cycles cost budget: ask Chris |
 
 ## 8. Error budget
 
 | Quantity | Error (10 % scatter) | How `analyze.py` gets it |
 |---|---|---|
-| ln w at one amplitude | max(s_cyc, 0.10)/√n (n = 6 kept cycles) | s_cyc pooled over all amplitudes of one run |
+| ln w at one amplitude | max(s_cyc, 0.10)/√n (n = 5 kept cycles) | s_cyc pooled over all amplitudes of one run |
 | β at 10 / 50 / 100 mT | from a local weighted fit of ln w over ln b (all amplitudes within a factor 2.2); at 10 mT one-sided | `features()` |
 | realisation | from the seeds of the base point | variance over the seeds minus the statistical part |
 | change of a feature | √(stat.² + realisation² + base²) | `ranking()`; significance with Student-t of the seed scatter |
