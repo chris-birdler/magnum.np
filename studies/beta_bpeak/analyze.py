@@ -383,7 +383,14 @@ def pair(d1, d2):
     return out
 
 
-def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2):
+SIG_REAL_LNW = 0.5    # realisation scatter per run (8 runs, d/l_ex = 96, dx = 1.5, 9 and 50 mT)
+SIG_REAL_BETA = 0.45
+
+
+def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2, sig_lnw=0.0, sig_beta=0.0):
+    """sig_lnw, sig_beta: realisation scatter per run. For two independent runs
+    the difference gets 2 sig^2 more variance. 0 = cycle statistics only (then
+    the verdict is only valid for runs with the same realisation)."""
     c1, r1 = load_run(d1)
     c2, r2 = load_run(d2)
     lb2 = np.log([r["b_peak"] for r in r2])
@@ -415,7 +422,9 @@ def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2):
     X = np.c_[np.ones_like(x), x - xm]
     cov = np.linalg.inv(X.T @ (X * wgt[:, None]))
     c0, db = cov @ (X.T @ (wgt * y))
-    sc0, sdb = math.sqrt(cov[0, 0]), math.sqrt(cov[1, 1])
+    sc0, sdb = math.sqrt(cov[0, 0] + 2 * sig_lnw**2), math.sqrt(cov[1, 1] + 2 * sig_beta**2)
+    errs = ("cycle statistics + realisation scatter (sig_lnw %.2f, sig_beta %.2f per run)" % (sig_lnw, sig_beta)
+            if (sig_lnw or sig_beta) else "cycle statistics ONLY (no realisation scatter)")
     chi2 = float(np.sum(wgt * (y - X @ np.array([c0, db])) ** 2))
     z = 1.645
     ok_l = abs(c0) + z * sc0 < tol_lnw
@@ -425,6 +434,7 @@ def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2):
     print("   slope  d_beta = %+.3f +- %.3f                     90%% within +-%.2f: %s" %
           (db, sdb, tol_beta, "PASS" if ok_b else "FAIL"))
     print("   chi2 = %.2f for %d dof (a large value: the difference is not linear in ln b)" % (chi2, len(x) - 2))
+    print("   errors: %s" % errs)
     return {"c0": c0, "c0_err": sc0, "d_beta": db, "d_beta_err": sdb, "chi2": chi2, "n": len(x),
             "pass": bool(ok_l and ok_b)}
 
@@ -465,6 +475,41 @@ def cycles(d):
                        100 * se / abs(w.mean())))
 
 
+def two_point(d):
+    """ln w at the smallest and largest amplitude and beta between them."""
+    _, rows = load_run(d)
+    rows = [r for r in rows if r["w_loop"] > 0]
+    lo, hi = rows[0], rows[-1]
+    beta = (math.log(hi["w_loop"]) - math.log(lo["w_loop"])) / (math.log(hi["b_peak"]) - math.log(lo["b_peak"]))
+    return lo, hi, beta
+
+
+def paired(pairs):
+    """Pairs A:B (same realisation, one change). Per pair: difference of ln w at the
+    smallest and largest amplitude and of beta between them. Mean +- SE over the
+    pairs and the t value (the realisation scatter cancels partly in each pair)."""
+    rows = []
+    print("\n== paired comparison (A - B)")
+    print("   %-24s %-24s %9s %9s %8s" % ("A", "B", "d ln w lo", "d ln w hi", "d beta"))
+    for pr in pairs:
+        a, b = pr.split(":")
+        la, ha, ba = two_point(a)
+        lb, hb, bb = two_point(b)
+        r = (math.log(la["w_loop"] / lb["w_loop"]), math.log(ha["w_loop"] / hb["w_loop"]), ba - bb)
+        rows.append(r)
+        print("   %-24s %-24s %+9.3f %+9.3f %+8.3f" % (pathlib.Path(a).name, pathlib.Path(b).name, *r))
+    v = np.array(rows)
+    n = len(v)
+    if n < 2:
+        return v
+    m, se = v.mean(0), v.std(0, ddof=1) / math.sqrt(n)
+    t = T975.get(n - 1, 1.96)
+    for k, name in enumerate(("d ln w (smallest B)", "d ln w (largest B)", "d beta")):
+        print("   %-20s mean %+.3f +- %.3f (SE, n = %d)  95%% interval %+.3f ... %+.3f  scatter of the pairs %.3f" %
+              (name, m[k], se[k], n, m[k] - t * se[k], m[k] + t * se[k], v[:, k].std(ddof=1)))
+    return v
+
+
 def plot(results, path):
     try:
         import matplotlib
@@ -503,6 +548,10 @@ def main():
     ap.add_argument("--w", choices=["loop", "dis"], default="loop", help="loss per cycle: loop area or LLG dissipation")
     ap.add_argument("--tol_lnw", type=float, default=0.15, help="tolerance of the level difference (ln w)")
     ap.add_argument("--tol_beta", type=float, default=0.2, help="tolerance of the slope difference")
+    ap.add_argument("--real", action="store_true",
+                    help="--compare of two independent realisations: add the realisation scatter "
+                         "(sig_lnw %.2f, sig_beta %.2f per run)" % (SIG_REAL_LNW, SIG_REAL_BETA))
+    ap.add_argument("--paired", nargs="+", metavar="RUN_A:RUN_B", help="paired comparison over realisations")
     ap.add_argument("--csv", default="all_runs.csv")
     ap.add_argument("--ranking_csv", default="ranking.csv")
     ap.add_argument("--plot", default="beta_vs_b.png")
@@ -519,7 +568,11 @@ def main():
         pair(*a.pair)
         return
     if a.compare:
-        compare(*a.compare, tol_lnw=a.tol_lnw, tol_beta=a.tol_beta)
+        compare(*a.compare, tol_lnw=a.tol_lnw, tol_beta=a.tol_beta,
+                sig_lnw=SIG_REAL_LNW if a.real else 0.0, sig_beta=SIG_REAL_BETA if a.real else 0.0)
+        return
+    if a.paired:
+        paired(a.paired)
         return
 
     results = []

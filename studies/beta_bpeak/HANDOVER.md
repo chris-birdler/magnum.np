@@ -369,8 +369,9 @@ passes against B and against A: production uses B4f with α = 0.1 and dx = 3.
 | B dx 1.5 vs A dx 1.5 | +0.21 ± 0.04 | +0.11 ± 0.03 (PASS) |
 
 Conclusions:
-- **In the study range the mesh dx = 3 is not sufficient.** At 9 mT dx = 3
-  gives ≈ 3× less loss than dx = 1.5, thus β is ≈ 0.5 too steep. The steady
+- **In the study range the mesh dx = 3 is probably not sufficient.** At 9 mT
+  dx = 3 gives ≈ 3× less loss than dx = 1.5 (2 pairs, same seed); β is
+  ≈ 0.5 steeper (see the correction in 7.6: paired errors). The steady
   test (90 and 375 mT) did not show this: the problem is at small B_peak.
   At small fields the coarse grid holds structures in place that move on
   the fine grid (this agrees with the mesh test: at 23 mT dx = 1.5 dissipated
@@ -419,9 +420,17 @@ Same initial state (init_block 6, seed 1) on three meshes:
 | C_dx15 | 3.4·10⁻⁷ | 9.3·10⁻⁷ | 7.0·10⁻⁶ | 1.77 | 0.00186, 0 |
 | C_dx1 | 4.4·10⁻⁷ | 1.3·10⁻⁶ | 1.0·10⁻⁵ | 1.83 | 0.00166, 0 |
 
-- dx = 1.5 vs dx = 1: Δβ = −0.05 ± 0.09, level −0.33 ± 0.07 (w ≈ 30 % low).
-  β is converged at dx = 1.5; the absolute loss is not (≈ −30 %).
-- dx = 2 vs dx = 1: Δβ = +0.74, level ×0.26: not sufficient.
+- dx = 1.5 vs dx = 1: Δβ = −0.05, level −0.33 (w ≈ 30 % low). One pair only.
+- dx = 2 vs dx = 1: Δβ = +0.74, level ×0.26. One pair only.
+- **Correction:** the errors of `--compare` contain only the cycle
+  statistics. Two independent realisations differ by σ_β ≈ 0.6 (use
+  `--real`). Pairs with the same start and cubes differ much less: over the
+  3 pairs coarse (dx 2 or 3) vs dx 1.5 the scatter of Δβ is 0.18, and
+  `--paired` gives Δβ = +0.60 ± 0.10 (95 %: +0.16 … +1.03). Thus the coarse
+  mesh makes β steeper with some confidence; dx 1.5 vs dx 1 is not decided
+  (1 pair). The level trend at the smallest B_peak (coarser mesh → less
+  loss) has the same sign in all ≈ 5 pairs. The planning pilot (7.8)
+  measures this per dx with 3 pairs each.
 - 50 mT directly from the virgin state vs after 9 and 20 mT: −5 %. Each
   amplitude can run as its own job (parallel production).
 
@@ -439,6 +448,23 @@ cubes, protocols A and B):
   of ±0.1 in β a parameter point needs ≈ 20 realisations; for ±0.15 ≈ 9.
   This scatter is measured at d/l_ex = 96. At d/l_ex = 300 each particle has
   more domains, and the scatter may be smaller (not measured).
+
+### 7.8 Planning pilot (≈ 105 V100-h, ≈ 13 $, 10 GPUs, ≈ 12 h)
+
+Protocol of all runs: virgin state (random m on 6 l_ex blocks), α = 0.1,
+φ = 0.65, fp32, atol 10⁻⁵, 7 cycles, B_peak = 9 and 50 mT, β = β(9 → 50 mT).
+The same seed gives the same cubes and the same start on every mesh (pairs).
+
+| Block | Runs | Purpose |
+|---|---|---|
+| 1 | P1_d150 (dx 1.5, seeds 1–4); P1_d300 (dx 1.5, seeds 1–3, one job per amplitude); P1_d300_dx3 (dx 3, seeds 1–3, one job per amplitude) | realisation scatter vs particle size (d/l_ex = 96 / 150 / 300); dx 3 vs 1.5 at 1 µm (paired) |
+| 2 | P2_L12 (seeds 6–8); P2_L30 (seeds 3–8); P2_rp3 (seeds 3–8), d/l_ex = 96, dx 1.5 | effect sizes: Q_eff (L_eff 12 vs 30, not paired) and r_p = 3 (paired with L12 of the same seed) |
+| 3 | P3_dx1, P3_dx2, P3_dx3 (seeds 3–5), d/l_ex = 96 | mesh, paired with R_dx15_s3…s5 |
+
+Evaluation: σ_β per d from the realisations; `--paired` for r_p, the mesh
+pairs and dx 3 at d/l_ex = 300; the Q_eff effect with `--real` or from the
+ensemble means. Result: the number of realisations, d/l_ex and dx of the
+production (section 9).
 
 ### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 

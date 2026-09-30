@@ -32,6 +32,10 @@ Groups:
             and 50 mT directly from the virgin state (is the ascending history needed?).
   scatter   as conv at dx = 1.5, B_peak = 9 / 50 mT, seeds 3, 4, 5 (other cubes and
             other initial states): realisation scatter (uses the free GPU during C_dx1).
+  planpilot virgin state, alpha = 0.1, B_peak = 9 / 50 mT (HANDOVER 7.8):
+            block 1 scatter vs size (d/l_ex 150 and 300) and dx 3 vs 1.5 at 300,
+            block 2 effect sizes (L_eff 30, r_p 3) at d/l_ex 96,
+            block 3 mesh pairs dx 1 / 2 / 3 at d/l_ex 96 (seeds 3-5).
   demagtest same geometry, alpha = 0.1, B_peak = 9 / 50 / 150 mT: AC demagnetization at
             f and at 4 f (only the end state counts), dx = 3 and 1.5, and the
             virgin state at dx = 1.5 as the reference of a clean virgin state.
@@ -149,8 +153,26 @@ def matrix():
     conv.append(job(CV, "C_dx15_is2", dx_lex=1.5, init_seed=2))
     conv.append(job(CV, "C_dx15_direct50", dx_lex=1.5, b_list=b_of_mT(50), n_amp=1))
     scatter = [job(CV, "R_dx15_s%d" % sd, dx_lex=1.5, seed=sd, b_list=b_of_mT(9, 50), n_amp=2) for sd in (3, 4, 5)]
+    PP = dict(CV, dx_lex=1.5, b_list=b_of_mT(9, 50), n_amp=2)
+    pp = []
+    for sd in (1, 2, 3, 4):                                            # block 1
+        pp.append(job(PP, "P1_d150_s%d" % sd, d_lex=150.0, seed=sd))
+    for sd in (1, 2, 3):
+        for mT in (9, 50):                                             # one job per amplitude
+            pp.append(job(PP, "P1_d300_s%d_b%d" % (sd, mT), d_lex=300.0, seed=sd, b_list=b_of_mT(mT), n_amp=1))
+            pp.append(job(PP, "P1_d300_dx3_s%d_b%d" % (sd, mT), d_lex=300.0, dx_lex=3.0, seed=sd,
+                          b_list=b_of_mT(mT), n_amp=1))
+    for sd in (6, 7, 8):                                               # block 2
+        pp.append(job(PP, "P2_L12_s%d" % sd, seed=sd))
+    for sd in range(3, 9):
+        pp.append(job(PP, "P2_L30_s%d" % sd, seed=sd, Leff_lex=30.0))
+        pp.append(job(PP, "P2_rp3_s%d" % sd, seed=sd, r_p=3.0))
+    for sd in (3, 4, 5):                                               # block 3 (pairs with R_dx15_s3..5)
+        for dx in (1.0, 2.0, 3.0):
+            pp.append(job(PP, "P3_dx%g_s%d" % (dx, sd), seed=sd, dx_lex=dx))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
-            "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter, "pilot": pilot}
+            "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
+            "planpilot": pp, "pilot": pilot}
 
 
 def n_cells(a):
