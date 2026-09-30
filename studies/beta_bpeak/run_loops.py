@@ -33,6 +33,8 @@ Per cycle (summary.json), SI and reduced:
   W_loop, w_loop = W_loop/K_d     oint H dB = mu0 oint H dM   (per cycle)
   W_dis,  w_dis                   LLG dissipation int <p_dis> dt (per cycle)
   closure                         |M(end)-M(start)| / M_peak
+  offset                          loop centre / amplitude = (M_max + M_min)/(M_max - M_min):
+                                  a minor loop around a remanent state (not AC-demagnetized)
   dW_rel                          |W(c) - W(c-1)| / W(c)
   max_angle_deg                   largest angle between neighbour cells of the
                                   same particle during the cycle
@@ -421,12 +423,14 @@ def main(argv=None):
             W_loop = float(_trapz(H_a, B_a))
             W_dis = float(_trapz(p_a, t_a))
             M_peak = float(0.5 * (M_a.max() - M_a.min()))
+            M_mid = float(0.5 * (M_a.max() + M_a.min()))
             B_peak = float(0.5 * (B_a.max() - B_a.min()))
             cyc = {"cycle": ci,
                    "B_peak": B_peak, "b_peak": B_peak / args.Js,
                    "H_peak": float(0.5 * (H_a.max() - H_a.min())), "M_peak": M_peak,
                    "W_loop": W_loop, "W_dis": W_dis, "w_loop": W_loop / Kd, "w_dis": W_dis / Kd,
                    "closure": float(abs(M_a[-1] - M_a[0]) / max(M_peak, 1e-30)),
+                   "M_mid": M_mid, "offset": M_mid / max(M_peak, 1e-30),
                    "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin_c))))),
                    "n_pairs_gt60": int(n60_c), "frac_pairs_gt60": n60_c / max(n_pairs, 1),
                    "steps": int(steps), "wall_s": wall, "mean_dt": period / max(steps, 1)}

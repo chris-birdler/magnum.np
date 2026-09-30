@@ -33,6 +33,8 @@ Flags per amplitude:
       dW_tol (0.10) from the cycle before (information: with 10 % scatter
       about 1 stage in 4 has this flag)
   c   loop not closed: |M(end) - M(start)| > closure_tol (drift)
+  o   loop centre shifted: |offset| > 0.10, offset = (M_max + M_min)/(M_max - M_min)
+      (a minor loop around a remanent state, not around the demagnetized state)
   *   energy balance |w_dis/w_loop - 1| > 2 % (information: w_dis comes from
       257 point samples per cycle and can miss short Barkhausen jumps)
   #   the largest number of large-angle neighbour pairs per cycle changes by
@@ -88,13 +90,31 @@ def param_value(cfg, k):
     return tuple(v) if isinstance(v, list) else v
 
 
+OFFSET_TOL = 0.10
+
+
+def cycle_offsets(d, si, name, cycles):
+    """Loop centre / amplitude per cycle; from summary.json, else from the samples csv."""
+    if cycles and all("offset" in c for c in cycles):
+        return [c["offset"] for c in cycles]
+    f = pathlib.Path(d) / ("samples_%02d_%s.csv" % (si, name))
+    if not f.exists():
+        return [float("nan")] * len(cycles)
+    a = np.loadtxt(f, delimiter=",", comments="#", ndmin=2)
+    out = []
+    for c in cycles:
+        M = a[a[:, 0] == c["cycle"], 3]
+        out.append(float((M.max() + M.min()) / (M.max() - M.min())) if len(M) else float("nan"))
+    return out
+
+
 def load_run(d):
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
     summ = json.loads((d / "summary.json").read_text())
     rows = []
     ss, dof = 0.0, 0
-    for st in summ["stages"]:
+    for si, st in enumerate(summ["stages"]):
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
         skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP      # drive corrected after cycle 0
@@ -112,6 +132,7 @@ def load_run(d):
                      "w_dis": float(np.mean([c["w_dis"] for c in cyc])),
                      "w_loop_raw": float(np.mean([c["w_loop"] for c in cyc])),
                      "closure": cyc[-1]["closure"], "dW_rel": cyc[-1].get("dW_rel", float("nan")),
+                     "offset": float(np.mean(cycle_offsets(d, si, st["name"], cyc))),
                      "steady": st.get("steady", False), "closed": st.get("closed", True),
                      "n_cycles": len(st["cycles"]), "n_meas": len(w),
                      "frac_gt60": float(max(c.get("frac_pairs_gt60", 0.0) for c in cyc)),
@@ -202,6 +223,8 @@ def flags(r):
         s += "*"
     if r["n60_jump"]:
         s += "#"
+    if abs(r.get("offset", 0.0)) > OFFSET_TOL:
+        s += "o"
     return s
 
 
@@ -209,14 +232,14 @@ def print_table(name, cfg, rows):
     print("\n== %s%s\n   %s" % (name, "" if cfg["done"] else "   (NOT FINISHED)", label(cfg)))
     print("   scatter per cycle s_cyc = %.3f (dof %d, target %.2f)%s" %
           (cfg["s_cyc"], cfg["s_cyc_dof"], S_TARGET, "  ABOVE TARGET" if cfg["s_cyc"] > S_TARGET else ""))
-    print("   %-6s %9s %9s %6s %10s %8s %7s %6s %6s %8s %7s %3s %s" %
-          ("stage", "h", "b_peak", "B[mT]", "w(%s)" % WKEY[2:], "w_err", "beta", "+-", "wd/w", "closure", "f>60",
-           "n", "flags"))
+    print("   %-6s %9s %9s %6s %10s %8s %7s %6s %6s %8s %7s %7s %3s %s" %
+          ("stage", "h", "b_peak", "B[mT]", "w(%s)" % WKEY[2:], "w_err", "beta", "+-", "wd/w", "closure",
+           "offset", "f>60", "n", "flags"))
     for r in rows:
-        print("   %-6s %9.4g %9.4g %6.1f %10.4g %8.2g %7.3f %6.3f %6.3f %8.2g %7.2g %3d %s" %
+        print("   %-6s %9.4g %9.4g %6.1f %10.4g %8.2g %7.3f %6.3f %6.3f %8.2g %+7.3f %7.2g %3d %s" %
               (r["stage"], r["h_amp"], r["b_peak"], 1000 * JS_T * r["b_peak"], r["w_loop"], r["w_err"],
-               r["beta"], r["beta_err"],
-               r["balance"], r["closure"], r["frac_gt60"], r["n_cycles"], flags(r)))
+               r["beta"], r["beta_err"], r["balance"], r["closure"], r["offset"], r["frac_gt60"],
+               r["n_cycles"], flags(r)))
     f, e = features(rows)
     if f:
         print("   features: " + "  ".join("%s=%.3g+-%.2g" % (k, f[k], e[k]) if k != "b_at_beta_max"
@@ -410,18 +433,20 @@ def cycles(d):
     d = pathlib.Path(d)
     summ = json.loads((d / "summary.json").read_text())
     print("\n== %s  (kept: cycles >= %d)" % (d, SKIP))
-    for st in summ["stages"]:
+    for si, st in enumerate(summ["stages"]):
         if not st.get("measure"):
             continue
+        offs = cycle_offsets(d, si, st["name"], st["cycles"])
         skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP
         print("   %s  h = %.4g%s" % (st["name"], st["h_amp"],
                                     "  (corrected after cycle 0 from %.4g)" % st["h_amp_initial"]
                                     if "h_amp_initial" in st else ""))
-        print("     %3s %9s %11s %11s %7s %8s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure", "n60"))
-        for c in st["cycles"]:
-            print("     %3d %9.4g %11.4g %11.4g %7.3f %8.4f %5d%s" %
+        print("     %3s %9s %11s %11s %7s %8s %7s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure",
+                                                        "offset", "n60"))
+        for c, off in zip(st["cycles"], offs):
+            print("     %3d %9.4g %11.4g %11.4g %7.3f %8.4f %+7.3f %5d%s" %
                   (c["cycle"], c["b_peak"], c["w_loop"], c["w_dis"],
-                   c["w_dis"] / c["w_loop"] if c["w_loop"] else float("nan"), c["closure"],
+                   c["w_dis"] / c["w_loop"] if c["w_loop"] else float("nan"), c["closure"], off,
                    c.get("n_pairs_gt60", 0), "" if c["cycle"] >= skip else "   (skipped)"))
         kept = st["cycles"][skip:]
         if len(kept) >= 3:

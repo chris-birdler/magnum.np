@@ -116,7 +116,10 @@ Physics background (short):
 | vortex cores, Bloch points (l_ex scale) | NOT resolved. An audit test (2D disk with a vortex, Q = 0, quasi-static) found grid pinning of the core at dx = 3 l_ex: branch gap up to 0.09 in m, h_c,eff = 1.4·10⁻³. At dx = 1.5 l_ex the loop has no hysteresis. This can be larger than the Herzer pinning (estimate ≈ 5·10⁻⁵). The mesh test (section 7) decides |
 
 Diagnostics in every run: `frac_pairs_gt60` per cycle and `n_pairs_gt60` per
-sample (csv). `analyze.py` flags amplitudes with jumps (`#`). The control
+sample (csv). `offset` per cycle = loop centre / amplitude: a value above
+0.10 (flag `o`) is a minor loop around a remanent state, not around the
+demagnetized state. The mesh test (factor-4 amplitude steps) gave offsets up
+to 0.25 (L12) and 0.55 (floor) at 23 mT with dx = 1.5. `analyze.py` flags amplitudes with jumps (`#`). The control
 T_L30_dx2 (same cubes as T_L30) shows how much the result depends on the mesh.
 
 ## 5. Code map
@@ -337,7 +340,12 @@ at d/l_ex = 150 (pilot).
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. After the pilot: α = 0.02 confirmed or not.
-4. Audit points that wait for the mesh test (then Chris decides):
+4. Initial state of the small loops (decide after the numerical floor test,
+   which shows the offsets of the present protocol): (i) keep, with the
+   offset diagnostic only; (ii) demagnetizing ramp from the reset cycle down
+   to 150 mT (≈ 10 cycles, −15 % per half cycle, +20 % cost); (iii) (ii) and
+   2 ramp cycles before each stage (+45 % cost).
+5. Audit points that wait for the mesh test (then Chris decides):
    - separate the hysteresis loss w_h from the damping loss for every point
      (w_h = 2 w(f) − w(2f), +50 % cost), because the damping loss can move β by 0.2 … 0.5;
    - pilot controls at L18 instead of L30 (d/L_eff = 5 at L30 and d/l_ex = 150
