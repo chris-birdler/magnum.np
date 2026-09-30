@@ -1,0 +1,4 @@
+F_do_atol1e-06 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 8 --max_cycles_per_amp 8 --samples 256 --precision double --seed 1 --b_list 0.1 0.033333 0.006667 --atol 1e-06
+F_do_atol1e-05 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 8 --max_cycles_per_amp 8 --samples 256 --precision double --seed 1 --b_list 0.1 0.033333 0.006667 --atol 1e-05
+F_si_atol1e-06 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 8 --max_cycles_per_amp 8 --samples 256 --precision single --seed 1 --b_list 0.1 0.033333 0.006667 --atol 1e-06
+F_si_atol1e-05 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 8 --max_cycles_per_amp 8 --samples 256 --precision single --seed 1 --b_list 0.1 0.033333 0.006667 --atol 1e-05

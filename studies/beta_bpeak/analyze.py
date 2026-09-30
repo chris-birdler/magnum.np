@@ -37,8 +37,10 @@ Flags per amplitude:
       more than 20 % (and by at least 3 pairs) between the measured cycles:
       vortex-core / Bloch-point events -> mesh dependent
 
-Features per run (for the ranking of the parameters): beta at fixed
-b = 0.01, 0.03, 0.1, 0.3 (log interpolation), beta_max and b at beta_max.
+Features per run (for the ranking of the parameters): beta at B_peak = 10,
+50 and 100 mT from a local fit of ln w over ln b (see features()).
+--w dis uses the LLG dissipation per cycle instead of the loop area. Both
+agree on average; w_dis scatters less when the cycles are not periodic.
 
 Comparison (--compare A B): ln w of B is interpolated (linear in ln b) to
 the b values of A inside the common b range. A weighted fit
@@ -60,7 +62,9 @@ import warnings
 
 import numpy as np
 
-B_REF = (0.01, 0.03, 0.1, 0.3)
+JS_T = 1.5            # Js of the unit system (units.py): b = B_peak / Js
+B_REF_MT = (10.0, 50.0, 100.0)   # study range 10 ... 150 mT (Chris, 2026-09-30)
+WKEY = "w_loop"       # per-cycle loss used for w: w_loop (oint H dB) or w_dis (LLG dissipation), --w
 SKIP = 1            # cycles discarded at the start of each amplitude (--skip)
 S_TARGET = 0.10
 # parameters that define a run (the seed is the realisation); numerical ones are not ranked
@@ -92,7 +96,7 @@ def load_run(d):
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
         cyc = st["cycles"][SKIP:] if len(st["cycles"]) > SKIP else st["cycles"][-1:]
-        w = np.array([c["w_loop"] for c in cyc])
+        w = np.array([c[WKEY] for c in cyc])
         if len(w) > 1 and np.all(w > 0):
             lw = np.log(w)
             ss += float(np.sum((lw - lw.mean()) ** 2))
@@ -103,6 +107,7 @@ def load_run(d):
                      "w_loop": float(w.mean()),
                      "w_err": float(w.std(ddof=1) / math.sqrt(len(w))) if len(w) > 1 else float("nan"),
                      "w_dis": float(np.mean([c["w_dis"] for c in cyc])),
+                     "w_loop_raw": float(np.mean([c["w_loop"] for c in cyc])),
                      "closure": cyc[-1]["closure"], "dW_rel": cyc[-1].get("dW_rel", float("nan")),
                      "steady": st.get("steady", False), "closed": st.get("closed", True),
                      "n_cycles": len(st["cycles"]), "n_meas": len(w),
@@ -116,7 +121,7 @@ def load_run(d):
     for r in rows:
         s_use = cfg["s_cyc"] if cfg["s_cyc"] > S_TARGET else S_TARGET      # also for nan
         r["lnw_err"] = s_use / math.sqrt(r["n_meas"])
-        r["balance"] = r["w_dis"] / r["w_loop"] if r["w_loop"] != 0 else float("nan")
+        r["balance"] = r["w_dis"] / r["w_loop_raw"] if r["w_loop_raw"] != 0 else float("nan")
     add_beta(rows, "w_loop", "beta", "lnw_err")
     return cfg, rows
 
@@ -139,10 +144,28 @@ def add_beta(rows, key, out_key, err_key=None):
 
 
 def features(rows):
-    """Features and their errors (two dicts with the same keys)."""
+    """beta at B_peak = 10 / 50 / 100 mT (the study range) and its error.
+    Local weighted fit of ln w over ln b with all amplitudes within a factor
+    2.2 of b_ref (at the ends of the range the fit is one-sided)."""
     f, e = {}, {}
     if len(rows) < 2:
         return f, e
+    lb = np.log([r["b_peak"] for r in rows])
+    lw = np.array([math.log(r["w_loop"]) if r["w_loop"] > 0 else np.nan for r in rows])
+    sw = np.array([r["lnw_err"] for r in rows])
+    for mT in B_REF_MT:
+        k = "beta@%gmT" % mT
+        lbr = math.log(mT / 1000.0 / JS_T)
+        sel = np.isfinite(lw) & (np.abs(lb - lbr) <= math.log(2.2))
+        if sel.sum() < 2 or not (lb.min() - 0.1 <= lbr <= lb.max() + 0.1):
+            f[k] = e[k] = float("nan")
+            continue
+        x, y, wgt = lb[sel] - lbr, lw[sel], 1.0 / sw[sel] ** 2
+        X = np.c_[np.ones_like(x), x]
+        cov = np.linalg.inv(X.T @ (X * wgt[:, None]))
+        coef = cov @ (X.T @ (wgt * y))
+        f[k], e[k] = float(coef[1]), float(math.sqrt(cov[1, 1]))
+    return f, e
     lb = np.log([r["b_peak"] for r in rows])
     be = np.array([r["beta"] for r in rows])
     bs = np.array([r["beta_err"] for r in rows])
@@ -183,11 +206,13 @@ def print_table(name, cfg, rows):
     print("\n== %s%s\n   %s" % (name, "" if cfg["done"] else "   (NOT FINISHED)", label(cfg)))
     print("   scatter per cycle s_cyc = %.3f (dof %d, target %.2f)%s" %
           (cfg["s_cyc"], cfg["s_cyc_dof"], S_TARGET, "  ABOVE TARGET" if cfg["s_cyc"] > S_TARGET else ""))
-    print("   %-6s %9s %9s %10s %8s %7s %6s %6s %8s %7s %3s %s" %
-          ("stage", "h", "b_peak", "w_loop", "w_err", "beta", "+-", "wd/w", "closure", "f>60", "n", "flags"))
+    print("   %-6s %9s %9s %6s %10s %8s %7s %6s %6s %8s %7s %3s %s" %
+          ("stage", "h", "b_peak", "B[mT]", "w(%s)" % WKEY[2:], "w_err", "beta", "+-", "wd/w", "closure", "f>60",
+           "n", "flags"))
     for r in rows:
-        print("   %-6s %9.4g %9.4g %10.4g %8.2g %7.3f %6.3f %6.3f %8.2g %7.2g %3d %s" %
-              (r["stage"], r["h_amp"], r["b_peak"], r["w_loop"], r["w_err"], r["beta"], r["beta_err"],
+        print("   %-6s %9.4g %9.4g %6.1f %10.4g %8.2g %7.3f %6.3f %6.3f %8.2g %7.2g %3d %s" %
+              (r["stage"], r["h_amp"], r["b_peak"], 1000 * JS_T * r["b_peak"], r["w_loop"], r["w_err"],
+               r["beta"], r["beta_err"],
                r["balance"], r["closure"], r["frac_gt60"], r["n_cycles"], flags(r)))
     f, e = features(rows)
     if f:
@@ -442,14 +467,16 @@ def main():
     ap.add_argument("--compare", nargs=2, metavar=("RUN_A", "RUN_B"))
     ap.add_argument("--cycles", action="store_true", help="per-cycle tables and drift of the given runs")
     ap.add_argument("--skip", type=int, default=1, help="cycles discarded at the start of each amplitude")
+    ap.add_argument("--w", choices=["loop", "dis"], default="loop", help="loss per cycle: loop area or LLG dissipation")
     ap.add_argument("--tol_lnw", type=float, default=0.15, help="tolerance of the level difference (ln w)")
     ap.add_argument("--tol_beta", type=float, default=0.2, help="tolerance of the slope difference")
     ap.add_argument("--csv", default="all_runs.csv")
     ap.add_argument("--ranking_csv", default="ranking.csv")
     ap.add_argument("--plot", default="beta_vs_b.png")
     a = ap.parse_args()
-    global SKIP
+    global SKIP, WKEY
     SKIP = a.skip
+    WKEY = "w_" + a.w
 
     if a.cycles:
         for d in a.runs:

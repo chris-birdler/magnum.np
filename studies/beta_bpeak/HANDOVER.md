@@ -13,7 +13,12 @@ and wait. Engineering fixes (bugs, logging, speed) need no decision, but tell hi
 Find the parameters that control the Steinmetz exponent β(B_peak) of a soft
 magnetic powder core. The material is a **fictitious nanocrystalline**
 powder. It lets us separate the influences cleanly. Practical aim: understand
-how to keep β small up to high B_peak.
+how to keep β small.
+
+**Range of interest: B_peak = 10 … 150 mT** (b = 0.0067 … 0.1 with Js = 1.5 T).
+The most frequent cases are 10, 50 and 100 mT. Higher B_peak is rare and not
+part of the study. B_peak is the amplitude (half peak-to-peak), as in the
+Steinmetz equation.
 
 Fixed by Chris:
 - particle diameter ≈ 1 µm,
@@ -94,8 +99,9 @@ Physics background (short):
 | Mesh-identical cubes | box edge a = multiple of 12 l_ex, L_eff = multiple of 6 l_ex | dx = 3, 2 and 1.5 see exactly the same cubes (tested on a common fine grid, with a negative control); d is adjusted by ≤ 2.5 % to keep φ exact |
 | Contacts | at least one void cell between particles (no face, edge or corner contact) | no exchange coupling, no extreme stray fields at contacts; at d/l_ex = 150 and dx = 3, φ = 0.69 and 0.71 are not possible |
 | Size | d/l_ex = 300 (1 µm), fixed | Chris |
-| Scatter target | 10 % scatter of w from cycle to cycle (`--dW_tol 0.10`) | gives σ(β) ≈ 0.07 per point (section 8) |
-| Protocol | 1 saturating cycle, descending amplitudes, 3 … 4 cycles each, first cycle discarded | AC demagnetization |
+| Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 10 mT (`--b_list`); the drive of each stage comes from the measured b/h of the stage before | study range 10 … 150 mT; no time on saturation |
+| Protocol | 1 saturating cycle (reset), then the amplitudes above, 7 cycles each (fixed), first cycle discarded | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
+| Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
 | Damping | α = 0.02 | 5× less artificial damping loss than α = 0.1 at the same cost per step; the pilot checks it |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
 
@@ -153,10 +159,12 @@ Barkhausen jumps. Thus the `*` flag is information only.
 4. Mesh test FIRST (done, section 7.1), then the steady test:
    `python run_queue.py jobs/steady.txt --gpus 0,1`. Evaluate it (section 7.2)
    and report to Chris. Stop if the mesh check fails.
+   Then the numerical floor test: `python run_queue.py jobs/numfloor.txt --gpus 0,1`
+   (section 7.3).
 5. Pilot: `python run_queue.py jobs/pilot.txt --gpus 0,1,2,3`. Copy `runs/`
    back before you destroy an instance.
 6. `python analyze.py runs/T_*` and `python analyze.py --pair runs/T_L18 runs/T_L18_f2`.
-   Report the pilot checks (section 7.3) to Chris.
+   Report the pilot checks (section 7.4) to Chris.
 7. Chris decides the production matrix (section 9). Then add it to `jobs.py`.
 
 Never edit tracked files on an instance: `setup_vast.sh` discards such edits,
@@ -230,7 +238,30 @@ Evaluation (the last 6 of 12 cycles):
 2. Mesh: the same tolerances as in 7.1 (level ±0.15, slope ±0.2, 90 %).
 3. Damping: compare α = 0.02 and 0.1 (steady time and loss level).
 
-### 7.3 Pilot (d/l_ex = 150, 4 amplitudes, ≈ 4.8 V100-h)
+### 7.3 Numerical floor test (d/l_ex = 96, dx = 3, ≈ 4.7 V100-h)
+
+The loops in the study range are small: at 23 mT the mesh test gave w ≈ 10⁻⁷
+… 10⁻⁶ K_d per cycle. At 10 mT, w is smaller again. Question: do the solver
+tolerance and fp32 make a part of this loss?
+
+| Run | precision | atol |
+|---|---|---|
+| F_si_atol1e-05 (reference of the study) | fp32 | 10⁻⁵ |
+| F_si_atol1e-06 | fp32 | 10⁻⁶ |
+| F_do_atol1e-05 | fp64 | 10⁻⁵ |
+| F_do_atol1e-06 (best) | fp64 | 10⁻⁶ |
+
+L_eff = 12 l_ex, B_peak = 150 / 50 / 10 mT, 8 cycles each. Evaluation:
+
+    python analyze.py --skip 2 --cycles runs/F_*
+    python analyze.py --skip 2 --compare runs/F_si_atol1e-05 runs/F_do_atol1e-06
+    python analyze.py --skip 2 --w dis --compare runs/F_si_atol1e-05 runs/F_do_atol1e-06
+
+PASS: at 10, 50 and 150 mT the mean w of the reference is within ±15 % of the
+best run (90 % interval), for w_loop and for w_dis. If it fails: the smallest
+setting that passes sets atol and precision for the pilot (cost to Chris).
+
+### 7.4 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 10 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
@@ -244,37 +275,38 @@ particle. Thus the realisation scatter is larger than in production.
 | T_L18_f2 vs T_L18 (`--pair`) | dynamic share at α = 0.02 | dynamic share < 30 % or less than 2 errors at small b | ask Chris (lower f or use β from w_h) |
 | T_L18_d111 vs T_L18 | do the cube faces cause a preferred direction? | difference within the scatter | ask Chris (option: equal truncated octahedra) |
 | T_L18_rp1, T_L18_rp3 | does the particle-scale stress change β? | — (Chris selects the r_p level) | — |
-| all | scatter | s_cyc ≤ 0.10 | more cycles cost budget: ask Chris |
+| all | scatter of the mean | error of ln w per amplitude ≤ 0.1 (mean over 6 cycles) | more cycles cost budget: ask Chris |
 
 ## 8. Error budget
 
 | Quantity | Error (10 % scatter) | How `analyze.py` gets it |
 |---|---|---|
-| ln w at one amplitude | max(s_cyc, 0.10)/√n ≈ 0.07 (n = 2 … 3 measured cycles) | s_cyc pooled over all amplitudes of one run |
-| β_eff at one amplitude | ≈ 0.07 (d/l_ex = 300, 9 amplitudes) | central difference over the two neighbour amplitudes |
+| ln w at one amplitude | max(s_cyc, 0.10)/√n (n = 6 kept cycles) | s_cyc pooled over all amplitudes of one run |
+| β at 10 / 50 / 100 mT | from a local weighted fit of ln w over ln b (all amplitudes within a factor 2.2); at 10 mT one-sided | `features()` |
 | realisation | from the seeds of the base point | variance over the seeds minus the statistical part |
 | change of a feature | √(stat.² + realisation² + base²) | `ranking()`; significance with Student-t of the seed scatter |
 | dynamic share (`--pair`, 2f) | ≈ ±0.10 | two runs with 10 % scatter each |
 
 Consequences:
 - A change of β smaller than ≈ 0.2 is not a result.
-- β_max from the central difference is smoothed (up to −0.3 in synthetic
-  tests). Use β at fixed b for the ranking.
-- With 5 features and many runs, some |d|/σ above the threshold are false
+- With 3 features and many runs, some |d|/σ above the threshold are false
   hits. Report them as candidates.
+- The per-cycle scatter of w_loop can be much larger than 10 % (steady
+  test). Then the error of the mean decides, and more cycles cost budget.
 
 ## 9. Production matrix (open: Chris decides after the pilot)
 
 Base: d/l_ex = 300, φ = 0.65, L_eff = 18 l_ex, r_p = 0. One d/l_ex = 300 run
-costs ≈ 5 V100-h.
+(7 amplitudes × 7 cycles) costs ≈ 6.3 V100-h (≈ 0.8 $ on a V100). A 2f partner
+run for w_h costs ≈ 3.2 V100-h.
 
 | Option | Runs | Cost | Pros | Cons |
 |---|---|---|---|---|
-| A: full factorial Q_eff (4) × r_p (2) × φ (2) + 2 seeds | 18 | ≈ 90 V100-h | all main effects and interactions | budget |
-| B: Q_eff scan (4) at r_p = 0, φ = 0.65 + 2×2 (r_p, φ = 0.55 / 0.69) at L_eff = 18 + 2 seeds | 10 | ≈ 50 V100-h | Q_eff curve and both other factors with their interaction | interactions with Q_eff not visible |
-| C: B + floor (Q_eff = 0) at d/l_ex = 300 | 11 | ≈ 55 V100-h | B + floor at production size | cost |
+| A: full factorial Q_eff (4) × r_p (2) × φ (2) + 2 seeds | 18 | ≈ 115 V100-h | all main effects and interactions | budget |
+| B: Q_eff scan (4) at r_p = 0, φ = 0.65 + 2×2 (r_p, φ = 0.55 / 0.69) at L_eff = 18 + 2 seeds | 10 | ≈ 63 V100-h | Q_eff curve and both other factors with their interaction | interactions with Q_eff not visible |
+| C: B + floor (Q_eff = 0) at d/l_ex = 300 | 11 | ≈ 70 V100-h | B + floor at production size | cost |
 
-A dx = 2 control at d/l_ex = 300 costs ≈ 38 V100-h. Thus the mesh check stays
+A dx = 2 control at d/l_ex = 300 costs ≈ 26 V100-h. Thus the mesh check stays
 at d/l_ex = 150 (pilot).
 
 ## 10. Known limitations
@@ -313,4 +345,4 @@ at d/l_ex = 150 (pilot).
    - ranking by a weighted regression over all runs (the present ranking
      compares only runs that differ in one parameter);
    - production option D: Q_eff (4) × r_p (2) at φ = 0.65 + φ = 0.55 / 0.69 at
-     L18 for both r_p + 2 seeds = 14 runs, ≈ 70 V100-h (contains Q × r_p).
+     L18 for both r_p + 2 seeds = 14 runs, ≈ 89 V100-h (contains Q × r_p).

@@ -113,6 +113,10 @@ def parse_args(argv=None):
     g.add_argument("--h_factor", type=float, default=0.5)
     g.add_argument("--n_amp", type=int, default=9)
     g.add_argument("--h_list", type=float, nargs="*", default=None, help="explicit amplitudes H/Ms")
+    g.add_argument("--b_list", type=float, nargs="*", default=None,
+                   help="target amplitudes b = B_peak/Js (descending). The drive amplitude of each stage is "
+                        "h = b_target / mu, mu = b/h of the stage before (first stage: --mu_guess)")
+    g.add_argument("--mu_guess", type=float, default=8.0, help="b/h for the first --b_list stage")
     g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per amplitude (1st = transient)")
     g.add_argument("--max_cycles_per_amp", type=int, default=4)
     g.add_argument("--closure_tol", type=float, default=0.02)
@@ -168,6 +172,11 @@ def is_multiple(x, q, tol=1e-9):
 
 def build_stages(args, phi):
     h_sat = args.h_sat if args.h_sat is not None else (1.0 - phi)
+    if args.b_list:
+        stages = [{"name": "sat", "h_amp": h_sat, "n_cycles": args.n_sat, "measure": False}]
+        stages += [{"name": "amp%02d" % k, "h_amp": None, "b_target": b, "n_cycles": args.cycles_per_amp,
+                    "measure": True} for k, b in enumerate(sorted(args.b_list, reverse=True))]
+        return stages
     if args.h_list:
         amps = sorted(args.h_list, reverse=True)
     else:
@@ -363,9 +372,19 @@ def main(argv=None):
             continue
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.t0 = 0.0
+        if st.get("b_target") is not None:
+            # h from the measured b/h of the stage before (deterministic, also on resume)
+            prev = [r for r in summary["stages"] if r.get("measure") and r.get("cycles")]
+            if prev:
+                mu = float(np.mean([c["b_peak"] for c in prev[-1]["cycles"]])) / prev[-1]["h_amp"]
+            else:
+                mu = args.mu_guess
+            st = dict(st, h_amp=st["b_target"] / mu)
         drive.H_amp = st["h_amp"] * Ms
         rec = {"name": st["name"], "h_amp": st["h_amp"], "H_amp": st["h_amp"] * Ms,
                "measure": st["measure"], "git_commit": config["git_commit"], "cycles": []}
+        if st.get("b_target") is not None:
+            rec["b_target"] = st["b_target"]
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
         fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
 
