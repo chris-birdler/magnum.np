@@ -409,6 +409,37 @@ Also decide A vs B: if the difference A (D_A_dx15) vs B (D_B_dx15) of 7.5
 (level +0.21, Δβ +0.11) lies within the initial-state scatter, A and B are
 equivalent (then A: no demagnetizing cycles; B: the measurement standard).
 
+**Result (2026-09-30):**
+
+Same initial state (init_block 6, seed 1) on three meshes:
+
+| Run | w 9 mT | w 20 mT | w 50 mT | β (9 → 50 mT) | virgin state E/K_d, n60 |
+|---|---|---|---|---|---|
+| C_dx2 | 6.4·10⁻⁸ | 3.3·10⁻⁷ | 5.0·10⁻⁶ | 2.54 | 0.00207, 3 |
+| C_dx15 | 3.4·10⁻⁷ | 9.3·10⁻⁷ | 7.0·10⁻⁶ | 1.77 | 0.00186, 0 |
+| C_dx1 | 4.4·10⁻⁷ | 1.3·10⁻⁶ | 1.0·10⁻⁵ | 1.83 | 0.00166, 0 |
+
+- dx = 1.5 vs dx = 1: Δβ = −0.05 ± 0.09, level −0.33 ± 0.07 (w ≈ 30 % low).
+  β is converged at dx = 1.5; the absolute loss is not (≈ −30 %).
+- dx = 2 vs dx = 1: Δβ = +0.74, level ×0.26: not sufficient.
+- 50 mT directly from the virgin state vs after 9 and 20 mT: −5 %. Each
+  amplitude can run as its own job (parallel production).
+
+Realisation scatter at dx = 1.5 (8 runs: other initial states and/or other
+cubes, protocols A and B):
+
+| | 9 mT | 50 mT | β (9 → 50 mT) |
+|---|---|---|---|
+| mean | w = 1.6·10⁻⁷ | w = 8.3·10⁻⁶ | 2.29 |
+| scatter per realisation | σ(ln w) = 0.41 | σ(ln w) = 0.57 | σ = 0.45 |
+
+- The difference A vs B (level +0.21, Δβ +0.11) is well inside this
+  scatter: A and B are equivalent. A is used (no demagnetizing cycles).
+- **One realisation of 4 particles is not representative.** For an error
+  of ±0.1 in β a parameter point needs ≈ 20 realisations; for ±0.15 ≈ 9.
+  This scatter is measured at d/l_ex = 96. At d/l_ex = 300 each particle has
+  more domains, and the scatter may be smaller (not measured).
+
 ### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
