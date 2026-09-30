@@ -6,9 +6,12 @@ w = W/K_d per cycle versus b_peak = B_peak/Js, and beta_eff = d ln w / d ln b.
     python analyze.py runs/*                          # tables, features, ranking, csv, plot
     python analyze.py --pair runs/T_L18 runs/T_L18_f2         # frequency separation
     python analyze.py --compare runs/M_L12_dx3 runs/M_L12_dx15  # two runs at the same b
+    python analyze.py --skip 6 --compare runs/S_L12_dx3 runs/S_L12_dx15   # only the last cycles
+    python analyze.py --cycles runs/S_L12_dx15                  # per-cycle table and drift
 
-Per run and amplitude, w and b_peak are the MEAN over all cycles except the
-first one (transient).
+Per run and amplitude, w and b_peak are the MEAN over the cycles after the
+first SKIP cycles (--skip, default 1: the first cycle is a transient).
+
 
 Errors (target: 10 % scatter of w from cycle to cycle, S_TARGET):
   s_cyc     scatter of ln w from cycle to cycle, pooled over all amplitudes of
@@ -58,6 +61,7 @@ import warnings
 import numpy as np
 
 B_REF = (0.01, 0.03, 0.1, 0.3)
+SKIP = 1            # cycles discarded at the start of each amplitude (--skip)
 S_TARGET = 0.10
 # parameters that define a run (the seed is the realisation); numerical ones are not ranked
 PARAMS = ["d_lex", "phi", "Leff_lex", "Q_eff", "r_p", "dx_lex", "f_rel", "alpha", "direction"]
@@ -87,7 +91,7 @@ def load_run(d):
     for st in summ["stages"]:
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
-        cyc = st["cycles"][1:] if len(st["cycles"]) > 1 else st["cycles"]
+        cyc = st["cycles"][SKIP:] if len(st["cycles"]) > SKIP else st["cycles"][-1:]
         w = np.array([c["w_loop"] for c in cyc])
         if len(w) > 1 and np.all(w > 0):
             lw = np.log(w)
@@ -372,6 +376,37 @@ def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2):
             "pass": bool(ok_l and ok_b)}
 
 
+def cycles(d):
+    """Per-cycle table of every measured stage, and the drift of w over the kept
+    cycles (relative change per cycle from a linear fit, with its error)."""
+    d = pathlib.Path(d)
+    summ = json.loads((d / "summary.json").read_text())
+    print("\n== %s  (kept: cycles >= %d)" % (d, SKIP))
+    for st in summ["stages"]:
+        if not st.get("measure"):
+            continue
+        print("   %s  h = %.4g" % (st["name"], st["h_amp"]))
+        print("     %3s %9s %11s %11s %7s %8s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure", "n60"))
+        for c in st["cycles"]:
+            print("     %3d %9.4g %11.4g %11.4g %7.3f %8.4f %5d%s" %
+                  (c["cycle"], c["b_peak"], c["w_loop"], c["w_dis"],
+                   c["w_dis"] / c["w_loop"] if c["w_loop"] else float("nan"), c["closure"],
+                   c.get("n_pairs_gt60", 0), "" if c["cycle"] >= SKIP else "   (skipped)"))
+        kept = st["cycles"][SKIP:]
+        if len(kept) >= 3:
+            for key in ("w_loop", "w_dis"):
+                w = np.array([c[key] for c in kept])
+                k = np.arange(len(w), dtype=float)
+                A = np.c_[np.ones_like(k), k - k.mean()]
+                coef, res, _, _ = np.linalg.lstsq(A, w, rcond=None)
+                dof = len(w) - 2
+                s2 = float(np.sum((w - A @ coef) ** 2)) / dof if dof > 0 else float("nan")
+                se = math.sqrt(s2 / np.sum((k - k.mean()) ** 2)) if dof > 0 else float("nan")
+                print("     %-6s mean %.4g  scatter %.1f %%  drift %+.2f +- %.2f %% per cycle" %
+                      (key, w.mean(), 100 * w.std(ddof=1) / abs(w.mean()), 100 * coef[1] / w.mean(),
+                       100 * se / abs(w.mean())))
+
+
 def plot(results, path):
     try:
         import matplotlib
@@ -405,13 +440,21 @@ def main():
     ap.add_argument("runs", nargs="*")
     ap.add_argument("--pair", nargs=2, metavar=("RUN_F1", "RUN_F2"))
     ap.add_argument("--compare", nargs=2, metavar=("RUN_A", "RUN_B"))
+    ap.add_argument("--cycles", action="store_true", help="per-cycle tables and drift of the given runs")
+    ap.add_argument("--skip", type=int, default=1, help="cycles discarded at the start of each amplitude")
     ap.add_argument("--tol_lnw", type=float, default=0.15, help="tolerance of the level difference (ln w)")
     ap.add_argument("--tol_beta", type=float, default=0.2, help="tolerance of the slope difference")
     ap.add_argument("--csv", default="all_runs.csv")
     ap.add_argument("--ranking_csv", default="ranking.csv")
     ap.add_argument("--plot", default="beta_vs_b.png")
     a = ap.parse_args()
+    global SKIP
+    SKIP = a.skip
 
+    if a.cycles:
+        for d in a.runs:
+            cycles(d)
+        return
     if a.pair:
         pair(*a.pair)
         return

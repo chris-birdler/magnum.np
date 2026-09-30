@@ -150,12 +150,13 @@ Barkhausen jumps. Thus the `*` flag is information only.
    on one RTX 3090 and one RTX 5090. Compare `wall_s` per cycle × price.
    Update `jobs.py` (`--s_per_step_Mcell`, `--dt_tau`) with the measured
    values. Report the cost to Chris.
-4. Mesh test FIRST: `python run_queue.py jobs/meshtest.txt --gpus 0,1,2,3`.
-   Evaluate it (section 7.1) and report to Chris. Stop if it fails.
+4. Mesh test FIRST (done, section 7.1), then the steady test:
+   `python run_queue.py jobs/steady.txt --gpus 0,1`. Evaluate it (section 7.2)
+   and report to Chris. Stop if the mesh check fails.
 5. Pilot: `python run_queue.py jobs/pilot.txt --gpus 0,1,2,3`. Copy `runs/`
    back before you destroy an instance.
 6. `python analyze.py runs/T_*` and `python analyze.py --pair runs/T_L18 runs/T_L18_f2`.
-   Report the pilot checks (section 7.2) to Chris.
+   Report the pilot checks (section 7.3) to Chris.
 7. Chris decides the production matrix (section 9). Then add it to `jobs.py`.
 
 Never edit tracked files on an instance: `setup_vast.sh` discards such edits,
@@ -194,7 +195,42 @@ Also compare `frac_pairs_gt60` and the per-sample `n_pairs_gt60` jumps
 between the meshes. Steps in m(t) at dx = 3 that disappear at dx = 1.5 are
 grid pinning of cores.
 
-### 7.2 Pilot (d/l_ex = 150, 4 amplitudes, ≈ 4.5 V100-h)
+**Result (2026-09-30, 2× V100, ≈ 0.40 $; raw data local with MANIFEST.md5):**
+- b ≈ 0.74: steady and clean. L12: dx = 3 vs 1.5 differs by +3 %. Floor: +24 %.
+- b ≤ 0.25: NOT decided. At α = 0.02 the cycles are not steady within 3 … 4
+  cycles (closure up to 22 %, negative loop areas, w_dis/w_loop = 1.3 … 4.5,
+  scatter 20 … 80 %). Thus `--compare` fails, but this is no proof of a mesh
+  effect.
+- dx = 3 keeps ≈ 24 neighbour pairs above 60° (unresolved cores); dx = 1.5
+  has 0 … 3. At the smallest amplitude dx = 1.5 dissipates 5 … 10× more
+  (w_dis). This points to cores that the coarse grid holds in place.
+- Consequence: 3 … 4 cycles per amplitude are not sufficient at α = 0.02.
+
+### 7.2 Steady test (d/l_ex = 96, ≈ 5.5 V100-h, before the pilot)
+
+Same geometry as 7.1. Two amplitudes (h = 0.0292 and 0.0073, b ≈ 0.25 and
+0.06), 12 cycles each, no early stop.
+
+| Runs | dx/l_ex | Content |
+|---|---|---|
+| S_floor_dx3 / dx15 | 3 / 1.5 | Q_eff = 0, α = 0.02 |
+| S_L12_dx3 / dx15 | 3 / 1.5 | L_eff = 12, α = 0.02 |
+| S_L12_a010_dx3 / dx15 | 3 / 1.5 | L_eff = 12, α = 0.1 (faster relaxation, more damping loss) |
+
+Evaluation (the last 6 of 12 cycles):
+
+    python analyze.py --skip 6 --cycles runs/S_*
+    python analyze.py --skip 6 --compare runs/S_L12_dx3 runs/S_L12_dx15
+    python analyze.py --skip 6 --compare runs/S_floor_dx3 runs/S_floor_dx15
+    python analyze.py --skip 6 --compare runs/S_L12_a010_dx3 runs/S_L12_a010_dx15
+
+1. Steady? For the kept cycles: |drift of w| < 1 % per cycle (within 2
+   errors), closure < 2 %, w_dis/w_loop within 0.9 … 1.1. If not: report the
+   number of cycles that is necessary (cost) to Chris.
+2. Mesh: the same tolerances as in 7.1 (level ±0.15, slope ±0.2, 90 %).
+3. Damping: compare α = 0.02 and 0.1 (steady time and loss level).
+
+### 7.3 Pilot (d/l_ex = 150, 4 amplitudes, ≈ 4.8 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
