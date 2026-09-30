@@ -121,6 +121,8 @@ def parse_args(argv=None):
     g.add_argument("--h_sat", type=float, default=None, help="saturating amplitude H/Ms (default 1-phi)")
     g.add_argument("--n_sat", type=int, default=1)
     g.add_argument("--demag_q", type=float, default=0.8, help="acdemag: amplitude factor per half cycle")
+    g.add_argument("--demag_f_factor", type=float, default=1.0,
+                   help="acdemag: frequency of the demagnetizing cycles / f (only the end state is used)")
     g.add_argument("--demag_h_end", type=float, default=None,
                    help="acdemag: end amplitude H/Ms (default 0.3 x the first stage estimate)")
     g.add_argument("--relax_maxiter", type=int, default=5000, help="virgin: iterations of 1e-11 s at alpha = 1")
@@ -200,7 +202,7 @@ def build_stages(args, phi):
             h_end = 0.3 * min(args.h_list)
         n_half = int(math.ceil(math.log(h_sat / h_end) / math.log(1.0 / args.demag_q)))
         stages = [{"name": "demag", "h_amp": h_sat, "decay": args.demag_q, "n_cycles": (n_half + 1) // 2,
-                   "measure": False}]
+                   "f_factor": args.demag_f_factor, "measure": False}]
     else:
         stages = []
     if args.b_list:
@@ -415,9 +417,6 @@ def main(argv=None):
             print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
 
     # --- protocol ----------------------------------------------------------
-    period = 1.0 / freq
-    dt_s = period / args.samples
-    drive.freq = freq
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
 
     for si in range(first_stage, len(stages)):
@@ -428,6 +427,10 @@ def main(argv=None):
             continue
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.t0 = 0.0
+        f_stage = freq * st.get("f_factor", 1.0)          # demagnetizing cycles may run faster
+        drive.freq = f_stage
+        period = 1.0 / f_stage
+        dt_s = period / args.samples
         if st.get("b_target") is not None:
             # h from the measured b/h of the stage before (deterministic, also on resume)
             prev = [r for r in summary["stages"] if r.get("measure") and r.get("cycles")]

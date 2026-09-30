@@ -166,11 +166,12 @@ Barkhausen jumps. Thus the `*` flag is information only.
    and report to Chris. Stop if the mesh check fails.
    Then the numerical floor test and the initial-state test:
    `python run_queue.py jobs/numfloor.txt --gpus 0,1` and
-   `python run_queue.py jobs/initproto.txt --gpus 0,1` (sections 7.3, 7.4).
+   `python run_queue.py jobs/initproto.txt --gpus 0,1` (sections 7.3, 7.4),
+   then `python run_queue.py jobs/demagtest.txt --gpus 0,1` (section 7.5).
 5. Pilot: `python run_queue.py jobs/pilot.txt --gpus 0,1,2,3`. Copy `runs/`
    back before you destroy an instance.
 6. `python analyze.py runs/T_*` and `python analyze.py --pair runs/T_L18 runs/T_L18_f2`.
-   Report the pilot checks (section 7.5) to Chris.
+   Report the pilot checks (section 7.6) to Chris.
 7. Chris decides the production matrix (section 9). Then add it to `jobs.py`.
 
 Never edit tracked files on an instance: `setup_vast.sh` discards such edits,
@@ -334,7 +335,23 @@ Conclusions:
 - The tests ran with α = 0.02. After the steady test, α = 0.1 is preferred.
   Open: A and B with α = 0.1 at dx = 3 and 1.5 (section 12).
 
-### 7.5 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
+### 7.5 Demagnetization test (d/l_ex = 96, L_eff = 12, α = 0.1, ≈ 5.7 V100-h)
+
+Question: gives the AC demagnetization (B) the same state and loss as a clean
+virgin state, and can the demagnetizing cycles run at 4 f (only the end
+state counts; 17 cycles at f cost ≈ +35 % per production run, at 4 f ≈ +8 %)?
+
+| Run | Protocol | dx |
+|---|---|---|
+| D_B_dx3 / dx15 | B at f | 3 / 1.5 |
+| D_B4f_dx3 / dx15 | B, demagnetizing cycles at 4 f (`--demag_f_factor 4`) | 3 / 1.5 |
+| D_A_dx15 | A (virgin state; clean at dx = 1.5) | 1.5 |
+
+Evaluation (`--skip 2`, `--compare`, tolerances as in 7.1, offsets):
+B4f vs B (both meshes), B dx 3 vs B dx 1.5, B dx 1.5 vs A dx 1.5. If B4f
+passes against B and against A: production uses B4f with α = 0.1 and dx = 3.
+
+### 7.6 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.

@@ -26,6 +26,9 @@ Groups:
             F_si_atol1e-05);
             B = AC demagnetization (decaying saturating cycles), ascending;
             C = present protocol (1 saturating cycle, descending).
+  demagtest same geometry, alpha = 0.1, B_peak = 9 / 50 / 150 mT: AC demagnetization at
+            f and at 4 f (only the end state counts), dx = 3 and 1.5, and the
+            virgin state at dx = 1.5 as the reference of a clean virgin state.
 
 Amplitudes: the study range is B_peak = 10 ... 150 mT (Chris, 2026-09-30):
 b = B_peak/Js with Js = 1.5 T. run_loops.py --b_list sets the drive per
@@ -126,8 +129,15 @@ def matrix():
     pilot.append(job(PILOT, "T_L18_f2", f_rel=2.0 * F_REL_DEFAULT))  # dynamic share (pair with T_L18)
     pilot.append(job(PILOT, "T_L30_dx2", Leff_lex=30.0, dx_lex=2.0))  # mesh, same cubes as T_L30
     pilot.append(job(PILOT, "T_L30_seed2", Leff_lex=30.0, seed=2))    # realisation scatter
+    D = dict(SMALL, alpha=0.1)
+    demagtest = []
+    for dx in (3.0, 1.5):
+        tag = ("%g" % dx).replace(".", "")
+        demagtest.append(job(D, "D_B_dx%s" % tag, protocol="acdemag_asc", dx_lex=dx))
+        demagtest.append(job(D, "D_B4f_dx%s" % tag, protocol="acdemag_asc", demag_f_factor=4.0, dx_lex=dx))
+    demagtest.append(job(D, "D_A_dx15", protocol="virgin_asc", dx_lex=1.5))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
-            "initproto": initproto, "pilot": pilot}
+            "initproto": initproto, "demagtest": demagtest, "pilot": pilot}
 
 
 def n_cells(a):
@@ -146,7 +156,7 @@ def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.0075):
     per_amp = a["cycles_per_amp"] if a["cycles_per_amp"] == a["max_cycles_per_amp"] else cycles_avg
     pre = 1                                                          # reset cycle / relaxation
     if a.get("protocol") == "acdemag_asc":
-        pre = 17                                                     # decaying cycles (q = 0.8)
+        pre = 17 / a.get("demag_f_factor", 1.0)                       # decaying cycles (q = 0.8)
     cycles = a.get("max_cycles", pre + n_st * per_amp)
     return cycles * steps * t_step / 3600.0
 
