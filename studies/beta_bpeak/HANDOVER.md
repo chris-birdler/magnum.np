@@ -351,6 +351,36 @@ Evaluation (`--skip 2`, `--compare`, tolerances as in 7.1, offsets):
 B4f vs B (both meshes), B dx 3 vs B dx 1.5, B dx 1.5 vs A dx 1.5. If B4f
 passes against B and against A: production uses B4f with α = 0.1 and dx = 3.
 
+**Result (2026-09-30, α = 0.1, `--skip 2`):**
+
+| Run | w at 9 / 50 / 150 mT | offset at 9 / 50 / 150 mT |
+|---|---|---|
+| B dx 3 | 5.4·10⁻⁸ / 5.1·10⁻⁶ / 1.8·10⁻⁴ | −0.59 / −0.11 / −0.04 |
+| B4f dx 3 | 5.4·10⁻⁸ / 2.0·10⁻⁶ / 1.9·10⁻⁴ | −1.26 / −0.23 / −0.08 |
+| B dx 1.5 | 1.6·10⁻⁷ / 6.5·10⁻⁶ / 1.4·10⁻⁴ | +0.71 / +0.13 / +0.05 |
+| B4f dx 1.5 | 1.4·10⁻⁷ / 7.8·10⁻⁶ / 1.1·10⁻⁴ | +0.68 / +0.12 / +0.05 |
+| A dx 1.5 | 1.5·10⁻⁷ / 4.8·10⁻⁶ / 1.0·10⁻⁴ | +0.02 / +0.01 / +0.01 |
+
+| Pair | level | Δβ |
+|---|---|---|
+| B dx 3 vs B dx 1.5 | −0.37 ± 0.04 | **+0.46 ± 0.03 (FAIL)** |
+| B4f dx 3 vs B4f dx 1.5 | −0.56 ± 0.07 | **+0.47 ± 0.06 (FAIL)** |
+| B4f vs B, dx 3 / dx 1.5 | −0.28 / −0.09 | −0.02 / −0.03 (PASS) |
+| B dx 1.5 vs A dx 1.5 | +0.21 ± 0.04 | +0.11 ± 0.03 (PASS) |
+
+Conclusions:
+- **In the study range the mesh dx = 3 is not sufficient.** At 9 mT dx = 3
+  gives ≈ 3× less loss than dx = 1.5, thus β is ≈ 0.5 too steep. The steady
+  test (90 and 375 mT) did not show this: the problem is at small B_peak.
+  At small fields the coarse grid holds structures in place that move on
+  the fine grid (this agrees with the mesh test: at 23 mT dx = 1.5 dissipated
+  5 … 10× more).
+- The AC demagnetization of 4 particles ends with a net M of the order of
+  the 9 mT loop amplitude (offset ±0.6 … 1.3). The virgin state A at
+  dx = 1.5 is clean (no large-angle pairs, M ≈ 0, offsets ≤ 0.02).
+- Open: is dx = 1.5 converged at 9 mT? And the cost: a run at d/l_ex = 300
+  costs 6 V100-h at dx = 3, 26 at dx = 2 and 72 at dx = 1.5 (section 12).
+
 ### 7.6 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
@@ -426,9 +456,13 @@ at d/l_ex = 150 (pilot).
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. After the pilot: α = 0.02 confirmed or not.
-4. Initial state and damping (after the tests 7.2 … 7.4): C is out; α = 0.1
-   is preferred. Proposed next test: A and B with α = 0.1 at dx = 3 and 1.5
-   (9 / 50 / 150 mT). Then set protocol and α in jobs.py BASE for the pilot.
+4. Mesh in the study range (after 7.5): dx = 3 fails at 9 mT (Δβ ≈ +0.5).
+   Options: (i) mesh convergence test dx = 2 / 1.5 / 1 at small B_peak, then
+   production at the converged dx (d/l_ex = 300: 26 … 72 V100-h per run);
+   (ii) smaller d/l_ex (e.g. 150: 8 V100-h per run at dx = 1.5; this is 1 µm
+   only for a material with a larger l_ex, i.e. a smaller Js or a larger A);
+   (iii) restrict the study to B_peak where dx = 3 passes (≥ 90 mT, steady test).
+   Initial state: A (virgin) at the fine mesh; α = 0.1.
 5. Audit points that wait for the mesh test (then Chris decides):
    - separate the hysteresis loss w_h from the damping loss for every point
      (w_h = 2 w(f) − w(2f), +50 % cost), because the damping loss can move β by 0.2 … 0.5;
