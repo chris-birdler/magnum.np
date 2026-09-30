@@ -1,0 +1,3 @@
+I_A_virgin_dx15 --d_lex 96.0 --dx_lex 1.5 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 7 --max_cycles_per_amp 7 --samples 256 --precision single --seed 1 --b_list 0.006 0.033333 0.1 --protocol virgin_asc
+I_B_acdemag_dx3 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 7 --max_cycles_per_amp 7 --samples 256 --precision single --seed 1 --b_list 0.006 0.033333 0.1 --protocol acdemag_asc
+I_C_reset_dx3 --d_lex 96.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.02 --n_amp 3 --cycles_per_amp 7 --max_cycles_per_amp 7 --samples 256 --precision single --seed 1 --b_list 0.006 0.033333 0.1 --protocol reset_desc

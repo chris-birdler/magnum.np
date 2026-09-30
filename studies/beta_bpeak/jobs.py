@@ -17,8 +17,15 @@ Groups:
   steady    same geometry, 2 amplitudes (b ~ 0.25 and 0.06), 12 cycles each,
             dx = 3 vs 1.5, floor and L_eff = 12, alpha = 0.02 and 0.1 (L12):
             mesh test on steady cycles. Runs BEFORE the pilot.
-  numfloor  same geometry, dx = 3, L_eff = 12, B_peak = 150 / 50 / 10 mT, 8 cycles:
-            numerical floor of the small loops (atol 1e-5 vs 1e-6, fp32 vs fp64).
+  numfloor  same geometry, dx = 3, L_eff = 12, virgin state, B_peak = 9 / 50 / 150 mT
+            ascending, 7 cycles: numerical floor of the small loops (atol 1e-5 vs
+            1e-6, fp32 vs fp64).
+  initproto same geometry, L_eff = 12, B_peak = 9 / 50 / 150 mT, 7 cycles: initial
+            state and order of the amplitudes. A = virgin state (random m, full
+            relaxation, like the anneal without field), ascending, dx = 1.5 (dx = 3:
+            F_si_atol1e-05);
+            B = AC demagnetization (decaying saturating cycles), ascending;
+            C = present protocol (1 saturating cycle, descending).
 
 Amplitudes: the study range is B_peak = 10 ... 150 mT (Chris, 2026-09-30):
 b = B_peak/Js with Js = 1.5 T. run_loops.py --b_list sets the drive per
@@ -95,13 +102,18 @@ def matrix():
         steady.append(job(STEADY, "S_L12_dx%s" % tag, Leff_lex=12.0, dx_lex=dx))
         steady.append(job(STEADY, "S_L12_a010_dx%s" % tag, Leff_lex=12.0, dx_lex=dx, alpha=0.1))
 
+    SMALL = dict(MESHTEST, Leff_lex=12.0, b_list=b_of_mT(9, 50, 150), n_amp=3,
+                 cycles_per_amp=7, max_cycles_per_amp=7)
+    del SMALL["h_factor"], SMALL["dW_tol"]
     numfloor = []
-    FLOOR = dict(MESHTEST, Leff_lex=12.0, b_list=b_of_mT(150, 50, 10), n_amp=3,
-                 cycles_per_amp=8, max_cycles_per_amp=8)
-    del FLOOR["h_factor"], FLOOR["dW_tol"]
     for prec in ("single", "double"):
         for atol in (1e-5, 1e-6):
-            numfloor.append(job(FLOOR, "F_%s_atol%.0e" % (prec[:2], atol), precision=prec, atol=atol))
+            numfloor.append(job(SMALL, "F_%s_atol%.0e" % (prec[:2], atol), protocol="virgin_asc",
+                                precision=prec, atol=atol))
+    # A at dx = 3 is F_si_atol1e-05 (same arguments)
+    initproto = [job(SMALL, "I_A_virgin_dx15", protocol="virgin_asc", dx_lex=1.5),
+                 job(SMALL, "I_B_acdemag_dx3", protocol="acdemag_asc"),
+                 job(SMALL, "I_C_reset_dx3", protocol="reset_desc")]
 
     pilot = []
     for L in (12.0, 18.0, 24.0, 30.0):                              # Q_eff = 6.9e-3 ... 1.1e-3
@@ -114,7 +126,8 @@ def matrix():
     pilot.append(job(PILOT, "T_L18_f2", f_rel=2.0 * F_REL_DEFAULT))  # dynamic share (pair with T_L18)
     pilot.append(job(PILOT, "T_L30_dx2", Leff_lex=30.0, dx_lex=2.0))  # mesh, same cubes as T_L30
     pilot.append(job(PILOT, "T_L30_seed2", Leff_lex=30.0, seed=2))    # realisation scatter
-    return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor, "pilot": pilot}
+    return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
+            "initproto": initproto, "pilot": pilot}
 
 
 def n_cells(a):
@@ -131,7 +144,10 @@ def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.0075):
     t_step = max(s_min_step, s_per_step_Mcell * n / 1e6) / speedup * (2.0 if a["precision"] == "double" else 1.0)
     n_st = len(a.get("h_list") or a.get("b_list") or []) or a["n_amp"]
     per_amp = a["cycles_per_amp"] if a["cycles_per_amp"] == a["max_cycles_per_amp"] else cycles_avg
-    cycles = a.get("max_cycles", 1 + n_st * per_amp)
+    pre = 1                                                          # reset cycle / relaxation
+    if a.get("protocol") == "acdemag_asc":
+        pre = 17                                                     # decaying cycles (q = 0.8)
+    cycles = a.get("max_cycles", pre + n_st * per_amp)
     return cycles * steps * t_step / 3600.0
 
 

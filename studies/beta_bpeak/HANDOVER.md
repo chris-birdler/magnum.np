@@ -101,7 +101,8 @@ Physics background (short):
 | Size | d/l_ex = 300 (1 µm), fixed | Chris |
 | Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 9 mT (`--b_list`; 9 mT keeps 10 mT inside the range). The drive of each stage comes from b/h of the stage before and is corrected once after cycle 0 with b/h of cycle 0 (factor limited to 0.67 … 1.5) | study range 10 … 150 mT; no time on saturation. b of cycle 0 is within ±4 % of the later cycles (V100 data), thus each stage hits its target to ≈ 4 % |
 | Drive | sinusoidal H (not controlled B) | below 150 mT the core is almost linear: B(t) has 0.2 … 3 % harmonics, b varies by 0.1 … 3 % from cycle to cycle (mesh test data). Thus sinusoidal H ≈ sinusoidal B (Steinmetz condition) |
-| Protocol | 1 saturating cycle (reset), then the amplitudes above, 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
+| Initial state | open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
+| Protocol | A and B: ascending amplitudes (the classic Rayleigh procedure: every larger loop erases the smaller ones, the loops stay centred). C: descending. 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
 | Damping | α = 0.02 | 5× less artificial damping loss than α = 0.1 at the same cost per step; the pilot checks it |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
@@ -163,12 +164,13 @@ Barkhausen jumps. Thus the `*` flag is information only.
 4. Mesh test FIRST (done, section 7.1), then the steady test:
    `python run_queue.py jobs/steady.txt --gpus 0,1`. Evaluate it (section 7.2)
    and report to Chris. Stop if the mesh check fails.
-   Then the numerical floor test: `python run_queue.py jobs/numfloor.txt --gpus 0,1`
-   (section 7.3).
+   Then the numerical floor test and the initial-state test:
+   `python run_queue.py jobs/numfloor.txt --gpus 0,1` and
+   `python run_queue.py jobs/initproto.txt --gpus 0,1` (sections 7.3, 7.4).
 5. Pilot: `python run_queue.py jobs/pilot.txt --gpus 0,1,2,3`. Copy `runs/`
    back before you destroy an instance.
 6. `python analyze.py runs/T_*` and `python analyze.py --pair runs/T_L18 runs/T_L18_f2`.
-   Report the pilot checks (section 7.4) to Chris.
+   Report the pilot checks (section 7.5) to Chris.
 7. Chris decides the production matrix (section 9). Then add it to `jobs.py`.
 
 Never edit tracked files on an instance: `setup_vast.sh` discards such edits,
@@ -242,7 +244,7 @@ Evaluation (the last 6 of 12 cycles):
 2. Mesh: the same tolerances as in 7.1 (level ±0.15, slope ±0.2, 90 %).
 3. Damping: compare α = 0.02 and 0.1 (steady time and loss level).
 
-### 7.3 Numerical floor test (d/l_ex = 96, dx = 3, ≈ 4.7 V100-h)
+### 7.3 Numerical floor test (d/l_ex = 96, dx = 3, virgin state, ascending, ≈ 4.2 V100-h)
 
 The loops in the study range are small: at 23 mT the mesh test gave w ≈ 10⁻⁷
 … 10⁻⁶ K_d per cycle. At 10 mT, w is smaller again. Question: do the solver
@@ -255,17 +257,39 @@ tolerance and fp32 make a part of this loss?
 | F_do_atol1e-05 | fp64 | 10⁻⁵ |
 | F_do_atol1e-06 (best) | fp64 | 10⁻⁶ |
 
-L_eff = 12 l_ex, B_peak = 150 / 50 / 10 mT, 8 cycles each. Evaluation:
+L_eff = 12 l_ex, virgin state (protocol A), B_peak = 9 / 50 / 150 mT
+ascending, 7 cycles each. Evaluation:
 
     python analyze.py --skip 2 --cycles runs/F_*
     python analyze.py --skip 2 --compare runs/F_si_atol1e-05 runs/F_do_atol1e-06
     python analyze.py --skip 2 --w dis --compare runs/F_si_atol1e-05 runs/F_do_atol1e-06
 
-PASS: at 10, 50 and 150 mT the mean w of the reference is within ±15 % of the
+PASS: at 9, 50 and 150 mT the mean w of the reference is within ±15 % of the
 best run (90 % interval), for w_loop and for w_dis. If it fails: the smallest
 setting that passes sets atol and precision for the pilot (cost to Chris).
 
-### 7.4 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
+### 7.4 Initial-state test (d/l_ex = 96, L_eff = 12, ≈ 2.6 V100-h)
+
+Question: does the loss in the study range depend on how the demagnetized
+state is made? B_peak = 9 / 50 / 150 mT, 7 cycles each.
+
+| Run | Protocol | dx |
+|---|---|---|
+| F_si_atol1e-05 (from 7.3) | A: virgin state, ascending | 3 |
+| I_A_virgin_dx15 | A: virgin state, ascending | 1.5 |
+| I_B_acdemag_dx3 | B: 17 decaying saturating cycles (−20 % per half cycle), ascending | 3 |
+| I_C_reset_dx3 | C: 1 saturating cycle, descending (present) | 3 |
+
+Evaluation (`--skip 2`, both `--w loop` and `--w dis`):
+- `--compare` A (dx 3) vs B: PASS (level ±0.15, slope ±0.2) → the demagnetized
+  state does not matter; use A (cheaper, no demagnetization cycles).
+- A vs C: expected to differ at small B_peak (offset flag `o` in C).
+- A dx = 3 vs A dx = 1.5: the virgin state from a random start contains many
+  vortices and Bloch points; the grid can hold some of them. Compare
+  `init.n_pairs_gt60` and `init.E_over_Kd` in summary.json and the loss.
+- Offsets: `o` flags in A and B must be absent.
+
+### 7.5 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
@@ -340,11 +364,10 @@ at d/l_ex = 150 (pilot).
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. After the pilot: α = 0.02 confirmed or not.
-4. Initial state of the small loops (decide after the numerical floor test,
-   which shows the offsets of the present protocol): (i) keep, with the
-   offset diagnostic only; (ii) demagnetizing ramp from the reset cycle down
-   to 150 mT (≈ 10 cycles, −15 % per half cycle, +20 % cost); (iii) (ii) and
-   2 ramp cycles before each stage (+45 % cost).
+4. Initial state and amplitude order (after the initial-state test 7.4):
+   A (virgin, ascending), B (AC demagnetization, ascending, +17 cycles per run)
+   or C (present). The pilot and production jobs still use the default
+   protocol of jobs.py BASE and must be set after this decision.
 5. Audit points that wait for the mesh test (then Chris decides):
    - separate the hysteresis loss w_h from the damping loss for every point
      (w_h = 2 w(f) − w(2f), +50 % cost), because the damping loss can move β by 0.2 … 0.5;

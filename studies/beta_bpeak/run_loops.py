@@ -112,8 +112,19 @@ def parse_args(argv=None):
     g = p.add_argument_group("drive / protocol (reduced)")
     g.add_argument("--f_rel", type=float, default=F_REL_DEFAULT, help="f / f_M (default: 30 MHz at Js = 1.5 T)")
     g.add_argument("--direction", type=float, nargs=3, default=[1.0, 0.0, 0.0])
+    g.add_argument("--protocol", choices=["reset_desc", "virgin_asc", "acdemag_asc"], default="reset_desc",
+                   help="reset_desc: random m, short relaxation, 1 saturating cycle, descending amplitudes; "
+                        "virgin_asc: random m, full relaxation at H = 0 (T = 0 analogue of the thermally "
+                        "demagnetized state after the anneal), ascending amplitudes; "
+                        "acdemag_asc: saturating cycle with a decaying amplitude (AC demagnetization), "
+                        "ascending amplitudes")
     g.add_argument("--h_sat", type=float, default=None, help="saturating amplitude H/Ms (default 1-phi)")
     g.add_argument("--n_sat", type=int, default=1)
+    g.add_argument("--demag_q", type=float, default=0.8, help="acdemag: amplitude factor per half cycle")
+    g.add_argument("--demag_h_end", type=float, default=None,
+                   help="acdemag: end amplitude H/Ms (default 0.3 x the first stage estimate)")
+    g.add_argument("--relax_maxiter", type=int, default=5000, help="virgin: iterations of 1e-11 s at alpha = 1")
+    g.add_argument("--relax_dm_tol", type=float, default=100.0, help="virgin: max |dm/dt|/gamma [A/m] to stop")
     g.add_argument("--h_max", type=float, default=None, help="largest measured H/Ms (default (1-phi)/3)")
     g.add_argument("--h_factor", type=float, default=0.5)
     g.add_argument("--n_amp", type=int, default=9)
@@ -177,11 +188,36 @@ def is_multiple(x, q, tol=1e-9):
 
 def build_stages(args, phi):
     h_sat = args.h_sat if args.h_sat is not None else (1.0 - phi)
-    if args.b_list:
+    asc = args.protocol in ("virgin_asc", "acdemag_asc")
+    if args.protocol == "reset_desc":
         stages = [{"name": "sat", "h_amp": h_sat, "n_cycles": args.n_sat, "measure": False}]
+    elif args.protocol == "acdemag_asc":
+        if args.demag_h_end is not None:
+            h_end = args.demag_h_end
+        elif args.b_list:
+            h_end = 0.3 * min(args.b_list) / args.mu_guess
+        else:
+            h_end = 0.3 * min(args.h_list)
+        n_half = int(math.ceil(math.log(h_sat / h_end) / math.log(1.0 / args.demag_q)))
+        stages = [{"name": "demag", "h_amp": h_sat, "decay": args.demag_q, "n_cycles": (n_half + 1) // 2,
+                   "measure": False}]
+    else:
+        stages = []
+    if args.b_list:
+        bl = sorted(args.b_list, reverse=not asc)
         stages += [{"name": "amp%02d" % k, "h_amp": None, "b_target": b, "n_cycles": args.cycles_per_amp,
-                    "measure": True} for k, b in enumerate(sorted(args.b_list, reverse=True))]
+                    "measure": True} for k, b in enumerate(bl)]
         return stages
+    if args.h_list:
+        amps = sorted(args.h_list, reverse=not asc)
+    else:
+        h_max = args.h_max if args.h_max is not None else (1.0 - phi) / 3.0
+        amps = [h_max * args.h_factor**k for k in range(args.n_amp)]
+        if asc:
+            amps = amps[::-1]
+    stages += [{"name": "amp%02d" % k, "h_amp": h, "n_cycles": args.cycles_per_amp, "measure": True}
+               for k, h in enumerate(amps)]
+    return stages
     if args.h_list:
         amps = sorted(args.h_list, reverse=True)
     else:
@@ -360,8 +396,23 @@ def main(argv=None):
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()
-        llg.step(state, args.relax_tau * U["t_M"])
-        print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
+        if args.protocol == "virgin_asc":
+            # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
+            converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))
+            Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
+            summary["init"] = {"protocol": args.protocol, "relax_converged": converged,
+                               "E_over_Kd": float(llg.E(state)) / (Kd * N**3 * dx**3),
+                               "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
+                               "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
+                               "wall_s": time.time() - t_w}
+            print("[relax] virgin state: converged=%s  E/K_d=%.5g  M/Ms=(%.3g, %.3g, %.3g)  n60=%d  %.0f s wall" %
+                  (converged, summary["init"]["E_over_Kd"], *summary["init"]["M_over_Ms"], n60_0,
+                   summary["init"]["wall_s"]), flush=True)
+            if not converged:
+                warnings.warn("virgin state not converged within --relax_maxiter")
+        else:
+            llg.step(state, args.relax_tau * U["t_M"])
+            print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
 
     # --- protocol ----------------------------------------------------------
     period = 1.0 / freq
@@ -413,6 +464,8 @@ def main(argv=None):
             sample()
             for k in range(args.samples):
                 llg.step(state, dt_s)
+                if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):
+                    drive.H_amp *= st["decay"]          # AC demagnetization: change at a zero crossing
                 sample()
             wall = time.time() - t_w
             steps = state._step - steps0
