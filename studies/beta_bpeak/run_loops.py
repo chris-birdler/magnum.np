@@ -108,6 +108,10 @@ def parse_args(argv=None):
 
     g = p.add_argument_group("seeds")
     g.add_argument("--seed", type=int, default=1, help="realisation: cube axes and offsets, initial m")
+    g.add_argument("--init_seed", type=int, default=None, help="seed of the random initial m (default --seed)")
+    g.add_argument("--init_block", type=float, default=0.0,
+                   help="random initial m constant on blocks of this edge / l_ex in physical coordinates "
+                        "(multiple of every dx: the same start on every mesh); 0 = one direction per cell")
 
     g = p.add_argument_group("drive / protocol (reduced)")
     g.add_argument("--f_rel", type=float, default=F_REL_DEFAULT, help="f / f_M (default: 30 MHz at Js = 1.5 T)")
@@ -391,8 +395,18 @@ def main(argv=None):
         state.m = c["m"].to(dtype=dt_, device=dev)
         print("[init] m from %s" % args.init_from, flush=True)
     else:
-        rng = np.random.default_rng([args.seed, 0])      # own stream (cube axes use [seed, 1000 + p])
-        m0 = rng.standard_normal((N, N, N, 3))
+        init_seed = args.seed if args.init_seed is None else args.init_seed
+        rng = np.random.default_rng([init_seed, 0])       # own stream (cube axes use [seed, 1000 + p])
+        if args.init_block > 0.0:
+            nb = int(round(a_lex / args.init_block))
+            if not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
+                warnings.warn("init_block %g l_ex is not a multiple of dx and a divisor of a: "
+                              "the initial state depends on the mesh" % args.init_block)
+            tab = rng.standard_normal((nb, nb, nb, 3))
+            ib = np.minimum(np.floor((np.arange(N) + 0.5) * args.dx_lex / args.init_block).astype(int), nb - 1)
+            m0 = tab[np.ix_(ib, ib, ib)]
+        else:
+            m0 = rng.standard_normal((N, N, N, 3))
         m0 /= np.linalg.norm(m0, axis=-1, keepdims=True)
         state.m = T(m0)
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)

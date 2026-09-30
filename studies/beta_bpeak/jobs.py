@@ -26,6 +26,10 @@ Groups:
             F_si_atol1e-05);
             B = AC demagnetization (decaying saturating cycles), ascending;
             C = present protocol (1 saturating cycle, descending).
+  conv      same geometry, alpha = 0.1, virgin state (the same start on every mesh:
+            random m on 6 l_ex blocks), B_peak = 9 / 20 / 50 mT: mesh convergence
+            dx = 2 / 1.5 / 1; at dx = 1.5 also a second initial state (init_seed 2)
+            and 50 mT directly from the virgin state (is the ascending history needed?).
   demagtest same geometry, alpha = 0.1, B_peak = 9 / 50 / 150 mT: AC demagnetization at
             f and at 4 f (only the end state counts), dx = 3 and 1.5, and the
             virgin state at dx = 1.5 as the reference of a clean virgin state.
@@ -136,8 +140,14 @@ def matrix():
         demagtest.append(job(D, "D_B_dx%s" % tag, protocol="acdemag_asc", dx_lex=dx))
         demagtest.append(job(D, "D_B4f_dx%s" % tag, protocol="acdemag_asc", demag_f_factor=4.0, dx_lex=dx))
     demagtest.append(job(D, "D_A_dx15", protocol="virgin_asc", dx_lex=1.5))
+    CV = dict(D, protocol="virgin_asc", init_block=6.0, b_list=b_of_mT(9, 20, 50), n_amp=3)
+    conv = []
+    for dx in (2.0, 1.5, 1.0):
+        conv.append(job(CV, "C_dx%s" % ("%g" % dx).replace(".", ""), dx_lex=dx))
+    conv.append(job(CV, "C_dx15_is2", dx_lex=1.5, init_seed=2))
+    conv.append(job(CV, "C_dx15_direct50", dx_lex=1.5, b_list=b_of_mT(50), n_amp=1))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
-            "initproto": initproto, "demagtest": demagtest, "pilot": pilot}
+            "initproto": initproto, "demagtest": demagtest, "conv": conv, "pilot": pilot}
 
 
 def n_cells(a):

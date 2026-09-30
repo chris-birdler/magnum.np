@@ -171,7 +171,7 @@ Barkhausen jumps. Thus the `*` flag is information only.
 5. Pilot: `python run_queue.py jobs/pilot.txt --gpus 0,1,2,3`. Copy `runs/`
    back before you destroy an instance.
 6. `python analyze.py runs/T_*` and `python analyze.py --pair runs/T_L18 runs/T_L18_f2`.
-   Report the pilot checks (section 7.6) to Chris.
+   Report the pilot checks (section 7.7) to Chris.
 7. Chris decides the production matrix (section 9). Then add it to `jobs.py`.
 
 Never edit tracked files on an instance: `setup_vast.sh` discards such edits,
@@ -381,7 +381,23 @@ Conclusions:
 - Open: is dx = 1.5 converged at 9 mT? And the cost: a run at d/l_ex = 300
   costs 6 V100-h at dx = 3, 26 at dx = 2 and 72 at dx = 1.5 (section 12).
 
-### 7.6 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
+### 7.6 Mesh convergence test (d/l_ex = 96, L_eff = 12, α = 0.1, ≈ 7.7 V100-h)
+
+Virgin state A with the same start on every mesh (`--init_block 6`: random m
+on 6 l_ex blocks in physical coordinates), B_peak = 9 / 20 / 50 mT ascending,
+7 cycles.
+
+| Run | dx/l_ex | Purpose |
+|---|---|---|
+| C_dx2 / C_dx15 / C_dx1 | 2 / 1.5 / 1 | convergence of w and β at small B_peak |
+| C_dx15_is2 | 1.5 | second initial state (`--init_seed 2`, same cubes): scatter of the virgin state |
+| C_dx15_direct50 | 1.5 | 50 mT directly from the virgin state: if it equals the 50 mT stage of C_dx15, every amplitude can run as its own job (parallel production) |
+
+Evaluation (`--skip 2`): `--compare` C_dx2 and C_dx15 against C_dx1 (level
+±0.15, Δβ ±0.2); C_dx15 vs C_dx15_is2 gives the scale of the initial-state
+scatter; the 50 mT w of C_dx15_direct50 vs C_dx15 (±15 %).
+
+### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
