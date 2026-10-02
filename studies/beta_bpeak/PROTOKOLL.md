@@ -1,4 +1,4 @@
-# Handover: β(B_peak) study with magnum.np (fp32, reduced units)
+# Protokoll: β(B_peak) study with magnum.np (fp32, reduced units)
 
 Owner: Christoph Vogler (Chris). Branch: `study/beta-bpeak-pinning` (based on
 `perf/memory-optimizations`, the fp32 fork). Folder: `studies/beta_bpeak/`.
@@ -114,7 +114,36 @@ Physics background (short):
 | walls (width ≥ L_eff ≥ 12 l_ex = 4 cells) | resolved; grid pinning ∝ exp(−π² δ/dx) ≈ 10⁻¹⁷ |
 | anisotropy cubes (≥ 4 cells) | resolved; faces on cell faces |
 | particle-scale stress | uniform per particle; local wall width 1/√(Q_eff (1 + r_p)) must stay ≥ 2 cells (`run_loops.py` warns) |
-| vortex cores, Bloch points (l_ex scale) | NOT resolved. An audit test (2D disk with a vortex, Q = 0, quasi-static) found grid pinning of the core at dx = 3 l_ex: branch gap up to 0.09 in m, h_c,eff = 1.4·10⁻³. At dx = 1.5 l_ex the loop has no hysteresis. This can be larger than the Herzer pinning (estimate ≈ 5·10⁻⁵). The mesh test (section 7) decides |
+| vortex cores, Bloch points (l_ex scale) | NOT resolved at dx = 3 (≈ 17 … 23 neighbour pairs above 60°). Their effect depends on the particle size (below) |
+
+**Mesh decision (planning pilot 7.8, α = 0.1, virgin state, L_eff = 12 l_ex,
+mean ± SE over realisations):**
+
+| | loss vs dx = 1.5 (9 mT / 50 mT) | Δβ | pairs > 60° |
+|---|---|---|---|
+| d/l_ex = 96, dx 1 | ×1.6 / ×1.22 | −0.03 ± 0.29 | 0 |
+| d/l_ex = 96, dx 2 | ×0.57 / ×0.98 | +0.35 ± 0.26 | ≈ 8 |
+| d/l_ex = 96, dx 3 | ×0.37 / ×0.26 | −0.22 ± 0.28 | ≈ 23 |
+| d/l_ex = 300 (1 µm), dx 3 | ×1.4 / ×1.26 | −0.20 ± 0.23 | ≈ 17 (dx 1.5: ≈ 2 … 5) |
+
+- **At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β** (−0.20 ± 0.23). The
+  loss level is ≈ 26 % high at 50 mT (± 5 %) and ≈ 40 % high at 9 mT
+  (uncertain). dx = 3 costs 0.06 h per cycle, dx = 1.5 costs 1.87 h (V100).
+- At d/l_ex = 96 (330 nm) dx = 3 is not sufficient: the loss is 3 … 4× too low.
+- Cause: in a 330 nm particle a vortex carries the process. Its core (size
+  l_ex) is not resolved at dx = 3; the grid holds it, it moves little at
+  small fields, and its loss is missing. In a 1 µm particle many walls
+  (width ≈ L_eff = 4 cells, resolved) carry the process; the few unresolved
+  structures are a small part of a 30× larger volume.
+- Comparison with the earlier assumptions: "walls resolved, unresolved cores
+  accepted" holds for 1 µm, not for small particles. The audit prediction
+  (grid-pinned cores add ≈ 10× hysteresis) is refuted: at d/l_ex = 96 the
+  coarse grid gives less loss, at 1 µm only +26 %. The earlier statements
+  "dx 3: Δβ +0.5, dx 2: Δβ +0.7" came from single pairs with cycle-only
+  errors and are wrong.
+- Use for effects: compare parameters at the same dx; then the level bias
+  cancels if it is similar for all parameters. A control of one parameter
+  change at dx = 3 and dx = 1.5 checks this (≈ 100 V100-h, decision by Chris).
 
 Diagnostics in every run: `frac_pairs_gt60` per cycle and `n_pairs_gt60` per
 sample (csv). `offset` per cycle = loop centre / amplitude: a value above
@@ -466,6 +495,36 @@ pairs and dx 3 at d/l_ex = 300; the Q_eff effect with `--real` or from the
 ensemble means. Result: the number of realisations, d/l_ex and dx of the
 production (section 9).
 
+**Result (2026-10-02, 40 runs; f = 30 MHz; P = loss density of the unit cell
+including the voids, P = W · f; mean ± σ per realisation (SE of the mean)):**
+
+| Group | n | P at 9 mT [W/cm³] | P at 50 mT [W/cm³] | β (9 → 50 mT) |
+|---|---|---|---|---|
+| d/l_ex 300, dx 1.5 | 3 | 5.2 ± 4.2 (2.4) | 138 ± 14 (8) | 2.06 ± 0.39 (0.23) |
+| d/l_ex 300, dx 3 | 3 | 7.3 ± 1.5 (0.9) | 174 ± 9 (5) | 1.86 ± 0.11 (0.06) |
+| d/l_ex 150, dx 1.5 | 4 | 5.5 ± 2.6 (1.3) | 303 ± 50 (25) | 2.37 ± 0.31 (0.15) |
+| d/l_ex 96, dx 1.5 (base) | 8 | 4.7 ± 2.6 (0.9) | 333 ± 163 (57) | 2.47 ± 0.57 (0.20) |
+| d/l_ex 96, dx 1 | 3 | 7.5 ± 6.4 (3.7) | 405 ± 105 (61) | 2.44 ± 0.37 (0.22) |
+| d/l_ex 96, dx 2 | 3 | 2.7 ± 0.7 (0.4) | 326 ± 81 (47) | 2.82 ± 0.30 (0.17) |
+| d/l_ex 96, dx 3 | 3 | 1.8 ± 0.6 (0.4) | 85 ± 35 (20) | 2.25 ± 0.35 (0.20) |
+| d/l_ex 96, r_p = 3 | 6 | 1.9 ± 0.8 (0.3) | 79 ± 23 (9) | 2.16 ± 0.20 (0.08) |
+| d/l_ex 96, L_eff = 30 | 6 | 5.6 ± 3.6 (1.5) | 104 ± 6 (2) | 1.84 ± 0.45 (0.18) |
+
+- σ is the scatter of one realisation (4 particles). A real core averages
+  over very many particles; the mean ± SE is the estimate for a real sample.
+  σ sets the number of realisations: n ≈ (σ/SE_target)².
+- At 50 mT the scatter falls with the particle size (σ(ln w): 0.56 → 0.18 →
+  0.10); at 9 mT it does not (0.56 / 0.46 / 0.77): few single events carry
+  the small loss. The scatter of β comes from the 9 mT point.
+- Pairs with the same cubes and the same start do not reduce the scatter
+  (the relaxation ends in other states on another mesh or with r_p).
+  Evaluation therefore uses group means with Welch errors.
+- Hints for β (d/l_ex = 96, vs base): L_eff 30: Δβ −0.63 ± 0.27, loss ×0.31;
+  r_p = 3: Δβ −0.31 ± 0.22, loss ×0.24. L_eff = 30 at d/l_ex = 96 has
+  d/L_eff = 3.2 (< 5, outside the valid window): measure this effect at 1 µm.
+- β ≈ 2 between 9 and 50 mT. The dynamic (damping) share at 30 MHz and
+  α = 0.1 is not measured; it also gives β = 2. Check with f vs 2 f first.
+
 ### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
@@ -541,13 +600,8 @@ at d/l_ex = 150 (pilot).
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. After the pilot: α = 0.02 confirmed or not.
-4. Mesh in the study range (after 7.5): dx = 3 fails at 9 mT (Δβ ≈ +0.5).
-   Options: (i) mesh convergence test dx = 2 / 1.5 / 1 at small B_peak, then
-   production at the converged dx (d/l_ex = 300: 26 … 72 V100-h per run);
-   (ii) smaller d/l_ex (e.g. 150: 8 V100-h per run at dx = 1.5; this is 1 µm
-   only for a material with a larger l_ex, i.e. a smaller Js or a larger A);
-   (iii) restrict the study to B_peak where dx = 3 passes (≥ 90 mT, steady test).
-   Initial state: A (virgin) at the fine mesh; α = 0.1.
+4. Mesh (decided by the planning pilot, section 4): dx = 3 at d/l_ex = 300.
+   Open: the control of one parameter change at dx = 3 and dx = 1.5.
 5. Audit points that wait for the mesh test (then Chris decides):
    - separate the hysteresis loss w_h from the damping loss for every point
      (w_h = 2 w(f) − w(2f), +50 % cost), because the damping loss can move β by 0.2 … 0.5;

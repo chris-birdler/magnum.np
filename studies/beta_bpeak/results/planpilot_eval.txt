@@ -1,0 +1,28 @@
+=== 1. Streuung pro Realisierung vs Partikelgroesse (L12, dx 1.5, Neuzustand) ===
+d/l_ex = 96                n= 8  ln w9 -15.70 (sd 0.56)  ln w50 -11.42 (sd 0.56)  beta 2.47  sd 0.57  SE 0.20
+d/l_ex = 150               n= 4  ln w9 -15.49 (sd 0.46)  ln w50 -11.40 (sd 0.18)  beta 2.37  sd 0.31  SE 0.15
+d/l_ex = 300               n= 3  ln w9 -15.67 (sd 0.77)  ln w50 -12.18 (sd 0.10)  beta 2.06  sd 0.39  SE 0.23
+   sd(beta) d=96: 0.57  (90%: 0.40 ... 1.02)
+   sd(beta) d=150: 0.31  (90%: 0.19 ... 0.92)
+   sd(beta) d=300: 0.39  (90%: 0.23 ... 1.97)
+   Einzelwerte beta d=300: 1.60 2.29 2.28  d=150: 2.59 2.11 2.09 2.66
+
+=== 2. Gitter, gepaart (gleiche Wuerfel, gleicher Start) ===
+d=96: dx 1 - dx 1.5                n=3  d ln w9 +0.32 +- 0.76   d ln w50 +0.48 +- 0.34   d beta +0.10 +- 0.53 (95%: -2.18 ... +2.37)  Paar-sd beta 0.92
+d=96: dx 2 - dx 1.5                n=3  d ln w9 -0.51 +- 0.46   d ln w50 +0.26 +- 0.33   d beta +0.47 +- 0.34 (95%: -0.98 ... +1.93)  Paar-sd beta 0.59
+d=96: dx 3 - dx 1.5                n=3  d ln w9 -0.94 +- 0.12   d ln w50 -1.12 +- 0.67   d beta -0.09 +- 0.40 (95%: -1.83 ... +1.64)  Paar-sd beta 0.70
+d=300: dx 3 - dx 1.5               n=3  d ln w9 +0.54 +- 0.42   d ln w50 +0.23 +- 0.04   d beta -0.20 +- 0.25 (95%: -1.26 ... +0.86)  Paar-sd beta 0.43
+
+=== 3. Effektgroessen (d=96, dx 1.5) ===
+r_p = 3 - r_p = 0 (gepaart)        n=6  d ln w9 -0.75 +- 0.33   d ln w50 -1.36 +- 0.28   d beta -0.36 +- 0.29 (95%: -1.10 ... +0.38)  Paar-sd beta 0.70
+L_eff = 30 (Q_eff 1.1e-3)  n= 6  ln w9 -15.62 (sd 0.81)  ln w50 -12.47 (sd 0.05)  beta 1.84  sd 0.45  SE 0.18
+L30 - L12                          d ln w9 +0.08 +- 0.38   d ln w50 -1.05 +- 0.20   d beta -0.63 +- 0.27 (ungepaart, Welch-SE)
+
+=== 4. Rechenzeit (real) ===
+   P1_d300_s1_b9        Relaxation 2.77 h, Zyklen 13.12 h, pro Zyklus 1.87 h
+   P1_d300_dx3_s1_b9    Relaxation 0.12 h, Zyklen 0.42 h, pro Zyklus 0.06 h
+   P1_d150_s1           Relaxation 0.18 h, Zyklen 1.96 h, pro Zyklus 0.14 h
+   P3_dx1_s3            Relaxation 0.37 h, Zyklen 4.19 h, pro Zyklus 0.30 h
+   P3_dx2_s3            Relaxation 0.04 h, Zyklen 0.30 h, pro Zyklus 0.02 h
+   P3_dx3_s3            Relaxation 0.02 h, Zyklen 0.17 h, pro Zyklus 0.01 h
+   P2_L12_s6            Relaxation 0.06 h, Zyklen 0.59 h, pro Zyklus 0.04 h

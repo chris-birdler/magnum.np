@@ -99,7 +99,7 @@ def parse_args(argv=None):
     g.add_argument("--Q_eff", type=float, default=None,
                    help="K_eff / K_d (default (l_ex/L_eff)^2 = Herzer; 0 = no Herzer anisotropy)")
     g.add_argument("--r_p", type=float, default=0.0, help="particle-scale stress anisotropy K_p / K_eff")
-    g.add_argument("--alpha", type=float, default=0.02, help="Gilbert damping (numerical choice, see HANDOVER)")
+    g.add_argument("--alpha", type=float, default=0.02, help="Gilbert damping (numerical choice, see PROTOKOLL)")
     g.add_argument("--ms_void", type=float, default=1e-8, help="Ms_void / Ms (must be > 0)")
 
     g = p.add_argument_group("unit system (only for SI output)")

@@ -32,7 +32,7 @@ Groups:
             and 50 mT directly from the virgin state (is the ascending history needed?).
   scatter   as conv at dx = 1.5, B_peak = 9 / 50 mT, seeds 3, 4, 5 (other cubes and
             other initial states): realisation scatter (uses the free GPU during C_dx1).
-  planpilot virgin state, alpha = 0.1, B_peak = 9 / 50 mT (HANDOVER 7.8):
+  planpilot virgin state, alpha = 0.1, B_peak = 9 / 50 mT (PROTOKOLL 7.8):
             block 1 scatter vs size (d/l_ex 150 and 300) and dx 3 vs 1.5 at 300,
             block 2 effect sizes (L_eff 30, r_p 3) at d/l_ex 96,
             block 3 mesh pairs dx 1 / 2 / 3 at d/l_ex 96 (seeds 3-5).
@@ -45,7 +45,7 @@ b = B_peak/Js with Js = 1.5 T. run_loops.py --b_list sets the drive per
 stage from the measured b/h of the stage before.
   pilot   d/l_ex = 150, 4 amplitudes: pinning signal against the floor, mesh,
           damping, drive direction, frequency, realisation scatter. The
-          production matrix is decided after the pilot (HANDOVER.md).
+          production matrix is decided after the pilot (PROTOKOLL.md).
 
 Cost model (calibrated on V100, 2026-09-30: bench_base and meshtest):
   steps/cycle = 2 pi / (f_rel * dt_tau),  dt_tau = dt * gamma Ms
