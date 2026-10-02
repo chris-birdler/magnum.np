@@ -55,6 +55,26 @@ per cycle, not measured). 16 runs (F1 … F4, 4 seeds each) ≈ 37 V100-h
 Seeds 901 … 904 (base) and 905 … 908 (corner). The F1 and F3 runs are also
 used as design points of step 2.
 
+## 3b. Step 1b: mesh error at the small end of the d/l_ex range
+
+Question: the staircase surface of the voxelized spheres has a relative
+roughness dx/d = 1.0 % at d/l_ex = 300 and 1.4 % at 212. At fixed dx this
+trend is confounded with the factor d/l_ex. If the mesh error (dx 3 vs
+dx 1.5) is the same at both ends, it cancels in the d/l_ex effect.
+
+| Runs | Content |
+|---|---|
+| R212_dx15 (4 seeds 911 … 914) | d/l_ex = 212, dx = 1.5, base point, 9 and 50 mT |
+| R212_dx3 (same 4 seeds) | d/l_ex = 212, dx = 3 |
+
+Reference: d/l_ex = 300, dx 3 vs dx 1.5 (planning pilot): level +0.23 ±
+0.07 at 50 mT (ln w), β −0.20 ± 0.23.
+Rule: if the level difference dx 3 − dx 1.5 at d/l_ex = 212 agrees with the
+value at 300 within ± 0.10 in ln w (90 %), the d/l_ex effect on the level is
+clean; else it is corrected by the measured mesh share or Chris decides on a
+smoother surface. β (9 → 50 mT) only coarse (≈ ± 0.3).
+Cost: ≈ 31 V100-h ≈ 4 … 5 $ (9 M cells at dx = 1.5), ≈ 8 h on 4 GPUs.
+
 ## 4. Step 2: randomized design (go 2)
 
 ### 4.1 Factors and ranges

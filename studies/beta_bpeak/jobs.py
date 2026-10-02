@@ -35,6 +35,10 @@ Groups:
   freqtest  PLAN.md step 1: d/l_ex 300, dx 3, virgin state, alpha 0.1, 7 amplitudes
             9 ... 150 mT; f and 2 f; base point (L_eff 12, r_p 0, seeds 901-904)
             and corner (L_eff 30, r_p 3, seeds 905-908).
+  roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
+            d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
+            base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
+            (planning pilot): same mesh error -> d/l_ex effect clean.
   planpilot virgin state, alpha = 0.1, B_peak = 9 / 50 mT (PROTOKOLL 7.8):
             block 1 scatter vs size (d/l_ex 150 and 300) and dx 3 vs 1.5 at 300,
             block 2 effect sizes (L_eff 30, r_p 3) at d/l_ex 96,
@@ -183,9 +187,14 @@ def matrix():
         for sd in seeds:
             freqtest.append(job(PROD, "F_%s_f_s%d" % (tag, sd), seed=sd, **kw))
             freqtest.append(job(PROD, "F_%s_2f_s%d" % (tag, sd), seed=sd, f_rel=2.0 * F_REL_DEFAULT, **kw))
+    roughtest = []
+    RT = dict(PROD, d_lex=212.0, Leff_lex=12.0, r_p=0.0, b_list=b_of_mT(9, 50), n_amp=2)
+    for sd in (911, 912, 913, 914):
+        roughtest.append(job(RT, "R212_dx15_s%d" % sd, seed=sd, dx_lex=1.5))
+        roughtest.append(job(RT, "R212_dx3_s%d" % sd, seed=sd, dx_lex=3.0))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
-            "planpilot": pp, "freqtest": freqtest, "pilot": pilot}
+            "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "pilot": pilot}
 
 
 def n_cells(a):
