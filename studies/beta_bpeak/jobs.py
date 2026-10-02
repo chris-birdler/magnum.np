@@ -32,6 +32,9 @@ Groups:
             and 50 mT directly from the virgin state (is the ascending history needed?).
   scatter   as conv at dx = 1.5, B_peak = 9 / 50 mT, seeds 3, 4, 5 (other cubes and
             other initial states): realisation scatter (uses the free GPU during C_dx1).
+  freqtest  PLAN.md step 1: d/l_ex 300, dx 3, virgin state, alpha 0.1, 7 amplitudes
+            9 ... 150 mT; f and 2 f; base point (L_eff 12, r_p 0, seeds 901-904)
+            and corner (L_eff 30, r_p 3, seeds 905-908).
   planpilot virgin state, alpha = 0.1, B_peak = 9 / 50 mT (PROTOKOLL 7.8):
             block 1 scatter vs size (d/l_ex 150 and 300) and dx 3 vs 1.5 at 300,
             block 2 effect sizes (L_eff 30, r_p 3) at d/l_ex 96,
@@ -47,13 +50,15 @@ stage from the measured b/h of the stage before.
           damping, drive direction, frequency, realisation scatter. The
           production matrix is decided after the pilot (PROTOKOLL.md).
 
-Cost model (calibrated on V100, 2026-09-30: bench_base and meshtest):
+Cost model (calibrated on V100 2026-10-02 with the planning pilot, alpha = 0.1):
   steps/cycle = 2 pi / (f_rel * dt_tau),  dt_tau = dt * gamma Ms
-                dt_tau = 0.75 at dx = 3 l_ex, scales with (dx/3)^0.5
-                (measured: 0.76 at dx = 3, d/l_ex = 300; 0.56 at dx = 1.5)
+                alpha = 0.1:  dt_tau = 1.62 (dx/3)^1.5  (measured 1.61 / 0.91 / 0.56 / 0.26
+                              at dx = 3 / 2 / 1.5 / 1)
+                alpha = 0.02: dt_tau = 0.75 (dx/3)^0.5  (older runs, 2026-09-30)
   s/step      = max(s_min_step, s_per_step_Mcell * n_cells / 1e6) / speedup
-                (0.012 s/Mcell on large grids; small grids are limited by the
-                overhead s_min_step = 0.0075 s)
+                (0.012 s/Mcell up to 10 M cells, 0.0164 above (26 M cells measured);
+                small grids are limited by the overhead s_min_step = 0.008 s)
+  relaxation of the virgin state: about 2 cycles
   cycles      = 1 + n_stages * cycles_per_amp   (fixed number of cycles), else
                 1 + n_stages * cycles_avg
                 cycles_avg = 3.5: with 10 % scatter per cycle (target, dW_tol = 0.10)
@@ -170,9 +175,17 @@ def matrix():
     for sd in (3, 4, 5):                                               # block 3 (pairs with R_dx15_s3..5)
         for dx in (1.0, 2.0, 3.0):
             pp.append(job(PP, "P3_dx%g_s%d" % (dx, sd), seed=sd, dx_lex=dx))
+    B7 = b_of_mT(9, 20, 35, 50, 70, 100, 150)
+    PROD = dict(CV, d_lex=300.0, dx_lex=3.0, phi=0.65, b_list=B7, n_amp=len(B7))   # PLAN.md fixed settings
+    freqtest = []
+    for tag, kw, seeds in (("base", dict(Leff_lex=12.0, r_p=0.0), (901, 902, 903, 904)),
+                           ("corner", dict(Leff_lex=30.0, r_p=3.0), (905, 906, 907, 908))):
+        for sd in seeds:
+            freqtest.append(job(PROD, "F_%s_f_s%d" % (tag, sd), seed=sd, **kw))
+            freqtest.append(job(PROD, "F_%s_2f_s%d" % (tag, sd), seed=sd, f_rel=2.0 * F_REL_DEFAULT, **kw))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
-            "planpilot": pp, "pilot": pilot}
+            "planpilot": pp, "freqtest": freqtest, "pilot": pilot}
 
 
 def n_cells(a):
@@ -181,15 +194,21 @@ def n_cells(a):
     return N, N**3
 
 
-def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.0075):
+def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.008):
     N, n = n_cells(a)
     f_rel = a.get("f_rel", F_REL_DEFAULT)
-    steps = 2.0 * math.pi / (f_rel * dt_tau * (a["dx_lex"] / 3.0) ** 0.5)
+    if a.get("alpha", 0.02) >= 0.05:
+        dtt = 1.62 * (a["dx_lex"] / 3.0) ** 1.5
+    else:
+        dtt = dt_tau * (a["dx_lex"] / 3.0) ** 0.5
+    steps = 2.0 * math.pi / (f_rel * dtt)
+    if n > 10e6:
+        s_per_step_Mcell = max(s_per_step_Mcell, 0.0164)
     steps *= (1e-5 / a.get("atol", 1e-5)) ** 0.2                      # RKF45: dt ~ atol^(1/5)
     t_step = max(s_min_step, s_per_step_Mcell * n / 1e6) / speedup * (2.0 if a["precision"] == "double" else 1.0)
     n_st = len(a.get("h_list") or a.get("b_list") or []) or a["n_amp"]
     per_amp = a["cycles_per_amp"] if a["cycles_per_amp"] == a["max_cycles_per_amp"] else cycles_avg
-    pre = 1                                                          # reset cycle / relaxation
+    pre = 2 if a.get("protocol") == "virgin_asc" else 1               # relaxation / reset cycle
     if a.get("protocol") == "acdemag_asc":
         pre = 17 / a.get("demag_f_factor", 1.0)                       # decaying cycles (q = 0.8)
     cycles = a.get("max_cycles", pre + n_st * per_amp)

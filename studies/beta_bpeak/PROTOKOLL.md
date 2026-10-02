@@ -609,6 +609,12 @@ earlier one-factor and factorial options are replaced by this plan.
 
 ## 12. Open points for Chris
 
+Decisions 2026-10-02 for the production (PLAN.md): D1 128 + 8 Sobol points
+first, extension to 256 if necessary; D2 7 amplitudes (9 … 150 mT); D3
+d/l_ex 212 … 300 with d/L_eff ≥ 7 and a residual check vs d/L_eff; D4
+frequency test at the base point and at the corner L_eff 30, r_p 3.
+
+
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
 3. Damping: decided, α = 0.1 (section 7.2).

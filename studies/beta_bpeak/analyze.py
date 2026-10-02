@@ -510,6 +510,77 @@ def paired(pairs):
     return v
 
 
+T95_ONE = {1: 6.31, 2: 2.92, 3: 2.35, 4: 2.13, 5: 2.02, 6: 1.94, 7: 1.89, 8: 1.86, 9: 1.83, 10: 1.81}
+
+
+def freqtest(runs_f, runs_2f, max_dyn=0.30, max_dbeta=0.2):
+    """PLAN.md step 1. Runs at f and at 2 f with the same seeds (matched by the
+    seed). Per seed and amplitude: w_h = 2 w(f) - w(2 f) (w = w_h + c f), dynamic
+    share = 1 - w_h / w(f). Mean +- SE over the seeds; 90 % upper bound with the
+    one-sided Student-t. beta from the seed-mean curves of w(f) and of w_h; the
+    error of beta(w_h) - beta(w) by jackknife over the seeds.
+    Rule: PASS if the upper bound of the dynamic share < max_dyn at all
+    amplitudes and the upper bound of |beta(w_h) - beta(w)| < max_dbeta."""
+    def by_seed(runs):
+        out = {}
+        for d in runs:
+            cfg, rows = load_run(d)
+            if not cfg["done"]:
+                print("   skipped (not finished): %s" % d)
+                continue
+            out[cfg["seed"]] = (cfg, rows)
+        return out
+    F, F2 = by_seed(runs_f), by_seed(runs_2f)
+    seeds = sorted(set(F) & set(F2))
+    if len(seeds) < 2:
+        print("freqtest: fewer than 2 matched seeds")
+        return None
+    f1, f2 = F[seeds[0]][0]["f_rel"], F2[seeds[0]][0]["f_rel"]
+    if abs(f2 / f1 - 2.0) > 1e-6:
+        print("WARNING: f2/f1 = %.4f, not 2: the formula uses the general form" % (f2 / f1))
+    nst = min(min(len(F[s_][1]) for s_ in seeds), min(len(F2[s_][1]) for s_ in seeds))
+    wf = np.array([[F[s_][1][k]["w_loop"] for k in range(nst)] for s_ in seeds])
+    w2 = np.array([[F2[s_][1][k]["w_loop"] for k in range(nst)] for s_ in seeds])
+    bb = np.array([[F[s_][1][k]["b_peak"] for k in range(nst)] for s_ in seeds])
+    wh = (f2 * wf - f1 * w2) / (f2 - f1)
+    dyn = 1.0 - wh / wf
+    n = len(seeds)
+    t1 = T95_ONE.get(n - 1, 1.645)
+    print("\n== frequency test  f/f_M = %.4g and %.4g, seeds %s" % (f1, f2, seeds))
+    print("   %7s %11s %11s %11s %16s %10s" % ("B[mT]", "w(f)", "w(2f)", "w_h", "dyn share", "90% upper"))
+    ok_dyn = True
+    for k in range(nst):
+        m, se = dyn[:, k].mean(), dyn[:, k].std(ddof=1) / math.sqrt(n)
+        up = m + t1 * se
+        ok_dyn &= up < max_dyn
+        print("   %7.1f %11.4g %11.4g %11.4g %8.3f +- %.3f %10.3f" %
+              (1000 * JS_T * bb[:, k].mean(), wf[:, k].mean(), w2[:, k].mean(), wh[:, k].mean(), m, se, up))
+
+    def beta_curves(idx):
+        rows_w, rows_h = [], []
+        for k in range(nst):
+            base = {"b_peak": float(bb[idx, k].mean()), "lnw_err": 0.1}
+            rows_w.append(dict(base, w_loop=float(wf[idx, k].mean())))
+            rows_h.append(dict(base, w_loop=float(wh[idx, k].mean())))
+        return features(rows_w)[0], features(rows_h)[0]
+    fw, fh = beta_curves(np.arange(n))
+    jack = [beta_curves(np.array([i for i in range(n) if i != j])) for j in range(n)]
+    ok_beta = True
+    print("   %-10s %8s %8s %16s %10s" % ("", "beta(w)", "beta(w_h)", "difference", "90% upper"))
+    for key in fw:
+        d = fh[key] - fw[key]
+        dj = np.array([jh[key] - jw[key] for jw, jh in jack])
+        se = math.sqrt((n - 1) / n * np.sum((dj - dj.mean()) ** 2)) if np.all(np.isfinite(dj)) else float("nan")
+        up = abs(d) + 1.645 * se
+        ok_beta &= bool(up < max_dbeta)
+        print("   %-10s %8.3f %8.3f %8.3f +- %.3f %10.3f" % (key, fw[key], fh[key], d, se, up))
+    verdict = ok_dyn and ok_beta
+    print("   rule: dynamic share upper bound < %.2f: %s;  |d beta| upper bound < %.2f: %s  ->  %s" %
+          (max_dyn, "yes" if ok_dyn else "NO", max_dbeta, "yes" if ok_beta else "NO",
+           "PASS (step 2 at f only)" if verdict else "FAIL (options for Chris)"))
+    return {"dyn": dyn, "wf": wf, "w2f": w2, "wh": wh, "pass": verdict}
+
+
 def plot(results, path):
     try:
         import matplotlib
@@ -552,6 +623,8 @@ def main():
                     help="--compare of two independent realisations: add the realisation scatter "
                          "(sig_lnw %.2f, sig_beta %.2f per run)" % (SIG_REAL_LNW, SIG_REAL_BETA))
     ap.add_argument("--paired", nargs="+", metavar="RUN_A:RUN_B", help="paired comparison over realisations")
+    ap.add_argument("--freqtest", nargs=2, metavar=("GLOB_F", "GLOB_2F"),
+                    help="PLAN step 1: run directories at f and at 2 f (shell globs in quotes)")
     ap.add_argument("--csv", default="all_runs.csv")
     ap.add_argument("--ranking_csv", default="ranking.csv")
     ap.add_argument("--plot", default="beta_vs_b.png")
@@ -573,6 +646,10 @@ def main():
         return
     if a.paired:
         paired(a.paired)
+        return
+    if a.freqtest:
+        import glob
+        freqtest(sorted(glob.glob(a.freqtest[0])), sorted(glob.glob(a.freqtest[1])))
         return
 
     results = []

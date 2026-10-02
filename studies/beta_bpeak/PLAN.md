@@ -1,7 +1,7 @@
 # PLAN: β(B_peak) production study (draft for approval)
 
-Status: draft 2, 2026-10-02 (after a context-free review). Chris approves
-each step before it starts. Open decisions: section 7.
+Status: approved settings 2026-10-02 (D1 … D4, section 7). Step 1 is set
+up; it starts after Chris approves the GPU selection. Step 2 needs go 2.
 Basis: PROTOKOLL.md (model, tests, mesh decision).
 
 ## 1. Question
@@ -21,7 +21,7 @@ as functions of four factors, with errors; a ranking of the factors.
 | initial state | virgin state (random m on 6 l_ex blocks, relaxed), ascending amplitudes | PROTOKOLL §7.4 … 7.6 |
 | damping | α = 0.1 | steady cycles (PROTOKOLL §7.2) |
 | precision | fp32, atol 10⁻⁵ | numerical floor test PASS |
-| amplitudes | B_peak = 9 / 20 / 50 / 100 / 150 mT (option: + 35 / 70 mT, decision D2), 7 cycles each, cycles 0 and 1 discarded | study range; β at 10 / 50 / 100 mT by local fit. With 5 amplitudes β at 50 mT uses only 50 and 100 mT (one-sided) |
+| amplitudes | B_peak = 9 / 20 / 35 / 50 / 70 / 100 / 150 mT (D2), 7 cycles each, cycles 0 and 1 discarded | study range; β at 10 / 50 / 100 mT by local fit (two-sided at 50 and 100 mT) |
 | frequency | f = 30 MHz (f/f_M = 7.14·10⁻⁴) | unless step 1 shows a large dynamic share |
 
 ## 3. Step 1: frequency test (go 1)
@@ -48,10 +48,12 @@ Decision rule (fixed before the runs):
   cost; or a lower f, more cost per cycle).
 
 Cost (measured: 0.059 h per cycle at d/l_ex = 300, dx = 3, V100; the time
-per cycle does not depend on the amplitude): ≈ 2.2 h per run at f, ≈ 1.2 h
-at 2 f (assumption: half the steps per cycle, not measured); 8 runs
-≈ 14 V100-h ≈ 2 $; with F3/F4 ≈ 28 V100-h ≈ 4 $. Wall time ≈ 4 h on 4 GPUs.
-The F1 runs are also used as design points of step 2 (base point).
+per cycle does not depend on the amplitude): 7 amplitudes × 7 cycles = 49
+cycles: ≈ 3.0 h per run at f, ≈ 1.6 h at 2 f (assumption: half the steps
+per cycle, not measured). 16 runs (F1 … F4, 4 seeds each) ≈ 37 V100-h
+≈ 5 $. Wall time ≈ 5 h on 8 GPUs, ≈ 9 h on 4 GPUs.
+Seeds 901 … 904 (base) and 905 … 908 (corner). The F1 and F3 runs are also
+used as design points of step 2.
 
 ## 4. Step 2: randomized design (go 2)
 
@@ -99,6 +101,8 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
   regression does not need it there.
 - Ranking: change of the output over the full range of each factor (with
   SE), main effects and the largest interactions.
+- Fixed check (D3): residuals vs d/L_eff, separately for d/L_eff < 10 and
+  ≥ 10 (points with fewer than ≈ 500 cubes per particle).
 - Effect of A at fixed 1 µm and fixed r_p: dβ/d ln A = −3 ∂β/∂ ln Q_eff
   − ½ ∂β/∂ ln(d/l_ex). If instead the stress anisotropy K_p is fixed, then
   r_p = K_p/K_eff ∝ A³ and the term +3 r_p ∂β/∂r_p is added. A factor 2 in A
@@ -129,9 +133,8 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 | | Value |
 |---|---|
 | per run (V100, dx = 3), 5 amplitudes | 0.9 h (d/l_ex = 212) … 2.2 h (d/l_ex = 300); mean ≈ 1.42 h (review) |
-| N = 128 + 8, 5 amplitudes | ≈ 195 V100-h ≈ 25 … 31 $, ≈ 48 h on 4 GPUs |
-| N = 256 + 8, 5 amplitudes | ≈ 375 V100-h ≈ 50 … 60 $, ≈ 48 h on 8 GPUs |
-| 7 amplitudes (D2) | × 1.4 |
+| N = 128 + 8, 7 amplitudes (decided) | ≈ 270 V100-h ≈ 35 … 43 $, ≈ 34 h on 8 GPUs |
+| extension to 256 + 8 | + ≈ 255 V100-h ≈ + 33 … 40 $ |
 | if step 1 needs f / 2 f pairs | × 1.5 |
 
 GPU selection: offers are shown to Chris before rent (low hourly rate).
@@ -159,10 +162,10 @@ Decision by Chris after step 2.
 
 | | Question | Options (cost estimates) |
 |---|---|---|
-| D1 | number of design points | 128 + 8: SE ≈ 0.11 … 0.14, ≈ 25 … 31 $; 256 + 8: SE ≤ 0.1, ≈ 50 … 60 $; or 128 first and extend if necessary |
-| D2 | amplitudes | 5 (β at 50 mT one-sided); 7 (+ 35 / 70 mT, β at 50 mT two-sided, × 1.4 cost) |
-| D3 | d/l_ex as factor and the cube window | vary d/l_ex 212 … 300 with d/L_eff ≥ 7 (as above); or restrict L_eff ≤ 24 where d/l_ex < 250 (≥ 500 cubes) |
-| D4 | frequency test corner | base point only (≈ 2 $); + corner L_eff 30, r_p 3 (≈ 4 $) |
+| D1 | number of design points | **decided: 128 + 8 first, then extension to 256 if the errors are too large** |
+| D2 | amplitudes | **decided: 7 (9 / 20 / 35 / 50 / 70 / 100 / 150 mT)** |
+| D3 | d/l_ex as factor and the cube window | **decided: (a) d/l_ex 212 … 300, d/L_eff ≥ 7; check of the residuals vs d/L_eff (below / above 10) in the analysis** |
+| D4 | frequency test corner | **decided: base point + corner L_eff 30, r_p 3** |
 
 ## 8. Risks
 
