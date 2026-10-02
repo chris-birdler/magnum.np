@@ -73,7 +73,7 @@ There are two sources. Both are uniaxial. There is no other anisotropy.
 | d/l_ex | particle diameter | 300 (≈ 1 µm), fixed |
 | dx/l_ex | cell size (numerical) | 3 (mesh test: 2 and 1.5) |
 | f/f_M | drive frequency (numerical, quasi-static aim) | 7.14·10⁻⁴ (= 30 MHz) |
-| α | damping (numerical) | 0.02 (pilot compares 0.1) |
+| α | damping (numerical) | 0.1 (steady cycles, section 7.2) |
 
 Output: w = W/K_d per cycle versus b = B_peak/Js, β_eff = d ln w/d ln b.
 
@@ -104,7 +104,7 @@ Physics background (short):
 | Initial state | open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
 | Protocol | A and B: ascending amplitudes (the classic Rayleigh procedure: every larger loop erases the smaller ones, the loops stay centred). C: descending. 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
-| Damping | α = 0.02 | 5× less artificial damping loss than α = 0.1 at the same cost per step; the pilot checks it |
+| Damping | α = 0.1 | with α = 0.02 the cycles at dx = 1.5 do not settle (section 7.2); at dx = 3 the loss changes only by −12 % between α = 0.02 and 0.1 |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
 
 ## 4. Mesh validity
@@ -546,7 +546,7 @@ including the voids, P = W · f; mean ± σ per realisation (SE of the mean)):**
 - β ≈ 2 between 9 and 50 mT. The dynamic (damping) share at 30 MHz and
   α = 0.1 is not measured; it also gives β = 2. Check with f vs 2 f first.
 
-### 7.7 Pilot (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
+### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
 particle. Thus the realisation scatter is larger than in production.
@@ -579,20 +579,11 @@ Consequences:
 - The per-cycle scatter of w_loop can be much larger than 10 % (steady
   test). Then the error of the mean decides, and more cycles cost budget.
 
-## 9. Production matrix (open: Chris decides after the pilot)
+## 9. Production
 
-Base: d/l_ex = 300, φ = 0.65, L_eff = 18 l_ex, r_p = 0. One d/l_ex = 300 run
-(7 amplitudes × 7 cycles) costs ≈ 6.3 V100-h (≈ 0.8 $ on a V100). A 2f partner
-run for w_h costs ≈ 3.2 V100-h.
-
-| Option | Runs | Cost | Pros | Cons |
-|---|---|---|---|---|
-| A: full factorial Q_eff (4) × r_p (2) × φ (2) + 2 seeds | 18 | ≈ 115 V100-h | all main effects and interactions | budget |
-| B: Q_eff scan (4) at r_p = 0, φ = 0.65 + 2×2 (r_p, φ = 0.55 / 0.69) at L_eff = 18 + 2 seeds | 10 | ≈ 63 V100-h | Q_eff curve and both other factors with their interaction | interactions with Q_eff not visible |
-| C: B + floor (Q_eff = 0) at d/l_ex = 300 | 11 | ≈ 70 V100-h | B + floor at production size | cost |
-
-A dx = 2 control at d/l_ex = 300 costs ≈ 26 V100-h. Thus the mesh check stays
-at d/l_ex = 150 (pilot).
+The production study is planned in PLAN.md (frequency test, then a
+randomized Sobol design over L_eff, r_p, φ and d/l_ex at dx = 3). The
+earlier one-factor and factorial options are replaced by this plan.
 
 ## 10. Known limitations
 
@@ -620,7 +611,7 @@ at d/l_ex = 150 (pilot).
 
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
-3. After the pilot: α = 0.02 confirmed or not.
+3. Damping: decided, α = 0.1 (section 7.2).
 4. Mesh (decided by the planning pilot, section 4): dx = 3 at d/l_ex = 300.
    Open: the control of one parameter change at dx = 3 and dx = 1.5.
 5. Audit points that wait for the mesh test (then Chris decides):
