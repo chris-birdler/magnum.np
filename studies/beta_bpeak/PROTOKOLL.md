@@ -145,6 +145,27 @@ mean ± SE over realisations):**
   cancels if it is similar for all parameters. A control of one parameter
   change at dx = 3 and dx = 1.5 checks this (≈ 100 V100-h, decision by Chris).
 
+**Convergence of the loss level (validity limit):**
+
+- d/l_ex = 96, dx 1 vs dx 1.5: loss ×1.35 at 50 mT (Δ ln w = +0.30 ± 0.24,
+  1.3 SE), ×1.45 at 9 mT (+0.37 ± 0.53); one pair of the convergence test:
+  dx 1.5 ≈ 30 % low; energy of the virgin state 0.00166 vs 0.00186 K_d.
+  Thus the level is not converged at dx = 1.5 for d/l_ex = 96 (a hint, not
+  proven with n = 3). β does not change (−0.03 ± 0.29).
+- Cause: the discretization error of the exchange energy grows
+  approximately with (dx / size of the carrying structure)². At d/l_ex = 96
+  a vortex core (size ≈ l_ex) carries the process: (1.5)² and (1)² are both
+  large, thus even dx = 1 is coarse for the core (it needs dx ≲ 0.5 l_ex).
+  At d/l_ex = 300 walls (≈ L_eff = 12 l_ex) carry it: (3/12)² ≈ 6 %,
+  (1.5/12)² ≈ 1.6 % (estimate).
+- Measured at d/l_ex = 300: dx 3 vs dx 1.5 +26 % at 50 mT, more than the
+  6 % estimate; probably a part comes from the ≈ 17 unresolved structures at
+  dx = 3. Whether dx = 1.5 itself is converged at d/l_ex = 300 is not known
+  (dx = 1 costs ≈ 300 V100-h per realisation).
+- **Validity:** absolute losses at 1 µm are known to ≈ 30 % (mesh). β and
+  ratios between parameters at the same dx are not mesh-dependent within
+  the errors of all comparisons.
+
 Diagnostics in every run: `frac_pairs_gt60` per cycle and `n_pairs_gt60` per
 sample (csv). `offset` per cycle = loop centre / amplitude: a value above
 0.10 (flag `o`) is a minor loop around a remanent state, not around the
