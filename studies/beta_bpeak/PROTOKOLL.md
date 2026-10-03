@@ -705,7 +705,8 @@ f = 30 MHz; mean ± SE over n = 3 realisations.
 
 - β is constant within the errors over 10 … 150 mT (no curvature); the
   segments scatter more than the fits (short lever arms, SE up to 0.25).
-- The earlier values at 9 mT (β(9 → 50) ≈ 1.9 … 2.1 at 1 µm) were too high by
+- The earlier values with 9 mT (β(9 → 50) = 1.86 at dx 3, 2.06 at dx 1.5, 1 µm,
+  planning pilot) were too high by
   the unconverged state.
 - α 0.01 − 0.1: Δβ (power law) = −0.19 ± 0.08 (2.4 SE, Welch, n = 3 + 3);
   with n = 3 (t₉₅ ≈ 2.8) this is a hint, not a result. alphatest2 (3 more
