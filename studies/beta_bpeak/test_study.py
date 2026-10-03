@@ -170,3 +170,42 @@ def test_volume_fraction_surface():
     inner = (g0["ids"] >= 0) & (g8["frac"] < 1.0)
     assert inner.sum() < 0.2 * (g0["ids"] >= 0).sum()      # only the surface layer is partial
     assert np.all(g8["ids"][g8["frac"] > 0] >= 0)
+
+
+# --- domains.py: wall measure and switched volume on synthetic states with known walls --------
+# sphere d = 300 l_ex (1 um), L_eff = 12 l_ex, 20 deg ripple; full check: `python domains.py --selftest`
+
+def _dom_state(kind, dx=3.0, ripple=20.0, shift=0.0, seed=0):
+    import domains
+    st, tr = domains.synthetic_state(kind, dx, d=300.0, ripple_deg=ripple, shift=shift, seed=seed)
+    if dx < 3.0:
+        m, mk = domains.coarsen_state(st["m"], st["mask"], int(round(3.0 / dx)))
+        st = dict(st, m=m, mask=mk, dx=3.0)
+    return st, tr
+
+
+@pytest.mark.parametrize("kind", ["slab180", "slab90", "bubble"])
+def test_texture_gives_wall_area(kind):
+    import domains
+    st, tr = _dom_state(kind)
+    r = domains.measures(st, widths=(domains.W_WALL,))
+    assert 0.85 < r["T"][domains.W_WALL] / tr["A"] < 1.0      # selftest: 0.875 ... 0.94
+
+
+def test_texture_suppresses_ripple_and_is_mesh_independent():
+    import domains
+    W = (domains.W_WALL,)
+    rip = domains.measures(_dom_state("ripple")[0], widths=W)["T"][domains.W_WALL]
+    wall, _ = _dom_state("slab180")
+    w3 = domains.measures(wall, widths=W)["T"][domains.W_WALL]
+    w15 = domains.measures(_dom_state("slab180", dx=1.5)[0], widths=W)["T"][domains.W_WALL]
+    assert rip < 0.15 * w3
+    assert abs(w15 / w3 - 1.0) < 0.02
+
+
+@pytest.mark.parametrize("kind", ["slab180", "bubble"])
+def test_switched_volume_linear_in_wall_shift(kind):
+    import domains
+    a, _ = _dom_state(kind)
+    b, tr = _dom_state(kind, shift=6.0)
+    assert abs(domains.switched_volume(a, b) / tr["V_rev"] - 1.0) < 0.1

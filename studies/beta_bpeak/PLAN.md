@@ -110,6 +110,35 @@ Test: d/l_ex 300, dx 3, base point, α 0.1 and 0.01, seeds 901 … 903, 9 and
 20 mT; rule: w_dis/w_loop at 9 mT within 0.9 … 1.1 in the kept cycles.
 Cost ≲ 13 V100-h ≈ 1.5 $, chained after step 1c.
 
+## 3e. Repeats after the audit (PROTOKOLL 7.13, go 2026-10-03, option B)
+
+All repeats use `--relax_mode converge` with the hard gate (a run stops with
+exit code 3 if the relaxation does not converge; analyze.py excludes such
+runs) and save the relaxed virgin state as `init.pt`.
+- `alphatest2`: α 0.01, seeds 904 … 906, now with the converged relaxation
+  (A010c_*).
+- `baseline`: realisation scatter at 1 µm: PROD (d/l_ex 300, dx 3,
+  7 amplitudes), base point, α 0.1, seeds 921 … 928 (≈ 27 V100-h). It replaces
+  σ at 9 mT in the planning of the number of realisations.
+- `mesh300`: dx 1.5 vs dx 3 at d/l_ex 300, seeds 921 … 924, 9 / 50 / 100 mT,
+  5 cycles; the 9 mT job relaxes and writes init.pt, the 50 and 100 mT jobs
+  start from it (≈ 183 V100-h). Compared with the valid 50 mT value at
+  d/l_ex 212 (PROTOKOLL 7.10, rule of step 1b).
+- Later decision: the same at d/l_ex 212 (≈ 47 V100-h) if the 9 mT mesh error
+  at 1 µm is to be transferred to the small end of the range.
+Total ≈ 230 V100-h ≈ 22 $ on one 4×V100 instance (0.41 $/h), ≈ 2.5 days.
+
+## 3f. Domain analysis (prepared 2026-10-03, no GPU cost)
+
+Question (Chris): does β depend on the total wall area? Tool `domains.py`,
+tested on synthetic states with known walls (PROTOKOLL 7.14):
+- wall measure T(2 L_eff) (rotation of m on scales above 2 L_eff);
+- switched volume between two phases of a cycle.
+A segmentation into domains was tested and archived (it over-counts walls
+2 … 8×). Use: first on the snapshots (snaptest) and on init.pt of `baseline`;
+only if this gives a clear signal, the measures go into the runs as a per-cycle
+time series (decision by Chris).
+
 ## 4. Step 2: randomized design (go 2)
 
 ### 4.1 Factors and ranges

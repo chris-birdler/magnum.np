@@ -1,0 +1,296 @@
+#!/usr/bin/env python
+"""
+Wall measures of magnetization states (PLAN.md, "Domain analysis").
+
+Question: does beta depend on the domain structure? This tool measures two
+quantities of a state m(r) without a domain segmentation (a segmentation by
+direction clusters was tested and archived: tag archive/domains-segmentation-2026-10-03).
+
+  1. Texture T(w) = (1/pi) integral |grad m_w| dV  [l_ex^2]
+     m_w = m smoothed by a Gaussian of width w (normalized convolution inside
+     the particles, then |m_w| = 1). Across a wall m turns by the wall angle,
+     independent of the wall width: a 180 deg wall gives its area, a 90 deg wall
+     half its area. The ripple (scale L_eff) is suppressed by the smoothing.
+     Wall measure: A_w = T(2 L_eff) / CAL. CAL = T(2 L_eff) / true area on synthetic
+     states with 20 deg ripple (the ripple measured in a real state is 21 deg):
+         wall spacing / curvature radius about 5 ... 8 L_eff (d = 300):  0.89 ... 0.94
+         about 4 ... 6 L_eff (d = 212):                                 0.68 ... 0.88
+         about 3 ... 4 L_eff (d = 150):                                 0.44 ... 0.76
+     dx = 3 and 1.5 agree to 0.3 %. Thus A_w is a wall area (+-10 %) only if
+     the walls are >= 5 L_eff apart and not curved more strongly; else T(2 L_eff)
+     is the rotation of m on scales above 2 L_eff, not a wall area. A smaller
+     width does not help: at w = 1 L_eff the ripple adds 13 ... 50 % of A.
+     Limit: T counts every rotation on scales above L_eff; it does not separate
+     walls from a continuous rotation (vortex, curling). The localization
+     (int g)^2 / (V int g^2) does not separate them either (selftest: walls
+     0.61 ... 0.89, helix 0.98, vortex 0.48), because the walls (width pi L_eff)
+     fill a large part of the particle.
+  2. Switched volume between two states a, b of the same run:
+     V_sw = integral arccos(m_a . m_b) / pi dV  with m smoothed over w_sw = 1 L_eff
+     [l_ex^3]; a reversed region (180 deg) counts fully, a wall moved by s gives A s
+     (linear in s; the form (1 - m_a . m_b)/2 grows only with s^2).
+     Noise floor: a ripple pattern that changes completely between a and b
+     gives V_sw = 0.06 V (selftest, 20 deg); in the model the ripple is tied to
+     the fixed cubes (real d/l_ex = 96 state at 20 mT: V_sw <= 0.003 V).
+
+Lengths in l_ex, areas in l_ex^2, volumes in l_ex^3.
+
+    python domains.py runs/V_s901/m_amp01_c6_ph*.vti   # states of one run (in phase order)
+    python domains.py runs/B300_s921/init.pt
+    python domains.py --selftest                       # synthetic states with known walls
+"""
+import argparse
+import json
+import math
+import pathlib
+import sys
+
+import numpy as np
+from scipy import ndimage
+
+WIDTHS = (0.0, 0.5, 1.0, 2.0, 3.0, 4.0)      # smoothing widths / L_eff
+W_WALL = 2.0                                  # width of the wall measure / L_eff
+W_SW = 1.0                                    # width of the switched volume / L_eff
+CAL = 0.91                                    # T(2 L_eff) / true wall area (selftest: 0.875 ... 0.935)
+
+
+# --- input -----------------------------------------------------------------
+
+def load_state(path, coarsen=1):
+    """m [N,N,N,3], mask [N,N,N] (bool), dx (l_ex), Leff (l_ex)."""
+    path = pathlib.Path(path)
+    run = path.parent
+    cfg = json.loads((run / "config.json").read_text())
+    dx, Leff, N = cfg["dx_lex"], cfg["Leff_lex"], cfg["N_used"]
+    if path.suffix == ".vti":
+        import pyvista as pv
+        m = np.asarray(pv.read(str(path)).cell_data["m"], dtype=np.float32).reshape((N, N, N, 3), order="F")
+        g = run / "geometry.vti"
+        if g.exists():
+            ids = np.asarray(pv.read(str(g)).cell_data["particle"]).reshape((N, N, N), order="F")
+            mask = np.rint(ids) >= 0
+        else:
+            mask = _mask_from_config(cfg)
+    else:
+        import torch
+        m = torch.load(str(path), map_location="cpu")["m"].float().numpy()
+        mask = _mask_from_config(cfg)
+    if coarsen > 1:
+        m, mask = coarsen_state(m, mask, coarsen)
+        dx *= coarsen
+    return {"m": m, "mask": mask, "dx": dx, "Leff": Leff, "name": str(path)}
+
+
+def _mask_from_config(cfg):
+    from geometry import fcc_box
+    return fcc_box(cfg["N_used"], cfg["d"], cfg["dx"])["ids"] >= 0
+
+
+def coarsen_state(m, mask, c):
+    """Block average by c (for example dx 1.5 -> 3: the same analysis grid on both meshes)."""
+    N = m.shape[0] // c
+    b = lambda a: a[:N * c, :N * c, :N * c].reshape(N, c, N, c, N, c, *a.shape[3:])
+    mm = b(m * mask[..., None]).sum(axis=(1, 3, 5))
+    mk = b(mask.astype(np.float32)).mean(axis=(1, 3, 5)) >= 0.5
+    mm /= np.maximum(np.linalg.norm(mm, axis=-1, keepdims=True), 1e-12)
+    return np.where(mk[..., None], mm, 0.0).astype(np.float32), mk
+
+
+# --- field operations (periodic box) ------------------------------------------
+
+def grad_norm(f, mask, dx):
+    """|grad f| per cell from differences between face neighbours inside the particles (mean of
+    the forward and the backward difference that exist). f: [N,N,N,3]."""
+    g2 = np.zeros(mask.shape, dtype=np.float64)
+    for ax in range(3):
+        acc = np.zeros(mask.shape, dtype=np.float64)
+        cnt = np.zeros(mask.shape, dtype=np.float64)
+        for s in (-1, 1):
+            ok = mask & np.roll(mask, s, axis=ax)
+            d = np.roll(f, s, axis=ax) - f
+            acc += np.where(ok, (d * d).sum(-1), 0.0)
+            cnt += ok
+        g2 += acc / np.maximum(cnt, 1.0)
+    return np.where(mask, np.sqrt(g2) / dx, 0.0)
+
+
+def smooth_m(m, mask, sigma_cells):
+    """Gaussian smoothing inside the particles (normalized convolution), then |m| = 1."""
+    if sigma_cells <= 0:
+        return m
+    w = mask.astype(np.float32)
+    s = np.stack([ndimage.gaussian_filter(m[..., i] * w, sigma_cells, mode="wrap") for i in range(3)], -1)
+    s /= np.maximum(np.linalg.norm(s, axis=-1, keepdims=True), 1e-12)
+    return np.where(mask[..., None], s, 0.0).astype(np.float32)
+
+
+def measures(st, widths=WIDTHS):
+    widths = tuple(sorted(set(widths) | {W_WALL}))
+    """Texture T(w), wall area A_w, localization P, ripple estimate of one state."""
+    dx, L, mask = st["dx"], st["Leff"], st["mask"]
+    V = float(mask.sum() * dx ** 3)
+    T = {}
+    for w in widths:
+        g = grad_norm(smooth_m(st["m"], mask, w * L / dx), mask, dx)
+        T[w] = float(g.sum() * dx ** 3 / math.pi)
+    ms = smooth_m(st["m"], mask, W_WALL * L / dx)
+    ang = np.degrees(np.arccos(np.clip((st["m"] * ms).sum(-1)[mask], -1, 1)))
+    return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
+            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2)))}
+
+
+def switched_volume(sa, sb, w=W_SW):
+    ma = smooth_m(sa["m"], sa["mask"], w * sa["Leff"] / sa["dx"])
+    mb = smooth_m(sb["m"], sb["mask"], w * sb["Leff"] / sb["dx"])
+    ang = np.arccos(np.clip((ma * mb).sum(-1), -1.0, 1.0))
+    return float((ang / math.pi)[sa["mask"]].sum() * sa["dx"] ** 3)
+
+
+def analyze(states):
+    res = {"states": [measures(st) for st in states]}
+    n = len(states)
+    res["switched"] = [switched_volume(states[i], states[(i + 1) % n]) for i in range(n)] if n > 1 else []
+    return res
+
+
+def report(res):
+    for r in res["states"]:
+        print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg"
+              % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"]))
+        print("   T(w) [l_ex^2]: " + "  ".join("w=%g: %.4g" % (w, t) for w, t in r["T"].items()))
+    if res["switched"]:
+        V = res["states"][0]["V"]
+        print("switched volume to the next state (cyclic): " +
+              "  ".join("%.4g (%.1f %%)" % (v, 100 * v / V) for v in res["switched"]))
+
+
+# --- synthetic states with known walls ------------------------------------------
+
+def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=0.0,
+                    normal=(0.31, 0.52, 0.80)):
+    """One sphere (diameter d) in a box. Walls have the profile theta = 2 atan(exp(s / L_eff))
+    (width pi L_eff). shift moves all walls (switched-volume test). Returns (state, truth) with
+    truth = {"A": wall area weighted by angle/180 deg (= expected T), "A_geo": wall area,
+    "V_rev": reversed volume relative to shift = 0}.
+      ripple  : uniform m, no wall           slab180: 3 parallel 180 deg walls (oblique)
+      slab90  : 3 parallel 90 deg walls      bubble : spherical inner domain, radius 0.3 d
+      helix   : m turns continuously (one turn over d) - no wall, rotation everywhere
+      vortex  : m curls around an axis (core radius L_eff) - no wall"""
+    a = d + 24.0
+    N = int(round(a / dx))
+    x = (np.arange(N) + 0.5) * dx - a / 2
+    X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+    R = d / 2
+    rr = np.sqrt(X ** 2 + Y ** 2 + Z ** 2)
+    mask = rr <= R
+    n = np.array(normal) / np.linalg.norm(normal)
+    u = np.array([1.0, 0.0, 0.0])
+    v = np.cross(n, u)
+    v /= np.linalg.norm(v)
+    prof = lambda s: 2.0 * np.arctan(np.exp(s / Leff))
+    cap = lambda p: math.pi * (R * R * p - p ** 3 / 3.0)          # sphere volume between 0 and p (|p| <= R)
+    truth = {"A": 0.0, "A_geo": 0.0, "V_rev": 0.0}
+    m = None
+    if kind in ("ripple", "helix", "vortex"):
+        if kind == "ripple":
+            m = np.broadcast_to(u, X.shape + (3,)).copy()
+        elif kind == "helix":
+            ph = 2 * math.pi * Z / d
+            m = np.stack([np.cos(ph), np.sin(ph), np.zeros_like(ph)], -1)
+        else:
+            rho = np.sqrt(X ** 2 + Y ** 2)
+            mz = np.exp(-(rho / Leff) ** 2)
+            t = np.sqrt(1 - mz ** 2) / np.maximum(rho, 1e-9)
+            m = np.stack([-Y * t, X * t, mz], -1)
+    elif kind in ("slab180", "slab90"):
+        s = X * n[0] + Y * n[1] + Z * n[2]
+        pos = (-0.45 * R, 0.0, 0.4 * R)
+        f = 1.0 if kind == "slab180" else 0.5
+        th = sum(f * prof(s - p - shift) for p in pos)
+        truth["A_geo"] = sum(math.pi * (R ** 2 - (p + shift) ** 2) for p in pos)
+        truth["A"] = f * truth["A_geo"]
+        if kind == "slab180":
+            truth["V_rev"] = sum(abs(cap(p + shift) - cap(p)) for p in pos)
+    elif kind == "bubble":
+        r0 = 0.3 * d + shift
+        th = prof(r0 - rr)
+        truth["A_geo"] = truth["A"] = 4 * math.pi * r0 ** 2
+        truth["V_rev"] = 4.0 / 3.0 * math.pi * abs(r0 ** 3 - (0.3 * d) ** 3)
+    else:
+        raise ValueError(kind)
+    if m is None:
+        m = np.cos(th)[..., None] * u + np.sin(th)[..., None] * v
+    if ripple_deg > 0:                                                # random cubes of edge L_eff
+        rng = np.random.default_rng(seed)
+        nc = int(math.ceil(a / Leff))
+        ic = np.minimum((np.arange(N) * dx / Leff).astype(int), nc - 1)
+        g = rng.normal(size=(nc, nc, nc, 3))[np.ix_(ic, ic, ic)]
+        g = np.stack([ndimage.gaussian_filter(g[..., i], 0.5 * Leff / dx, mode="wrap") for i in range(3)], -1)
+        g -= (g * m).sum(-1, keepdims=True) * m
+        g /= np.sqrt(np.mean((g ** 2).sum(-1)[mask]))
+        m = m + math.tan(math.radians(ripple_deg)) * g
+    m /= np.linalg.norm(m, axis=-1, keepdims=True)
+    m = np.where(mask[..., None], m, 0.0).astype(np.float32)
+    return {"m": m, "mask": mask, "dx": dx, "Leff": Leff,
+            "name": "%s dx=%g ripple=%g shift=%g" % (kind, dx, ripple_deg, shift)}, truth
+
+
+def selftest(d=300.0, dxs=(3.0, 1.5), ripples=(0.0, 20.0),
+             kinds=("ripple", "slab180", "slab90", "bubble", "helix", "vortex"), shift=6.0):
+    """Wall measure, localization and switched volume against the known truth. The fine mesh is
+    analysed on the dx = 3 grid (coarsen 2), as for dx = 1.5 runs."""
+    rows = []
+    for kind in kinds:
+        for dx in dxs:
+            for rp in ripples:
+                states = []
+                for sh in (0.0, shift):
+                    st, tr = synthetic_state(kind, dx, d=d, ripple_deg=rp, shift=sh)
+                    if dx < 3.0:
+                        c = int(round(3.0 / dx))
+                        m, mk = coarsen_state(st["m"], st["mask"], c)
+                        st = dict(st, m=m, mask=mk, dx=dx * c)
+                    states.append((st, tr))
+                r = measures(states[0][0])
+                tr0, tr1 = states[0][1], states[1][1]
+                vsw = switched_volume(states[0][0], states[1][0]) if kind in ("slab180", "bubble") else float("nan")
+                row = {"kind": kind, "dx": dx, "ripple": rp, "A_true": tr0["A"], "T2": r["T"][W_WALL],
+                       "T2_over_true": r["T"][W_WALL] / tr0["A"] if tr0["A"] else float("nan"),
+                       "ripple_est": r["ripple_rms_deg"],
+                       "Vsw_true": tr1["V_rev"], "Vsw": vsw,
+                       "Vsw_over_true": vsw / tr1["V_rev"] if tr1["V_rev"] else float("nan"),
+                       "V": r["V"], **{"T%g" % w: t for w, t in r["T"].items()}}
+                rows.append(row)
+                print("%-8s dx %-4g ripple %4g | T(2)/A %6.3f  T(2)/V %.3g  ripple_est %5.1f | V_sw/true %6.3f"
+                      % (kind, dx, rp, row["T2_over_true"], row["T2"] / row["V"], r["ripple_rms_deg"],
+                         row["Vsw_over_true"]), flush=True)
+    return rows
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("states", nargs="*", help="m_*.vti or init.pt / checkpoint.pt of ONE run")
+    ap.add_argument("--coarsen", type=int, default=1, help="block average (2 for dx 1.5 -> analysis grid dx 3)")
+    ap.add_argument("--json", default=None, help="write the result as json")
+    ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--selftest_csv", default=None)
+    a = ap.parse_args()
+    if a.selftest:
+        rows = selftest()
+        if a.selftest_csv:
+            import csv
+            with open(a.selftest_csv, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                w.writeheader()
+                w.writerows(rows)
+        return
+    if not a.states:
+        sys.exit("no states given")
+    res = analyze([load_state(p, a.coarsen) for p in a.states])
+    report(res)
+    if a.json:
+        pathlib.Path(a.json).write_text(json.dumps(res, indent=1))
+
+
+if __name__ == "__main__":
+    main()

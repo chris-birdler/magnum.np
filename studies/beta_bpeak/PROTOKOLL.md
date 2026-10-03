@@ -664,6 +664,35 @@ Fix: `--relax_mode converge` (PLAN step 1d) and a hard gate (a run stops if
 the relaxation does not converge; analysis excludes such runs). Repeats:
 PLAN section "repeats".
 
+### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
+
+Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
+(profile θ = 2 atan(exp(s/L_eff)), width π L_eff) plus a ripple of 20° rms on
+cubes of edge L_eff. A real state (d/l_ex 96, dx 3, converged relaxation,
+20 mT) has a ripple of 21 … 22° rms.
+
+| Measure | Result |
+|---|---|
+| T(2 L_eff) / wall area, d/l_ex 300 (wall spacing ≈ 5 … 8 L_eff) | 0.89 … 0.94 |
+| same, d/l_ex 212 / 150 (spacing ≈ 4 … 6 / 3 … 4 L_eff) | 0.68 … 0.88 / 0.44 … 0.76 |
+| T(2 L_eff), ripple only, relative to the wall area | 3 … 13 % |
+| dx 3 vs dx 1.5 (analysed on the same grid) | 0.3 % |
+| switched volume / true value (wall moved by 6 and 24 l_ex) | 0.98 … 1.03 |
+| switched volume, ripple pattern changed completely | 6 % of V (noise floor) |
+
+- T(2 L_eff) is a wall area (± 10 %) only if the walls are ≥ 5 L_eff apart
+  and not more strongly curved. Else it is the rotation of m on scales above
+  2 L_eff. No width solves both: at 1 L_eff the ripple adds 13 … 50 %.
+- T counts a 90° wall half. It does not separate walls from a continuous
+  rotation (vortex). The localization (∫g)²/(V∫g²) does not separate them
+  either (walls 0.61 … 0.89, helix 0.98, vortex 0.48).
+- A segmentation into domains (vMF mixture + hidden Markov random field)
+  over-counts the walls 2 … 8× (the BIC selects too many direction clusters;
+  broad clusters take whole domains). Archived: tag
+  archive/domains-segmentation-2026-10-03.
+- Real state d/l_ex 96 (n = 1): T(2 L_eff) = 3.4·10⁴ l_ex², switched volume
+  per quarter cycle at 20 mT ≤ 0.3 % of V.
+
 ### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
