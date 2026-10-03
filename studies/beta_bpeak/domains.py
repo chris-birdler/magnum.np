@@ -183,9 +183,9 @@ def correlation_length(st):
         dm = (st["m"] - st["m"][ids == p].mean(0)) * w[..., None]
         for i in range(3):
             F = np.fft.rfftn(dm[..., i])
-            num += np.fft.irfftn(F * np.conj(F), s=(N, N, N))
+            num += np.fft.irfftn(F * np.conj(F), s=(N, N, N), axes=(0, 1, 2))
         Fw = np.fft.rfftn(w)
-        den += np.fft.irfftn(Fw * np.conj(Fw), s=(N, N, N))
+        den += np.fft.irfftn(Fw * np.conj(Fw), s=(N, N, N), axes=(0, 1, 2))
     k = np.minimum(np.arange(N), N - np.arange(N)) * dx
     r = np.sqrt(k[:, None, None] ** 2 + k[None, :, None] ** 2 + k[None, None, :] ** 2).ravel()
     ok = den.ravel() > 0.2 * den.flat[0]                   # enough overlap for a stable estimate
