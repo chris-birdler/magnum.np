@@ -164,6 +164,9 @@ def parse_args(argv=None):
     g.add_argument("--out", type=str, required=True)
     g.add_argument("--max_cycles", type=int, default=None, help="stop after this many cycles (benchmark)")
     g.add_argument("--vti", action="store_true", help="write m as .vti after each stage")
+    g.add_argument("--snap_phases", type=int, default=0,
+                   help="write m as .vti at N equal phase points of the LAST cycle of each measured stage "
+                        "(N = 4: H max, H = 0 falling, H min, H = 0 rising) and geometry.vti once")
     g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
     g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
     g.add_argument("--allow_new_commit", action="store_true",
@@ -329,6 +332,11 @@ def main(argv=None):
                   "delta_min_lex": delta_min, "delta_min_over_dx": delta_min / args.dx_lex,
                   "n_cubes_per_particle": [int(n) for n in n_cubes]}
 
+    if args.snap_phases > 0:
+        geo_f = {"Ms": state.material["Ms"], "particle": T(ids.astype(np.float64)[..., None])}
+        if "Ku_axis" in state.material:
+            geo_f["cube_axis"] = state.material["Ku_axis"]
+        write_vti(geo_f, str(out / "geometry.vti"), state)
     drive = SinusoidalDrive(state, tuple(e_d))
     terms.append(drive)
     llg = LLGSolver(terms, atol=args.atol)
@@ -523,11 +531,15 @@ def main(argv=None):
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
 
             sample()
+            snap = args.snap_phases > 0 and st["measure"] and ci == st["n_cycles"] - 1
             for k in range(args.samples):
                 llg.step(state, dt_s)
                 if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):
                     drive.H_amp *= st["decay"]          # AC demagnetization: change at a zero crossing
                 sample()
+                if snap and (k + 1) % (args.samples // args.snap_phases) == 0:
+                    deg = round(360.0 * (k + 1) / args.samples)
+                    write_vti({"m": state.m}, str(out / ("m_%s_c%d_ph%03d.vti" % (st["name"], ci, deg))), state)
             wall = time.time() - t_w
             steps = state._step - steps0
 
