@@ -35,6 +35,9 @@ Groups:
   freqtest  PLAN.md step 1: d/l_ex 300, dx 3, virgin state, alpha 0.1, 7 amplitudes
             9 ... 150 mT; f and 2 f; base point (L_eff 12, r_p 0, seeds 901-904)
             and corner (L_eff 30, r_p 3, seeds 905-908).
+  alphatest is alpha a real factor at 30 MHz? Base point as freqtest (d/l_ex 300,
+            dx 3, L_eff 12, r_p 0, phi 0.65), alpha 0.01 and 0.03, seeds 901-903,
+            9 / 20 / 50 / 100 / 150 mT. alpha 0.1: F_base_f_s901-903 (freqtest).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
@@ -192,9 +195,15 @@ def matrix():
     for sd in (911, 912, 913, 914):
         roughtest.append(job(RT, "R212_dx15_s%d" % sd, seed=sd, dx_lex=1.5))
         roughtest.append(job(RT, "R212_dx3_s%d" % sd, seed=sd, dx_lex=3.0))
+    alphatest = []
+    AT = dict(PROD, Leff_lex=12.0, r_p=0.0, b_list=b_of_mT(9, 20, 50, 100, 150), n_amp=5)
+    for al in (0.01, 0.03):
+        for sd in (901, 902, 903):
+            alphatest.append(job(AT, "A%03.0f_s%d" % (al * 1000, sd), seed=sd, alpha=al))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
-            "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "pilot": pilot}
+            "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "alphatest": alphatest,
+            "pilot": pilot}
 
 
 def n_cells(a):
@@ -206,10 +215,13 @@ def n_cells(a):
 def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.008):
     N, n = n_cells(a)
     f_rel = a.get("f_rel", F_REL_DEFAULT)
-    if a.get("alpha", 0.02) >= 0.05:
+    al = a.get("alpha", 0.02)
+    if al >= 0.05:
         dtt = 1.62 * (a["dx_lex"] / 3.0) ** 1.5
-    else:
+    elif abs(al - 0.02) < 1e-9:
         dtt = dt_tau * (a["dx_lex"] / 3.0) ** 0.5
+    else:   # estimate: dt ~ alpha^0.47 between the measured 0.02 and 0.1 (dx = 3)
+        dtt = 1.62 * (al / 0.1) ** 0.47 * (a["dx_lex"] / 3.0) ** 1.5
     steps = 2.0 * math.pi / (f_rel * dtt)
     if n > 10e6:
         s_per_step_Mcell = max(s_per_step_Mcell, 0.0164)
