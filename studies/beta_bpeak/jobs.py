@@ -50,7 +50,7 @@ Groups:
             seeds 901 and 902, m as .vti at 4 phases of the last cycle (--snap_phases 4).
   baseline  repeat after the audit (PROTOKOLL 7.13): realisation scatter at 1 um with a
             converged virgin state: PROD (d/l_ex 300, dx 3, 7 amplitudes), base point,
-            alpha 0.1, seeds 921-928.
+            alpha 0.1, seeds 921-928; m as .vti at 4 phases of the last cycle of each amplitude.
   mesh300   repeat after the audit: dx 1.5 vs dx 3 at d/l_ex 300 with a converged virgin
             state, seeds 921-924, 9 / 50 / 100 mT, 5 cycles; the 9 mT job relaxes and
             writes init.pt, the 50 and 100 mT jobs start from it (--init_from, --init_wait_h).
@@ -232,7 +232,7 @@ def matrix():
     # repeats after the audit (PROTOKOLL 7.13): the virgin state relaxed to convergence (hard gate)
     CONV = dict(relax_mode="converge", relax_maxiter=80000, relax_chunk=500, relax_tol_E=1e-6, relax_confirm=2)
     B0 = dict(PROD, Leff_lex=12.0, r_p=0.0, alpha=0.1, **CONV)
-    baseline = [job(B0, "B300_s%d" % sd, seed=sd) for sd in range(921, 929)]
+    baseline = [job(B0, "B300_s%d" % sd, seed=sd, snap_phases=4) for sd in range(921, 929)]   # m at 4 phases: wall measure vs B (domains.py)
     mesh300 = []
     for sd in (921, 922, 923, 924):          # same seeds as baseline: the dx 3 side also checks B300
         for dx in (1.5, 3.0):
