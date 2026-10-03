@@ -587,6 +587,49 @@ error is not shown to be the same at both ends of the d/l_ex range. Note:
 by 7.9 the 50 mT values are mainly damping loss; the mesh question must be
 asked again for the hysteresis once its method is fixed.
 
+### 7.11 Surface roughness (PLAN step 1c, 2026-10-03): not the main cause
+
+dx = 3 with a volume-fraction surface (`--surface fraction`, only `surface`
+differs from the references), mesh error vs dx = 1.5 (Welch, mean ± SE):
+
+| | Δ ln w 9 mT | Δ ln w 50 mT | Δβ (9 → 50 mT) |
+|---|---|---|---|
+| d/l_ex 212, dx 3 staircase | −0.35 ± 0.22 | −0.06 ± 0.14 | +0.14 ± 0.18 |
+| d/l_ex 212, dx 3 smooth | +0.01 ± 0.26 | −0.20 ± 0.09 | −0.06 ± 0.14 |
+| d/l_ex 300, dx 3 staircase | +0.54 ± 0.46 | +0.23 ± 0.07 | −0.20 ± 0.23 |
+| d/l_ex 300, dx 3 smooth | +0.31 ± 0.45 | +0.31 ± 0.11 | −0.01 ± 0.23 |
+
+- The smooth surface does not remove the level error at 50 mT; the
+  difference between the two ends grows (−0.29 → −0.51). The staircase is
+  not the main cause of the level error. The β error is slightly smaller
+  with the smooth surface, all within ≈ 1 SE. No model change.
+- **The d/l_ex = 300 references are disturbed at 50 mT:** w_dis/w_loop =
+  1.44 … 2.54 (dx 1.5) and 1.35 … 1.52 (smooth) because the 50 mT job starts
+  directly from the not converged virgin state (same cause as at 9 mT,
+  PLAN step 1d). At d/l_ex = 212 (9 → 50 mT in sequence) the balance is
+  ≈ 1.0. Thus all mesh comparisons at d/l_ex = 300 and 50 mT (7.8: +26 %,
+  7.10, this test) are not reliable; only d/l_ex = 212 is clean: mesh error
+  at 50 mT −6 % ± 14 %, β +0.14 ± 0.18.
+- Next: the relaxation test (PLAN step 1d); then a repeat of the d/l_ex =
+  300 comparison with the converged relaxation (decision by Chris, ≈ 10 $).
+
+### 7.12 Damping α (2026-10-03, base point, 1 µm, dx 3, 3 … 4 seeds each)
+
+Loss ∝ α^k with k = 0.12 ± 0.05 (20 mT), 0.17 ± 0.02 (50 mT), 0.29 ± 0.04
+(100 mT), 0.25 ± 0.09 (150 mT): a factor 1.3 … 1.9 per decade of α, far from
+∝ α. Fit per realisation over 20 … 150 mT (9 mT excluded): a power law fits
+(χ²/dof ≤ 0.7, no significant curvature); β = 1.52 ± 0.18 (α 0.01),
+1.53 ± 0.09 (0.03), 1.69 ± 0.04 (0.1); dβ/d log₁₀α = +0.17 ± 0.14 (1.3 SE).
+**α acts on the loss level, not on β** (within the errors). A two-point
+secant 50 → 100 mT had shown +0.38 ± 0.08 per decade; the fit over all
+amplitudes does not confirm it (two-point values depend on the noise of
+two points). Small α: the same cost per cycle, but 3 … 7× more scatter from
+cycle to cycle. Pending: 3 more seeds at α = 0.01 (904 … 906).
+Decomposition: w ∝ B̂² sin δ / μ; μ = 8.0 at all B̂ and α (geometry limit of
+the sphere packing); β < 2 because the loss angle sin δ falls with B̂
+(∝ B̂^−0.3 … −0.5). No Rayleigh rise in 20 … 150 mT. Physical or a model
+effect: open (domain snapshots, PLAN step "snaptest"; reference data needed).
+
 ### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
