@@ -70,6 +70,17 @@ There are two sources. Both are uniaxial. There is no other anisotropy.
      K_eff; there is no further averaging. The mean over a whole particle,
      K_eff/√N ≈ 64 J/m³ (N ≈ 9400 cubes), acts only on a uniform rotation of
      the particle and is small against K_d.
+   - Herzer applied to the model itself (K1 = K_eff = 6.22 kJ/m³ per cube,
+     D = cube edge = 40.1 nm, A = 10 pJ/m): δ1 = √(A/K1) = 40.1 nm, thus
+     x = D/δ1 = 1.00 and K1⁴D⁶/A³ = 1.494·10¹⁵ · 4.164·10⁻⁴⁵ / 10⁻³³ =
+     6.22 kJ/m³ = K1. There is no reduction: one cube per exchange volume.
+     Herzer's averaging needs many grains per exchange volume (D ≪ L_ex).
+     The model sits exactly at the edge of the Herzer regime (x = 1), at the
+     transition to the classical grain regime; each cube acts with its full
+     anisotropy. Two readings give the same simulation: (i) grains of 40 nm
+     with K1 = 6.2 kJ/m³ and no averaging, (ii) grains of 10 nm with
+     K1 ≈ 50 kJ/m³ after the averaging. For comparison, 10 nm grains with
+     K1 = 6.2 kJ/m³ give x = 0.25, K_eff = 1.5 J/m³ and L_ex ≈ 2.6 µm > d.
    - **Assumption, not tested in the simulation:** the translation of Q_eff
      to a material (K1, D) holds only if Herzer's averaging holds. A check
      with explicit grains (one cell per 10 nm grain, K1 = 48 kJ/m³; Herzer
