@@ -790,6 +790,14 @@ Literature check and three extensions (2026-10-03):
   walls (width π L_eff, spacing ≈ 5 L_eff); walls, vortex and helix give the
   same form of the structure factor. Not usable (negative result, as Michels
   reports for nanocrystalline magnets).
+- Rotation test F90 (share of windows of 1.5 π L_eff along random lines with
+  a net rotation of m above 90°). No peak at the wall angle (oblique cuts
+  smear it), but the tail separates 180° walls from ripple and continuous
+  rotation if the particle is large: F90 [%] vortex / helix / one 180° wall
+  / three 180° walls = 4.3 / 0 / 12.3 / 37 at d/l_ex 300, 9.4 / 6.9 / 18.4
+  / 54 at 212; no separation at d/l_ex ≤ 150 (vortex 22 … 65). 90° walls are
+  not detected (0.9 %). dx 3 and 1.5 agree. Real state d/l_ex 96: F90 = 66 %,
+  the same as a synthetic vortex at this size (65 %): not interpretable.
 - Added: correlation length l_C (SANS analogue; synthetic ripple 15 … 78,
   walls 48 … 63, vortex/helix ≈ 100 l_ex) and the mean wall path
   s = V_sw/A_w per half cycle (Bertotti's active magnetic objects; synthetic:

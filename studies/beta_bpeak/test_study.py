@@ -241,3 +241,14 @@ def test_wall_path_and_correlation_length():
     st1, _ = domains.synthetic_state("ripple", 3.0, d=300.0, ripple_deg=13.0, ripple_corr=1.0)
     st8, _ = domains.synthetic_state("ripple", 3.0, d=300.0, ripple_deg=13.0, ripple_corr=8.0)
     assert domains.correlation_length(st8) > 3 * domains.correlation_length(st1)
+
+
+def test_rotation_test_separates_180_walls_at_1um():
+    """F90 at d = 300: one 180 deg wall (selftest 12.3 %) is well above a vortex (4.3 %) and a
+    helix (0 %)."""
+    import domains
+    def f90(kind, **kw):
+        st, _ = domains.synthetic_state(kind, 3.0, d=300.0, **kw)
+        return (domains.rotation_angles(st, window_leff=domains.W_ROT, n_lines=800) > 90.0).mean()
+    wall, vortex, helix = f90("single180", ripple_deg=13.0), f90("vortex"), f90("helix")
+    assert wall > 2.0 * vortex and helix < 0.01 and wall > 0.08

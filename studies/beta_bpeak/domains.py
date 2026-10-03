@@ -44,6 +44,17 @@ direction clusters was tested and archived: tag archive/domains-segmentation-202
   4. With the 4 phases of one cycle: half-cycle switched volume and the mean wall path
      s = V_sw / A_w (Bertotti: active wall area and its path set the excess loss).
      Synthetic: 3 walls moved by 6 l_ex give s = 5.4 l_ex (-9 % from CAL).
+  5. Rotation test F90: share of windows (length 1.5 pi L_eff along random lines, inside one
+     particle, m smoothed over 0.5 L_eff) in which m turns by more than 90 deg. A 180 deg wall
+     turns m by up to ~170 deg over this length; ripple and continuous rotation turn it less
+     if the particle is much larger than the window. Synthetic F90 [%]:
+                    vortex  helix  one 180 wall  three 180 walls
+         d = 300     4.3     0.0      12.3          37
+         d = 212     9.4     6.9      18.4          54
+         d <= 150   22 ... 65 (no separation)
+     Thus at d = 300: F90 well above ~5 % means 180 deg walls; at d = 212 the margin is only ~2x;
+     below d ~ 200 F90 does not separate. 90 deg walls are not detected (F90 = 0.9 %); in the model
+     the anisotropy is uniaxial, so 180 deg walls are the main type. dx 3 and 1.5 agree.
 Long-wave ripple (correlation 2 ... 8 L_eff, as at small internal fields): with walls,
 T(2 L_eff)/A stays 0.91 ... 0.94; without walls the ripple alone gives T(2 L_eff) =
 0.04 ... 0.17 of the area of 3 walls (d = 300), a floor of up to ~0.4 wall discs.
@@ -70,6 +81,7 @@ from scipy import ndimage
 WIDTHS = (0.0, 0.5, 1.0, 2.0, 3.0, 4.0)      # smoothing widths / L_eff
 W_WALL = 2.0                                  # width of the wall measure / L_eff
 W_SW = 1.0                                    # width of the switched volume / L_eff
+W_ROT = 1.5 * math.pi                         # window of the rotation test / L_eff (1.5 wall widths)
 CAL = 0.85                                    # T(2 L_eff) / true wall area (selftest: 0.75 ... 0.95, see below)
 
 
@@ -166,8 +178,10 @@ def measures(st, widths=WIDTHS):
         T[w] = float(g.sum() * dx ** 3 / math.pi)
     ms = smooth_m(st["m"], ids, W_WALL * L / dx)
     ang = np.degrees(np.arccos(np.clip((st["m"] * ms).sum(-1)[mask], -1, 1)))
+    rot = rotation_angles(st, window_leff=W_ROT)
     return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
-            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2))), "l_C": correlation_length(st)}
+            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2))), "l_C": correlation_length(st),
+            "F90": float((rot > 90.0).mean()), "F60": float((rot > 60.0).mean())}
 
 
 def correlation_length(st):
@@ -197,6 +211,35 @@ def correlation_length(st):
     return float(rb[below[0]]) if len(below) else float("nan")
 
 
+def rotation_angles(st, window_leff=math.pi, smooth_leff=0.5, n_lines=3000, seed=0):
+    """Net rotation angle of m over a window of length window_leff * L_eff along random lines
+    (the window lies inside one particle). m is smoothed over smooth_leff * L_eff first.
+    A wall turns m by its wall angle over about one wall width (pi L_eff); ripple, a helix or a
+    vortex away from its core turn m much less over the same length. Returns angles in deg."""
+    ids, dx, L = st["ids"], st["dx"], st["Leff"]
+    ms = smooth_m(st["m"], ids, smooth_leff * L / dx)
+    N = ids.shape[0]
+    rng = np.random.default_rng(seed)
+    step = 0.5
+    nw = int(round(window_leff * L / dx / step))
+    n_s = 4 * N
+    out = []
+    for _ in range(n_lines):
+        v = rng.normal(size=3)
+        v /= np.linalg.norm(v)
+        pts = rng.uniform(0, N, size=3)[None, :] + np.arange(n_s)[:, None] * step * v[None, :]
+        idx = np.floor(pts).astype(int) % N
+        pid = ids[idx[:, 0], idx[:, 1], idx[:, 2]]
+        mm = ms[idx[:, 0], idx[:, 1], idx[:, 2]]
+        same = pid[:-nw] >= 0
+        # the window must stay inside one particle: no void sample between both ends
+        bad = np.convolve((pid < 0).astype(int), np.ones(nw + 1, dtype=int), "valid") > 0
+        ok = same & ~bad & (pid[:-nw] == pid[nw:])
+        c = np.clip((mm[:-nw] * mm[nw:]).sum(-1), -1.0, 1.0)
+        out.append(np.degrees(np.arccos(c[ok])))
+    return np.concatenate(out)
+
+
 def switched_volume(sa, sb, w=W_SW):
     ma = smooth_m(sa["m"], sa["ids"], w * sa["Leff"] / sa["dx"])
     mb = smooth_m(sb["m"], sb["ids"], w * sb["Leff"] / sb["dx"])
@@ -222,8 +265,8 @@ def analyze(states):
 
 def report(res):
     for r in res["states"]:
-        print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg"
-              % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"]))
+        print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg   F90 %.1f %%"
+              % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"], 100 * r["F90"]))
         print("   T(w) [l_ex^2]: " + "  ".join("w=%g: %.4g" % (w, t) for w, t in r["T"].items())
               + "   l_C %.1f l_ex" % r["l_C"])
     if res["switched"]:
@@ -277,14 +320,14 @@ def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=
             mz = np.exp(-(rho / Leff) ** 2)
             t = np.sqrt(1 - mz ** 2) / np.maximum(rho, 1e-9)
             m = np.stack([-Y * t, X * t, mz], -1)
-    elif kind in ("slab180", "slab90"):
+    elif kind in ("slab180", "slab90", "single180"):
         s = X * n[0] + Y * n[1] + Z * n[2]
-        pos = (-0.45 * R, 0.0, 0.4 * R)
-        f = 1.0 if kind == "slab180" else 0.5
+        pos = (0.0,) if kind == "single180" else (-0.45 * R, 0.0, 0.4 * R)
+        f = 0.5 if kind == "slab90" else 1.0
         th = sum(f * prof(s - p - shift) for p in pos)
         truth["A_geo"] = sum(math.pi * (R ** 2 - (p + shift) ** 2) for p in pos)
         truth["A"] = f * truth["A_geo"]
-        if kind == "slab180":
+        if kind != "slab90":
             truth["V_rev"] = sum(abs(cap(p + shift) - cap(p)) for p in pos)
     elif kind == "bubble":
         r0 = 0.3 * d + shift
