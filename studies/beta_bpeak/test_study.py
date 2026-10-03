@@ -228,3 +228,16 @@ def test_texture_no_leak_between_particles():
         m[ids == p] = dirs[p]
     st = domains.make_state(m, ids, 3.0, 12.0, "uniform particles")
     assert domains.measures(st, widths=(domains.W_WALL,))["T"][domains.W_WALL] < 1.0
+
+
+def test_wall_path_and_correlation_length():
+    """Half-cycle wall path s = V_sw / A_w for 3 walls moved by 6 l_ex (selftest: 5.4, the
+    calibration CAL of A_w gives -9 %); l_C grows with the ripple correlation length."""
+    import domains
+    a, _ = _dom_state("slab180", ripple=13.0)
+    b, _ = _dom_state("slab180", ripple=13.0, shift=6.0)
+    s = domains.analyze([a, a, b, b])["half_cycle"]["wall_path"][0]
+    assert 6.0 * 0.85 < s < 6.0 * 1.15
+    st1, _ = domains.synthetic_state("ripple", 3.0, d=300.0, ripple_deg=13.0, ripple_corr=1.0)
+    st8, _ = domains.synthetic_state("ripple", 3.0, d=300.0, ripple_deg=13.0, ripple_corr=8.0)
+    assert domains.correlation_length(st8) > 3 * domains.correlation_length(st1)

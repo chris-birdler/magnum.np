@@ -37,6 +37,18 @@ direction clusters was tested and archived: tag archive/domains-segmentation-202
      Noise floor: a ripple pattern that changes completely between a and b
      gives V_sw = 0.06 V (selftest, 20 deg); in the model the ripple is tied to
      the fixed cubes.
+  3. Correlation length l_C (1/e length of the autocorrelation of m - <m> inside each
+     particle), the analogue of the spin-misalignment correlation length of magnetic SANS
+     (Michels: l_C = L + l_H(H)). Synthetic: ripple 15 / 48 / 78 l_ex for a correlation of
+     1 / 4 / 8 L_eff, 180 deg walls 48, bubble 63, vortex 102, helix 96 l_ex.
+  4. With the 4 phases of one cycle: half-cycle switched volume and the mean wall path
+     s = V_sw / A_w (Bertotti: active wall area and its path set the excess loss).
+     Synthetic: 3 walls moved by 6 l_ex give s = 5.4 l_ex (-9 % from CAL).
+Long-wave ripple (correlation 2 ... 8 L_eff, as at small internal fields): with walls,
+T(2 L_eff)/A stays 0.91 ... 0.94; without walls the ripple alone gives T(2 L_eff) =
+0.04 ... 0.17 of the area of 3 walls (d = 300), a floor of up to ~0.4 wall discs.
+No Porod q^-4 range exists for these walls (width pi L_eff, spacing ~5 L_eff): the
+structure factor does not separate walls from a continuous rotation either.
 Smoothing runs inside each particle separately: the kernel is wider than the
 gaps between the particles (test: 4 uniform particles give T = 0).
 
@@ -155,7 +167,34 @@ def measures(st, widths=WIDTHS):
     ms = smooth_m(st["m"], ids, W_WALL * L / dx)
     ang = np.degrees(np.arccos(np.clip((st["m"] * ms).sum(-1)[mask], -1, 1)))
     return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
-            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2)))}
+            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2))), "l_C": correlation_length(st)}
+
+
+def correlation_length(st):
+    """l_C [l_ex]: distance at which the autocorrelation of dm = m - <m>_particle (inside each
+    particle, normalized by the overlap of the particle with itself) falls to 1/e. The analogue of
+    the correlation length of the spin misalignment in magnetic SANS (Michels)."""
+    ids, dx = st["ids"], st["dx"]
+    N = ids.shape[0]
+    num = np.zeros((N, N, N))
+    den = np.zeros((N, N, N))
+    for p in np.unique(ids[ids >= 0]):
+        w = (ids == p).astype(np.float64)
+        dm = (st["m"] - st["m"][ids == p].mean(0)) * w[..., None]
+        for i in range(3):
+            F = np.fft.rfftn(dm[..., i])
+            num += np.fft.irfftn(F * np.conj(F), s=(N, N, N))
+        Fw = np.fft.rfftn(w)
+        den += np.fft.irfftn(Fw * np.conj(Fw), s=(N, N, N))
+    k = np.minimum(np.arange(N), N - np.arange(N)) * dx
+    r = np.sqrt(k[:, None, None] ** 2 + k[None, :, None] ** 2 + k[None, None, :] ** 2).ravel()
+    ok = den.ravel() > 0.2 * den.flat[0]                   # enough overlap for a stable estimate
+    rb = np.arange(0.0, r[ok].max(), dx)
+    idx = np.digitize(r[ok], rb)
+    C = np.bincount(idx, weights=num.ravel()[ok]) / np.maximum(np.bincount(idx, weights=den.ravel()[ok]), 1e-30)
+    C = C[1:len(rb)] / C[1]
+    below = np.nonzero(C < math.exp(-1.0))[0]
+    return float(rb[below[0]]) if len(below) else float("nan")
 
 
 def switched_volume(sa, sb, w=W_SW):
@@ -166,9 +205,18 @@ def switched_volume(sa, sb, w=W_SW):
 
 
 def analyze(states):
+    """With the 4 phases of one cycle (H max, H = 0 falling, H min, H = 0 rising): half-cycle
+    switched volume (H max -> H min and back) and the mean wall path s = V_sw / A_w (Bertotti:
+    the active wall area and its path set the excess loss)."""
     res = {"states": [measures(st) for st in states]}
     n = len(states)
     res["switched"] = [switched_volume(states[i], states[(i + 1) % n]) for i in range(n)] if n > 1 else []
+    if n == 4:
+        r = res["states"]
+        half = [switched_volume(states[0], states[2]), switched_volume(states[1], states[3])]
+        A = 0.5 * (r[0]["A_w"] + r[2]["A_w"])
+        res["half_cycle"] = {"V_sw": half, "A_w_mean": A,
+                             "wall_path": [v / A if A > 0 else float("nan") for v in half]}
     return res
 
 
@@ -176,19 +224,27 @@ def report(res):
     for r in res["states"]:
         print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg"
               % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"]))
-        print("   T(w) [l_ex^2]: " + "  ".join("w=%g: %.4g" % (w, t) for w, t in r["T"].items()))
+        print("   T(w) [l_ex^2]: " + "  ".join("w=%g: %.4g" % (w, t) for w, t in r["T"].items())
+              + "   l_C %.1f l_ex" % r["l_C"])
     if res["switched"]:
         V = res["states"][0]["V"]
         print("switched volume to the next state (cyclic): " +
               "  ".join("%.4g (%.1f %%)" % (v, 100 * v / V) for v in res["switched"]))
+    if "half_cycle" in res:
+        h = res["half_cycle"]
+        print("half cycle (H max <-> H min, H = 0 falling <-> rising): V_sw %s l_ex^3, mean wall path "
+              "s = V_sw/A_w = %s l_ex" % (" / ".join("%.4g" % v for v in h["V_sw"]),
+                                         " / ".join("%.2f" % x for x in h["wall_path"])))
 
 
 # --- synthetic states with known walls ------------------------------------------
 
 def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=0.0,
-                    normal=(0.31, 0.52, 0.80), wall_factor=1.0):
+                    normal=(0.31, 0.52, 0.80), wall_factor=1.0, ripple_corr=1.0):
     """One sphere (diameter d) in a box. Walls have the profile theta = 2 atan(exp(s / L_eff))
-    (width pi L_eff; wall_factor scales it). shift moves all walls (switched-volume test). Returns (state, truth) with
+    (width pi L_eff; wall_factor scales it). The ripple is a random field on cubes of edge L_eff,
+    smoothed by a Gaussian of width ripple_corr L_eff / 2 (ripple_corr > 1: long-wave ripple, as at
+    small internal fields, l_C = L + l_H). shift moves all walls (switched-volume test). Returns (state, truth) with
     truth = {"A": wall area weighted by angle/180 deg (= expected T), "A_geo": wall area,
     "V_rev": reversed volume relative to shift = 0}.
       ripple  : uniform m, no wall           slab180: 3 parallel 180 deg walls (oblique)
@@ -244,7 +300,8 @@ def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=
         nc = int(math.ceil(a / Leff))
         ic = np.minimum((np.arange(N) * dx / Leff).astype(int), nc - 1)
         g = rng.normal(size=(nc, nc, nc, 3))[np.ix_(ic, ic, ic)]
-        g = np.stack([ndimage.gaussian_filter(g[..., i], 0.5 * Leff / dx, mode="wrap") for i in range(3)], -1)
+        g = np.stack([ndimage.gaussian_filter(g[..., i], 0.5 * ripple_corr * Leff / dx, mode="wrap")
+                      for i in range(3)], -1)
         g -= (g * m).sum(-1, keepdims=True) * m
         g /= np.sqrt(np.mean((g ** 2).sum(-1)[mask]))
         m = m + math.tan(math.radians(ripple_deg)) * g

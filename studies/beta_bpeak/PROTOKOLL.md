@@ -777,7 +777,23 @@ cubes of edge L_eff. A real state (d/l_ex 96, dx 3, converged relaxation,
 - The switched volume counts every change of m. It does not separate wall
   motion from rotation inside the domains.
 - Real state d/l_ex 96 (n = 1): T(2 L_eff) = 2.8·10⁴ l_ex², switched volume
-  per quarter cycle at 20 mT 1.0 … 1.9 % of V.
+  per quarter cycle at 20 mT 1.0 … 1.9 % of V, l_C = 36 l_ex, mean wall path
+  per half cycle 0.6 … 1.6 l_ex.
+
+Literature check and three extensions (2026-10-03):
+- Ripple at small fields is long-wave (magnetic SANS, Michels: l_C = L + l_H,
+  l_H = √(2A/(μ0 Ms H_i)); for our fields l_H ≈ 1 … 4 µm, estimate with the
+  applied field). Test with synthetic ripple of correlation 1 … 8 L_eff
+  (13° and 20°): with walls T(2 L_eff)/A = 0.91 … 0.94 (robust); without
+  walls the ripple alone gives 0.04 … 0.17 of the area of 3 walls (floor).
+- Porod law (S ∝ A/q⁴) as a second wall measure: no q⁻⁴ range for these
+  walls (width π L_eff, spacing ≈ 5 L_eff); walls, vortex and helix give the
+  same form of the structure factor. Not usable (negative result, as Michels
+  reports for nanocrystalline magnets).
+- Added: correlation length l_C (SANS analogue; synthetic ripple 15 … 78,
+  walls 48 … 63, vortex/helix ≈ 100 l_ex) and the mean wall path
+  s = V_sw/A_w per half cycle (Bertotti's active magnetic objects; synthetic:
+  5.4 for 6 l_ex, −9 % from the calibration).
 
 ### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
