@@ -77,6 +77,22 @@ clean; else it is corrected by the measured mesh share or Chris decides on a
 smoother surface. β (9 → 50 mT) only coarse (≈ ± 0.3).
 Cost: ≈ 31 V100-h ≈ 4 … 5 $ (9 M cells at dx = 1.5), ≈ 8 h on 4 GPUs.
 
+## 3c. Step 1c: surface roughness (smooth surface at dx = 3)
+
+Step 1b showed that the mesh error is not the same at both ends of the
+d/l_ex range, but not why. This test changes only the surface: surface cells
+carry their magnetic volume fraction f (`--surface fraction`; Ms, A, K_eff
+and K_p scaled with f; φ exact). Runs: d/l_ex 212 (seeds 911 … 914) and 300
+(seeds 1 … 3, one job per amplitude), 9 and 50 mT, all else as the
+staircase references (checked: only `surface` differs).
+- If the smooth dx = 3 moves to dx = 1.5 and the d-dependent difference
+  disappears: the staircase is the cause, and the smooth surface removes it
+  without extra cost (a model change: decision by Chris).
+- Else: the cause is in the interior (unresolved structures, walls).
+Note: the partial cells need a gap of ≈ 3 cells; with this surface φ ≤ 0.66
+at d/l_ex = 212 … 300 (φ = 0.69 gives contact).
+Cost ≈ 4.5 V100-h ≈ 0.5 $, chained after the α test.
+
 ## 4. Step 2: randomized design (go 2)
 
 ### 4.1 Factors and ranges

@@ -92,6 +92,9 @@ def parse_args(argv=None):
     g.add_argument("--dx_lex", type=float, default=3.0, help="cell size / l_ex")
     g.add_argument("--phi", type=float, default=0.65, help="packing fraction (exact; d is adjusted to the box quantum)")
     g.add_argument("--a_quant", type=float, default=12.0, help="box edge quantum / l_ex (0 = off)")
+    g.add_argument("--surface", choices=["voxel", "fraction"], default="voxel",
+                   help="voxel: staircase surface; fraction: surface cells carry their magnetic volume "
+                        "fraction f (8^3 samples); Ms, A, K_eff and K_p are scaled with f")
 
     g = p.add_argument_group("reduced material")
     g.add_argument("--Leff_lex", type=float, default=18.0,
@@ -265,7 +268,7 @@ def main(argv=None):
         warnings.warn("a = %g l_ex is not a multiple of dx = %g l_ex: a -> %g l_ex" % (a_lex, args.dx_lex, N * args.dx_lex))
         a_lex = N * args.dx_lex
     d, dx = d_lex * lex, args.dx_lex * lex
-    geo = fcc_box(N, d, dx)
+    geo = fcc_box(N, d, dx, sub=8 if args.surface == "fraction" else 0)
     ids = geo["ids"]
     mag = ids >= 0
     phi = geo["phi_vox"]
@@ -279,9 +282,10 @@ def main(argv=None):
         return torch.tensor(a, dtype=dt_, device=dev)
 
     mag4 = mag[..., None]
+    frac4 = geo["frac"].astype(np.float64)[..., None]     # 1 inside, f at the surface, 0 in the void
     state.material = {"alpha": args.alpha}
-    state.material["Ms"] = T(np.where(mag4, Ms, args.ms_void * Ms))
-    state.material["A"] = T(np.where(mag4, args.A, 0.0))
+    state.material["Ms"] = T(np.where(mag4, np.maximum(frac4 * Ms, args.ms_void * Ms), args.ms_void * Ms))
+    state.material["A"] = T(np.where(mag4, frac4 * args.A, 0.0))
 
     e_d = np.asarray(args.direction, float); e_d /= np.linalg.norm(e_d)
     L = args.Leff_lex
@@ -301,7 +305,7 @@ def main(argv=None):
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
         ax_c, n_cubes = cube_axes(ids, args.dx_lex, a_lex, d_lex, L, args.seed)
-        state.material["Ku"] = T(np.where(mag4, K_eff, 0.0))
+        state.material["Ku"] = T(np.where(mag4, frac4 * K_eff, 0.0))
         state.material["Ku_axis"] = T(ax_c)
         terms.append(UniaxialAnisotropyField())
         del ax_c
@@ -310,7 +314,7 @@ def main(argv=None):
         kp_ax = np.zeros((N, N, N, 3))
         for p in range(4):
             kp_ax[ids == p] = ax_p[p]
-        state.material["Kp"] = T(np.where(mag4, K_p, 0.0))
+        state.material["Kp"] = T(np.where(mag4, frac4 * K_p, 0.0))
         state.material["Kp_axis"] = T(kp_ax)
         terms.append(UniaxialAnisotropyField(Ku="Kp", Ku_axis="Kp_axis"))
         del kp_ax

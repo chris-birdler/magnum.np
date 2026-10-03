@@ -39,13 +39,16 @@ def a_from(d, phi):
     return d * (2.0 * math.pi / (3.0 * phi)) ** (1.0 / 3.0)
 
 
-def fcc_box(N, d, dx):
+def fcc_box(N, d, dx, sub=0):
     """
     Voxelize 4 spheres on the FCC sites of a periodic cube.
 
     :param N:  number of cells per edge (the same in x, y, z)
     :param d:  sphere diameter [m]
     :param dx: cell size [m]  (edge length a = N * dx)
+    :param sub: 0 = staircase surface (a cell is in the sphere if its centre is);
+                > 0 = volume fraction of each surface cell from sub^3 sample points
+                ("frac"; cells with frac > 0 belong to the particle)
     :returns: dict with
         "ids"       int8 array [N,N,N], -1 = void, 0..3 = particle index
         "a"         edge length [m]
@@ -53,6 +56,8 @@ def fcc_box(N, d, dx):
         "phi_vox"   packing fraction of the voxel model
         "gap_nom"   nominal surface gap between nearest neighbours [m]
         "d_cells"   sphere diameter in cells
+        "frac"      float32 array [N,N,N]: magnetic volume fraction per cell
+                    (0 or 1 for sub = 0)
     """
     a = N * dx
     gap = a / math.sqrt(2.0) - d
@@ -64,15 +69,37 @@ def fcc_box(N, d, dx):
     X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
 
     ids = -np.ones((N, N, N), dtype=np.int8)
-    r2 = (0.5 * d) ** 2
+    frac = np.zeros((N, N, N), dtype=np.float32)
+    R = 0.5 * d
+    r2 = R ** 2
+    if sub > 0:
+        q = (np.arange(sub) + 0.5) / sub - 0.5                     # sample offsets in a cell (units of dx)
+        QX, QY, QZ = [g.reshape(-1) * dx for g in np.meshgrid(q, q, q, indexing="ij")]
     for p, s in enumerate(FCC_SITES * a):
         # minimum-image distance (periodic box)
         ddx = X - s[0]; ddx -= a * np.round(ddx / a)
         ddy = Y - s[1]; ddy -= a * np.round(ddy / a)
         ddz = Z - s[2]; ddz -= a * np.round(ddz / a)
-        inside = ddx**2 + ddy**2 + ddz**2 <= r2
-        if np.any(ids[inside] >= 0):
-            raise ValueError("Voxelized spheres overlap (particle %d)." % p)
+        rr = ddx**2 + ddy**2 + ddz**2
+        if sub > 0:
+            r = np.sqrt(rr)
+            half = 0.5 * math.sqrt(3.0) * dx
+            full = r <= R - half
+            edge = np.abs(r - R) < half
+            ex, ey, ez = ddx[edge][:, None] + QX, ddy[edge][:, None] + QY, ddz[edge][:, None] + QZ
+            fe = np.mean(ex**2 + ey**2 + ez**2 <= r2, axis=1).astype(np.float32)
+            fp = np.zeros((N, N, N), dtype=np.float32)
+            fp[full] = 1.0
+            fp[edge] = fe
+            inside = fp > 0.0
+            if np.any(ids[inside] >= 0):
+                raise ValueError("Surface cells of two spheres overlap (particle %d)." % p)
+            frac[inside] = fp[inside]
+        else:
+            inside = rr <= r2
+            if np.any(ids[inside] >= 0):
+                raise ValueError("Voxelized spheres overlap (particle %d)." % p)
+            frac[inside] = 1.0
         ids[inside] = p
 
     _check_no_contact(ids)
@@ -80,9 +107,10 @@ def fcc_box(N, d, dx):
     return {"ids": ids,
             "a": a,
             "phi_nom": phi_from(d, a),
-            "phi_vox": float(np.mean(ids >= 0)),
+            "phi_vox": float(np.mean(frac)),
             "gap_nom": gap,
-            "d_cells": d / dx}
+            "d_cells": d / dx,
+            "frac": frac}
 
 
 def _check_no_contact(ids):

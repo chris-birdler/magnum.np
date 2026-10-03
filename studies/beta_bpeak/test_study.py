@@ -155,3 +155,18 @@ def test_cube_axes_depend_on_seed():
     ax2 = cube_axes(g["ids"], 3.0, a, d, 18.0, seed=2)[0]
     assert not np.array_equal(ax1, ax2)
 
+
+
+def test_volume_fraction_surface():
+    """surface = fraction: the packing fraction is exact, fractions lie in [0, 1],
+    the interior is 1, and the staircase variant is unchanged (frac 0 or 1)."""
+    a, d = box_edge(212.0, 0.65)            # the partial cells need a gap of about 3 cells
+    N = int(round(a / 3.0))
+    g0 = fcc_box(N, d, 3.0)
+    g8 = fcc_box(N, d, 3.0, sub=8)
+    assert set(np.unique(g0["frac"])) <= {0.0, 1.0}
+    assert np.all((g8["frac"] >= 0.0) & (g8["frac"] <= 1.0))
+    assert abs(g8["phi_vox"] - phi_from(d, a)) < 2e-3
+    inner = (g0["ids"] >= 0) & (g8["frac"] < 1.0)
+    assert inner.sum() < 0.2 * (g0["ids"] >= 0).sum()      # only the surface layer is partial
+    assert np.all(g8["ids"][g8["frac"] > 0] >= 0)
