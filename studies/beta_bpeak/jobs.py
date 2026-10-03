@@ -35,6 +35,9 @@ Groups:
   freqtest  PLAN.md step 1: d/l_ex 300, dx 3, virgin state, alpha 0.1, 7 amplitudes
             9 ... 150 mT; f and 2 f; base point (L_eff 12, r_p 0, seeds 901-904)
             and corner (L_eff 30, r_p 3, seeds 905-908).
+  relaxtest virgin state relaxed to convergence (--relax_mode converge): d/l_ex 300,
+            dx 3, base point, alpha 0.1 and 0.01, seeds 901-903, 9 and 20 mT; compare
+            the 9 mT energy balance and loss with F_base_f_* and A010_* (fixed relax).
   smoothtest surface roughness: dx 3 with a volume-fraction surface (--surface fraction)
             at d/l_ex 212 (seeds 911-914, as R212_*) and 300 (seeds 1-3, one job per
             amplitude, as P1_d300_dx3_*); compare with the staircase dx 3 and dx 1.5.
@@ -203,6 +206,12 @@ def matrix():
     for al in (0.01, 0.03):
         for sd in (901, 902, 903):
             alphatest.append(job(AT, "A%03.0f_s%d" % (al * 1000, sd), seed=sd, alpha=al))
+    relaxtest = []
+    RX = dict(PROD, Leff_lex=12.0, r_p=0.0, b_list=b_of_mT(9, 20), n_amp=2,
+              relax_mode="converge", relax_maxiter=50000, relax_chunk=500, relax_tol_E=1e-6)
+    for al in (0.1, 0.01):
+        for sd in (901, 902, 903):
+            relaxtest.append(job(RX, "X%03.0f_s%d" % (al * 1000, sd), seed=sd, alpha=al))
     smoothtest = []
     for sd in (911, 912, 913, 914):
         smoothtest.append(job(RT, "S212_dx3f_s%d" % sd, seed=sd, dx_lex=3.0, surface="fraction"))
@@ -213,7 +222,7 @@ def matrix():
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
             "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "alphatest": alphatest,
-            "smoothtest": smoothtest, "pilot": pilot}
+            "smoothtest": smoothtest, "relaxtest": relaxtest, "pilot": pilot}
 
 
 def n_cells(a):

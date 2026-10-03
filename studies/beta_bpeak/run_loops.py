@@ -134,6 +134,12 @@ def parse_args(argv=None):
                    help="acdemag: end amplitude H/Ms (default 0.3 x the first stage estimate)")
     g.add_argument("--relax_maxiter", type=int, default=5000, help="virgin: iterations of 1e-11 s at alpha = 1")
     g.add_argument("--relax_dm_tol", type=float, default=100.0, help="virgin: max |dm/dt|/gamma [A/m] to stop")
+    g.add_argument("--relax_mode", choices=["fixed", "converge"], default="fixed",
+                   help="virgin: fixed = magnum.np relax (max torque < relax_dm_tol or relax_maxiter); "
+                        "converge = chunks of relax_chunk iterations until the relative energy change per "
+                        "chunk < relax_tol_E (the max torque stays large at unresolved structures)")
+    g.add_argument("--relax_chunk", type=int, default=500)
+    g.add_argument("--relax_tol_E", type=float, default=1e-6)
     g.add_argument("--h_max", type=float, default=None, help="largest measured H/Ms (default (1-phi)/3)")
     g.add_argument("--h_factor", type=float, default=0.5)
     g.add_argument("--n_amp", type=int, default=9)
@@ -245,7 +251,7 @@ def main(argv=None):
 
     from magnumnp import (set_precision, set_log_level, Mesh, State, constants, Timer,
                           DemagFieldPBC, ExchangeField, UniaxialAnisotropyField,
-                          LLGSolver, accumulate_h, write_vti)
+                          LLGSolver, accumulate_h, write_vti, normalize)
     import torch
     set_log_level(25)
     set_precision(args.precision)
@@ -416,7 +422,41 @@ def main(argv=None):
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()
-        if args.protocol == "virgin_asc":
+        if args.protocol == "virgin_asc" and args.relax_mode == "converge":
+            # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
+            # energy does not change any more (relative change per chunk < relax_tol_E)
+            magf = torch.tensor(mag.reshape(-1), device=dev)
+            hist, E_prev, it, converged = [], None, 0, False
+            while it < args.relax_maxiter:
+                for _ in range(args.relax_chunk):
+                    state.t, state.m = llg._solver.step(state.t, state.m, 1e-11, state=state, alpha=1.0)
+                normalize(state.m)
+                it += args.relax_chunk
+                with torch.no_grad():
+                    tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
+                          / constants.gamma)
+                    E = float(llg.E(state))
+                rel = abs(E - E_prev) / abs(E) if E_prev is not None and E != 0 else float("nan")
+                hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel,
+                             "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max())})
+                print("[relax] it %6d  E/K_d %.6g  rel dE %.2e  torque rms %.3g  max %.3g A/m" %
+                      (it, hist[-1]["E_over_Kd"], rel, hist[-1]["torque_rms"], hist[-1]["torque_max"]), flush=True)
+                if rel < args.relax_tol_E:
+                    converged = True
+                    break
+                E_prev = E
+            Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
+            summary["init"] = {"protocol": args.protocol, "relax_mode": "converge", "relax_converged": converged,
+                               "relax_iterations": it, "relax_history": hist,
+                               "E_over_Kd": hist[-1]["E_over_Kd"],
+                               "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
+                               "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
+                               "wall_s": time.time() - t_w}
+            print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
+                  (converged, it, summary["init"]["wall_s"]), flush=True)
+            if not converged:
+                warnings.warn("virgin state not converged within --relax_maxiter")
+        elif args.protocol == "virgin_asc":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
             converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))
             Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()

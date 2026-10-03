@@ -93,6 +93,23 @@ Note: the partial cells need a gap of ≈ 3 cells; with this surface φ ≤ 0.66
 at d/l_ex = 212 … 300 (φ = 0.69 gives contact).
 Cost ≈ 4.5 V100-h ≈ 0.5 $, chained after the α test.
 
+## 3d. Step 1d: relaxation of the virgin state to convergence
+
+Finding (2026-10-03): at d/l_ex = 300 the 9 mT stage is not steady in all
+earlier runs: w_dis/w_loop = 2 … 76 (α = 0.1) and 17 … 44 (α = 0.01); at
+d/l_ex = 96 it is 1.1 … 1.3. Cause: the relaxation of the virgin state stops
+after 5000 iterations without convergence; the stop criterion (max torque <
+100 A/m) cannot be met at dx = 3 because the unresolved structures keep a
+large local torque. The particle keeps relaxing during the 9 mT cycles.
+Consequence: all 9 mT values at 1 µm so far are not reliable (and β at
+10 mT). From 20 mT the balance is ≈ 1.
+Fix: `--relax_mode converge` (chunks of 500 iterations at α = 1 until the
+relative energy change per chunk < 10⁻⁶; RMS torque logged). CPU check:
+converged, then w_dis/w_loop = 1.01 at the first amplitude.
+Test: d/l_ex 300, dx 3, base point, α 0.1 and 0.01, seeds 901 … 903, 9 and
+20 mT; rule: w_dis/w_loop at 9 mT within 0.9 … 1.1 in the kept cycles.
+Cost ≲ 13 V100-h ≈ 1.5 $, chained after step 1c.
+
 ## 4. Step 2: randomized design (go 2)
 
 ### 4.1 Factors and ranges
