@@ -179,8 +179,8 @@ def _dom_state(kind, dx=3.0, ripple=20.0, shift=0.0, seed=0):
     import domains
     st, tr = domains.synthetic_state(kind, dx, d=300.0, ripple_deg=ripple, shift=shift, seed=seed)
     if dx < 3.0:
-        m, mk = domains.coarsen_state(st["m"], st["mask"], int(round(3.0 / dx)))
-        st = dict(st, m=m, mask=mk, dx=3.0)
+        m, ic = domains.coarsen_state(st["m"], st["ids"], int(round(3.0 / dx)))
+        st = domains.make_state(m, ic, 3.0, st["Leff"], st["name"])
     return st, tr
 
 
@@ -209,3 +209,22 @@ def test_switched_volume_linear_in_wall_shift(kind):
     a, _ = _dom_state(kind)
     b, tr = _dom_state(kind, shift=6.0)
     assert abs(domains.switched_volume(a, b) / tr["V_rev"] - 1.0) < 0.1
+
+
+def test_texture_no_leak_between_particles():
+    """FCC cell of the study (d/l_ex 300, phi 0.65, dx 3): four uniform particles with different
+    directions have no wall; the smoothing kernel is wider than the gaps (before the fix: T(2 L_eff)
+    = 4.2e4 l_ex^2, about 25 % of a typical wall area)."""
+    import domains
+    from geometry import fcc_box
+    from anisotropy_model import box_edge
+    lex = 3.34e-9
+    N = int(round(box_edge(300.0, 0.65)[0] / 3.0))
+    ids = fcc_box(N, 300.0 * lex, 3.0 * lex)["ids"]
+    dirs = np.random.default_rng(1).normal(size=(4, 3))
+    dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
+    m = np.zeros(ids.shape + (3,), np.float32)
+    for p in range(4):
+        m[ids == p] = dirs[p]
+    st = domains.make_state(m, ids, 3.0, 12.0, "uniform particles")
+    assert domains.measures(st, widths=(domains.W_WALL,))["T"][domains.W_WALL] < 1.0

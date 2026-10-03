@@ -57,7 +57,7 @@ CAL = 0.91                                    # T(2 L_eff) / true wall area (sel
 # --- input -----------------------------------------------------------------
 
 def load_state(path, coarsen=1):
-    """m [N,N,N,3], mask [N,N,N] (bool), dx (l_ex), Leff (l_ex)."""
+    """m [N,N,N,3], ids [N,N,N] (particle index, -1 = void), mask = ids >= 0, dx, Leff (l_ex)."""
     path = pathlib.Path(path)
     run = path.parent
     cfg = json.loads((run / "config.json").read_text())
@@ -67,46 +67,54 @@ def load_state(path, coarsen=1):
         m = np.asarray(pv.read(str(path)).cell_data["m"], dtype=np.float32).reshape((N, N, N, 3), order="F")
         g = run / "geometry.vti"
         if g.exists():
-            ids = np.asarray(pv.read(str(g)).cell_data["particle"]).reshape((N, N, N), order="F")
-            mask = np.rint(ids) >= 0
+            ids = np.rint(np.asarray(pv.read(str(g)).cell_data["particle"])).reshape((N, N, N), order="F")
         else:
-            mask = _mask_from_config(cfg)
+            ids = _ids_from_config(cfg)
     else:
         import torch
         m = torch.load(str(path), map_location="cpu")["m"].float().numpy()
-        mask = _mask_from_config(cfg)
+        ids = _ids_from_config(cfg)
+    ids = ids.astype(np.int8)
     if coarsen > 1:
-        m, mask = coarsen_state(m, mask, coarsen)
+        m, ids = coarsen_state(m, ids, coarsen)
         dx *= coarsen
-    return {"m": m, "mask": mask, "dx": dx, "Leff": Leff, "name": str(path)}
+    return make_state(m, ids, dx, Leff, str(path))
 
 
-def _mask_from_config(cfg):
+def make_state(m, ids, dx, Leff, name):
+    return {"m": m, "ids": ids, "mask": ids >= 0, "dx": dx, "Leff": Leff, "name": name}
+
+
+def _ids_from_config(cfg):
     from geometry import fcc_box
-    return fcc_box(cfg["N_used"], cfg["d"], cfg["dx"])["ids"] >= 0
+    return fcc_box(cfg["N_used"], cfg["d"], cfg["dx"])["ids"]
 
 
-def coarsen_state(m, mask, c):
-    """Block average by c (for example dx 1.5 -> 3: the same analysis grid on both meshes)."""
+def coarsen_state(m, ids, c):
+    """Block average by c (for example dx 1.5 -> 3: the same analysis grid on both meshes).
+    A coarse cell belongs to the particle that fills at least half of it."""
     N = m.shape[0] // c
     b = lambda a: a[:N * c, :N * c, :N * c].reshape(N, c, N, c, N, c, *a.shape[3:])
-    mm = b(m * mask[..., None]).sum(axis=(1, 3, 5))
-    mk = b(mask.astype(np.float32)).mean(axis=(1, 3, 5)) >= 0.5
+    mm = b(m * (ids >= 0)[..., None]).sum(axis=(1, 3, 5))
     mm /= np.maximum(np.linalg.norm(mm, axis=-1, keepdims=True), 1e-12)
-    return np.where(mk[..., None], mm, 0.0).astype(np.float32), mk
+    idc = np.full((N, N, N), -1, dtype=np.int8)
+    for p in np.unique(ids[ids >= 0]):
+        idc[b((ids == p).astype(np.float32)).mean(axis=(1, 3, 5)) >= 0.5] = p
+    return np.where((idc >= 0)[..., None], mm, 0.0).astype(np.float32), idc
 
 
 # --- field operations (periodic box) ------------------------------------------
 
-def grad_norm(f, mask, dx):
-    """|grad f| per cell from differences between face neighbours inside the particles (mean of
+def grad_norm(f, ids, dx):
+    """|grad f| per cell from differences between face neighbours in the same particle (mean of
     the forward and the backward difference that exist). f: [N,N,N,3]."""
+    mask = ids >= 0
     g2 = np.zeros(mask.shape, dtype=np.float64)
     for ax in range(3):
         acc = np.zeros(mask.shape, dtype=np.float64)
         cnt = np.zeros(mask.shape, dtype=np.float64)
         for s in (-1, 1):
-            ok = mask & np.roll(mask, s, axis=ax)
+            ok = mask & (np.roll(ids, s, axis=ax) == ids)
             d = np.roll(f, s, axis=ax) - f
             acc += np.where(ok, (d * d).sum(-1), 0.0)
             cnt += ok
@@ -114,34 +122,38 @@ def grad_norm(f, mask, dx):
     return np.where(mask, np.sqrt(g2) / dx, 0.0)
 
 
-def smooth_m(m, mask, sigma_cells):
-    """Gaussian smoothing inside the particles (normalized convolution), then |m| = 1."""
+def smooth_m(m, ids, sigma_cells):
+    """Gaussian smoothing inside EACH particle separately (normalized convolution; the kernel is
+    wider than the gaps, so m of a neighbour particle must not enter), then |m| = 1."""
     if sigma_cells <= 0:
         return m
-    w = mask.astype(np.float32)
-    s = np.stack([ndimage.gaussian_filter(m[..., i] * w, sigma_cells, mode="wrap") for i in range(3)], -1)
-    s /= np.maximum(np.linalg.norm(s, axis=-1, keepdims=True), 1e-12)
-    return np.where(mask[..., None], s, 0.0).astype(np.float32)
+    out = np.zeros_like(m, dtype=np.float32)
+    for p in np.unique(ids[ids >= 0]):
+        w = (ids == p).astype(np.float32)
+        s = np.stack([ndimage.gaussian_filter(m[..., i] * w, sigma_cells, mode="wrap") for i in range(3)], -1)
+        s /= np.maximum(np.linalg.norm(s, axis=-1, keepdims=True), 1e-12)
+        out[ids == p] = s[ids == p]
+    return out
 
 
 def measures(st, widths=WIDTHS):
     widths = tuple(sorted(set(widths) | {W_WALL}))
     """Texture T(w), wall area A_w, localization P, ripple estimate of one state."""
-    dx, L, mask = st["dx"], st["Leff"], st["mask"]
+    dx, L, mask, ids = st["dx"], st["Leff"], st["mask"], st["ids"]
     V = float(mask.sum() * dx ** 3)
     T = {}
     for w in widths:
-        g = grad_norm(smooth_m(st["m"], mask, w * L / dx), mask, dx)
+        g = grad_norm(smooth_m(st["m"], ids, w * L / dx), ids, dx)
         T[w] = float(g.sum() * dx ** 3 / math.pi)
-    ms = smooth_m(st["m"], mask, W_WALL * L / dx)
+    ms = smooth_m(st["m"], ids, W_WALL * L / dx)
     ang = np.degrees(np.arccos(np.clip((st["m"] * ms).sum(-1)[mask], -1, 1)))
     return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
             "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2)))}
 
 
 def switched_volume(sa, sb, w=W_SW):
-    ma = smooth_m(sa["m"], sa["mask"], w * sa["Leff"] / sa["dx"])
-    mb = smooth_m(sb["m"], sb["mask"], w * sb["Leff"] / sb["dx"])
+    ma = smooth_m(sa["m"], sa["ids"], w * sa["Leff"] / sa["dx"])
+    mb = smooth_m(sb["m"], sb["ids"], w * sb["Leff"] / sb["dx"])
     ang = np.arccos(np.clip((ma * mb).sum(-1), -1.0, 1.0))
     return float((ang / math.pi)[sa["mask"]].sum() * sa["dx"] ** 3)
 
@@ -167,9 +179,9 @@ def report(res):
 # --- synthetic states with known walls ------------------------------------------
 
 def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=0.0,
-                    normal=(0.31, 0.52, 0.80)):
+                    normal=(0.31, 0.52, 0.80), wall_factor=1.0):
     """One sphere (diameter d) in a box. Walls have the profile theta = 2 atan(exp(s / L_eff))
-    (width pi L_eff). shift moves all walls (switched-volume test). Returns (state, truth) with
+    (width pi L_eff; wall_factor scales it). shift moves all walls (switched-volume test). Returns (state, truth) with
     truth = {"A": wall area weighted by angle/180 deg (= expected T), "A_geo": wall area,
     "V_rev": reversed volume relative to shift = 0}.
       ripple  : uniform m, no wall           slab180: 3 parallel 180 deg walls (oblique)
@@ -187,7 +199,7 @@ def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=
     u = np.array([1.0, 0.0, 0.0])
     v = np.cross(n, u)
     v /= np.linalg.norm(v)
-    prof = lambda s: 2.0 * np.arctan(np.exp(s / Leff))
+    prof = lambda s: 2.0 * np.arctan(np.exp(s / (wall_factor * Leff)))
     cap = lambda p: math.pi * (R * R * p - p ** 3 / 3.0)          # sphere volume between 0 and p (|p| <= R)
     truth = {"A": 0.0, "A_geo": 0.0, "V_rev": 0.0}
     m = None
@@ -231,8 +243,8 @@ def synthetic_state(kind, dx, Leff=12.0, d=300.0, ripple_deg=0.0, seed=0, shift=
         m = m + math.tan(math.radians(ripple_deg)) * g
     m /= np.linalg.norm(m, axis=-1, keepdims=True)
     m = np.where(mask[..., None], m, 0.0).astype(np.float32)
-    return {"m": m, "mask": mask, "dx": dx, "Leff": Leff,
-            "name": "%s dx=%g ripple=%g shift=%g" % (kind, dx, ripple_deg, shift)}, truth
+    return make_state(m, np.where(mask, 0, -1).astype(np.int8), dx, Leff,
+                      "%s dx=%g ripple=%g shift=%g" % (kind, dx, ripple_deg, shift)), truth
 
 
 def selftest(d=300.0, dxs=(3.0, 1.5), ripples=(0.0, 20.0),
@@ -248,8 +260,8 @@ def selftest(d=300.0, dxs=(3.0, 1.5), ripples=(0.0, 20.0),
                     st, tr = synthetic_state(kind, dx, d=d, ripple_deg=rp, shift=sh)
                     if dx < 3.0:
                         c = int(round(3.0 / dx))
-                        m, mk = coarsen_state(st["m"], st["mask"], c)
-                        st = dict(st, m=m, mask=mk, dx=dx * c)
+                        m, ic = coarsen_state(st["m"], st["ids"], c)
+                        st = make_state(m, ic, dx * c, st["Leff"], st["name"])
                     states.append((st, tr))
                 r = measures(states[0][0])
                 tr0, tr1 = states[0][1], states[1][1]
