@@ -630,6 +630,40 @@ the sphere packing); β < 2 because the loss angle sin δ falls with B̂
 (∝ B̂^−0.3 … −0.5). No Rayleigh rise in 20 … 150 mT. Physical or a model
 effect: open (domain snapshots, PLAN step "snaptest"; reference data needed).
 
+### 7.13 Audit of all runs (2026-10-03): the virgin state was never converged
+
+The virgin-state protocol requires a fully relaxed state. In **no** run did
+the relaxation converge (`relax_converged = False`, 5000 iterations; at
+d/l_ex = 300 and dx = 3 about 25 000 … 30 000 are necessary). The work went
+on although the code reported it; this was an error of the procedure.
+Table: results/audit_2026-10-03.txt (per group: convergence, energy balance
+of the first and the later stages, closure, offset, amplitude hit).
+
+| Runs | First measured stage | Later stages |
+|---|---|---|
+| d/l_ex = 96 (sections 7.3 … 7.6, 7.8 block 2/3) | balance 1.0 … 1.5 (dx = 1: 2.4) | ≈ 1.0 |
+| d/l_ex 150 … 300, amplitudes in sequence (7.8 d150, 7.9, 7.10, 7.12) | **9 mT disturbed** (balance up to 64) | ≈ 1.0 (exception: seed 902 at 50 mT for α ≤ 0.03, an event) |
+| d/l_ex = 300, one amplitude per job (7.8 P1_d300*, 7.11 S300*) | **every amplitude disturbed** (up to 76) | — |
+
+**Not reliable (withdrawn until repeated):**
+- all 9 mT values and β(9 → 50 mT) at d/l_ex ≥ 150;
+- the scatter vs particle size at 9 mT (σ = 0.77 at 1 µm), which entered
+  the planning of the number of realisations (PLAN D1);
+- all mesh comparisons at d/l_ex = 300 (7.8: +26 %; 7.10; 7.11);
+- the dynamic share at 9 mT (7.9); α at 9 mT (7.12);
+- dx = 1 at d/l_ex = 96 at 9 mT (balance 2.4).
+
+**Still valid:** results at 20 … 150 mT from runs with amplitudes in
+sequence (7.9, 7.10 at 50 mT for d/l_ex = 212, 7.12: β ≈ 1.5 … 1.7, μ = 8,
+loss ∝ α^0.1 … 0.3) and the results at d/l_ex = 96 (balance ≈ 1).
+Offsets above 0.1 at small B_peak are frequent in the virgin runs at
+d/l_ex = 96 (residual net M of the unconverged state); by 7.5 they change
+the loss little, but they are checked again after the fix.
+
+Fix: `--relax_mode converge` (PLAN step 1d) and a hard gate (a run stops if
+the relaxation does not converge; analysis excludes such runs). Repeats:
+PLAN section "repeats".
+
 ### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
