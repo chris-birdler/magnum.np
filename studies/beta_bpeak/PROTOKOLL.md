@@ -664,6 +664,28 @@ Fix: `--relax_mode converge` (PLAN step 1d) and a hard gate (a run stops if
 the relaxation does not converge; analysis excludes such runs). Repeats:
 PLAN section "repeats".
 
+### 7.15 Relaxation to convergence (PLAN step 1d, 2026-10-03): fix confirmed
+
+d/l_ex 300, dx 3, base point, `--relax_mode converge`, seeds 901 … 903,
+cycles from 2 on (mean ± SE over the seeds, n = 3 per α):
+
+| | α = 0.1 | α = 0.01 |
+|---|---|---|
+| relaxation converged | 3/3 (26 000 … 45 000 iterations, 0.5 … 0.8 h) | 3/3 |
+| w_dis/w_loop at 9 mT (before: up to 23 … 64) | 1.08 / 1.02 / 1.00 | 1.11 / 1.07 / 1.01 |
+| w_dis/w_loop at 20 mT | 0.99 / 1.01 / 1.00 | 1.01 / 0.90 / 0.96 |
+| β(9 → 20 mT) | 1.81 ± 0.09 | 1.63 ± 0.12 |
+
+- Rule (balance 0.9 … 1.1 at 9 mT): met for α 0.1 (3/3); α 0.01 1 of 3
+  just above (1.11).
+- α 0.01 vs 0.1 (same seeds and relaxed states): Δβ(9 → 20) = −0.17 ± 0.15
+  (Welch), Δ ln w = −0.07 ± 0.07 at 9 mT and −0.21 ± 0.12 at 20 mT (paired).
+  No effect on β shown; α acts on the level (as 7.12).
+- At α 0.01 the 9 mT loop still jumps between cycles (up to 85 % from cycle to
+  cycle); at α 0.1 about 6 %.
+- Seed 902 needed 45 000 iterations: `--relax_maxiter` is 80 000 for all
+  repeat jobs (also at dx 1.5).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

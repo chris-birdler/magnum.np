@@ -238,7 +238,7 @@ def matrix():
         for dx in (1.5, 3.0):
             tag = ("%g" % dx).replace(".", "")
             M = dict(B0, dx_lex=dx, n_amp=1, cycles_per_amp=5, max_cycles_per_amp=5,
-                     relax_maxiter=80000 if dx == 3.0 else 60000)
+                     relax_maxiter=80000)
             first = "M300_dx%s_s%d_b9" % (tag, sd)
             mesh300.append(job(M, first, seed=sd, b_list=b_of_mT(9)))
             for mT in (50, 100):             # directly from the relaxed virgin state of the 9 mT job
