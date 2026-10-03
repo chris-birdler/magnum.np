@@ -11,11 +11,13 @@ direction clusters was tested and archived: tag archive/domains-segmentation-202
      the particles, then |m_w| = 1). Across a wall m turns by the wall angle,
      independent of the wall width: a 180 deg wall gives its area, a 90 deg wall
      half its area. The ripple (scale L_eff) is suppressed by the smoothing.
-     Wall measure: A_w = T(2 L_eff) / CAL. CAL = T(2 L_eff) / true area on synthetic
-     states with 20 deg ripple (the ripple measured in a real state is 21 deg):
+     Wall measure: A_w = T(2 L_eff) / CAL (+-12 %). CAL = T(2 L_eff) / true area on
+     synthetic states with 20 deg ripple (a real state, d/l_ex 96: 13 deg):
          wall spacing / curvature radius about 5 ... 8 L_eff (d = 300):  0.89 ... 0.94
          about 4 ... 6 L_eff (d = 212):                                 0.68 ... 0.88
          about 3 ... 4 L_eff (d = 150):                                 0.44 ... 0.76
+     wall width 0.5 / 1 / 1.5 / 2 x pi L_eff (d = 300):     0.92 ... 0.95 / 0.89 ... 0.94 /
+                                                          0.83 ... 0.91 / 0.75 ... 0.88
      dx = 3 and 1.5 agree to 0.3 %. Thus A_w is a wall area (+-10 %) only if
      the walls are >= 5 L_eff apart and not curved more strongly; else T(2 L_eff)
      is the rotation of m on scales above 2 L_eff, not a wall area. A smaller
@@ -29,9 +31,14 @@ direction clusters was tested and archived: tag archive/domains-segmentation-202
      V_sw = integral arccos(m_a . m_b) / pi dV  with m smoothed over w_sw = 1 L_eff
      [l_ex^3]; a reversed region (180 deg) counts fully, a wall moved by s gives A s
      (linear in s; the form (1 - m_a . m_b)/2 grows only with s^2).
+     V_sw counts every change of m: a uniform rotation by phi inside the domains
+     gives V phi/180 deg (10 deg: 0.055 V; 3 walls moved by 0.5 L_eff: 0.077 V).
+     It does not separate wall motion from rotation.
      Noise floor: a ripple pattern that changes completely between a and b
      gives V_sw = 0.06 V (selftest, 20 deg); in the model the ripple is tied to
-     the fixed cubes (real d/l_ex = 96 state at 20 mT: V_sw <= 0.003 V).
+     the fixed cubes.
+Smoothing runs inside each particle separately: the kernel is wider than the
+gaps between the particles (test: 4 uniform particles give T = 0).
 
 Lengths in l_ex, areas in l_ex^2, volumes in l_ex^3.
 
@@ -51,7 +58,7 @@ from scipy import ndimage
 WIDTHS = (0.0, 0.5, 1.0, 2.0, 3.0, 4.0)      # smoothing widths / L_eff
 W_WALL = 2.0                                  # width of the wall measure / L_eff
 W_SW = 1.0                                    # width of the switched volume / L_eff
-CAL = 0.91                                    # T(2 L_eff) / true wall area (selftest: 0.875 ... 0.935)
+CAL = 0.85                                    # T(2 L_eff) / true wall area (selftest: 0.75 ... 0.95, see below)
 
 
 # --- input -----------------------------------------------------------------
