@@ -58,6 +58,28 @@ There are two sources. Both are uniaxial. There is no other anisotropy.
      factor of order 1. This factor moves all points in the same way.
    - Anisotropy fluctuations on scales below L_eff (grains, dislocation
      stresses) are averaged into Q_eff. They are not a separate factor.
+   - **K_eff is an input, not a result.** Each cube gets K_eff = Q_eff K_d
+     (base point: L_eff = 12 l_ex = 40.1 nm, K_eff = 895 kJ/m³ / 144 =
+     6.22 kJ/m³ = A/L_eff²). The simulation does not compute the averaging
+     from the grains to K_eff; the Herzer formula does this before the run.
+     The simulation computes the response of m to this cube landscape
+     (walls, pinning, ripple, loss, β).
+   - The cubes are Herzer's self-consistent fixed point: averaging cubes of
+     edge L and K = A/L² over a larger edge L′ gives K′ = K (L/L′)^{3/2}, and
+     L′ = √(A/K′) gives L′ = L. Thus a wall on the scale L_eff sees the full
+     K_eff; there is no further averaging. The mean over a whole particle,
+     K_eff/√N ≈ 64 J/m³ (N ≈ 9400 cubes), acts only on a uniform rotation of
+     the particle and is small against K_d.
+   - **Assumption, not tested in the simulation:** the translation of Q_eff
+     to a material (K1, D) holds only if Herzer's averaging holds. A check
+     with explicit grains (one cell per 10 nm grain, K1 = 48 kJ/m³; Herzer
+     predicts L_eff ≈ 43 nm ≈ base point) was offered (≈ 10 V100-h) and not
+     run (decision Chris, 2026-10-03).
+   - Range of the cubes in material terms: for K1 ≈ 20 … 50 kJ/m³ the window
+     L_eff = 12 … 30 l_ex covers grains of D ≈ 10 nm; for a FINEMET-like
+     K1 = 8 kJ/m³ and D = 10 nm, K_eff ≈ 4 J/m³ and L_eff ≈ 1.6 µm > d: the
+     particle has almost no anisotropy, and only the particle-scale
+     anisotropy (item 2) is left. This end is not covered by the cubes.
 2. **Residual stress on the particle scale.** One uniaxial anisotropy
    K_p = r_p K_eff per particle. The easy axes are deterministic:
    cos θ = 1/8, 3/8, 5/8, 7/8 to the drive (midpoint rule for an isotropic
@@ -790,6 +812,8 @@ earlier one-factor and factorial options are replaced by this plan.
 - 4 particles per box, identical spheres, FCC order, no contacts.
 - T = 0 (no thermal activation). No eddy currents (add them analytically).
 - Herzer length only up to a factor of order 1.
+- K_eff is set, not computed: the Herzer averaging from the grains to the
+  cubes is assumed, not simulated (section 2.1).
 - No anisotropy on intermediate scales (≈ 300 nm), by choice.
 - Vortex cores and Bloch points not resolved (flagged).
 
