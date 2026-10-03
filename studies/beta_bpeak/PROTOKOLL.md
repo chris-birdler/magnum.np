@@ -620,7 +620,19 @@ error is not shown to be the same at both ends of the d/l_ex range. Note:
 by 7.9 the 50 mT values are mainly damping loss; the mesh question must be
 asked again for the hysteresis once its method is fixed.
 
-### 7.11 Surface roughness (PLAN step 1c, 2026-10-03): not the main cause
+### 7.11 Surface roughness (PLAN step 1c, 2026-10-03): no valid result (7.13)
+
+**Withdrawn after the audit (7.13):** all 9 mT values and all values at
+d/l_ex 300 are disturbed (not converged relaxation; at d/l_ex 300 each
+amplitude ran as its own job from the virgin state); the smooth variant at
+d/l_ex 212 and 50 mT is doubtful (w_dis/w_loop up to 2.15, 2 of 8 amplitudes
+missed). Only the staircase reference at d/l_ex 212 and 50 mT is clean
+(−6 % ± 14 %). Thus there is no valid comparison of the surfaces. The
+conclusion "the staircase is not the main cause" is withdrawn. All runs use
+the staircase surface (`--surface voxel`, default). Next: if mesh300 (PLAN
+3e) shows a mesh error at dx 3, repeat this test at d/l_ex 300 with the
+converged relaxation (≈ 10 V100-h); else the surface is not relevant.
+The original evaluation follows.
 
 dx = 3 with a volume-fraction surface (`--surface fraction`, only `surface`
 differs from the references), mesh error vs dx = 1.5 (Welch, mean ± SE):
