@@ -55,6 +55,10 @@ direction clusters was tested and archived: tag archive/domains-segmentation-202
      Thus at d = 300: F90 well above ~5 % means 180 deg walls; at d = 212 the margin is only ~2x;
      below d ~ 200 F90 does not separate. 90 deg walls are not detected (F90 = 0.9 %); in the model
      the anisotropy is uniaxial, so 180 deg walls are the main type. dx 3 and 1.5 agree.
+     Stereology: a random segment of length W hits a wall with probability W S_V / 2, thus
+     A_F90 = 2 F90 V / W is a second estimate of the 180 deg wall area (synthetic, d = 300:
+     three walls 1.85 vs 1.86e5, one wall -13 %, bubble +32 %, vortex 0.21e5 = false area of
+     ~0.3 wall discs). A_w >> A_F90 means that a part of T is continuous rotation.
 Long-wave ripple (correlation 2 ... 8 L_eff, as at small internal fields): with walls,
 T(2 L_eff)/A stays 0.91 ... 0.94; without walls the ripple alone gives T(2 L_eff) =
 0.04 ... 0.17 of the area of 3 walls (d = 300), a floor of up to ~0.4 wall discs.
@@ -181,7 +185,8 @@ def measures(st, widths=WIDTHS):
     rot = rotation_angles(st, window_leff=W_ROT)
     return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
             "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2))), "l_C": correlation_length(st),
-            "F90": float((rot > 90.0).mean()), "F60": float((rot > 60.0).mean())}
+            "F90": float((rot > 90.0).mean()), "F60": float((rot > 60.0).mean()),
+            "A_F90": float(2.0 * (rot > 90.0).mean() * V / (W_ROT * L))}
 
 
 def correlation_length(st):
@@ -265,8 +270,10 @@ def analyze(states):
 
 def report(res):
     for r in res["states"]:
-        print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg   F90 %.1f %%"
-              % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"], 100 * r["F90"]))
+        print("%s\n   V %.4g l_ex^3   A_w %.4g l_ex^2 (A_w/V %.3g 1/l_ex)   ripple %.1f deg\n"
+              "   F90 %.1f %%   A_F90 %.4g l_ex^2   A_w/A_F90 %.2f"
+              % (r["name"], r["V"], r["A_w"], r["A_w"] / r["V"], r["ripple_rms_deg"], 100 * r["F90"],
+                 r["A_F90"], r["A_w"] / r["A_F90"] if r["A_F90"] > 0 else float("inf")))
         print("   T(w) [l_ex^2]: " + "  ".join("w=%g: %.4g" % (w, t) for w, t in r["T"].items())
               + "   l_C %.1f l_ex" % r["l_C"])
     if res["switched"]:

@@ -798,6 +798,11 @@ Literature check and three extensions (2026-10-03):
   / 54 at 212; no separation at d/l_ex ≤ 150 (vortex 22 … 65). 90° walls are
   not detected (0.9 %). dx 3 and 1.5 agree. Real state d/l_ex 96: F90 = 66 %,
   the same as a synthetic vortex at this size (65 %): not interpretable.
+  Stereology gives a second 180° wall area: a random segment of length W
+  hits a wall with probability W S_V/2, thus A_F90 = 2 F90 V/W (d/l_ex 300:
+  three walls 1.85 vs 1.86·10⁵ l_ex², one wall −13 %, curved bubble +32 %,
+  vortex: false area ≈ 0.3 wall discs). A_w ≫ A_F90 means that part of T is
+  continuous rotation.
 - Added: correlation length l_C (SANS analogue; synthetic ripple 15 … 78,
   walls 48 … 63, vortex/helix ≈ 100 l_ex) and the mean wall path
   s = V_sw/A_w per half cycle (Bertotti's active magnetic objects; synthetic:

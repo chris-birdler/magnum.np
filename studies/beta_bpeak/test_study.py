@@ -252,3 +252,11 @@ def test_rotation_test_separates_180_walls_at_1um():
         return (domains.rotation_angles(st, window_leff=domains.W_ROT, n_lines=800) > 90.0).mean()
     wall, vortex, helix = f90("single180", ripple_deg=13.0), f90("vortex"), f90("helix")
     assert wall > 2.0 * vortex and helix < 0.01 and wall > 0.08
+
+
+def test_wall_area_from_rotation_test():
+    """A_F90 = 2 F90 V / W for three 180 deg walls (selftest: 1.85e5 vs 1.86e5)."""
+    import domains
+    st, tr = _dom_state("slab180", ripple=13.0)
+    r = domains.measures(st, widths=(domains.W_WALL,))
+    assert abs(r["A_F90"] / tr["A"] - 1.0) < 0.15
