@@ -260,3 +260,27 @@ def test_wall_area_from_rotation_test():
     st, tr = _dom_state("slab180", ripple=13.0)
     r = domains.measures(st, widths=(domains.W_WALL,))
     assert abs(r["A_F90"] / tr["A"] - 1.0) < 0.15
+
+
+def test_cube_axes_uniform_on_the_sphere():
+    """The cube axes of the study geometry (d/l_ex 300, dx 3, L_eff 12) are uniform on the sphere:
+    <n n> = I/3 within 4 SE (SE = sqrt(4/45/n) diagonal, sqrt(1/15/n) off-diagonal), |cos| to each
+    axis uniform on [0, 1] (Kolmogorov-Smirnov), neighbour cubes independent (<(n_i.n_j)^2> = 1/3).
+    Check over 20 seeds (2026-10-03): <n_x^2>, <n_y^2>, <n_z^2> = 0.3331 / 0.3333 / 0.3335 +- 0.0004."""
+    from scipy import stats
+    lex = 3.34e-9
+    a = box_edge(300.0, 0.65)[0]
+    N = int(round(a / 3.0))
+    ids = fcc_box(N, 300.0 * lex, 3.0 * lex)["ids"]
+    m = ids >= 0
+    ax, _ = cube_axes(ids, 3.0, N * 3.0, 300.0, 12.0, seed=901)
+    u = np.unique(ax[m].round(12), axis=0)
+    n = len(u)
+    T = u.T @ u / n
+    assert np.all(np.abs(np.diag(T) - 1.0 / 3.0) < 4 * math.sqrt(4.0 / 45.0 / n))
+    assert np.abs(T - np.diag(np.diag(T))).max() < 4 * math.sqrt(1.0 / 15.0 / n)
+    assert all(stats.kstest(np.abs(u[:, i]), "uniform").pvalue > 1e-3 for i in range(3))
+    nb = m & (np.roll(ids, -4, 0) == ids)
+    dots = (ax * np.roll(ax, -4, 0)).sum(-1)[nb]
+    dots = dots[np.abs(dots) < 1 - 1e-9]
+    assert abs(np.mean(dots ** 2) - 1.0 / 3.0) < 0.01
