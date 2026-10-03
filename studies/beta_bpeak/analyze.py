@@ -109,10 +109,22 @@ def cycle_offsets(d, si, name, cycles):
     return out
 
 
+class UnconvergedRun(Exception):
+    """The virgin state of the run is not relaxed: the protocol precondition does not hold."""
+
+
+ALLOW_UNCONVERGED = False
+
+
 def load_run(d):
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
     summ = json.loads((d / "summary.json").read_text())
+    cfg["relax_ok"] = not (cfg.get("protocol") == "virgin_asc"
+                           and not summ.get("init", {}).get("relax_converged", False))
+    if not cfg["relax_ok"] and not ALLOW_UNCONVERGED:
+        raise UnconvergedRun("%s: virgin relaxation not converged (use --allow_unconverged only for "
+                             "the audit of old runs)" % d)
     rows = []
     ss, dof = 0.0, 0
     for si, st in enumerate(summ["stages"]):
@@ -625,11 +637,14 @@ def main():
     ap.add_argument("--paired", nargs="+", metavar="RUN_A:RUN_B", help="paired comparison over realisations")
     ap.add_argument("--freqtest", nargs=2, metavar=("GLOB_F", "GLOB_2F"),
                     help="PLAN step 1: run directories at f and at 2 f (shell globs in quotes)")
+    ap.add_argument("--allow_unconverged", action="store_true",
+                    help="also use virgin runs whose relaxation did not converge (audit of old runs only)")
     ap.add_argument("--csv", default="all_runs.csv")
     ap.add_argument("--ranking_csv", default="ranking.csv")
     ap.add_argument("--plot", default="beta_vs_b.png")
     a = ap.parse_args()
-    global SKIP, WKEY
+    global SKIP, WKEY, ALLOW_UNCONVERGED
+    ALLOW_UNCONVERGED = a.allow_unconverged
     SKIP = a.skip
     WKEY = "w_" + a.w
 
@@ -657,7 +672,11 @@ def main():
         p = pathlib.Path(d)
         if not (p / "summary.json").exists():
             continue
-        cfg, rows = load_run(p)
+        try:
+            cfg, rows = load_run(p)
+        except UnconvergedRun as e:
+            print("EXCLUDED %s" % e)
+            continue
         results.append((p.name, cfg, rows))
         print_table(p.name, cfg, rows)
     if not results:
@@ -677,4 +696,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except UnconvergedRun as e:
+        sys.exit("ERROR: %s" % e)

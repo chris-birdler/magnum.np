@@ -47,6 +47,12 @@ Groups:
   alphatest2 alpha 0.01, seeds 904-906, otherwise as alphatest (6 realisations at 0.01).
   snaptest  domain structure: base point, alpha 0.1, relaxed to convergence, 20 and 150 mT,
             seeds 901 and 902, m as .vti at 4 phases of the last cycle (--snap_phases 4).
+  baseline  repeat after the audit (PROTOKOLL 7.13): realisation scatter at 1 um with a
+            converged virgin state: PROD (d/l_ex 300, dx 3, 7 amplitudes), base point,
+            alpha 0.1, seeds 921-928.
+  mesh300   repeat after the audit: dx 1.5 vs dx 3 at d/l_ex 300 with a converged virgin
+            state, seeds 921-924, 9 / 50 / 100 mT, 5 cycles; the 9 mT job relaxes and
+            writes init.pt, the 50 and 100 mT jobs start from it (--init_from, --init_wait_h).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
@@ -222,6 +228,21 @@ def matrix():
         for mT in (9, 50):
             smoothtest.append(job(PP, "S300_dx3f_s%d_b%d" % (sd, mT), d_lex=300.0, dx_lex=3.0, seed=sd,
                                   b_list=b_of_mT(mT), n_amp=1, surface="fraction"))
+    # repeats after the audit (PROTOKOLL 7.13): the virgin state relaxed to convergence (hard gate)
+    CONV = dict(relax_mode="converge", relax_maxiter=80000, relax_chunk=500, relax_tol_E=1e-6, relax_confirm=2)
+    B0 = dict(PROD, Leff_lex=12.0, r_p=0.0, alpha=0.1, **CONV)
+    baseline = [job(B0, "B300_s%d" % sd, seed=sd) for sd in range(921, 929)]
+    mesh300 = []
+    for sd in (921, 922, 923, 924):          # same seeds as baseline: the dx 3 side also checks B300
+        for dx in (1.5, 3.0):
+            tag = ("%g" % dx).replace(".", "")
+            M = dict(B0, dx_lex=dx, n_amp=1, cycles_per_amp=5, max_cycles_per_amp=5,
+                     relax_maxiter=80000 if dx == 3.0 else 60000)
+            first = "M300_dx%s_s%d_b9" % (tag, sd)
+            mesh300.append(job(M, first, seed=sd, b_list=b_of_mT(9)))
+            for mT in (50, 100):             # directly from the relaxed virgin state of the 9 mT job
+                mesh300.append(job(M, "M300_dx%s_s%d_b%d" % (tag, sd, mT), seed=sd, b_list=b_of_mT(mT),
+                                   init_from="%s/init.pt" % first, init_wait_h=30.0))
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
             "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "alphatest": alphatest,
@@ -229,6 +250,7 @@ def matrix():
             "alphatest2": [job(AT, "A010_s%d" % sd, seed=sd, alpha=0.01) for sd in (904, 905, 906)],
             "snaptest": [job(RX, "V_s%d" % sd, seed=sd, alpha=0.1, b_list=b_of_mT(20, 150), snap_phases=4)
                          for sd in (901, 902)],
+            "baseline": baseline, "mesh300": mesh300,
             "pilot": pilot}
 
 
@@ -256,6 +278,13 @@ def cost_h(a, s_per_step_Mcell, dt_tau, cycles_avg, speedup, s_min_step=0.008):
     n_st = len(a.get("h_list") or a.get("b_list") or []) or a["n_amp"]
     per_amp = a["cycles_per_amp"] if a["cycles_per_amp"] == a["max_cycles_per_amp"] else cycles_avg
     pre = 2 if a.get("protocol") == "virgin_asc" else 1               # relaxation / reset cycle
+    if a.get("relax_mode") == "converge":
+        # measured d/l_ex 300, dx 3 (relaxtest): 26 000 iterations of 1e-11 s, 0.065 s each = 1.7 RKF45
+        # steps; the number of steps per iteration scales as dt (dx^1.5); 30 000 iterations assumed
+        pre = 0
+        if not a.get("init_from"):
+            t_relax = 30000 * 1.7 * (3.0 / a["dx_lex"]) ** 1.5 * max(s_min_step, s_per_step_Mcell * n / 1e6)
+            pre = t_relax / (steps * max(s_min_step, s_per_step_Mcell * n / 1e6) / speedup)
     if a.get("protocol") == "acdemag_asc":
         pre = 17 / a.get("demag_f_factor", 1.0)                       # decaying cycles (q = 0.8)
     cycles = a.get("max_cycles", pre + n_st * per_amp)

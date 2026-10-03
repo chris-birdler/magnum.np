@@ -82,7 +82,12 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
-               "allow_new_commit"}
+               "allow_new_commit", "allow_unconverged", "init_wait_h"}
+# arguments that set the relaxed virgin state; an --init_from state must agree in all of them
+# (the drive, the amplitudes and alpha can differ: the relaxation runs at alpha = 1 and H = 0)
+INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
+             "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
+             "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol"]
 
 
 def parse_args(argv=None):
@@ -140,6 +145,9 @@ def parse_args(argv=None):
                         "chunk < relax_tol_E (the max torque stays large at unresolved structures)")
     g.add_argument("--relax_chunk", type=int, default=500)
     g.add_argument("--relax_tol_E", type=float, default=1e-6)
+    g.add_argument("--relax_confirm", type=int, default=2,
+                   help="converge: number of consecutive chunks with a relative energy change < relax_tol_E "
+                        "(one quiet chunk can come before an avalanche)")
     g.add_argument("--h_max", type=float, default=None, help="largest measured H/Ms (default (1-phi)/3)")
     g.add_argument("--h_factor", type=float, default=0.5)
     g.add_argument("--n_amp", type=int, default=9)
@@ -171,7 +179,15 @@ def parse_args(argv=None):
     g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
     g.add_argument("--allow_new_commit", action="store_true",
                    help="resume although the code (git commit) changed since the checkpoint")
-    g.add_argument("--init_from", type=str, default=None, help="start from m of this checkpoint (no relaxation)")
+    g.add_argument("--init_from", type=str, default=None,
+                   help="start from the relaxed virgin state init.pt of another run (no relaxation); a "
+                        "relative path is relative to the parent of --out (runs/); the arguments in "
+                        "INIT_KEYS must agree")
+    g.add_argument("--init_wait_h", type=float, default=0.0,
+                   help="wait up to this many hours for the --init_from file (it is written by a job that "
+                        "still relaxes)")
+    g.add_argument("--allow_unconverged", action="store_true",
+                   help="continue although the virgin relaxation did not converge (default: stop, exit code 3)")
     g.add_argument("--timer", action="store_true")
     return p.parse_args(argv)
 
@@ -394,8 +410,9 @@ def main(argv=None):
             sys.exit("ERROR: the code changed since the checkpoint (%s -> %s). One run would mix two code "
                      "versions. Use --no_resume, or --allow_new_commit if the change does not touch the physics."
                      % (old.get("git_commit"), config["git_commit"]))
+    init_file = out / "init.pt"
     if args.no_resume:
-        for f in [ckpt, summ_file, out / "DONE"] + list(out.glob("samples_*.csv")) + list(out.glob("ckpt_*.pt")):
+        for f in [ckpt, summ_file, init_file, out / "DONE"] + list(out.glob("samples_*.csv")) + list(out.glob("ckpt_*.pt")):
             f.unlink(missing_ok=True)
     write_atomic(cfg_file, json.dumps(config, indent=1))
 
@@ -408,10 +425,30 @@ def main(argv=None):
         first_stage = c["next_stage"]
         summary["stages"] = summary["stages"][:first_stage]
         print("[resume] from stage %d" % first_stage, flush=True)
-    elif args.init_from:
-        c = torch.load(args.init_from, map_location=dev)
+    elif args.init_from or init_file.exists():
+        # relaxed virgin state of another run (--init_from) or of this run before an interruption
+        src = init_file
+        if args.init_from:
+            src = pathlib.Path(args.init_from)
+            src = src if src.is_absolute() else out.parent / src
+            t_end = time.time() + 3600.0 * args.init_wait_h
+            while not src.exists() and time.time() < t_end:
+                time.sleep(60.0)
+            if not src.exists():
+                sys.exit("ERROR: --init_from %s does not exist" % src)
+        src = str(src)
+        c = torch.load(src, map_location=dev)
+        if "init" in c:
+            diff = [k for k in INIT_KEYS if c["config"].get(k) != config.get(k)]
+            if diff:
+                sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
+                    "%s %r -> %r" % (k, c["config"].get(k), config.get(k)) for k in diff)))
+            summary["init"] = dict(c["init"], source=src)
+        elif args.protocol == "virgin_asc":
+            sys.exit("ERROR: %s holds no relaxation record (old checkpoint format)" % src)
         state.m = c["m"].to(dtype=dt_, device=dev)
-        print("[init] m from %s" % args.init_from, flush=True)
+        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+        print("[init] m from %s" % src, flush=True)
     else:
         init_seed = args.seed if args.init_seed is None else args.init_seed
         rng = np.random.default_rng([init_seed, 0])       # own stream (cube axes use [seed, 1000 + p])
@@ -434,7 +471,7 @@ def main(argv=None):
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
             # energy does not change any more (relative change per chunk < relax_tol_E)
             magf = torch.tensor(mag.reshape(-1), device=dev)
-            hist, E_prev, it, converged = [], None, 0, False
+            hist, E_prev, it, converged, quiet = [], None, 0, False, 0
             while it < args.relax_maxiter:
                 for _ in range(args.relax_chunk):
                     state.t, state.m = llg._solver.step(state.t, state.m, 1e-11, state=state, alpha=1.0)
@@ -449,7 +486,8 @@ def main(argv=None):
                              "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max())})
                 print("[relax] it %6d  E/K_d %.6g  rel dE %.2e  torque rms %.3g  max %.3g A/m" %
                       (it, hist[-1]["E_over_Kd"], rel, hist[-1]["torque_rms"], hist[-1]["torque_max"]), flush=True)
-                if rel < args.relax_tol_E:
+                quiet = quiet + 1 if rel < args.relax_tol_E else 0
+                if quiet >= args.relax_confirm:
                     converged = True
                     break
                 E_prev = E
@@ -462,8 +500,6 @@ def main(argv=None):
                                "wall_s": time.time() - t_w}
             print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
                   (converged, it, summary["init"]["wall_s"]), flush=True)
-            if not converged:
-                warnings.warn("virgin state not converged within --relax_maxiter")
         elif args.protocol == "virgin_asc":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
             converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))
@@ -476,11 +512,20 @@ def main(argv=None):
             print("[relax] virgin state: converged=%s  E/K_d=%.5g  M/Ms=(%.3g, %.3g, %.3g)  n60=%d  %.0f s wall" %
                   (converged, summary["init"]["E_over_Kd"], *summary["init"]["M_over_Ms"], n60_0,
                    summary["init"]["wall_s"]), flush=True)
-            if not converged:
-                warnings.warn("virgin state not converged within --relax_maxiter")
         else:
             llg.step(state, args.relax_tau * U["t_M"])
             print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
+        if args.protocol == "virgin_asc":
+            save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
+                         "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
+
+    # hard gate: the protocol requires a converged virgin state
+    if (args.protocol == "virgin_asc" and not summary.get("init", {}).get("relax_converged", True)
+            and not args.allow_unconverged):
+        write_atomic(summ_file, json.dumps(summary, indent=1))
+        print("ERROR: the virgin relaxation did not converge (%s). Raise --relax_maxiter and start "
+              "again with --no_resume." % out, flush=True)
+        sys.exit(3)
 
     # --- protocol ----------------------------------------------------------
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
