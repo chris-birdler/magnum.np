@@ -1,7 +1,9 @@
 # PLAN: β(B_peak) production study (draft for approval)
 
-Status: approved settings 2026-10-02 (D1 … D4, section 7). Step 1 is set
-up; it starts after Chris approves the GPU selection. Step 2 needs go 2.
+Status 2026-10-03: step 1 (frequency test) FAILED: from ≈ 35 mT the loss
+at 30 MHz is mainly damping loss (PROTOKOLL 7.9). Step 1b: rule not met
+(PROTOKOLL 7.10). Step 2 is on hold until Chris decides the method for the
+hysteresis loss (PROTOKOLL §12).
 Basis: PROTOKOLL.md (model, tests, mesh decision).
 
 ## 1. Question

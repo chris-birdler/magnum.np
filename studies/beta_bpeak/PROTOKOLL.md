@@ -546,6 +546,47 @@ including the voids, P = W · f; mean ± σ per realisation (SE of the mean)):**
 - β ≈ 2 between 9 and 50 mT. The dynamic (damping) share at 30 MHz and
   α = 0.1 is not measured; it also gives β = 2. Check with f vs 2 f first.
 
+### 7.9 Frequency test (PLAN step 1, 2026-10-02/03): NEGATIVE
+
+d/l_ex = 300, dx = 3, α = 0.1, virgin state, 7 amplitudes; f (30 MHz) and
+2 f, 4 seeds each; base point (L_eff 12, r_p 0) and corner (L_eff 30, r_p 3).
+w_h = 2 w(f) − w(2 f), dynamic share = 1 − w_h/w(f), mean ± SE over the seeds.
+
+| B_peak | dynamic share, base | dynamic share, corner | w(2 f)/w(f) base / corner |
+|---|---|---|---|
+| 9 mT | 0.11 ± 0.11 | 0.31 ± 0.32 | 1.06 / 1.21 |
+| 20 mT | 0.03 ± 0.09 | −0.16 ± 0.10 | 1.02 / 0.82 |
+| 35 mT | 0.43 ± 0.05 | 0.33 ± 0.14 | 1.44 / 1.31 |
+| 50 mT | 0.83 ± 0.17 | 0.64 ± 0.13 | 1.83 / 1.62 |
+| 100 mT | 1.06 ± 0.07 | 1.19 ± 0.06 | 2.06 / 2.19 |
+| 150 mT | 1.09 ± 0.07 | 1.24 ± 0.04 | 2.09 / 2.24 |
+
+- At 9 … 20 mT the loss per cycle does not depend on f: hysteresis.
+- From 50 mT the loss per cycle is ∝ f: almost all of it is damping loss
+  (∝ α f). w_h is a small difference of large numbers there and is not
+  measurable at 100 and 150 mT (negative values).
+- Rule of PLAN step 1: FAIL at both points.
+- **Correction of earlier statements:** β ≈ 2 between 9 and 50 mT (planning
+  pilot 7.8) and the effects of Q_eff, r_p and d/l_ex on the loss at 50 mT
+  describe mainly the damping loss at 30 MHz, not the hysteresis. Only the
+  values at 9 … 20 mT are hysteresis. The LLG protocol at 30 MHz cannot give
+  the hysteresis β in the study range above ≈ 30 mT.
+
+### 7.10 Mesh error at d/l_ex = 212 (PLAN step 1b, 2026-10-03): rule not met
+
+d/l_ex = 212, dx 3 vs dx 1.5, 4 seeds each, 9 and 50 mT (Welch):
+
+| | Δ ln w 9 mT | Δ ln w 50 mT | Δβ (9 → 50 mT) |
+|---|---|---|---|
+| d/l_ex 212: dx 3 − dx 1.5 | −0.35 ± 0.22 | −0.06 ± 0.14 | +0.14 ± 0.18 |
+| d/l_ex 300: dx 3 − dx 1.5 | +0.54 ± 0.46 | +0.23 ± 0.07 | −0.20 ± 0.23 |
+| difference 212 − 300 | −0.89 ± 0.51 | −0.29 ± 0.15 | +0.34 ± 0.30 |
+
+Rule (|difference at 50 mT| + 1.645 SE < 0.10): 0.54, not met. The mesh
+error is not shown to be the same at both ends of the d/l_ex range. Note:
+by 7.9 the 50 mT values are mainly damping loss; the mesh question must be
+asked again for the hysteresis once its method is fixed.
+
 ### 7.7 Pilot (not run; replaced by the planning pilot 7.8 and PLAN.md) (d/l_ex = 150, B_peak = 150 / 100 / 50 / 25 / 9 mT, 7 cycles, ≈ 11 V100-h)
 
 The pilot uses d/l_ex = 150 (8× cheaper). There are 60 … 940 cubes per
@@ -608,6 +649,12 @@ earlier one-factor and factorial options are replaced by this plan.
   cost). This is in the library, not changed.
 
 ## 12. Open points for Chris
+
+Open 2026-10-03: the method for the hysteresis loss (7.9). Options: (A)
+quasi-static loops by energy minimization (no damping loss by
+construction; validation against LLG at 9 … 20 mT); (B) LLG at a much lower
+f (cost ∝ 1/f, ≈ 100× for 100 mT); (C) smaller α and f. Step 2 of PLAN.md
+waits for this decision.
 
 Decisions 2026-10-02 for the production (PLAN.md): D1 128 + 8 Sobol points
 first, extension to 256 if necessary; D2 7 amplitudes (9 … 150 mT); D3
