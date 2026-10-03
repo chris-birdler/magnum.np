@@ -686,6 +686,31 @@ cycles from 2 on (mean ± SE over the seeds, n = 3 per α):
 - Seed 902 needed 45 000 iterations: `--relax_maxiter` is 80 000 for all
   repeat jobs (also at dx 1.5).
 
+### 7.16 β(B_peak) with a valid 9 mT value (2026-10-03)
+
+`eval_relaxfix.py` → results/relaxfix_beta.txt. 9 mT from the relaxation test
+(converged), 20 … 150 mT from the runs with the same seeds and settings
+(F_base_f_*, A010_*), whose later stages are valid (7.13). Splice check at
+20 mT (ln w new − old, same seed): +0.02 ± 0.03 (α 0.1), +0.06 ± 0.04
+(α 0.01): the two sources agree. d/l_ex 300, dx 3, L_eff 12 l_ex, r_p 0,
+f = 30 MHz; mean ± SE over n = 3 realisations.
+
+| | α = 0.1 | α = 0.01 |
+|---|---|---|
+| β power law 9 … 150 mT | 1.74 ± 0.03 | 1.55 ± 0.07 |
+| curvature dβ/d ln B | −0.07 ± 0.09 | −0.03 ± 0.17 |
+| β at 10 / 50 / 100 mT (quadratic fit) | 1.84 ± 0.13 / 1.72 ± 0.03 / 1.67 ± 0.07 | 1.57 ± 0.13 / 1.53 ± 0.15 / 1.51 ± 0.26 |
+| P at 10 / 50 / 100 mT [W/cm³] | 11.5 / 201 / 650 | 10.4 / 127 / 364 |
+| β per segment 9→20 / 20→35 / 35→50 / 50→70 / 70→100 / 100→150 mT | 1.78 / 1.82 / 1.64 / 1.96 / 1.43 / 1.74 (SE 0.02 … 0.25) | 9→20 1.57, 20→50 1.60, 50→100 1.28, 100→150 1.95 |
+
+- β is constant within the errors over 10 … 150 mT (no curvature); the
+  segments scatter more than the fits (short lever arms, SE up to 0.25).
+- The earlier values at 9 mT (β(9 → 50) ≈ 1.9 … 2.1 at 1 µm) were too high by
+  the unconverged state.
+- α 0.01 − 0.1: Δβ (power law) = −0.19 ± 0.08 (2.4 SE, Welch, n = 3 + 3);
+  with n = 3 (t₉₅ ≈ 2.8) this is a hint, not a result. alphatest2 (3 more
+  realisations at α 0.01, converged) decides it.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
