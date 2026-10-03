@@ -44,6 +44,7 @@ Groups:
   alphatest is alpha a real factor at 30 MHz? Base point as freqtest (d/l_ex 300,
             dx 3, L_eff 12, r_p 0, phi 0.65), alpha 0.01 and 0.03, seeds 901-903,
             9 / 20 / 50 / 100 / 150 mT. alpha 0.1: F_base_f_s901-903 (freqtest).
+  alphatest2 alpha 0.01, seeds 904-906, otherwise as alphatest (6 realisations at 0.01).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
@@ -222,7 +223,9 @@ def matrix():
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
             "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "alphatest": alphatest,
-            "smoothtest": smoothtest, "relaxtest": relaxtest, "pilot": pilot}
+            "smoothtest": smoothtest, "relaxtest": relaxtest,
+            "alphatest2": [job(AT, "A010_s%d" % sd, seed=sd, alpha=0.01) for sd in (904, 905, 906)],
+            "pilot": pilot}
 
 
 def n_cells(a):
