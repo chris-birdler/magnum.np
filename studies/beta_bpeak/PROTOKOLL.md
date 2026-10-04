@@ -913,6 +913,37 @@ not. `eval_decompose.py` → results/decompose.md (all valid runs).
   is the count of jumps in the dissipation time series (samples_*.csv,
   p_dis per sample), not a fit of the form.
 
+### 7.21 Jumps in the dissipation (direct test of the jump part, 2026-10-04)
+
+`eval_jumps.py` → results/jumps.md. Per kept cycle: p_dis(t) (256 samples)
+= smooth part (Fourier series of the drive phase up to harmonic 8) +
+residual; a jump is a sample with residual > 4 robust σ. Clean runs only
+(B300_*, α 0.1, n = 8; A010c_*, α 0.01, n = 3); mean ± SE over the runs.
+
+| B_peak | jumps per cycle α 0.1 / 0.01 | jump energy share α 0.1 / 0.01 | non-smooth share α 0.1 / 0.01 |
+|---|---|---|---|
+| 9 mT | 5.0 / 7.5 | 1.4 / 2.7 % | 3.3 / 7.2 % |
+| 20 mT | 9.4 / 6.3 | 4.4 / 2.3 % | 8.2 / 7.8 % |
+| 35 mT | 9.8 / – | 5.8 / – % | 11.9 / – % |
+| 50 mT | 9.1 / 2.8 | 4.1 / 0.7 % | 9.7 / 5.4 % |
+| 100 mT | 6.5 / 1.5 | 2.1 / 0.3 % | 7.3 / 4.4 % |
+| 150 mT | 4.3 / 0.9 | 1.0 / 0.1 % | 5.6 / 3.6 % |
+
+- Jumps carry only 0.1 … 6 % of the dissipation; all non-smooth parts
+  together ≤ 12 %. Robust against the method (harmonics 4 … 12, threshold
+  3 … 5 σ: the shares change by ≤ 2 points).
+- Jumps shorter than the sample interval (130 ps) are seen only partly.
+  Upper bound for missed energy: the energy balance w_dis/w_loop is 1.00 ±
+  0.01 in the clean stages (7.17), thus missed jumps carry ≲ 1 … 2 %.
+- **The jump part cannot explain β < 2** (Chris's hypothesis in the form of
+  7.20): about 90 … 99 % of the loss is a smooth function of the drive
+  phase, i.e. a reversible response. Its dissipation grows slower than b²:
+  the loss per unit of reversible rotation falls with the amplitude. This
+  is where β < 2 comes from in this model; α changes it (7.17).
+- Next possible check (not done): the harmonic content of the smooth part
+  vs B_peak, to see which part of the reversible response becomes less
+  lossy at large amplitude.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
