@@ -881,6 +881,38 @@ state; 4 phases of the last cycle; analysed on the instance). Totals over the
   Sobol design varies L_eff, r_p, φ and d and thus the texture much more;
   the per-run texture from the snapshots is a candidate output there.
 
+### 7.20 Loss decomposition w = c1 b + c2 b² (hypothesis test, 2026-10-04)
+
+Hypothesis (Chris, 2026-10-04): pinned structures give only reversible
+rotation (damping loss, linear viscous: w ∝ b², ∝ α); β < 2 needs a part
+that grows slower, e.g. irreversible jumps with a fixed energy per jump and
+a number ∝ b (w ∝ b, α-independent). Predictions: (i) the fit describes the
+data within the cycle errors; (ii) c2 changes strongly with α; (iii) c1 does
+not. `eval_decompose.py` → results/decompose.md (all valid runs).
+
+| | α 0.1 (n = 11) | α 0.01 (n = 6) | ratio 0.01 / 0.1 |
+|---|---|---|---|
+| c1 (jump part) | 3.2 ± 0.5 ·10⁻⁵ | 5.3 ± 1.2 ·10⁻⁵ | 1.64 ± 0.45 |
+| c2 (damping part) | 4.81 ± 0.14 ·10⁻³ | 1.92 ± 0.28 ·10⁻³ | 0.40 ± 0.06 |
+| median χ²/dof: decomposition / power law | 9.6 / 3.3 | 2.3 / 2.5 | |
+| jump share of w at 10 / 50 / 100 mT | 0.44 / 0.16 / 0.09 | 0.76 / 0.44 / 0.30 | |
+
+- (ii) holds partly: the b² part falls to 0.40 ± 0.06 when α falls 10×
+  (not ∝ α). (iii) holds within the errors: c1 changes by 1.64 ± 0.45
+  (1.4 SE).
+- **(i) fails at α 0.1:** the decomposition describes the data worse than a
+  single power law with the same number of parameters (χ²/dof 9.6 vs 3.3);
+  one run gives c1 < 0 (s921). The reason is the shape: c1 b + c2 b² makes
+  β rise with B (from ≈ 1.5 to ≈ 1.9), but at α 0.1 β is highest at small
+  B (1.87 at ≈ 18 mT) and lowest at ≈ 50 … 70 mT (7.17). At α 0.01 both
+  forms fit equally (2.3 vs 2.5), with a large jump share at small B.
+- Result: the hypothesis in this simple form is not supported at α 0.1.
+  The α dependence fits it (α acts mainly on the b² part). The high β at
+  small B needs a third process that grows faster than b² there (for
+  example Rayleigh-like hysteresis, w ∝ b³). A direct test of the jump part
+  is the count of jumps in the dissipation time series (samples_*.csv,
+  p_dis per sample), not a fit of the form.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
