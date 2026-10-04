@@ -660,6 +660,10 @@ differs from the references), mesh error vs dx = 1.5 (Welch, mean ± SE):
 
 ### 7.12 Damping α (2026-10-03, base point, 1 µm, dx 3, 3 … 4 seeds each)
 
+**Partly withdrawn (7.17):** with the converged virgin state and n = 6 vs 11, α
+changes β (−0.27 ± 0.08 for α 0.01 vs 0.1). The statement "α acts on the
+level, not on β" below is not valid.
+
 Loss ∝ α^k with k = 0.12 ± 0.05 (20 mT), 0.17 ± 0.02 (50 mT), 0.29 ± 0.04
 (100 mT), 0.25 ± 0.09 (150 mT): a factor 1.3 … 1.9 per decade of α, far from
 ∝ α. Fit per realisation over 20 … 150 mT (9 mT excluded): a power law fits
@@ -796,6 +800,42 @@ Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
   statement "α acts on the level, not on β" (7.12, from 20 … 150 mT and
   n = 3) is withdrawn. α is a model parameter of the loss at 30 MHz, not
   only a numerical choice.
+
+### 7.18 Wall measures at 1 µm: snapshots at 20 and 150 mT (2026-10-04)
+
+`domains_batch.py` on V_s901, V_s902 (base point, α 0.1, converged virgin
+state; 4 phases of the last cycle; analysed on the instance). Totals over the
+4 particles (V = 5.69·10⁷ l_ex³; one 180° disc through a particle centre
+πR² = 7.07·10⁴ l_ex²):
+
+| | virgin state | 20 mT | 150 mT |
+|---|---|---|---|
+| A_w = T(2 L_eff)/0.85 [10⁵ l_ex²] | 3.35 / 3.55 | 3.34 / 3.55 | 3.35 / 3.36 |
+| A_F90 [10⁴ l_ex²] | 4.5 / 4.8 | 4.5 … 4.6 / 4.7 … 4.9 | 4.7 … 5.4 / 5.1 … 5.4 |
+| F90 | 2.3 / 2.4 % | 2.2 … 2.4 % | 2.3 … 2.7 % |
+| l_C [l_ex] | 111 / 105 | 111 / 105 | 108 |
+| switched volume per half cycle (H max ↔ H min) | | 2.0 / 2.1 % of V | 12.8 / 12.5 % of V |
+
+(values for s901 / s902)
+
+- **No clear 180° walls.** F90 = 2.2 … 2.7 % is below the value of one
+  synthetic vortex at this size (4.3 %) and far below one 180° wall per
+  particle (12.3 %). A_w/A_F90 ≈ 6 … 7: most of the texture T is a
+  continuous rotation of m (curling, vortex-like), not walls. The texture
+  corresponds to ≈ 1.2 disc areas per particle.
+- **The texture does not change with B_peak** (20 → 150 mT: ≤ 1 %; s902
+  loses 6 % after 150 mT, an irreversible rearrangement as in 7.17).
+- **The switched volume grows almost linearly with B_peak** (half cycle
+  2 % → 12.6 %, B ratio 7.5, exponent ≈ 0.9). With μ ≈ 8 constant this is
+  the reversible rotation of m that carries ΔM ∝ B, not the motion of walls.
+- Consequence for the hypothesis "β depends on the total wall area": in
+  this model at 1 µm there are no distinct walls, and the amount of texture
+  is constant over the amplitude range. β < 2 does not come from walls
+  that appear or vanish with B_peak; it comes from the loss per unit of
+  reversible rotation (damping dynamics, consistent with the α effect in
+  7.17). Across realisations (baseline, n = 8) and the Sobol points the
+  texture can still correlate with β; this is tested next.
+- Short-scale ripple (against 2 L_eff): 6 … 8°.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
