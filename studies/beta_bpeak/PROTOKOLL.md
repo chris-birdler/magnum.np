@@ -757,6 +757,46 @@ f = 30 MHz; mean ± SE over n = 3 realisations.
   with n = 3 (t₉₅ ≈ 2.8) this is a hint, not a result. alphatest2 (3 more
   realisations at α 0.01, converged) decides it.
 
+### 7.17 Baseline at 1 µm with the converged virgin state (2026-10-04)
+
+`eval_baseline.py` → results/baseline_eval.txt. d/l_ex 300, dx 3, base point
+(L_eff 12, r_p 0, φ 0.65), α 0.1, 7 amplitudes 9 … 150 mT, seeds 921 … 928,
+`--relax_mode converge` (all 8 converged, 16 000 … 43 000 iterations).
+Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
+
+| | mean | sd (one run) | SE (n = 8) | without s921 (n = 7): mean / sd |
+|---|---|---|---|---|
+| β power law 9 … 150 mT | 1.76 | 0.15 | 0.05 | 1.71 / 0.04 |
+| β at 10 mT | 1.93 | 0.26 | 0.09 | 1.86 / 0.17 |
+| β at 50 mT | 1.72 | 0.14 | 0.05 | 1.67 / 0.06 |
+| β at 100 mT | 1.62 | 0.16 | 0.06 | 1.59 / 0.13 |
+| P at 10 / 50 / 100 mT [W/cm³] | 10 / 189 / 603 | scatter factor ×/ 1.50 / 1.19 / 1.11 | | |
+
+- Energy balance w_dis/w_loop outside 0.9 … 1.1 in 5 of 56 stages:
+  s921 at 9 mT (1.40) and 100 mT (1.83), s922 at 20 mT (2.07), s925 at
+  35 mT (1.21), s926 at 35 mT (1.27). Cause: single events in the kept
+  cycles. s921, 100 mT, cycle 4: w_dis = 6.3·10⁻⁵ vs w_loop = 1.6·10⁻⁵ and
+  the number of large-angle pairs falls from 28 to 23 (an irreversible
+  rearrangement of the domain structure). s921 at 9 mT and s922 at 20 mT:
+  w_dis ≫ w_loop in cycles 0 … 3 (the converged virgin state still releases
+  energy in the first cycles of the AC field; 2 skipped cycles are not
+  always enough).
+- By PLAN 4.3a the flagged runs stay in; sensitivity: without s921 the
+  scatter of β (power law) falls from 0.15 to 0.04. The realisation scatter
+  is dominated by rare events, not by the cube landscape.
+- The scatter is much smaller than assumed in PLAN 4.3 (σ_β ≈ 0.45 at
+  d/l_ex 96): σ = 0.14 … 0.26 (with s921). Scaling of the review Monte Carlo
+  (SE = 0.31 σ √(136/N)): N = 26 … 86 points for SE ≤ 0.1; at N = 64:
+  SE = 0.06 … 0.12 (β at 10 mT is the largest).
+- α 0.01 − 0.1 (Welch): clean runs (A010c n = 3 vs baseline n = 8):
+  β power law −0.34 ± 0.14 (2.5 SE), at 10 / 50 / 100 mT −0.58 ± 0.22 /
+  −0.28 ± 0.12 / −0.15 ± 0.10; pooled with the spliced runs (6 vs 11):
+  −0.27 ± 0.08 (3.3 SE), −0.44 ± 0.14 / −0.23 ± 0.09 / −0.14 ± 0.13.
+  **α changes β** (smaller damping → smaller β, most at 10 mT). The earlier
+  statement "α acts on the level, not on β" (7.12, from 20 … 150 mT and
+  n = 3) is withdrawn. α is a model parameter of the loss at 30 MHz, not
+  only a numerical choice.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
