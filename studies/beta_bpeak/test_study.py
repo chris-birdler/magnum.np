@@ -284,3 +284,17 @@ def test_cube_axes_uniform_on_the_sphere():
     dots = (ax * np.roll(ax, -4, 0)).sum(-1)[nb]
     dots = dots[np.abs(dots) < 1 - 1e-9]
     assert abs(np.mean(dots ** 2) - 1.0 / 3.0) < 0.01
+
+
+def test_features_power_law_windows():
+    """analyze.features: for w = c b^1.7 on the 7 study amplitudes all window betas and beta_pow are 1.7;
+    a window with a missing amplitude gives nan; ln w at 10 mT is interpolated."""
+    import analyze
+    amps = [9, 20, 35, 50, 70, 100, 150]
+    rows = [{"b_peak": mT / 1500.0, "w_loop": 2.0 * (mT / 1500.0) ** 1.7, "lnw_err": 0.1} for mT in amps]
+    f, e = analyze.features(rows)
+    for k in ("beta@9-35mT", "beta@35-70mT", "beta@70-150mT", "beta_pow"):
+        assert abs(f[k] - 1.7) < 1e-9 and e[k] > 0
+    assert abs(f["lnw@10mT"] - math.log(2.0 * (10 / 1500.0) ** 1.7)) < 1e-9
+    f5, _ = analyze.features([r for r in rows if round(r["b_peak"] * 1500) in (9, 20, 50, 100, 150)])
+    assert math.isnan(f5["beta@9-35mT"]) and abs(f5["beta_pow"] - 1.7) < 1e-9

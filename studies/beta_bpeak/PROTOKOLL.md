@@ -792,6 +792,13 @@ Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
   d/l_ex 96): σ = 0.14 … 0.26 (with s921). Scaling of the review Monte Carlo
   (SE = 0.31 σ √(136/N)): N = 26 … 86 points for SE ≤ 0.1; at N = 64:
   SE = 0.06 … 0.12 (β at 10 mT is the largest).
+- **Evaluation changed (2026-10-04):** β is now the power law over 3
+  neighbouring amplitudes (`analyze.features`, PLAN 4.3); the quadratic fit
+  in ln-ln is dropped. Baseline (n = 8): β_pow 1.76 ± 0.05 (sd 0.15),
+  β 9-20-35 mT 1.90 ± 0.10 (sd 0.27), 35-50-70 mT 1.58 ± 0.05 (sd 0.15),
+  70-100-150 mT 1.77 ± 0.07 (sd 0.19). All valid runs: results/beta_windows.md,
+  results/beta_all_valid.md. The numbers at 10 / 50 / 100 mT in this section
+  and in 7.16 come from the quadratic fit (kept for the record).
 - α 0.01 − 0.1 (Welch): clean runs (A010c n = 3 vs baseline n = 8):
   β power law −0.34 ± 0.14 (2.5 SE), at 10 / 50 / 100 mT −0.58 ± 0.22 /
   −0.28 ± 0.12 / −0.15 ± 0.10; pooled with the spliced runs (6 vs 11):

@@ -41,8 +41,10 @@ Flags per amplitude:
       more than 20 % (and by at least 3 pairs) between the measured cycles:
       vortex-core / Bloch-point events -> mesh dependent
 
-Features per run (for the ranking of the parameters): beta at B_peak = 10,
-50 and 100 mT from a local fit of ln w over ln b (see features()).
+Features per run (for the ranking of the parameters): local Steinmetz exponent
+from power-law fits over 3 neighbouring amplitudes (9-20-35, 35-50-70,
+70-100-150 mT), beta over all amplitudes, and ln w at 10 / 50 / 100 mT
+(see features()).
 --w dis uses the LLG dissipation per cycle instead of the loop area. Both
 agree on average; w_dis scatters less when the cycles are not periodic.
 
@@ -69,6 +71,7 @@ import numpy as np
 
 JS_T = 1.5            # Js of the unit system (units.py): b = B_peak / Js
 B_REF_MT = (10.0, 50.0, 100.0)   # study range 10 ... 150 mT (Chris, 2026-09-30)
+B_WINDOWS_MT = ((9, 20, 35), (35, 50, 70), (70, 100, 150))   # 3-point power-law windows (2026-10-04)
 WKEY = "w_loop"       # per-cycle loss used for w: w_loop (oint H dB) or w_dis (LLG dissipation), --w
 SKIP = 1            # cycles discarded at the start of each amplitude (--skip)
 S_TARGET = 0.10
@@ -181,44 +184,48 @@ def add_beta(rows, key, out_key, err_key=None):
 
 
 def features(rows):
-    """beta at B_peak = 10 / 50 / 100 mT (the study range) and its error.
-    Local weighted fit of ln w over ln b with all amplitudes within a factor
-    2.2 of b_ref (at the ends of the range the fit is one-sided)."""
+    """Steinmetz exponent and level per run (PLAN 4.3, changed 2026-10-04):
+      beta@9-35mT, beta@35-70mT, beta@70-150mT: power law w = c B^beta fitted over 3 neighbouring
+          amplitudes (local Steinmetz exponent; centres ~18 / 50 / 102 mT), weighted by the cycle
+          error of ln w; 3 points leave 1 degree of freedom for a check of the power law;
+      beta_pow: power law over all amplitudes;
+      lnw@10mT, lnw@50mT, lnw@100mT: ln w interpolated linearly in ln b (the loss level).
+    A window whose amplitudes are not all in the run (within 10 %) gives nan."""
     f, e = {}, {}
     if len(rows) < 2:
         return f, e
+    bm = np.array([1000.0 * JS_T * r["b_peak"] for r in rows])
     lb = np.log([r["b_peak"] for r in rows])
     lw = np.array([math.log(r["w_loop"]) if r["w_loop"] > 0 else np.nan for r in rows])
     sw = np.array([r["lnw_err"] for r in rows])
-    for mT in B_REF_MT:
-        k = "beta@%gmT" % mT
-        lbr = math.log(mT / 1000.0 / JS_T)
-        sel = np.isfinite(lw) & (np.abs(lb - lbr) <= math.log(2.2))
-        if sel.sum() < 2 or not (lb.min() - 0.1 <= lbr <= lb.max() + 0.1):
-            f[k] = e[k] = float("nan")
-            continue
-        x, y, wgt = lb[sel] - lbr, lw[sel], 1.0 / sw[sel] ** 2
+
+    def fit(sel):
+        x, y, wgt = lb[sel], lw[sel], 1.0 / sw[sel] ** 2
         X = np.c_[np.ones_like(x), x]
         cov = np.linalg.inv(X.T @ (X * wgt[:, None]))
         coef = cov @ (X.T @ (wgt * y))
-        f[k], e[k] = float(coef[1]), float(math.sqrt(cov[1, 1]))
-    return f, e
-    lb = np.log([r["b_peak"] for r in rows])
-    be = np.array([r["beta"] for r in rows])
-    bs = np.array([r["beta_err"] for r in rows])
-    ok = np.isfinite(be)
-    for b in B_REF:
-        k = "beta@b=%g" % b
-        lbr = math.log(b)
-        if ok.sum() >= 2 and lb[ok][0] <= lbr <= lb[ok][-1]:
-            f[k] = float(np.interp(lbr, lb[ok], be[ok]))
-            e[k] = float(np.interp(lbr, lb[ok], bs[ok]))
+        return float(coef[1]), float(math.sqrt(cov[1, 1]))
+
+    for win in B_WINDOWS_MT:
+        k = "beta@%d-%dmT" % (win[0], win[-1])
+        idx = [int(np.argmin(np.abs(bm - mT))) for mT in win]
+        if all(abs(bm[i] / mT - 1.0) < 0.1 for i, mT in zip(idx, win)) and np.all(np.isfinite(lw[idx])):
+            f[k], e[k] = fit(np.array(idx))
         else:
             f[k] = e[k] = float("nan")
-    if ok.any():
-        i = int(np.nanargmax(be))
-        f["beta_max"], e["beta_max"] = float(be[i]), float(bs[i])
-        f["b_at_beta_max"], e["b_at_beta_max"] = float(rows[i]["b_peak"]), float("nan")
+    ok = np.isfinite(lw)
+    f["beta_pow"], e["beta_pow"] = fit(ok) if ok.sum() >= 3 else (float("nan"), float("nan"))
+    for mT in B_REF_MT:
+        k = "lnw@%gmT" % mT
+        lbr = math.log(mT / 1000.0 / JS_T)
+        if ok.sum() >= 2 and lb[ok].min() - 0.1 <= lbr <= lb[ok].max() + 0.1:
+            j = int(np.clip(np.searchsorted(lb[ok], lbr), 1, ok.sum() - 1))
+            x0, x1, y0, y1 = lb[ok][j - 1], lb[ok][j], lw[ok][j - 1], lw[ok][j]
+            t = (lbr - x0) / (x1 - x0)
+            f[k] = float(y0 + t * (y1 - y0))
+            e[k] = float(math.hypot((1 - t) * sw[ok][j - 1], t * sw[ok][j]))
+        else:
+            f[k] = e[k] = float("nan")
     return f, e
 
 

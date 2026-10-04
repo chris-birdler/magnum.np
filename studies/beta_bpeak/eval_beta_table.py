@@ -16,7 +16,15 @@ import analyze
 import eval_relaxfix as E
 
 RUNS = E.RUNS
-K = ["power", "beta@10", "beta@50", "beta@100", "P@10", "P@50", "P@100"]
+K = ["beta_pow", "beta@9-35mT", "beta@35-70mT", "beta@70-150mT", "P@10", "P@50", "P@100"]
+KD, FREQ = 895e3, 30e6
+
+
+def feats(rows):
+    f = analyze.features(rows)[0]
+    for mT in (10, 50, 100):
+        f["P@%d" % mT] = math.exp(f["lnw@%dmT" % mT]) * KD * FREQ / 1e6
+    return f
 
 
 def row_clean(name):
@@ -35,8 +43,8 @@ def main():
               ("α 0.1, spliced", [(s, "spliced") for s in E.SEEDS]),
               ("α 0.01, clean", [("A010c_s%d" % s, "clean") for s in (904, 905, 906)]),
               ("α 0.01, spliced", [(s, "spliced") for s in E.SEEDS])]
-    print("| group | run | relax it. | stages with w_dis/w_loop outside 0.9 … 1.1 | β 9…150 mT | β 10 mT | β 50 mT "
-          "| β 100 mT | P 10 mT | P 50 mT | P 100 mT |")
+    print("| group | run | relax it. | stages with w_dis/w_loop outside 0.9 … 1.1 | β 9…150 mT | β 9–20–35 mT "
+          "| β 35–50–70 mT | β 70–100–150 mT | P 10 mT | P 50 mT | P 100 mT |")
     print("|---|---|---|---|---|---|---|---|---|---|---|")
     summary = {}
     for gname, members in groups:
@@ -51,39 +59,46 @@ def main():
                 label = "%s + %s" % tuple(p % m for p in E.SETS[alpha])
                 it = json.loads((RUNS / (E.SETS[alpha][1] % m) / "summary.json").read_text())["init"]
                 it = "%d" % it["relax_iterations"]
-            f = E.fits(rows)
+            f = feats(rows)
             for k in K:
                 vals[k].append(f[k])
             print("| %s | %s | %s | %s | %.2f | %.2f | %.2f | %.2f | %.1f | %.0f | %.0f |" %
-                  (gname, label, it, flags(rows), f["power"], f["beta@10"], f["beta@50"], f["beta@100"],
-                   f["P@10"], f["P@50"], f["P@100"]))
+                  (gname, label, it, flags(rows), *[f[k] for k in K]))
         summary[gname] = vals
         n = len(members)
         cells = []
         for k in K:
             v = np.array(vals[k])
+            v = v[np.isfinite(v)]
+            if len(v) < 2:
+                cells.append("–")
+                continue
             if k.startswith("P"):
                 lv = np.log(v)
-                cells.append("%.3g ×/ %.2f" % (math.exp(lv.mean()), math.exp(lv.std(ddof=1) / math.sqrt(n))))
+                cells.append("%.3g ×/ %.2f" % (math.exp(lv.mean()), math.exp(lv.std(ddof=1) / math.sqrt(len(v)))))
             else:
-                cells.append("**%.2f ± %.2f** (sd %.2f)" % (v.mean(), v.std(ddof=1) / math.sqrt(n), v.std(ddof=1)))
+                cells.append("**%.2f ± %.2f** (sd %.2f)" % (v.mean(), v.std(ddof=1) / math.sqrt(len(v)), v.std(ddof=1)))
         print("| **%s: mean ± SE** | n = %d | | | %s |" % (gname, n, " | ".join(cells)))
     for a in ("0.1", "0.01"):
         vals = {k: summary["α %s, clean" % a][k] + summary["α %s, spliced" % a][k] for k in K}
-        n = len(vals["power"])
+        n = len(vals["beta_pow"])
         cells = []
         for k in K:
             v = np.array(vals[k])
+            v = v[np.isfinite(v)]
+            if len(v) < 2:
+                cells.append("–")
+                continue
             if k.startswith("P"):
                 lv = np.log(v)
-                cells.append("%.3g ×/ %.2f" % (math.exp(lv.mean()), math.exp(lv.std(ddof=1) / math.sqrt(n))))
+                cells.append("%.3g ×/ %.2f" % (math.exp(lv.mean()), math.exp(lv.std(ddof=1) / math.sqrt(len(v)))))
             else:
-                cells.append("**%.2f ± %.2f** (sd %.2f)" % (v.mean(), v.std(ddof=1) / math.sqrt(n), v.std(ddof=1)))
+                cells.append("**%.2f ± %.2f** (sd %.2f)" % (v.mean(), v.std(ddof=1) / math.sqrt(len(v)), v.std(ddof=1)))
         print("| **α %s, all: mean ± SE** | n = %d | | | %s |" % (a, n, " | ".join(cells)))
     print()
-    print("d/l_ex 300 (1 µm), dx 3, L_eff 12 l_ex, r_p 0, φ 0.65, f = 30 MHz. β: power law 9 … 150 mT and "
-          "quadratic fit at 10 / 50 / 100 mT, per run. P: loss density of the unit cell [W/cm³] at the reference "
-          "field. ± = SE over the runs (sd = scatter of one run). P mean: geometric mean ×/ exp(SE of ln P).")
+    print("d/l_ex 300 (1 µm), dx 3, L_eff 12 l_ex, r_p 0, φ 0.65, f = 30 MHz. P: loss density of the unit cell [W/cm³] at the reference "
+          "field. β: power law over 3 neighbouring amplitudes and over all (analyze.features); α 0.01 runs have only "
+          "9/20/50/100/150 mT, their 3-point windows are in results/beta_windows.md. ± = SE over the runs (sd = scatter of one run). P mean: geometric mean ×/ exp(SE of ln P).")
 
 
 if __name__ == "__main__":

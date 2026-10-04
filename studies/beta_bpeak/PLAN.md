@@ -176,7 +176,13 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 
 ### 4.3 Analysis
 
-- Per run: ln P and β at 10 / 50 / 100 mT (local fit, PROTOKOLL §8).
+- Per run (`analyze.features`, changed 2026-10-04): local Steinmetz exponent
+  from a power law w = c B^β fitted over 3 neighbouring amplitudes
+  (9-20-35, 35-50-70, 70-100-150 mT; centres ≈ 18 / 50 / 102 mT), β over
+  all amplitudes (β_pow), and ln P at 10 / 50 / 100 mT (interpolated in
+  ln b). 3 points leave 1 degree of freedom: χ² checks the local power law.
+  No quadratic fit in ln-ln (it forces a shape; the curvature was not
+  significant, −0.07 ± 0.09).
 - Regression of each output on x = (ln Q_eff, r_p, φ, ln d/l_ex): linear,
   quadratic and two-factor interaction terms (15 coefficients), ordinary
   least squares (the realisation scatter dominates the cycle statistics);
@@ -193,6 +199,11 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
   changes Q_eff by 8×, more than the design range (6.25×): the formula is a
   local derivative (review estimate: SE ≈ 0.27 per unit ln A at N = 128).
 - Target error: SE ≤ 0.1 for the range effect of each factor on β.
+  **Update 2026-10-04 (PROTOKOLL 7.17, baseline n = 8, converged virgin
+  state):** σ = 0.15 (β_pow), 0.27 (9-35 mT), 0.15 (35-70 mT), 0.19
+  (70-150 mT). With the scaling below: N = 29 / 97 / 30 / 47 for SE ≤ 0.1;
+  at N = 64: SE 0.07 / 0.12 / 0.07 / 0.09; at N = 96: SE 0.06 / 0.10 / 0.06 /
+  0.07. Decision D1 again by Chris. The text below is the original basis.
   Basis: σ_β ≈ 0.45 per realisation (pilot, β 9 → 50 mT, dx 1.5; the value
   0.11 at dx 3 comes from n = 3 only). Review Monte Carlo with this design:
   N = 128 + 8 gives SE ≈ 0.11 (Q_eff) … 0.14 (r_p, φ, d/l_ex); about
