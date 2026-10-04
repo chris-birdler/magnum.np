@@ -978,6 +978,40 @@ n = 8; A010c_*, α 0.01, n = 3), cycles from 2 on, mean ± SE over the runs.
   smaller. Not shown yet: which internal motion it is (a spatial map of
   the dissipation from the snapshots would show it).
 
+### 7.23 Where is the loss? Dissipation map from the snapshots (2026-10-04)
+
+`dissmap_batch.py` (on the instance) and `eval_dissmap.py` →
+results/dissmap.md. From the 4 snapshots of the last cycle per cell the
+fundamental m1 of m at the drive frequency and its Gilbert dissipation
+p_fund = α μ0 Ms/γ ω² |m1|²/2. Baseline, n = 8, mean ± SE.
+
+| B_peak | R = p_fund/p_dis | share in outer shell r/R_p > 0.8 (vol. 49 %) | share in centre r/R_p < 0.5 (vol. 13 %) | share in 10 % cells of largest texture |
+|---|---|---|---|---|
+| 9 mT | 0.85 ± 0.03 | 22 % | 37 % | 56 % |
+| 20 mT | 0.67 ± 0.04 | 26 % | 33 % | 54 % |
+| 50 mT | 0.50 ± 0.01 | 38 % | 22 % | 49 % |
+| 100 mT | 0.49 ± 0.01 | 41 % | 18 % | 42 % |
+| 150 mT | 0.48 ± 0.01 | 42 % | 18 % | 36 % |
+
+- At 9 mT the local rotation at the drive frequency explains 85 % of the
+  loss. The loss sits in the particle centre (37 % in 13 % of the volume)
+  and in the regions of strong texture (56 % in 10 % of the cells): the
+  curling/vortex-like structure inside the particles moves and carries
+  most of the loss at small amplitude.
+- With growing B_peak the loss moves outward (outer shell 22 → 42 %, close
+  to its volume share) and out of the textured regions (56 → 36 %): the
+  bulk rotation of the particle takes over.
+- Above ≈ 50 mT only half of the loss is local rotation at the drive
+  frequency; the other half is motion at higher frequencies (higher
+  harmonics, precession, ringing) that 4 snapshots per cycle cannot
+  resolve (or the 3rd harmonic that aliases).
+- Interpretation (hypothesis, consistent with 7.21/7.22): the motion of
+  the internal structure is lossy and dominates at small B_peak, but it
+  grows slower than the bulk rotation; thus the loss per unit of ⟨M⟩
+  change falls with B_peak and β < 2. Limits: 4 samples per cycle; one
+  base point; the curling/vortex identification rests on the texture and
+  F90 measures (7.18, 7.19), not on an image of the structure.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
