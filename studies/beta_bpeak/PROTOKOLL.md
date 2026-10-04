@@ -1140,6 +1140,19 @@ earlier one-factor and factorial options are replaced by this plan.
 
 ## 12. Open points for Chris
 
+**Kept in mind (Chris, 2026-10-04): how does the model reach the high β of
+measured cores?** In the model μ = 8 is fixed by the stray field of the
+spheres (the particles are intrinsically very soft), the response is linear,
+thus β ≤ 2 (7.22). β > 2 needs a loss angle that grows with B (Rayleigh-like,
+w ∝ B³): particles whose own susceptibility is not ≫ 1/N, e.g. a particle
+anisotropy K_p ≈ 90 kJ/m³ (r_p ≈ 14, estimate); the Sobol range r_p ≤ 3 is
+probably still linear. Options: (A) extend r_p to 10 … 15 (local wall width
+≈ 1 cell at dx 3: needs dx 1.5, ≈ 30× cost); (B) pre-test r_p 3 and 6 at
+1 µm, dx 3, 3 seeds each (≈ 20 V100-h ≈ 2 $); (C) compare with Chris's
+measured β (frequency, B range, material, particle size, core μ).
+Recommended: B and C. Not started.
+
+
 Open 2026-10-03: the method for the hysteresis loss (7.9). Options: (A)
 quasi-static loops by energy minimization (no damping loss by
 construction; validation against LLG at 9 … 20 mT); (B) LLG at a much lower
