@@ -844,6 +844,43 @@ state; 4 phases of the last cycle; analysed on the instance). Totals over the
   texture can still correlate with β; this is tested next.
 - Short-scale ripple (against 2 L_eff): 6 … 8°.
 
+### 7.19 Wall measures of the baseline vs B_peak and vs β (2026-10-04)
+
+`eval_walls.py` → results/walls_eval.md (domains.json of B300_s921 … s928,
+4 phases of the last cycle per amplitude; mean ± SE over the 8 seeds).
+
+| B_peak | texture A_w/V [10⁻³/l_ex] | 180° discs per particle | F90 | l_C [l_ex] | switched volume per half cycle | wall path s [l_ex] |
+|---|---|---|---|---|---|---|
+| virgin | 5.93 ± 0.03 | 1.19 | 2.7 % | 110 | – | – |
+| 9 mT | 5.92 ± 0.03 | 1.19 | 2.7 % | 110 | 1.06 ± 0.05 % | 1.8 |
+| 20 mT | 5.92 ± 0.04 | 1.19 | 2.6 % | 111 | 2.10 ± 0.08 % | 3.6 |
+| 50 mT | 5.91 ± 0.03 | 1.18 | 2.5 % | 111 | 4.44 ± 0.09 % | 7.5 |
+| 100 mT | 5.88 ± 0.00 | 1.18 | 2.5 % | 110 | 8.58 ± 0.13 % | 14.6 |
+| 150 mT | 5.89 ± 0.00 | 1.18 | 2.7 % | 109 | 12.46 ± 0.06 % | 21.2 |
+
+- The structure does not change over 9 … 150 mT (texture, F90, l_C within
+  0.7 %); F90 = 2.5 … 2.7 % stays below the value of one vortex (4.3 %):
+  no distinct 180° walls at any amplitude (as 7.18, now n = 8).
+- The switched volume grows as B^0.87 ± 0.02 (fit per seed): almost linear,
+  the reversible rotation that carries ΔM at μ ≈ 8.
+- The texture is almost the same in all seeds (5.87 … 5.92·10⁻³/l_ex,
+  ± 0.4 %), except s921 (6.17·10⁻³, +5 %; it loses 0.3·10⁻³ until 150 mT:
+  the irreversible rearrangement of 7.17).
+- Correlation with β over the seeds: with s921, texture vs β_pow r = +0.95,
+  but Spearman ρ = +0.24: one point carries it. Without s921 (n = 7):
+  texture vs β r = −0.37 … +0.06 (no correlation). The switched-volume
+  exponent correlates with β at 35-70 and 70-150 mT (r = +0.82 / +0.79,
+  ρ = +0.86 / +0.89, p ≈ 0.02 … 0.03; 35 tests per table, ≈ 2 false hits
+  expected); this is partly expected by construction (loss grows with the
+  rotated volume). Hint: texture vs loss level ln w at 100 mT r = +0.82
+  (p 0.03, n = 7).
+- **Result for the hypothesis "β depends on the total wall area":** at the
+  base point the realisations differ too little in texture to test it
+  (± 0.4 %), and the texture does not change with B_peak. β follows how
+  fast the rotated volume grows with B, not the amount of texture. The
+  Sobol design varies L_eff, r_p, φ and d and thus the texture much more;
+  the per-run texture from the snapshots is a candidate output there.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
