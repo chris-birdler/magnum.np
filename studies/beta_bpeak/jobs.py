@@ -54,6 +54,10 @@ Groups:
   mesh300   repeat after the audit: dx 1.5 vs dx 3 at d/l_ex 300 with a converged virgin
             state, seeds 921-924, 9 / 50 / 100 mT, 5 cycles; the 9 mT job relaxes and
             writes init.pt, the 50 and 100 mT jobs start from it (--init_from, --init_wait_h).
+  freq9     check before the Sobol design: f/2 and 2 f at 9 and 20 mT, seeds 921-923, from the relaxed
+            virgin state of B300 (f is in the baseline): is the loss at small B dynamic or hysteretic?
+  phase16   check before the Sobol design: seeds 921, 922, 9 / 20 / 150 mT, 16 snapshots per cycle in the
+            last 3 cycles, and a ring-down test (H held at H max for 2 periods, p_dis at 512 per period).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
@@ -244,6 +248,16 @@ def matrix():
             for mT in (50, 100):             # directly from the relaxed virgin state of the 9 mT job
                 mesh300.append(job(M, "M300_dx%s_s%d_b%d" % (tag, sd, mT), seed=sd, b_list=b_of_mT(mT),
                                    init_from="%s/init.pt" % first, init_wait_h=30.0))
+    # checks before the Sobol design (PROTOKOLL 7.24, Chris 2026-10-04): start from the relaxed virgin
+    # state of the baseline runs (the relaxation does not depend on f, alpha or the amplitudes)
+    freq9 = []
+    for sd in (921, 922, 923):
+        for tag, fac in (("half", 0.5), ("dbl", 2.0)):
+            freq9.append(job(B0, "F9_%s_s%d" % (tag, sd), seed=sd, f_rel=fac * F_REL_DEFAULT, b_list=b_of_mT(9, 20),
+                             n_amp=2, init_from="B300_s%d/init.pt" % sd))
+    phase16 = [job(B0, "PH_s%d" % sd, seed=sd, b_list=b_of_mT(9, 20, 150), n_amp=3, snap_phases=16, snap_cycles=3,
+                   ringdown_periods=2.0, ringdown_samples=512, init_from="B300_s%d/init.pt" % sd)
+               for sd in (921, 922)]
     return {"bench": bench, "meshtest": meshtest, "steady": steady, "numfloor": numfloor,
             "initproto": initproto, "demagtest": demagtest, "conv": conv, "scatter": scatter,
             "planpilot": pp, "freqtest": freqtest, "roughtest": roughtest, "alphatest": alphatest,
@@ -251,7 +265,7 @@ def matrix():
             "alphatest2": [job(AT, "A010c_s%d" % sd, seed=sd, alpha=0.01, **CONV) for sd in (904, 905, 906)],
             "snaptest": [job(RX, "V_s%d" % sd, seed=sd, alpha=0.1, b_list=b_of_mT(20, 150), snap_phases=4)
                          for sd in (901, 902)],
-            "baseline": baseline, "mesh300": mesh300,
+            "baseline": baseline, "mesh300": mesh300, "freq9": freq9, "phase16": phase16,
             "pilot": pilot}
 
 

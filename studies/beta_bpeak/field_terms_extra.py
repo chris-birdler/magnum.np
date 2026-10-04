@@ -22,13 +22,18 @@ class SinusoidalDrive(object):
         self.H_amp = 0.0   # [A/m]
         self.freq = 1.0    # [Hz]
         self.t0 = 0.0      # [s] start of the current segment (phase 0)
+        self.hold = None   # if set: constant field H_amp * hold (ring-down test), no time dependence
 
     def value(self, t):
         """Scalar field value [A/m] at time t (Python float)."""
+        if self.hold is not None:
+            return self.H_amp * self.hold
         return self.H_amp * math.sin(2.0 * math.pi * self.freq * (t - self.t0))
 
     @timedmethod
     def h(self, state):
+        if self.hold is not None:
+            return (self.H_amp * self.hold * self._e).expand(self._n + (3,))
         s = torch.sin(2.0 * math.pi * self.freq * (state.t - self.t0))
         return (self.H_amp * s * self._e).expand(self._n + (3,))
 

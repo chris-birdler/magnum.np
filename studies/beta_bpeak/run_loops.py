@@ -175,6 +175,13 @@ def parse_args(argv=None):
     g.add_argument("--snap_phases", type=int, default=0,
                    help="write m as .vti at N equal phase points of the LAST cycle of each measured stage "
                         "(N = 4: H max, H = 0 falling, H min, H = 0 rising) and geometry.vti once")
+    g.add_argument("--snap_cycles", type=int, default=1,
+                   help="with --snap_phases: snapshots in the last N cycles of each measured stage")
+    g.add_argument("--ringdown_periods", type=float, default=0.0,
+                   help="after each measured stage: a quarter period more to H max, then H held constant at H max "
+                        "for this many periods; p_dis, M and n60 at --ringdown_samples per period go to "
+                        "ringdown_<i>_<stage>.csv; m and t are restored afterwards (the next stage is not changed)")
+    g.add_argument("--ringdown_samples", type=int, default=512, help="samples per period in the ring-down")
     g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
     g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
     g.add_argument("--allow_new_commit", action="store_true",
@@ -576,7 +583,7 @@ def main(argv=None):
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
 
             sample()
-            snap = args.snap_phases > 0 and st["measure"] and ci == st["n_cycles"] - 1
+            snap = args.snap_phases > 0 and st["measure"] and ci >= st["n_cycles"] - args.snap_cycles
             for k in range(args.samples):
                 llg.step(state, dt_s)
                 if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):
@@ -647,6 +654,28 @@ def main(argv=None):
                     complete = True
                     break
         fcsv.close()
+
+        if complete and st["measure"] and args.ringdown_periods > 0:
+            # ring-down test: drive on for a quarter period (to H max), then H constant; record the decay of the
+            # dissipation; m and t are restored, the solver step size adapts again
+            m_save, t_save = state.m.detach().clone(), state.t.detach().clone()
+            for _ in range(args.samples // 4):
+                llg.step(state, dt_s)
+            drive.hold = 1.0
+            t_hold = float(state.t)
+            dt_r = period / args.ringdown_samples
+            with open(out / ("ringdown_%02d_%s.csv" % (si, st["name"])), "w") as frd:
+                frd.write("# t_since_hold,H,M_par,p_dis,n_pairs_gt60  (SI)\n")
+                for k in range(int(round(args.ringdown_periods * args.ringdown_samples)) + 1):
+                    if k > 0:
+                        llg.step(state, dt_r)
+                    Mpar, _, _, pd, _, n60 = diagnostics()
+                    frd.write("%.9e,%.9e,%.9e,%.9e,%d\n" % (float(state.t) - t_hold, drive.value(float(state.t)),
+                                                          Mpar, pd, n60))
+            drive.hold = None
+            state.m, state.t = m_save, t_save
+            rec["ringdown"] = "ringdown_%02d_%s.csv" % (si, st["name"])
+            print("[%s] ring-down %.1f periods written" % (st["name"], args.ringdown_periods), flush=True)
 
         rec["complete"] = complete
         summary["stages"].append(rec)
