@@ -944,6 +944,40 @@ residual; a jump is a sample with residual > 4 robust σ. Clean runs only
   vs B_peak, to see which part of the reversible response becomes less
   lossy at large amplitude.
 
+### 7.22 Harmonics of the reversible response (2026-10-04)
+
+`eval_harmonics.py` → results/harmonics.md. Clean runs (B300_*, α 0.1,
+n = 8; A010c_*, α 0.01, n = 3), cycles from 2 on, mean ± SE over the runs.
+
+| B_peak | sin δ α 0.1 / 0.01 | μ_r α 0.1 / 0.01 | M3/M1 | η/η(9 mT) α 0.1 / 0.01 |
+|---|---|---|---|---|
+| 9 mT | 0.013 / 0.017 | 8.02 / 7.97 | ≤ 0.003 | 1.00 / 1.00 |
+| 20 mT | 0.012 / 0.010 | 8.01 / 7.98 | ≤ 0.002 | 1.05 / 0.60 |
+| 50 mT | 0.010 / 0.005 | 8.00 / 8.00 | ≤ 0.001 | 0.73 / 0.30 |
+| 100 mT | 0.007 / 0.003 | 8.01 / 8.02 | ≤ 0.001 | 0.58 / 0.18 |
+| 150 mT | 0.007 / 0.003 | 8.02 / 8.04 | ≤ 0.001 | 0.49 / 0.18 |
+
+(δ: loss angle of the fundamental of ⟨M⟩ against H; μ_r = 1 + |M1|/|H1|;
+η = mean dissipation power / ⟨(d⟨M⟩/dt)²⟩)
+
+- The macroscopic response is linear and constant: μ_r = 8.00 ± 0.04 at all
+  amplitudes and both α, third harmonic ≤ 0.3 %.
+- The loss angle falls with B_peak. With μ const, β = 2 + d ln sin δ /
+  d ln B: fit 1.74 (α 0.1) and 1.38 (α 0.01), in agreement with β_pow
+  1.76 ± 0.05 and 1.49 ± 0.07 (7.17).
+- The dissipation per unit of the macroscopic magnetization rate (η) falls
+  with B_peak to 0.49 (α 0.1) and 0.18 (α 0.01) of its 9 mT value. Thus a
+  large part of the dissipation does not come from the change of ⟨M⟩ but
+  from internal motion of m (precession, ripple, vortex cores) that does
+  not add to ⟨M⟩; this part is excited already at small amplitude and grows
+  slower than the change of ⟨M⟩. The dissipation is also not in phase with
+  (d⟨M⟩/dt)²: p2/p0 = 0.15 … 0.48 instead of 1.
+- **Mechanism of β < 2 in this model:** a linear macroscopic response
+  (μ = 8) plus an internal dissipation that grows sub-quadratically with
+  B_peak; at smaller α the internal part falls faster (η 0.18) and β is
+  smaller. Not shown yet: which internal motion it is (a spatial map of
+  the dissipation from the snapshots would show it).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
