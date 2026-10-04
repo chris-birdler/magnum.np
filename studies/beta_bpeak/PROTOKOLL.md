@@ -68,7 +68,8 @@ There are two sources. Both are uniaxial. There is no other anisotropy.
      edge L and K = A/L² over a larger edge L′ gives K′ = K (L/L′)^{3/2}, and
      L′ = √(A/K′) gives L′ = L. Thus a wall on the scale L_eff sees the full
      K_eff; there is no further averaging. The mean over a whole particle,
-     K_eff/√N ≈ 64 J/m³ (N ≈ 9400 cubes), acts only on a uniform rotation of
+     K_eff/√N ≈ 69 J/m³ (N ≈ 8200 full cubes; 9400 with the partial surface
+     cubes), acts only on a uniform rotation of
      the particle and is small against K_d.
    - Herzer applied to the model itself (K1 = K_eff = 6.22 kJ/m³ per cube,
      D = cube edge = 40.1 nm, A = 10 pJ/m): δ1 = √(A/K1) = 40.1 nm, thus
@@ -112,8 +113,9 @@ Output: w = W/K_d per cycle versus b = B_peak/Js, β_eff = d ln w/d ln b.
 
 Physics background (short):
 - At small b, reversible rotation and damping give w ∝ b², thus β ≈ 2.
-  The damping part is proportional to α f. It is an artifact of the
-  numerical α and the frequency pair controls it.
+  (Updated 2026-10-04: the target is the total loss at 30 MHz, Chris
+  2026-10-03; the damping loss is part of it and α is a model parameter
+  that changes β, 7.17. It is not treated as an artifact.)
 - Walls pin at the anisotropy fluctuations on the scale L_eff. This gives
   Rayleigh hysteresis (w ∝ b³), thus β rises towards 3.
 - At large b the loop saturates, thus β falls.
@@ -134,10 +136,10 @@ Physics background (short):
 | Size | d/l_ex = 300 (1 µm), fixed | Chris |
 | Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 9 mT (`--b_list`; 9 mT keeps 10 mT inside the range). The drive of each stage comes from b/h of the stage before and is corrected once after cycle 0 with b/h of cycle 0 (factor limited to 0.67 … 1.5) | study range 10 … 150 mT; no time on saturation. b of cycle 0 is within ±4 % of the later cycles (V100 data), thus each stage hits its target to ≈ 4 % |
 | Drive | sinusoidal H (not controlled B) | below 150 mT the core is almost linear: B(t) has 0.2 … 3 % harmonics, b varies by 0.1 … 3 % from cycle to cycle (mesh test data). Thus sinusoidal H ≈ sinusoidal B (Steinmetz condition) |
-| Initial state | open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
+| Initial state | **decided: A, virgin state relaxed to convergence with a hard gate (7.13, 7.15).** Original text: open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
 | Protocol | A and B: ascending amplitudes (the classic Rayleigh procedure: every larger loop erases the smaller ones, the loops stay centred). C: descending. 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
-| Damping | α = 0.1 | with α = 0.02 the cycles at dx = 1.5 do not settle (section 7.2); at dx = 3 the loss changes only by −12 % between α = 0.02 and 0.1 |
+| Damping | α = 0.1 (main design); α 0.01 subset (PLAN 4.2) | α is a model parameter: α 0.01 vs 0.1 changes β_pow by −0.27 ± 0.08 and P at 100 mT by ×0.49 (7.17, n = 6 vs 11). Older reason (α 0.02 not settled at dx 1.5, 7.2; "−12 %" from unconverged runs) superseded |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
 
 ## 4. Mesh validity
@@ -159,7 +161,9 @@ mean ± SE over realisations):**
 | d/l_ex = 96, dx 3 | ×0.37 / ×0.26 | −0.22 ± 0.28 | ≈ 23 |
 | d/l_ex = 300 (1 µm), dx 3 | ×1.4 / ×1.26 | −0.20 ± 0.23 | ≈ 17 (dx 1.5: ≈ 2 … 5) |
 
-- **At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β** (−0.20 ± 0.23). The
+- **Withdrawn (7.11, 7.13): all d/l_ex 300 values in this table come from
+  runs with an unconverged virgin state; the mesh at 1 µm is open until
+  mesh300 (PLAN 3e).** Original text: At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β (−0.20 ± 0.23). The
   loss level is ≈ 26 % high at 50 mT (± 5 %) and ≈ 40 % high at 9 mT
   (uncertain). dx = 3 costs 0.06 h per cycle, dx = 1.5 costs 1.87 h (V100).
 - At d/l_ex = 96 (330 nm) dx = 3 is not sufficient: the loss is 3 … 4× too low.
@@ -195,7 +199,7 @@ mean ± SE over realisations):**
   6 % estimate; probably a part comes from the ≈ 17 unresolved structures at
   dx = 3. Whether dx = 1.5 itself is converged at d/l_ex = 300 is not known
   (dx = 1 costs ≈ 300 V100-h per realisation).
-- **Validity:** absolute losses at 1 µm are known to ≈ 30 % (mesh). β and
+- **Validity (withdrawn, see above: open until mesh300):** absolute losses at 1 µm are known to ≈ 30 % (mesh). β and
   ratios between parameters at the same dx are not mesh-dependent within
   the errors of all comparisons.
 
@@ -729,7 +733,8 @@ cycles from 2 on (mean ± SE over the seeds, n = 3 per α):
   just above (1.11).
 - α 0.01 vs 0.1 (same seeds and relaxed states): Δβ(9 → 20) = −0.17 ± 0.15
   (Welch), Δ ln w = −0.07 ± 0.07 at 9 mT and −0.21 ± 0.12 at 20 mT (paired).
-  No effect on β shown; α acts on the level (as 7.12).
+  No effect on β shown here (n = 3, 9 … 20 mT only); **superseded by 7.17:
+  with all valid runs α changes β.**
 - At α 0.01 the 9 mT loop still jumps between cycles (up to 85 % from cycle to
   cycle); at α 0.1 about 6 %.
 - Seed 902 needed 45 000 iterations: `--relax_maxiter` is 80 000 for all
@@ -774,20 +779,23 @@ Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
 | β at 10 mT | 1.93 | 0.26 | 0.09 | 1.86 / 0.17 |
 | β at 50 mT | 1.72 | 0.14 | 0.05 | 1.67 / 0.06 |
 | β at 100 mT | 1.62 | 0.16 | 0.06 | 1.59 / 0.13 |
-| P at 10 / 50 / 100 mT [W/cm³] | 10 / 189 / 603 | scatter factor ×/ 1.50 / 1.19 / 1.11 | | |
+| P at 10 / 50 / 100 mT [W/cm³] (ln w interpolated, analyze.features) | 9.86 / 192 / 576 | scatter factor ×/ 1.51 / 1.25 / 1.14 | ×/ 1.16 / 1.08 / 1.05 | |
 
-- Energy balance w_dis/w_loop outside 0.9 … 1.1 in 5 of 56 stages:
+- Energy balance w_dis/w_loop outside 0.9 … 1.1 in 6 of 56 stages:
   s921 at 9 mT (1.40) and 100 mT (1.83), s922 at 20 mT (2.07), s925 at
-  35 mT (1.21), s926 at 35 mT (1.27). Cause: single events in the kept
-  cycles. s921, 100 mT, cycle 4: w_dis = 6.3·10⁻⁵ vs w_loop = 1.6·10⁻⁵ and
-  the number of large-angle pairs falls from 28 to 23 (an irreversible
-  rearrangement of the domain structure). s921 at 9 mT and s922 at 20 mT:
-  w_dis ≫ w_loop in cycles 0 … 3 (the converged virgin state still releases
-  energy in the first cycles of the AC field; 2 skipped cycles are not
-  always enough).
+  9 mT (1.13) and 35 mT (1.21), s926 at 35 mT (1.27); events with energy
+  release also in kept or skipped cycles of s923 (20 mT, cycle 1: 6.6):
+  events in at least 5 of 8 runs. They coincide with drops of the number of
+  large-angle pairs (e.g. 28 → 23, 33 → 20, 29 → 22): rearrangements of the
+  unresolved structures, thus **mesh dependent** (mesh300 checks this).
+  s921 at 9 mT: kept cycle 2 has balance 4.0 and w ≈ 3× below the other
+  seeds (P at 10 mT 3.8 vs 9.4 … 13.8 W/cm³); this one stage gives its
+  β_pow 2.11. s922 at 20 mT is its second stage: an irreversible event
+  (balance 2.9 / 5.9 / 2.8 in cycles 1 … 3, closure 0.026 > 0.02), not a
+  release of the virgin state.
 - By PLAN 4.3a the flagged runs stay in; sensitivity: without s921 the
   scatter of β (power law) falls from 0.15 to 0.04. The realisation scatter
-  is dominated by rare events, not by the cube landscape.
+  is dominated by events, not by the cube landscape.
 - The scatter is much smaller than assumed in PLAN 4.3 (σ_β ≈ 0.45 at
   d/l_ex 96): σ = 0.14 … 0.26 (with s921). Scaling of the review Monte Carlo
   (SE = 0.31 σ √(136/N)): N = 26 … 86 points for SE ≤ 0.1; at N = 64:
@@ -800,10 +808,14 @@ Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
   results/beta_all_valid.md. The numbers at 10 / 50 / 100 mT in this section
   and in 7.16 come from the quadratic fit (kept for the record).
 - α 0.01 − 0.1 (Welch): clean runs (A010c n = 3 vs baseline n = 8):
-  β power law −0.34 ± 0.14 (2.5 SE), at 10 / 50 / 100 mT −0.58 ± 0.22 /
-  −0.28 ± 0.12 / −0.15 ± 0.10; pooled with the spliced runs (6 vs 11):
-  −0.27 ± 0.08 (3.3 SE), −0.44 ± 0.14 / −0.23 ± 0.09 / −0.14 ± 0.13.
-  **α changes β** (smaller damping → smaller β, most at 10 mT). The earlier
+  β power law −0.34 ± 0.14 (Welch df ≈ 2.6, p = 0.10: not significant
+  alone); pooled with the spliced runs (6 vs 11): −0.27 ± 0.08 (p = 0.012).
+  3-point windows on 9/20/50/100/150 mT (results/baseline_eval.txt): clean
+  −0.43 ± 0.17 / −0.40 ± 0.13 / −0.15 ± 0.11, pooled −0.32 ± 0.09 /
+  −0.32 ± 0.10 / −0.17 ± 0.10 (windows 9-20-50, 20-50-100, 50-100-150).
+  (The values −0.58 / −0.28 / −0.15 of the quadratic fit are withdrawn.)
+  **α changes β** (smaller damping → smaller β, at small and middle B;
+  half of the α 0.01 evidence comes from the spliced runs). The earlier
   statement "α acts on the level, not on β" (7.12, from 20 … 150 mT and
   n = 3) is withdrawn. α is a model parameter of the loss at 30 MHz, not
   only a numerical choice.
@@ -915,6 +927,17 @@ not. `eval_decompose.py` → results/decompose.md (all valid runs).
 
 ### 7.21 Jumps in the dissipation (direct test of the jump part, 2026-10-04)
 
+**Revised 2026-10-04 after the independent review (7.24):** the statement
+"90 … 99 % of the loss is smooth, i.e. a reversible response" is withdrawn.
+The smooth basis contains the constant term, so a dissipation that does not
+depend on the phase counts as "smooth". Fit p = c0 + c1 (d⟨M⟩/dt)² per
+cycle: the phase-independent share c0/p̄ is 0.87 at 9 mT and 0.52 at
+150 mT (α 0.1, n = 8; checked for s923: 0.95 → 0.57 and s928: 0.88 → 0.54),
+0.8 … 1.0 at α 0.01; at the field extremes (d⟨M⟩/dt ≈ 0) p is still
+0.6 … 0.9 of its mean. The loss does not follow the drive quasi-statically.
+"Jumps ≤ 6 %" is a lower bound: the method counts ring-down tails and small
+events as smooth. The text below is the original evaluation.
+
 `eval_jumps.py` → results/jumps.md. Per kept cycle: p_dis(t) (256 samples)
 = smooth part (Fourier series of the drive phase up to harmonic 8) +
 residual; a jump is a sample with residual > 4 robust σ. Clean runs only
@@ -946,6 +969,13 @@ residual; a jump is a sample with residual > 4 robust σ. Clean runs only
 
 ### 7.22 Harmonics of the reversible response (2026-10-04)
 
+**Revised 2026-10-04 (7.24):** two statements below are identities, not
+evidence for a mechanism: β = 2 + d ln sin δ / d ln B (H is sinusoidal,
+∮H dB contains only the fundamental of M; w_fund/w_dis = 0.96 … 1.08) and
+η = μ0 sin δ/(ωχ) (a falling η is the same as a falling sin δ). The
+conclusion "internal motion" does not follow from η. Valid: μ_r = 8.0 and
+M3/M1 ≤ 0.3 % (linear macroscopic response).
+
 `eval_harmonics.py` → results/harmonics.md. Clean runs (B300_*, α 0.1,
 n = 8; A010c_*, α 0.01, n = 3), cycles from 2 on, mean ± SE over the runs.
 
@@ -963,7 +993,8 @@ n = 8; A010c_*, α 0.01, n = 3), cycles from 2 on, mean ± SE over the runs.
 - The macroscopic response is linear and constant: μ_r = 8.00 ± 0.04 at all
   amplitudes and both α, third harmonic ≤ 0.3 %.
 - The loss angle falls with B_peak. With μ const, β = 2 + d ln sin δ /
-  d ln B: fit 1.74 (α 0.1) and 1.38 (α 0.01), in agreement with β_pow
+  d ln B: fit 1.74 (α 0.1, the 8 baseline runs) and 1.38 (α 0.01, the 3
+  A010c runs; their β_pow is 1.42 ± 0.13), in agreement with β_pow
   1.76 ± 0.05 and 1.49 ± 0.07 (7.17).
 - The dissipation per unit of the macroscopic magnetization rate (η) falls
   with B_peak to 0.49 (α 0.1) and 0.18 (α 0.01) of its 9 mT value. Thus a
@@ -979,6 +1010,14 @@ n = 8; A010c_*, α 0.01, n = 3), cycles from 2 on, mean ± SE over the runs.
   the dissipation from the snapshots would show it).
 
 ### 7.23 Where is the loss? Dissipation map from the snapshots (2026-10-04)
+
+**Revised 2026-10-04 (7.24):** limits of this map: (i) 4 snapshots of one
+cycle: non-periodic content (ringing, drift, jumps) adds positively to
+|m1|², thus R is biased high; (ii) p_fund is only ≈ 50 % of p_dis at
+≥ 50 mT, where the other half sits is not known; (iii) 56 % of p_fund at
+9 mT is in the 10 % cells of largest texture, where dx 3 is coarsest
+(mesh dependent). The location of the loss in the internal structure is a
+hint, not a result.
 
 `dissmap_batch.py` (on the instance) and `eval_dissmap.py` →
 results/dissmap.md. From the 4 snapshots of the last cycle per cell the
@@ -1011,6 +1050,42 @@ p_fund = α μ0 Ms/γ ω² |m1|²/2. Baseline, n = 8, mean ± SE.
   change falls with B_peak and β < 2. Limits: 4 samples per cycle; one
   base point; the curling/vortex identification rests on the texture and
   F90 measures (7.18, 7.19), not on an image of the structure.
+
+### 7.24 Independent review of 7.13 … 7.23 and corrections (2026-10-04)
+
+A context-free agent (Opus) checked all results against the raw data and
+the scripts. Corrections taken over (sections updated): §2, §3, §4, 7.15,
+7.17, 7.21 … 7.23 (see the revision notes there). Further findings:
+- Phase-independent dissipation (7.21 revision): β < 2 comes from a
+  dissipation that does not follow the drive; it grows as B^1.56 ± 0.07,
+  the phase-locked part as B^2.28 ± 0.03 (n = 8, α 0.1). Candidates (not
+  tested): local responses with spread phases, ring-down of internal modes,
+  many sub-threshold events. A broad distribution of relaxation times can
+  also give a loss per cycle that does not depend on f.
+- The α-independent parts (P at 10 mT ×1.06 ± 0.19 in ln; c1 of 7.20) hint
+  at an irreversible part that the jump count does not see.
+- **Anisotropy hint from existing data (not reported before):** F_corner_f
+  (L_eff 30 and r_p 3) vs F_base_f, n = 4 + 4, 20 … 150 mT (9 mT not
+  valid, unconverged relaxation, two factors changed together):
+  Δβ = −0.04 ± 0.06; Δ ln P = +0.09 ± 0.09 / +0.02 ± 0.05 / +0.02 ± 0.04 at
+  20 / 50 / 100 mT. Hint: no anisotropy lever above 20 mT.
+- β is higher at small B than at 50 mT: paired β(9-35) − β(35-70) =
+  +0.24 ± 0.11 (n = 11, p ≈ 0.05); without s921 +0.15 ± 0.07 (p ≈ 0.05).
+  A hint; 7.16 "no curvature" came from the quadratic fit.
+- Splice check (7.16): n = 3 per α; the 95 % interval of the 20 mT
+  agreement is ± 0.14 in ln w (α 0.1) and ± 0.19 (α 0.01), up to ≈ ± 0.1 in
+  β at 9-35 mT.
+- 3-point windows have 1 degree of freedom and share points (correlated);
+  median χ² 3.0 in the 9-35 mT window.
+- domains.py (per-particle smoothing) is correct.
+- Missing checks before the Sobol design (decided by Chris 2026-10-04:
+  Sobol on hold until they are done): (1) mesh300; (2) frequency test
+  f/2, f, 2f at 9 … 20 mT with the converged state; (3) ≥ 16 snapshots per
+  cycle over several cycles (local in-phase / quadrature parts) and a
+  ring-down test (stop the drive at H max, record the decay of p_dis).
+- Reviewer errors (not taken over): "mesh300 did not run" (it runs; only
+  the relaxation is done so far); "snapshots deleted locally" (they were
+  never local; they stay on the instance by decision).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
@@ -1153,7 +1228,13 @@ measured β (frequency, B range, material, particle size, core μ).
 Recommended: B and C. Not started.
 
 
-Open 2026-10-03: the method for the hysteresis loss (7.9). Options: (A)
+**Status 2026-10-04:** the target is the total loss at 30 MHz with the
+model α (Chris 2026-10-03); the hysteresis-method question below is
+superseded. Step 2 is decided (PLAN 4.2, option 3) but **on hold** until
+the checks of 7.24 (mesh300, 9 mT frequency test, phase-resolved snapshots
+and ring-down test) are done (Chris 2026-10-04).
+
+Open 2026-10-03 (superseded): the method for the hysteresis loss (7.9). Options: (A)
 quasi-static loops by energy minimization (no damping loss by
 construction; validation against LLG at 9 … 20 mT); (B) LLG at a much lower
 f (cost ∝ 1/f, ≈ 100× for 100 mT); (C) smaller α and f. Step 2 of PLAN.md

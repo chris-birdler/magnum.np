@@ -161,6 +161,9 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 
 ### 4.2 Design
 
+- **On hold (Chris 2026-10-04)** until mesh300, a frequency test f/2, f, 2f at
+  9 … 20 mT with the converged state, and phase-resolved snapshots plus a
+  ring-down test are done (PROTOKOLL 7.24).
 - **Decided 2026-10-04 (Chris, option 3):** main design at α 0.1 with
   N = 96 + 8; a subset at α 0.01 with the first 32 Sobol points + 8 centre
   replicates, the same points and seeds; extensible to the full 96 + 8 at
