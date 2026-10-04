@@ -161,18 +161,30 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 
 ### 4.2 Design
 
+- **Decided 2026-10-04 (Chris, option 3):** main design at α 0.1 with
+  N = 96 + 8; a subset at α 0.01 with the first 32 Sobol points + 8 centre
+  replicates, the same points and seeds; extensible to the full 96 + 8 at
+  α 0.01 if needed (decision after the evaluation of the subset).
 - N points of a scrambled Sobol sequence in 4 dimensions (scipy.stats.qmc,
-  fixed design seed; N = 128 or 256, decision D1). Mapping: L_eff by
-  quantiles to the 4 levels (exactly N/4 points per level), r_p and φ
-  linear, d/l_ex linear in ln. The regression uses the realised values
+  fixed design seed). The design must stay extensible (a prefix of the
+  sequence is a valid design): the mapping of each point does not depend
+  on N. L_eff: level = ⌊4u⌋ of the Sobol coordinate u (fixed; for N = 32,
+  64, 96 the Sobol net gives exactly N/4 points per level); r_p and φ
+  linear in u, d/l_ex linear in ln. The regression uses the realised values
   (`d_lex_used`, `phi_vox`), not the nominal ones.
 - One realisation per point (own seed: own cubes and own initial state).
-  Seeds start at 1001 (no overlap with the pilot seeds 1 … 8).
+  Seed = 1001 + point index, the same at α 0.1 and 0.01 (no overlap with
+  the pilot seeds 1 … 8 and the test seeds 901 … 928).
+- α 0.01 runs start from the relaxed virgin state of the α 0.1 run of the
+  same point (`--init_from`; the relaxation runs at α = 1 and does not
+  depend on α) and use 9 cycles per amplitude instead of 7 (at α 0.01 the
+  9 mT loops jump from cycle to cycle, PROTOKOLL 7.15).
 - Random order of the runs over the GPUs (no correlation of factor and GPU).
 - 8 replicates at the centre point (L_eff = 18, r_p = 1.5, φ = 0.62,
   d/l_ex = 252): pure error σ independent of the model, lack-of-fit test.
-- Extension: the next 128 Sobol points of the same sequence (256 in total)
-  if the errors of step 2 are too large (decision by Chris).
+- Extension: the next Sobol points of the same sequence (up to 128 / 256 in
+  total at α 0.1; up to 96 at α 0.01) if the errors of step 2 are too large
+  (decision by Chris).
 
 ### 4.3 Analysis
 
@@ -228,8 +240,10 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 | | Value |
 |---|---|
 | per run (V100, dx = 3), 5 amplitudes | 0.9 h (d/l_ex = 212) … 2.2 h (d/l_ex = 300); mean ≈ 1.42 h (review) |
-| N = 128 + 8, 7 amplitudes (decided) | ≈ 270 V100-h ≈ 35 … 43 $, ≈ 34 h on 8 GPUs |
-| extension to 256 + 8 | + ≈ 255 V100-h ≈ + 33 … 40 $ |
+| per run, 7 amplitudes, converged relaxation (measured, d/l_ex 300) | 3.4 V100-h (α 0.1); α 0.01 with 9 cycles ≈ 4 V100-h (estimate) |
+| main design 96 + 8 at α 0.1 (decided 2026-10-04) | ≈ 240 … 350 V100-h ≈ 25 … 35 $ (estimate; d/l_ex 212 … 300 is cheaper than 300; exact from jobs.py when built) |
+| subset 32 + 8 at α 0.01 (decided) | ≈ 110 … 160 V100-h ≈ 11 … 16 $ (estimate) |
+| later extension of α 0.01 to 96 + 8 | + ≈ 64 runs ≈ + 20 … 26 $ |
 | if step 1 needs f / 2 f pairs | × 1.5 |
 
 GPU selection: offers are shown to Chris before rent (low hourly rate).
@@ -257,7 +271,7 @@ Decision by Chris after step 2.
 
 | | Question | Options (cost estimates) |
 |---|---|---|
-| D1 | number of design points | **decided: 128 + 8 first, then extension to 256 if the errors are too large** |
+| D1 | number of design points | **decided 2026-10-04: 96 + 8 at α 0.1 plus 32 + 8 at α 0.01 (same points), both extensible** (was: 128 + 8, based on σ_β ≈ 0.45 before the converged relaxation) |
 | D2 | amplitudes | **decided: 7 (9 / 20 / 35 / 50 / 70 / 100 / 150 mT)** |
 | D3 | d/l_ex as factor and the cube window | **decided: (a) d/l_ex 212 … 300, d/L_eff ≥ 7; check of the residuals vs d/L_eff (below / above 10) in the analysis** |
 | D4 | frequency test corner | **decided: base point + corner L_eff 30, r_p 3** |
