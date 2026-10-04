@@ -11,9 +11,10 @@ A file is deletable only if ALL its conditions hold:
   geometry.vti         as m_*.vti
   checkpoint.pt,       the run is DONE and its summary.json is listed in --local_md5 (resume is no
   ckpt_*.pt            longer needed)
-  init.pt              the run is DONE, AND no job in any jobs/*.txt uses it (--init_from), OR every
-                       such dependent job is DONE (for example the alpha 0.01 runs of the Sobol subset
-                       and the 50 / 100 mT jobs of mesh300 start from the init.pt of another run)
+  init.pt              NEVER by default (it is small, 40 MB, and other runs start from it: the alpha 0.01
+                       runs of the Sobol subset and the 50 / 100 mT jobs of mesh300 use --init_from; a
+                       job file that is written later cannot be checked now). Only with --include_init,
+                       and then only if the run is DONE and every job in jobs/*.txt that uses it is DONE.
 Everything else is never touched.
 
     python cleanup_instance.py --local_md5 local.md5            # dry run
@@ -47,6 +48,8 @@ def main():
     ap.add_argument("--jobs", default=str(HERE / "jobs"))
     ap.add_argument("--local_md5", required=True, help="md5 list of the files on the laptop (paths relative to runs/)")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--include_init", action="store_true",
+                    help="also delete init.pt (only if no pending job in jobs/*.txt uses it)")
     a = ap.parse_args()
     runs = pathlib.Path(a.runs)
     local = {line.split(None, 1)[1].strip() for line in open(a.local_md5) if line.strip()}
@@ -68,8 +71,9 @@ def main():
         if ip.exists():
             users = dep.get("%s/init.pt" % d.name, set())
             pending = sorted(u for u in users if not (runs / u / "DONE").exists())
-            ok = done and not pending
-            (todo if ok else keep).append((ip, "init (needed by %s)" % ", ".join(pending) if pending else "init", ok))
+            ok = a.include_init and done and not pending
+            why = "init (needed by %s)" % ", ".join(pending) if pending else "init (kept by default)"
+            (todo if ok else keep).append((ip, why if not ok else "init", ok))
     size = lambda lst: sum(p.stat().st_size for p, _, _ in lst) / 1e9
     print("deletable: %d files, %.2f GB" % (len(todo), size(todo)))
     groups = {}
@@ -81,6 +85,8 @@ def main():
     for p, kind, _ in keep:
         if kind.startswith("init (needed"):
             print("   %s  %s" % (p.relative_to(runs), kind))
+    n_init = sum(1 for _, k, _ in keep if k.startswith("init"))
+    print("   of these init.pt: %d (never deleted without --include_init)" % n_init)
     if a.apply:
         for p, _, _ in todo:
             p.unlink()

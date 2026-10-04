@@ -182,6 +182,12 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 - Random order of the runs over the GPUs (no correlation of factor and GPU).
 - 8 replicates at the centre point (L_eff = 18, r_p = 1.5, φ = 0.62,
   d/l_ex = 252): pure error σ independent of the model, lack-of-fit test.
+- Disk of the instance (40 GB): large files are deleted when no longer needed
+  (Chris, 2026-10-04), with `cleanup_instance.py`: dry run first, deletion
+  only after the go for the printed list. Snapshots only after domains.json
+  and dissmap.json are fetched and md5-verified; checkpoints only after the
+  run is DONE and fetched; **init.pt never by default** (the α 0.01 runs
+  start from the init.pt of the α 0.1 run of the same point).
 - Extension: the next Sobol points of the same sequence (up to 128 / 256 in
   total at α 0.1; up to 96 at α 0.01) if the errors of step 2 are too large
   (decision by Chris).
