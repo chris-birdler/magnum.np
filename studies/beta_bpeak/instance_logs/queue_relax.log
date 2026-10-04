@@ -1,0 +1,14 @@
+16a266b study: m snapshots at phase points of the last cycle (--snap_phases), geometry.vti; snaptest jobs (20 and 150 mT, alpha 0.1)
+jobs/relaxtest.txt
+[start] gpu 0  X010_s901
+[start] gpu 1  X010_s902
+[start] gpu 2  X010_s903
+[start] gpu 3  X100_s901
+[done] gpu 3  X100_s901  1.30 h
+[start] gpu 3  X100_s902
+[done] gpu 0  X010_s901  1.36 h
+[start] gpu 0  X100_s903
+[done] gpu 2  X010_s903  1.37 h
+[done] gpu 1  X010_s902  1.69 h
+[done] gpu 0  X100_s903  1.30 h
+[done] gpu 3  X100_s902  1.63 h

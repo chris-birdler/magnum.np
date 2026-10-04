@@ -1,0 +1,6 @@
+3f8c4bd study: script for the geometry slice figure (voxel particles, sphere outlines, Herzer cubes, mesh)
+jobs/snaptest.txt
+[start] gpu 0  V_s901
+[start] gpu 1  V_s902
+[done] gpu 0  V_s901  1.32 h
+[done] gpu 1  V_s902  1.66 h

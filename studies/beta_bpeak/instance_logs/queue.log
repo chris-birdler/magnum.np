@@ -1,0 +1,12 @@
+[start] gpu 1  A010_s902
+[start] gpu 0  A010_s901
+[start] gpu 2  A010_s903
+[start] gpu 3  A030_s901
+[done] gpu 3  A030_s901  2.32 h
+[start] gpu 3  A030_s902
+[done] gpu 2  A010_s903  2.35 h
+[start] gpu 2  A030_s903
+[done] gpu 0  A010_s901  2.39 h
+[done] gpu 1  A010_s902  2.47 h
+[done] gpu 2  A030_s903  2.29 h
+[done] gpu 3  A030_s902  2.37 h

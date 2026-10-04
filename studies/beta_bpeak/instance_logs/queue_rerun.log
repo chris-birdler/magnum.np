@@ -1,0 +1,23 @@
+3f8c4bd study: script for the geometry slice figure (voxel particles, sphere outlines, Herzer cubes, mesh)
+jobs/baseline.txt
+jobs/mesh300.txt
+[start] gpu 0  B300_s921
+[start] gpu 1  B300_s922
+[start] gpu 2  B300_s923
+[start] gpu 3  B300_s924
+[done] gpu 1  B300_s922  3.21 h
+[start] gpu 1  B300_s925
+[done] gpu 2  B300_s923  3.22 h
+[start] gpu 2  B300_s926
+[done] gpu 3  B300_s924  3.34 h
+[start] gpu 3  B300_s927
+[done] gpu 0  B300_s921  3.34 h
+[start] gpu 0  B300_s928
+[done] gpu 1  B300_s925  3.27 h
+[done] gpu 0  B300_s928  3.31 h
+[done] gpu 3  B300_s927  3.34 h
+[done] gpu 2  B300_s926  3.67 h
+[start] gpu 0  M300_dx15_s921_b9
+[start] gpu 1  M300_dx15_s922_b9
+[start] gpu 2  M300_dx15_s923_b9
+[start] gpu 3  M300_dx15_s924_b9
