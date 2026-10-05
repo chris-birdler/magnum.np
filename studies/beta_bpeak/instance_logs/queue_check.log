@@ -1,0 +1,6 @@
+c2002a7 study: instance logs update (mesh300)
+jobs/check_combined.txt
+[start] gpu 0  PH_s921
+[start] gpu 1  PH_s922
+[start] gpu 2  F9_half_s921
+[start] gpu 3  F9_half_s922

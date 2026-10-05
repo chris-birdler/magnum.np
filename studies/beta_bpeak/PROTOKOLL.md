@@ -162,8 +162,10 @@ mean ± SE over realisations):**
 | d/l_ex = 300 (1 µm), dx 3 | ×1.4 / ×1.26 | −0.20 ± 0.23 | ≈ 17 (dx 1.5: ≈ 2 … 5) |
 
 - **Withdrawn (7.11, 7.13): all d/l_ex 300 values in this table come from
-  runs with an unconverged virgin state; the mesh at 1 µm is open until
-  mesh300 (PLAN 3e).** Original text: At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β (−0.20 ± 0.23). The
+  runs with an unconverged virgin state. Mesh decision 2026-10-05 (7.25,
+  converged, n = 4 paired): dx 3 is sufficient for β (Δβ ≤ 0.11 ± 0.10);
+  the loss level at dx 3 is too high by +20 … +45 % (+32 … +80 % without
+  the event seed), largest at small B.** Original text: At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β (−0.20 ± 0.23). The
   loss level is ≈ 26 % high at 50 mT (± 5 %) and ≈ 40 % high at 9 mT
   (uncertain). dx = 3 costs 0.06 h per cycle, dx = 1.5 costs 1.87 h (V100).
 - At d/l_ex = 96 (330 nm) dx = 3 is not sufficient: the loss is 3 … 4× too low.
@@ -1095,6 +1097,43 @@ the scripts. Corrections taken over (sections updated): §2, §3, §4, 7.15,
 - Reviewer errors (not taken over): "mesh300 did not run" (it runs; only
   the relaxation is done so far); "snapshots deleted locally" (they were
   never local; they stay on the instance by decision).
+
+### 7.25 mesh300: dx 1.5 vs dx 3 at 1 µm with the converged virgin state (2026-10-05)
+
+`eval_mesh300.py` → results/mesh300.md. d/l_ex 300, base point, α 0.1,
+seeds 921 … 924, one job per amplitude (9 / 50 / 100 mT; 50 and 100 mT
+start from the init.pt of the 9 mT job of the same mesh), 5 cycles, kept
+from cycle 2. All 24 jobs done, no failure. Relaxation at dx 1.5: 20 500 …
+25 500 iterations (9 … 11 h).
+
+| | 9 mT | 50 mT | 100 mT |
+|---|---|---|---|
+| Δ ln w = ln w(dx 3) − ln w(dx 1.5), paired n = 4 | +0.36 ± 0.24 | +0.26 ± 0.16 | +0.19 ± 0.10 |
+| same without s921 (n = 3) | +0.59 ± 0.06 | +0.41 ± 0.09 | +0.28 ± 0.04 |
+
+| segment | β dx 1.5 | β dx 3 | Δβ paired (n = 4) |
+|---|---|---|---|
+| 9 → 50 mT | 1.92 ± 0.08 | 1.87 ± 0.13 | −0.05 ± 0.06 |
+| 50 → 100 mT | 1.81 ± 0.06 | 1.70 ± 0.06 | −0.11 ± 0.10 |
+| 9 → 100 mT | 1.89 ± 0.04 | 1.82 ± 0.10 | −0.06 ± 0.06 |
+
+- **β does not depend on the mesh within ≈ 0.1** (Δβ −0.05 … −0.11, each
+  within 1.1 SE; n = 4 paired). dx 3 is sufficient for β at 1 µm.
+- **The loss level does depend on the mesh:** dx 3 gives more loss than
+  dx 1.5, +20 … +45 % with all seeds (1.5 … 1.9 SE), +32 … +80 % without
+  s921 (s921 at dx 3 has events: balance 1.70 at 9 mT, 2.35 at 100 mT). The
+  error is largest at small B. Absolute losses at dx 3 are thus too high by
+  a factor ≈ 1.2 … 1.8; whether dx 1.5 itself is converged is not known.
+- Events occur on both meshes (dx 1.5: s922 at 9 mT 1.56, s924 at 50 mT
+  1.42; dx 3: s921).
+- Rule of PLAN step 1b at 50 mT (same mesh error at d/l_ex 212 and 300):
+  +0.26 ± 0.16 vs −0.06 ± 0.14 (7.10), |difference| + 1.645 SE = 0.68 > 0.10:
+  not met. In the Sobol design an effect of d/l_ex on the loss LEVEL can be
+  a mesh effect; for β the mesh error is small.
+- Protocol check at dx 3: one job per amplitude from the virgin state vs
+  amplitudes in sequence (baseline, same seeds): Δ ln w = −0.02 ± 0.02 /
+  −0.07 ± 0.05 / −0.02 ± 0.01 at 9 / 50 / 100 mT: no history effect.
+- §4 updated: the mesh decision rests now on this section.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

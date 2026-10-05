@@ -39,3 +39,29 @@ jobs/mesh300.txt
 [start] gpu 3  M300_dx15_s924_b100
 [done] gpu 1  M300_dx15_s923_b50  8.64 h
 [start] gpu 1  M300_dx3_s921_b9
+[done] gpu 2  M300_dx15_s923_b100  8.65 h
+[start] gpu 2  M300_dx3_s922_b9
+[done] gpu 1  M300_dx3_s921_b9  0.71 h
+[start] gpu 1  M300_dx3_s923_b9
+[done] gpu 2  M300_dx3_s922_b9  0.60 h
+[start] gpu 2  M300_dx3_s924_b9
+[done] gpu 0  M300_dx15_s924_b50  8.65 h
+[start] gpu 0  M300_dx3_s921_b50
+[done] gpu 1  M300_dx3_s923_b9  0.60 h
+[start] gpu 1  M300_dx3_s921_b100
+[done] gpu 0  M300_dx3_s921_b50  0.30 h
+[start] gpu 0  M300_dx3_s922_b50
+[done] gpu 2  M300_dx3_s924_b9  0.71 h
+[start] gpu 2  M300_dx3_s922_b100
+[done] gpu 1  M300_dx3_s921_b100  0.31 h
+[start] gpu 1  M300_dx3_s923_b50
+[done] gpu 0  M300_dx3_s922_b50  0.30 h
+[start] gpu 0  M300_dx3_s923_b100
+[done] gpu 2  M300_dx3_s922_b100  0.30 h
+[start] gpu 2  M300_dx3_s924_b50
+[done] gpu 1  M300_dx3_s923_b50  0.30 h
+[start] gpu 1  M300_dx3_s924_b100
+[done] gpu 0  M300_dx3_s923_b100  0.30 h
+[done] gpu 2  M300_dx3_s924_b50  0.30 h
+[done] gpu 1  M300_dx3_s924_b100  0.30 h
+[done] gpu 3  M300_dx15_s924_b100  8.66 h
