@@ -895,6 +895,11 @@ state; 4 phases of the last cycle; analysed on the instance). Totals over the
   Sobol design varies L_eff, r_p, φ and d and thus the texture much more;
   the per-run texture from the snapshots is a candidate output there.
 
+Data note (2026-10-05, Chris's go): the 250 snapshots (.vti) of B300_s921 …
+s928 and V_s901/902 were deleted on the instance after the evaluation; their
+results are in runs/*/domains.json and dissmap.json (local, md5 manifest).
+They were never downloaded (Chris 2026-10-04).
+
 ### 7.20 Loss decomposition w = c1 b + c2 b² (hypothesis test, 2026-10-04)
 
 Hypothesis (Chris, 2026-10-04): pinned structures give only reversible
