@@ -17,4 +17,13 @@ Over the range: β = 2 + d ln sin δ / d ln B (for μ = const); the fit of ln si
   α 0.1: d ln sin δ / d ln B = -0.26 → β ≈ 1.74 (if μ = const)
   α 0.01: d ln sin δ / d ln B = -0.62 → β ≈ 1.38 (if μ = const)
 
+**Linear cross-check** (not a mechanism): for a linear, viscously damped response below resonance tan δ ≈ α ω / ω_eff, thus f_eff = α f / tan δ, and tan δ should scale with α. Ratio tan δ(α 0.01) / tan δ(α 0.1) = 0.1 if linear.
+| B_peak | f_eff α 0.1 [MHz] | f_eff α 0.01 [MHz] | tan δ(0.01) / tan δ(0.1) |
+|---|---|---|---|
+| 9 mT | 232 | 18 | 1.29 |
+| 20 mT | 249 | 29 | 0.86 |
+| 50 mT | 313 | 55 | 0.57 |
+| 100 mT | 423 | 95 | 0.45 |
+| 150 mT | 456 | 90 | 0.51 |
+
 α 0.1: B300_s921 … s928; α 0.01: A010c_s904 … s906; cycles from 2 on. μ_r of the core = 1 + |M1|/|H1| (M averaged over the unit cell).

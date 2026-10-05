@@ -86,6 +86,18 @@ def main():
         sd = [np.mean([x["sin_delta"] for x in data[(alpha, mT)]]) for mT in B]
         s = np.polyfit(np.log(B), np.log(sd), 1)[0]
         print("  α %g: d ln sin δ / d ln B = %.2f → β ≈ %.2f (if μ = const)" % (alpha, s, 2 + s))
+    print("\n**Linear cross-check** (not a mechanism): for a linear, viscously damped response below resonance "
+          "tan δ ≈ α ω / ω_eff, thus f_eff = α f / tan δ, and tan δ should scale with α. Ratio tan δ(α 0.01) / "
+          "tan δ(α 0.1) = 0.1 if linear.")
+    print("| B_peak | f_eff α 0.1 [MHz] | f_eff α 0.01 [MHz] | tan δ(0.01) / tan δ(0.1) |")
+    print("|---|---|---|---|")
+    F = 30.0
+    for mT in AMPS:
+        if (0.1, mT) not in data or (0.01, mT) not in data:
+            continue
+        t1 = np.mean([math.tan(math.asin(x["sin_delta"])) for x in data[(0.1, mT)]])
+        t2 = np.mean([math.tan(math.asin(x["sin_delta"])) for x in data[(0.01, mT)]])
+        print("| %d mT | %.0f | %.0f | %.2f |" % (mT, 0.1 * F / t1, 0.01 * F / t2, t2 / t1))
     print("\nα 0.1: B300_s921 … s928; α 0.01: A010c_s904 … s906; cycles from 2 on. μ_r of the core = 1 + |M1|/|H1| "
           "(M averaged over the unit cell).")
 

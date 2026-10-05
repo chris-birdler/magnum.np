@@ -1083,6 +1083,15 @@ the scripts. Corrections taken over (sections updated): §2, §3, §4, 7.15,
   f/2, f, 2f at 9 … 20 mT with the converged state; (3) ≥ 16 snapshots per
   cycle over several cycles (local in-phase / quadrature parts) and a
   ring-down test (stop the drive at H max, record the decay of p_dis).
+- **Linear cross-check (added 2026-10-04, Chris: a check only, do not over-
+  interpret):** for a linear, viscously damped response below resonance
+  tan δ ≈ α ω/ω_eff (Smit-Beljers / Kittel type small-signal response),
+  thus tan δ should scale with α. Measured ratio tan δ(α 0.01)/tan δ(α 0.1)
+  = 1.29 / 0.86 / 0.57 / 0.45 / 0.51 at 9 / 20 / 50 / 100 / 150 mT instead of
+  0.1 (results/harmonics.md; clean runs, n = 8 vs 3). The loss is not a
+  linear viscous damping, least of all at small B. f_eff = α f / tan δ =
+  230 … 460 MHz (α 0.1) is a formal number of the linear picture, not a
+  measured mode frequency.
 - Reviewer errors (not taken over): "mesh300 did not run" (it runs; only
   the relaxation is done so far); "snapshots deleted locally" (they were
   never local; they stay on the instance by decision).
