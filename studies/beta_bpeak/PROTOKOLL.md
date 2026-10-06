@@ -1502,6 +1502,17 @@ recorded here.
 - 3. cleanup_instance.py: the checkpoint of a run with snapshots is
   deletable only with POSTPROC_DONE, "final" in domains.json and
   domains.json fetched (local md5); unit test with 5 run states.
+- 4. Unattended operation: run_queue retries a failed job once (not exit
+  code 3); failures of 2 different jobs on one GPU within 10 min pause it
+  30 min, the 3rd burst disables it (ALERT); job timeout 12 h; every worker
+  exception caught, reservation always released; status_sobol.json every
+  5 min; run_loops stops with exit code 4 if m is not finite; the
+  post-processing runs under a restart loop and rejects non-finite R1 / R_np
+  / p_dis. Unit tests (retry, gate, timeout, exception, burst). Instance
+  chain test with one good and one broken job: retry, ALERT, good run DONE
+  and post-processed, status file written. The test showed two faults, both
+  fixed: one job failing twice disabled a GPU (now: different jobs only, with
+  pause), and the log showed exit code 0 instead of 1 (shell $? reset).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

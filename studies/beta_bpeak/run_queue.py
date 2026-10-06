@@ -20,8 +20,9 @@ Run a job file on several GPUs of one machine (one job per GPU at a time).
 Unattended operation (audit 3, item 4):
 * a failed job (exit code != 0, timeout, exception) goes once more to the end of the queue (--retries 1); it
   resumes from its checkpoint. Exit code 3 (relaxation gate not met) is deterministic: no plain retry.
-* failure burst: a GPU with 2 failures within 10 min takes no more jobs (defective GPU); the line goes to
-  <runs>/ALERT; the other GPUs go on.
+* failure burst: failures of 2 DIFFERENT jobs on one GPU within 10 min (a job that fails twice is the job's
+  fault, not the GPU's) pause this GPU for 30 min; after the 3rd burst the GPU takes no more jobs (defective
+  GPU). Each burst goes to <runs>/ALERT; the other GPUs go on.
 * --job_timeout_h H: a job that runs longer is killed (FAIL "timeout").
 * every exception of a worker is caught; the reservation of the job is always released.
 * --status FILE: a JSON status (running, done, failed, waiting, disabled GPUs, disk, reservations, alerts,
@@ -102,7 +103,7 @@ def postproc_state(runs):
 
 
 def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
-             burst_n=2, burst_s=600.0, status_s=300.0, poll_s=300.0):
+             burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0):
     """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
@@ -182,7 +183,7 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                 running.pop(name, None)
 
     def worker(gpu):
-        fails = []
+        fails, bursts = [], 0                       # fails: (time, job name) on this GPU
         while True:
             try:
                 name, args = q.get(timeout=5)
@@ -209,16 +210,22 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                           flush=True)
                     if retry:
                         q.put((name, args))
-                    fails = [t for t in fails if time.time() - t < burst_s] + [time.time()]
+                    fails = [(t, n) for t, n in fails if time.time() - t < burst_s] + [(time.time(), name)]
                 active["n"] -= 1
-            if len(fails) >= burst_n:
-                with lock:
-                    disabled.add(gpu)
-                alert("gpu %s disabled: %d failures within %.0f min (last: %s %s)" % (gpu, len(fails), burst_s / 60,
-                                                                                     name, why))
-                if len(disabled) == len(gpus):
-                    alert("all GPUs disabled: the queue stops")
-                return
+            if len({n for _, n in fails}) >= burst_n:
+                bursts += 1
+                fails = []
+                if bursts >= burst_max:
+                    with lock:
+                        disabled.add(gpu)
+                    alert("gpu %s disabled: burst %d of failures of %d different jobs within %.0f min (last: %s %s)"
+                          % (gpu, bursts, burst_n, burst_s / 60, name, why))
+                    if len(disabled) == len(gpus):
+                        alert("all GPUs disabled: the queue stops")
+                    return
+                alert("gpu %s paused %.0f min: burst %d of failures of %d different jobs within %.0f min (last: %s %s)"
+                      % (gpu, pause_s / 60, bursts, burst_n, burst_s / 60, name, why))
+                time.sleep(pause_s)
 
     stop = threading.Event()
 

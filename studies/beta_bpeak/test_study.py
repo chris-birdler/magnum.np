@@ -415,12 +415,16 @@ def test_run_queue_retry_gate_timeout_exception(tmp_path):
     assert st["final"] and st["done"] == 3 and not st["running"]
 
 
-def test_run_queue_failure_burst_disables_gpu(tmp_path):
-    """run_queue.run_jobs: 2 failures within the window disable the GPU (ALERT); with one GPU the rest is
-    reported as not run."""
+def test_run_queue_failure_burst_pauses_then_disables_gpu(tmp_path):
+    """run_queue.run_jobs: failures of 2 different jobs within the window pause the GPU; the burst_max-th burst
+    disables it (ALERT); with one GPU the rest is reported as not run. One job failing twice is no burst."""
     import run_queue
-    jobs = [("A", "fail"), ("B", "fail"), ("C", "ok")]
-    res = run_queue.run_jobs(jobs, ["g0"], tmp_path / "runs", retries=1, command=_cmd, burst_n=2, burst_s=600)
-    assert res["done"] == []
-    assert res["failed"]["C"] == "not run (no GPU left)"
-    assert "gpu g0 disabled" in (tmp_path / "runs" / "ALERT").read_text()
+    jobs = [("A", "fail"), ("B", "fail"), ("C", "fail"), ("D", "fail"), ("E", "ok")]
+    res = run_queue.run_jobs(jobs, ["g0"], tmp_path / "runs", retries=0, command=_cmd, burst_n=2, burst_s=600,
+                             pause_s=0.1, burst_max=2)
+    alert = (tmp_path / "runs" / "ALERT").read_text()
+    assert "gpu g0 paused" in alert and "gpu g0 disabled" in alert
+    assert res["failed"]["E"] == "not run (no GPU left)"
+    res = run_queue.run_jobs([("X", "fail"), ("Y", "ok")], ["g0"], tmp_path / "runs2", retries=1, command=_cmd,
+                             burst_n=2, burst_s=600, pause_s=0.1, burst_max=1)
+    assert res["done"] == ["Y"] and not (tmp_path / "runs2" / "ALERT").exists()

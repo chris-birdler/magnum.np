@@ -12,7 +12,7 @@
 # * a lock (flock) keeps a second chain from starting; /root/onstart.sh starts this script after an instance
 #   restart (finished runs are skipped by run_queue, interrupted runs resume from their checkpoint).
 # * all logs are appended, never overwritten; the shuffled job file is made once and then kept.
-# Unattended operation (audit 3, item 4): retry once, GPU disabled after a failure burst, job timeout 12 h,
+# Unattended operation (audit 3, item 4): retry once, GPU paused / disabled after failure bursts, job timeout 12 h,
 # status_sobol.json every 5 min, alerts in runs/ALERT, post-processing restarted if it dies.
 #
 #   install: echo <commit> > /root/sobol_commit; rm -f <B>/jobs/sobol_a01_shuffled.txt; cp chain_sobol.sh /root/;
@@ -40,9 +40,9 @@ echo "$(date '+%F %T') chain (re)start at $(git log --oneline -1)" >> queue_sobo
   done ) &
 Q="--gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 12 --status status_sobol.json"
 python run_queue.py jobs/sobol_a01_shuffled.txt $Q >> queue_sobol.log 2>&1
-echo "$(date '+%F %T') main queue exit code $?" >> queue_sobol.log
+rc=$?; echo "$(date '+%F %T') main queue exit code $rc" >> queue_sobol.log
 python run_queue.py jobs/sobol_a001.txt $Q >> queue_sobol.log 2>&1
-echo "$(date '+%F %T') alpha 0.01 queue exit code $?" >> queue_sobol.log
+rc=$?; echo "$(date '+%F %T') alpha 0.01 queue exit code $rc" >> queue_sobol.log
 touch runs/ALL10_DONE
 echo "$(date '+%F %T') queues finished" >> queue_sobol.log
 wait
