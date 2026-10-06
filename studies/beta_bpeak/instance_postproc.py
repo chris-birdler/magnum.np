@@ -2,9 +2,11 @@
 """
 Post-processing on the instance during the Sobol design (PLAN 4.0; standing go of Chris 2026-10-06).
 Loop: for every finished run (DONE) with snapshots (*.vti) and without POSTPROC_DONE:
-  1. phasemap_batch.py and phase_extra.py (phasemap.json, phase_extra.json, slices.npz)
-  2. check: both JSON files exist and hold the same number of stages as there are snapshot stages
-  3. md5 of the three result files -> postproc.md5 (in the runs folder), then delete the *.vti of this run
+  1. phasemap_batch.py, phase_extra.py and domains_batch.py (phasemap.json, phase_extra.json, slices.npz,
+     domains.json: wall measures, switched volume, l_C of the last cycle per stage, of init.pt and of the
+     end state checkpoint.pt)
+  2. check: the three JSON files exist and hold the same number of stages as there are snapshot stages
+  3. md5 of the four result files -> postproc.md5 (in the runs folder), then delete the *.vti of this run
      (ONLY *.vti: init.pt and checkpoint.pt are never touched here)
   4. touch POSTPROC_DONE
 A run whose check fails keeps its snapshots and is listed in postproc_errors.log.
@@ -38,7 +40,7 @@ def md5(p):
 
 def process(d):
     stages = {re.match(r"m_(.+)_c\d+_ph\d+\.vti", f.name).group(1) for f in d.glob("m_*_c*_ph*.vti")}
-    for script in ("phasemap_batch.py", "phase_extra.py"):
+    for script in ("phasemap_batch.py", "phase_extra.py", "domains_batch.py"):
         r = subprocess.run([sys.executable, str(HERE / script), str(d)], capture_output=True, text=True,
                            env=dict(os.environ, OMP_NUM_THREADS="6"))
         if r.returncode != 0:
@@ -46,11 +48,14 @@ def process(d):
     try:
         n1 = len(json.loads((d / "phasemap.json").read_text())["stages"])
         n2 = len(json.loads((d / "phase_extra.json").read_text())["stages"])
+        n3 = len(json.loads((d / "domains.json").read_text())["stages"])
     except Exception as e:                                  # noqa: BLE001
         return d, "result files not readable: %s" % e
-    if not (n1 == n2 == len(stages)) or not (d / "slices.npz").exists():
-        return d, "stage count mismatch: snapshots %d, phasemap %d, phase_extra %d" % (len(stages), n1, n2)
-    lines = ["%s  %s/%s\n" % (md5(d / f), d.name, f) for f in ("phasemap.json", "phase_extra.json", "slices.npz")]
+    if not (n1 == n2 == n3 == len(stages)) or not (d / "slices.npz").exists():
+        return d, "stage count mismatch: snapshots %d, phasemap %d, phase_extra %d, domains %d" % (
+            len(stages), n1, n2, n3)
+    lines = ["%s  %s/%s\n" % (md5(d / f), d.name, f)
+             for f in ("phasemap.json", "phase_extra.json", "slices.npz", "domains.json")]
     return d, lines
 
 

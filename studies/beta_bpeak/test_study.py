@@ -307,3 +307,30 @@ def test_sobol_design_mapping():
     p = SD.point([0.999999, 1.0, 1.0, 1.0])
     assert p["Leff_lex"] == 30.0 and abs(p["r_p"] - 3.0) < 1e-6 and abs(p["phi"] - 0.69) < 1e-6 and abs(p["d_lex"] - 300.0) < 1e-3
     assert [SD.point([u, .5, .5, .5])["Leff_lex"] for u in (0.1, 0.3, 0.6, 0.9)] == [12.0, 18.0, 24.0, 30.0]
+
+
+def test_domains_batch_selects_last_cycle_quarter_phases(tmp_path):
+    """domains_batch.select: 16 phases x 2 cycles -> only the last cycle, phases 90/180/270/360; 4 phases x 1
+    cycle (old runs) -> all 4."""
+    import domains_batch
+    for c in (6, 7):
+        for k in range(16):
+            (tmp_path / ("m_amp00_c%d_ph%03d.vti" % (c, round(360.0 * (k + 1) / 16)))).touch()
+    for deg in (90, 180, 270, 360):
+        (tmp_path / ("m_amp03_c4_ph%03d.vti" % deg)).touch()
+    sel = domains_batch.select(tmp_path)
+    assert [f.name for f in sel["amp00"]] == ["m_amp00_c7_ph%03d.vti" % x for x in (90, 180, 270, 360)]
+    assert [f.name for f in sel["amp03"]] == ["m_amp03_c4_ph%03d.vti" % x for x in (90, 180, 270, 360)]
+
+
+def test_run_queue_expected_bytes():
+    """run_queue.expected_bytes: Sobol job = 16 x 2 x 3 snapshots + 2 state files, N from the box edge."""
+    import run_queue
+    from anisotropy_model import box_edge
+    line = open(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_main.txt").readline()
+    name, _, args = line.strip().partition(" ")
+    d = run_queue.job_args(args)
+    N = round(box_edge(float(d["d_lex"][0]), float(d["phi"][0]))[0] / float(d["dx_lex"][0]))
+    assert run_queue.expected_bytes(args) == N ** 3 * (96 * run_queue.B_SNAP_CELL + 2 * run_queue.B_PT_CELL)
+    assert run_queue.expected_bytes("--d_lex 300 --phi 0.62 --dx_lex 3") == pytest.approx(
+        round(box_edge(300.0, 0.62)[0] / 3) ** 3 * 24.0)
