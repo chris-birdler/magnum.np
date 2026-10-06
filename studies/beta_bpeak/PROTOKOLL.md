@@ -1490,7 +1490,15 @@ recorded here.
 - 1. Phase-angle bug in phasemap_batch.py / phase_extra.py (harmonics k ≥ 2
   wrong, R1 / lag / R_np correct; 7.26 corrected). Fix: angle from the index
   θ_j = 2π(j+1)/N, the names are only checked; test with known harmonics.
-  No rerun of PH_s921/922 (not needed for the design, Chris).
+  No rerun of PH_s921/922 (not needed for the design, Chris). Real-data
+  check in the restart test below (d/l_ex 96, 11 / 150 mT): p_4/p_dis 0.001 /
+  0.03, no leak.
+- 2. Restart safety of the chain (a6581a1): code pinned to a commit
+  (/root/sobol_commit), flock lock, start from /root/onstart.sh after an
+  instance restart, logs appended. Tested on the instance: second start
+  refused by the lock; chain killed (kill -9 of the process group) during
+  stage 1, restarted: "[resume] from stage 1", run DONE, post-processing
+  done, logs complete.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
