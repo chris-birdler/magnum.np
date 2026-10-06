@@ -1,0 +1,24 @@
+1884b50 study: job group rough300a (surface comparison at alpha 0.01, from the relaxed states of the alpha 0.1 runs)
+[start] gpu 0  R300v01_s921_b9
+[start] gpu 1  R300v01_s921_b50
+[start] gpu 2  R300v01_s921_b100
+[start] gpu 3  R300f01_s921_b9
+restart without the old fraction model (Chris 2026-10-06)
+[start] gpu 3  R300v01_s922_b9
+[start] gpu 0  R300v01_s923_b9
+[start] gpu 1  R300v01_s923_b50
+[start] gpu 2  R300v01_s923_b100
+[done] gpu 3  R300v01_s922_b9  0.57 h
+[start] gpu 3  R300v01_s922_b50
+[done] gpu 2  R300v01_s923_b100  0.57 h
+[start] gpu 2  R300v01_s924_b9
+[done] gpu 1  R300v01_s923_b50  0.57 h
+[start] gpu 1  R300v01_s924_b50
+[done] gpu 0  R300v01_s923_b9  0.58 h
+[start] gpu 0  R300v01_s924_b100
+[done] gpu 3  R300v01_s922_b50  0.57 h
+[start] gpu 3  R300v01_s922_b100
+[done] gpu 1  R300v01_s924_b50  0.57 h
+[done] gpu 2  R300v01_s924_b9  0.57 h
+[done] gpu 0  R300v01_s924_b100  0.57 h
+[done] gpu 3  R300v01_s922_b100  0.57 h

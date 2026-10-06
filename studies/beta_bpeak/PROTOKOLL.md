@@ -14,8 +14,12 @@ Key findings with a valid (converged) virgin state, d/l_ex 300 (1 µm),
 dx 3, base point, f = 30 MHz (details in the sections given):
 - β (power law 9 … 150 mT) = 1.76 ± 0.05 at α 0.1 (n = 8, 7.17); local β
   1.87 → 1.61 → 1.72 at ≈ 18 / 50 / 100 mT (3-point windows, 7.17).
-- α is a lever: α 0.01 lowers β by 0.27 ± 0.08 (n = 6 vs 11) and halves
-  the loss at 100 mT; the loss at 10 mT does not depend on α (7.17, 7.24).
+- α acts on the loss level: α 0.01 lowers the loss at 50 mT by a factor
+  0.59 (paired n = 4, p = 0.002, 7.31) and at 100 mT by ≈ 0.5 (unpaired);
+  at 9 mT no α dependence was detected. **The α effect on β is not
+  established:** pooled with spliced runs −0.27 ± 0.08 (n = 6 vs 11), clean
+  unpaired −0.34 ± 0.14 (p = 0.10), clean paired −0.09 ± 0.17 (n = 4,
+  p = 0.65, 95 % CI −0.64 … +0.46) (7.17, 7.31).
 - The core response is linear (μ = 8.0, set by the geometry); the loss at
   small B is a dynamic relaxation of the vortex-core region with widely
   spread local phases, ∝ f^1.1 … 1.3, ring-down 10 … 20 ns (7.26, 7.27).
@@ -1390,6 +1394,33 @@ jobs/sobol_a001.txt (first 32 points + 8 centre replicates at α 0.01,
 - Cost: cost model 232 (main) + 31 (corners) + 283 (α 0.01, the model
   overestimates small α ≈ 2×) V100-h; realistic ≈ 400 V100-h ≈ 40 $,
   ≈ 4 days on 4 V100.
+
+### 7.31 Paired α comparison (2026-10-06)
+
+`eval_alpha_paired.py` → results/alpha_paired.md. R300v01_* (α 0.01,
+9 cycles) vs M300_dx3_* (α 0.1, 5 cycles): the same relaxed state (init.pt),
+dx 3, staircase, one job per amplitude, seeds 921 … 924; only α differs.
+Paired differences α 0.01 − α 0.1, mean ± SE [95 % CI, df 3], p:
+
+| | 9 mT | 50 mT | 100 mT |
+|---|---|---|---|
+| Δ ln w | −0.25 ± 0.15 [−0.74, +0.23], p 0.20 | **−0.52 ± 0.05 [−0.69, −0.36], p 0.002** | −0.46 ± 0.26 [−1.30, +0.37], p 0.17 |
+
+| segment | β α 0.1 | β α 0.01 | Δβ (paired) |
+|---|---|---|---|
+| 9 → 50 mT | 1.87 ± 0.13 | 1.72 ± 0.24 | −0.15 ± 0.11 [−0.51, +0.20], p 0.26 |
+| 50 → 100 mT | 1.70 ± 0.06 | 1.78 ± 0.36 | +0.08 ± 0.33 [−0.99, +1.14], p 0.84 |
+| 9 → 100 mT | 1.82 ± 0.10 | 1.74 ± 0.27 | −0.09 ± 0.17 [−0.64, +0.46], p 0.65 |
+
+- The loss level at 50 mT falls robustly with α (factor 0.59, all 4 seeds
+  −0.44 … −0.67). At 100 mT 3 of 4 seeds give −0.64 … −0.78; s921 gives
+  +0.32 (events: balance 2.35 at α 0.1, 1.37 at α 0.01).
+- **No α effect on β is detected in the paired comparison**; the CI is
+  wide (the α 0.01 runs scatter more, sd of β up to 0.7). The earlier
+  claim "α changes β" (7.17: −0.27 ± 0.08) rests on the spliced runs; the
+  clean data do not confirm it. Status: open.
+- Events at α 0.01: 5 of 12 stages have a balance outside 0.9 … 1.1
+  (s922 at 9 mT: 6.1); at α 0.1 the same seeds give 2 of 12.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
