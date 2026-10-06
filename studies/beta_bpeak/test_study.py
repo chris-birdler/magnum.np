@@ -334,3 +334,22 @@ def test_run_queue_expected_bytes():
     assert run_queue.expected_bytes(args) == N ** 3 * (96 * run_queue.B_SNAP_CELL + 2 * run_queue.B_PT_CELL)
     assert run_queue.expected_bytes("--d_lex 300 --phi 0.62 --dx_lex 3") == pytest.approx(
         round(box_edge(300.0, 0.62)[0] / 3) ** 3 * 24.0)
+
+
+def test_phase_angles_from_index_no_leak():
+    """phasemap_batch.phase_angles: equidistant angles from the index (names are rounded: 22, 68, ...). With them
+    a static part + harmonics 1 and 3 give exactly these harmonics; with the angles from the rounded names the
+    static part leaks into k = 4 (the bug found by the audit 2026-10-06)."""
+    import phasemap_batch
+    N = 16
+    names = [round(360.0 * (j + 1) / N) for j in range(N)]
+    assert names[0] == 22 and names[2] == 68
+    th = phasemap_batch.phase_angles(names)
+    assert np.allclose(th, 2 * np.pi * np.arange(1, N + 1) / N)
+    sig = lambda t: 0.9 + 0.01 * np.cos(t) + 0.002 * np.sin(3 * t)
+    F = lambda ang, k: np.sum(np.exp(-1j * k * ang) * sig(2 * np.pi * np.arange(1, N + 1) / N)) * 2.0 / N
+    assert abs(abs(F(th, 1)) - 0.01) < 1e-12 and abs(abs(F(th, 3)) - 0.002) < 1e-12 and abs(F(th, 4)) < 1e-12
+    bad = 2 * np.pi * np.array(names, float) / 360.0
+    assert abs(F(bad, 4)) > 0.01                            # the old way: the static 0.9 leaks into k = 4
+    with pytest.raises(ValueError):
+        phasemap_batch.phase_angles([22, 45, 68])

@@ -2,7 +2,7 @@
 """
 Further evaluation of the 16-phase snapshots (PROTOKOLL 7.27), written to <run>/phase_extra.json and
 <run>/slices.npz (small; for the cut images, rendered locally by make_phase_slices.py).
-Per stage (16 phases x 3 cycles; the periodic part = mean over the cycles):
+Per stage (16 phases x C cycles, C = 2 in the Sobol design; the periodic part = mean over the cycles):
   where   share of p_fund (local fundamental, Gilbert) and of the cells in radial shells r/R_p < 0.5,
           0.5 ... 0.8, > 0.8 and in the 10 % cells of largest texture; per class the weighted spread of the
           local phase lag of the fundamental along the drive
@@ -21,6 +21,7 @@ import numpy as np
 
 import domains
 from dissmap_batch import radii
+from phasemap_batch import phase_angles
 
 MU0, GAMMA = 4e-7 * math.pi, 2.21276157e5
 
@@ -48,7 +49,9 @@ def run(d):
         cis = sorted(cycles)
         phases = sorted(cycles[cis[0]])
         N = len(phases)
-        th = 2 * math.pi * np.array(phases, float) / 360.0
+        if any(sorted(cycles[ci]) != phases for ci in cis):
+            raise ValueError("%s: the cycles hold different phases" % stage)
+        th = phase_angles(phases)
         st0 = domains.load_state(cycles[cis[0]][phases[0]])
         mask, ids = st0["mask"], st0["ids"]
         if rr is None:

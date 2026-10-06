@@ -32,6 +32,18 @@ import domains
 MU0, GAMMA = 4e-7 * math.pi, 2.21276157e5
 
 
+def phase_angles(phases):
+    """Drive phase (rad) of the N snapshots of one cycle, from their INDEX: theta_j = 2 pi (j + 1) / N.
+    The file names hold the phase rounded to whole degrees (run_loops: round(360 (j + 1) / samples)), e.g. 22
+    and 68 for 22.5 and 67.5 deg; angles taken from the names make the grid uneven and leak the static part
+    of m (|m| ~ 1) into the harmonics (audit 2026-10-06: p_4/p_dis up to 44). The names are only checked."""
+    N = len(phases)
+    want = [round(360.0 * (j + 1) / N) for j in range(N)]
+    if list(phases) != want:
+        raise ValueError("snapshot phases %s are not the %d equidistant phases %s" % (list(phases), N, want))
+    return 2 * math.pi * np.arange(1, N + 1) / N
+
+
 def run(d):
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
@@ -56,7 +68,9 @@ def run(d):
             for j, ph in enumerate(phases):
                 M[i, j] = domains.load_state(cycles[ci][ph])["m"][mask]
         Mm = M.mean(0)                                                  # periodic part [N, cells, 3]
-        th = 2 * math.pi * np.array(phases, float) / 360.0              # drive phase of each snapshot
+        if any(sorted(cycles[ci]) != phases for ci in cis):
+            raise ValueError("%s: the cycles hold different phases" % stage)
+        th = phase_angles(phases)                                       # drive phase of each snapshot
         F = [None] + [np.tensordot(np.exp(-1j * k * th), Mm, axes=(0, 0)) * (2.0 / N) for k in range(1, N // 2)]
         pk = [float(coef * (k * w) ** 2 * (np.abs(F[k]) ** 2).sum(-1).sum() / 2.0) for k in range(1, N // 2)]
         dt = 1.0 / (freq * N)

@@ -1234,9 +1234,14 @@ B300_s921 … s923 (s921, s922 for the phase map). All 8 jobs done, no failure.
   The lag uses only the drive component and ignores transverse core motion.
   n = 2 seeds.)
 - Non-periodic motion (events, drift) carries ≤ 0.19 of the loss.
-- The harmonics 2 … 7 are not usable (aliasing of motion faster than T/16,
-  amplified by (kω)²). At 150 mT about half of the loss is in motion faster
-  than T/16.
+- The harmonics 2 … 7 of PH_s921/922 are **not valid** (corrected after the
+  third audit, 7.33): the scripts took the drive phase from the file names,
+  which hold whole degrees (22, 68, … for 22.5, 67.5, …). The uneven grid
+  leaks the static part of m into k = 4 (p₄/p_dis = 44 / 15 at 9 mT). R1,
+  the phase lag and R_np are not affected (the leak into k = 1 is exactly 0).
+  The earlier statement "at 150 mT about half of the loss is in motion faster
+  than T/16" is withdrawn: this share is not determined (the snapshots are
+  deleted). Fixed for the Sobol runs (angle from the snapshot index).
 
 **C. Ring-down** (H held at H max after the last cycle, s921 / s922):
 - p_dis at the start of the hold is 0.52 … 0.90 of the cycle mean and
@@ -1476,6 +1481,16 @@ over (sections updated: 0, 7.25, 7.26, 7.27, 7.28, 7.29, 10, 12; PLAN 4.0):
   uncertainties of β (surface ≈ 0.3, mesh CI ≈ ± 0.3, f, α) are larger than
   the statistical precision (≈ 0.05 … 0.1); results are relative factor
   effects at a fixed discretisation (dx 3, staircase, α 0.1, 30 MHz).
+
+### 7.33 Third independent audit: plan v2 (2026-10-06)
+
+A context-free agent (Opus) audited PLAN 4.0, the code and the chain before
+the start. The findings are handled one by one with Chris; each decision is
+recorded here.
+- 1. Phase-angle bug in phasemap_batch.py / phase_extra.py (harmonics k ≥ 2
+  wrong, R1 / lag / R_np correct; 7.26 corrected). Fix: angle from the index
+  θ_j = 2π(j+1)/N, the names are only checked; test with known harmonics.
+  No rerun of PH_s921/922 (not needed for the design, Chris).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
