@@ -387,6 +387,9 @@ def _fake_command(args, out):
     code = {"ok": "open(r'%s/DONE','w').write('ok')" % out,
             "fail": "raise SystemExit(1)",
             "gate": "raise SystemExit(3)",
+            "gate --relax_maxiter 200000 --no_resume": "open(r'%s/DONE','w').write('ok')" % out,
+            "gate2": "raise SystemExit(3)",
+            "gate2 --relax_maxiter 200000 --no_resume": "raise SystemExit(3)",
             "hang": "import time; time.sleep(30)",
             "flaky": ("import os; f=r'%s/tried'\nif os.path.exists(f): open(r'%s/DONE','w').write('ok')\n"
                       "else: open(f,'w').write('1'); raise SystemExit(1)") % (out, out)}[args]
@@ -406,13 +409,17 @@ def test_run_queue_retry_gate_timeout_exception(tmp_path):
     import run_queue
     jobs = [("A", "ok"), ("B", "flaky"), ("C", "gate"), ("D", "hang"), ("E", "boom"), ("F", "ok")]
     res = run_queue.run_jobs(jobs, ["g0", "g1"], tmp_path / "runs", retries=1, job_timeout_h=2.0 / 3600,
-                             status=tmp_path / "status.json", command=_cmd, burst_n=99, status_s=0.2)
+                             status=tmp_path / "status.json", command=_cmd, burst_n=99, status_s=0.2, gate_maxiter=0)
     assert sorted(res["done"]) == ["A", "B", "F"]
     assert set(res["failed"]) == {"C", "D", "E"}
-    assert res["failed"]["C"] == "exit code 3" and res["failed"]["D"].startswith("timeout")
+    assert res["failed"]["C"] == "relaxation gate: excluded" and res["failed"]["D"].startswith("timeout")
     assert res["failed"]["E"].startswith("exception")
     st = json.loads((tmp_path / "status.json").read_text())
     assert st["final"] and st["done"] == 3 and not st["running"]
+    # gate failure: one retry with raised relax_maxiter and --no_resume; a second gate failure is excluded
+    res = run_queue.run_jobs([("G", "gate"), ("H", "gate2")], ["g0"], tmp_path / "runs_g", command=_cmd, burst_n=99)
+    assert res["done"] == ["G"] and res["failed"]["H"].endswith("excluded")
+    assert run_queue.gate_args("--seed 3 --relax_maxiter 80000", 200000) == "--seed 3 --relax_maxiter 200000 --no_resume"
 
 
 def test_run_queue_failure_burst_pauses_then_disables_gpu(tmp_path):

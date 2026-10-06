@@ -82,7 +82,9 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
-               "allow_new_commit", "allow_unconverged", "init_wait_h"}
+               "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
+# relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
+# (deterministic, audit 3, item 5); run_queue raises it after a gate failure (exit code 3)
 # arguments that set the relaxed virgin state; an --init_from state must agree in all of them
 # (the drive, the amplitudes and alpha can differ: the relaxation runs at alpha = 1 and H = 0)
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
@@ -449,7 +451,8 @@ def main(argv=None):
         src = str(src)
         c = torch.load(src, map_location=dev)
         if "init" in c:
-            diff = [k for k in INIT_KEYS if c["config"].get(k) != config.get(k)]
+            diff = [k for k in INIT_KEYS if c["config"].get(k) != config.get(k)
+                    and not (k == "relax_maxiter" and c["init"].get("relax_converged"))]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
                     "%s %r -> %r" % (k, c["config"].get(k), config.get(k)) for k in diff)))

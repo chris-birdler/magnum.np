@@ -30,7 +30,9 @@ if [ "$(git rev-parse HEAD)" != "$C" ]; then
 fi
 cd $B || exit 1
 echo "$(date '+%F %T') chain (re)start at $(git log --oneline -1)" >> queue_sobol.log
-[ -f jobs/sobol_a01_shuffled.txt ] || python -c "import random; L=open('jobs/sobol_main.txt').readlines()+open('jobs/sobol_corners.txt').readlines(); random.Random(20261006).shuffle(L); open('jobs/sobol_a01_shuffled.txt','w').writelines(L)"
+# random order, but one seed of each corner K1 ... K4 first (audit 3, item 5): relaxation, time, disk and
+# post-processing at the extremes of the factor space are tested in the first hours
+[ -f jobs/sobol_a01_shuffled.txt ] || python -c "import random; L=open('jobs/sobol_main.txt').readlines()+open('jobs/sobol_corners.txt').readlines(); random.Random(20261006).shuffle(L); F=[l for l in L if l.split()[0] in ('K1_0','K2_0','K3_0','K4_0')]; F.sort(); open('jobs/sobol_a01_shuffled.txt','w').writelines(F+[l for l in L if l not in F])"
 # post-processing under a supervisor loop (audit 3, item 4): restarted if it dies, until ALL10_DONE and no run left
 ( while true; do
       python instance_postproc.py --runs runs --stop runs/ALL10_DONE --workers 4 >> postproc.log 2>&1 && break

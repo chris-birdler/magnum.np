@@ -19,7 +19,9 @@ Run a job file on several GPUs of one machine (one job per GPU at a time).
   minus the bytes already in the run folder. Thus the running jobs cannot fill the disk; the queue waits instead.
 Unattended operation (audit 3, item 4):
 * a failed job (exit code != 0, timeout, exception) goes once more to the end of the queue (--retries 1); it
-  resumes from its checkpoint. Exit code 3 (relaxation gate not met) is deterministic: no plain retry.
+  resumes from its checkpoint. Exit code 3 (relaxation gate not met) is deterministic (same seed, same
+  iterations): no plain retry, but once again with --relax_maxiter --gate_maxiter (200000) and --no_resume
+  (audit 3, item 5); if it fails again the job is reported as excluded.
 * failure burst: failures of 2 DIFFERENT jobs on one GPU within 10 min (a job that fails twice is the job's
   fault, not the GPU's) pause this GPU for 30 min; after the 3rd burst the GPU takes no more jobs (defective
   GPU). Each burst goes to <runs>/ALERT; the other GPUs go on.
@@ -102,8 +104,21 @@ def postproc_state(runs):
     return st
 
 
+def gate_args(args, maxiter):
+    """Job args for the retry after a gate failure: --relax_maxiter raised, --no_resume (the unconverged
+    init.pt of the first attempt must not be reused)."""
+    t = shlex.split(args)
+    if "--relax_maxiter" in t:
+        t[t.index("--relax_maxiter") + 1] = str(maxiter)
+    else:
+        t += ["--relax_maxiter", str(maxiter)]
+    if "--no_resume" not in t:
+        t.append("--no_resume")
+    return " ".join(shlex.quote(x) for x in t)
+
+
 def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
-             burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0):
+             burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0, gate_maxiter=200000):
     """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
@@ -115,7 +130,7 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
         q.put((name, args))
     lock = threading.Lock()
     running = {}                                    # name -> (run folder, expected bytes, gpu, start time)
-    attempts, failed, done, disabled, alerts = {}, {}, [], set(), []
+    attempts, failed, done, disabled, alerts, gate_retried = {}, {}, [], set(), [], set()
     active = {"n": 0}                               # jobs taken from the queue and not finished
     t_start = time.time()
 
@@ -203,9 +218,19 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                     failed.pop(name, None)
                     print("[done] gpu %s  %s  %.2f h" % (gpu, name, h), flush=True)
                 else:
-                    attempts[name] = attempts.get(name, 0) + 1
-                    retry = rc != 3 and attempts[name] <= retries
                     failed[name] = why
+                    if rc == 3:
+                        retry = gate_maxiter > 0 and name not in gate_retried
+                        if retry:
+                            gate_retried.add(name)
+                            args = gate_args(args, gate_maxiter)
+                            failed[name] = "relaxation gate; again with relax_maxiter %d" % gate_maxiter
+                        else:
+                            failed[name] = "relaxation gate%s: excluded" % (" (also with relax_maxiter %d)"
+                                                                            % gate_maxiter if gate_maxiter > 0 else "")
+                    else:
+                        attempts[name] = attempts.get(name, 0) + 1
+                        retry = attempts[name] <= retries
                     print("[FAIL] gpu %s  %s  %.2f h  %s%s" % (gpu, name, h, why, ", again later" if retry else ""),
                           flush=True)
                     if retry:
@@ -265,6 +290,8 @@ def main():
     ap.add_argument("--retries", type=int, default=1, help="extra attempts of a failed job (not for exit code 3)")
     ap.add_argument("--job_timeout_h", type=float, default=0.0, help="kill a job after this time (0 = off)")
     ap.add_argument("--status", default=None, help="JSON status file, written every 5 min")
+    ap.add_argument("--gate_maxiter", type=int, default=200000,
+                    help="relax_maxiter of the one retry after a gate failure (exit code 3); 0 = no retry")
     a = ap.parse_args()
 
     i_sh, n_sh = (int(x) for x in a.shard.split("/"))
@@ -279,7 +306,8 @@ def main():
         for name, args in jobs:
             print("CUDA_DEVICE=%s %s" % (gpus[0], " ".join(default_command(args, pathlib.Path(a.runs) / name))))
         return
-    res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status)
+    res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status,
+                   gate_maxiter=a.gate_maxiter)
     print("[end] done %d, failed %d: %s" % (len(res["done"]), len(res["failed"]),
                                            ", ".join("%s (%s)" % kv for kv in sorted(res["failed"].items()))), flush=True)
     sys.exit(0 if not res["failed"] else 1)
