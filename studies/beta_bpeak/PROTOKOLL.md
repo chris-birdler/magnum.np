@@ -8,6 +8,27 @@ Rules: documents in ASD-STE100 Simplified Technical English, SI units only.
 matrix or the budget, give him the options with pros, cons, chances and risks,
 and wait. Engineering fixes (bugs, logging, speed) need no decision, but tell him.
 
+## 0. Current state (2026-10-06)
+
+Key findings with a valid (converged) virgin state, d/l_ex 300 (1 µm),
+dx 3, base point, f = 30 MHz (details in the sections given):
+- β (power law 9 … 150 mT) = 1.76 ± 0.05 at α 0.1 (n = 8, 7.17); local β
+  1.87 → 1.61 → 1.72 at ≈ 18 / 50 / 100 mT (3-point windows, 7.17).
+- α is a lever: α 0.01 lowers β by 0.27 ± 0.08 (n = 6 vs 11) and halves
+  the loss at 100 mT; the loss at 10 mT does not depend on α (7.17, 7.24).
+- The core response is linear (μ = 8.0, set by the geometry); the loss at
+  small B is a dynamic relaxation of the vortex-core region with widely
+  spread local phases, ∝ f^1.1 … 1.3, ring-down 10 … 20 ns (7.26, 7.27).
+- No distinct 180° walls at 1 µm; every particle holds a vortex-like state
+  (7.18, 7.19, 7.27).
+- Mesh: dx 3 is sufficient for β within ± 0.1 at the base point (probably
+  ≈ 0.1 too low at small B); the absolute loss at dx 3 is too high by
+  20 … 80 % (7.25, 7.28). Stopping rule for further mesh tests: PLAN 4.0.
+- Surface: the staircase stays; the volume-fraction model is not usable at
+  dx 3 for high fields (7.29).
+- Next: Sobol design v2 (PLAN 4.0), prepared and tested (7.30), waiting for
+  Chris's go and a credit top-up.
+
 ## 1. Goal
 
 Find the parameters that control the Steinmetz exponent β(B_peak) of a soft
@@ -1335,6 +1356,27 @@ volume fraction; same volume as A, 7.6 % partial cells; the staircase has
   and protocol as M300_dx3_*, only α differs) and the event statistics at
   α 0.01; they say nothing about the surface or the mesh at α 0.01.
 
+### 7.30 Sobol design v2 prepared (2026-10-06, not started)
+
+PLAN 4.0. Files: `sobol_design.py` → jobs/sobol_main.txt (96 Sobol points +
+8 centre replicates, α 0.1), jobs/sobol_corners.txt (4 corners × 3 seeds),
+jobs/sobol_a001.txt (first 32 points + 8 centre replicates at α 0.01,
+9 cycles, from the init.pt of the α 0.1 run), results/sobol_design.csv.
+- All 156 runs pass the checks of the study geometry: smallest gap 1.71
+  cells (contact rule), smallest local wall width 2.00 cells, smallest
+  d/L_eff 7.05; 24 main points per L_eff level; realised d/l_ex 209.7 …
+  303.9 (box quantization), r_p 0.02 … 3.00, φ 0.550 … 0.690.
+- Template = the baseline job (same protocol, relaxation, amplitudes).
+- Snapshots: 16 phases of the last cycle at 9 / 50 / 150 mT only (new option
+  `--snap_mT`, tested: snapshots only in the selected stage).
+- `instance_postproc.py`: per finished run phasemap + phase_extra, check,
+  md5 log, then deletion of the *.vti only (tested locally: checkpoint and
+  results stay). `instance/chain_sobol.sh`: main + corners in random order,
+  then the α 0.01 subset; not installed on the instance yet.
+- Cost: cost model 232 (main) + 31 (corners) + 283 (α 0.01, the model
+  overestimates small α ≈ 2×) V100-h; realistic ≈ 400 V100-h ≈ 40 $,
+  ≈ 4 days on 4 V100.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
@@ -1433,9 +1475,11 @@ Consequences:
 
 ## 9. Production
 
-The production study is planned in PLAN.md (frequency test, then a
-randomized Sobol design over L_eff, r_p, φ and d/l_ex at dx = 3). The
-earlier one-factor and factorial options are replaced by this plan.
+Sobol design v2 (PLAN 4.0, prepared 7.30): 96 + 8 points at α 0.1 over
+L_eff, r_p, φ and d/l_ex at dx 3, 4 corner groups × 3 seeds, 32 + 8 points
+at α 0.01; outputs β (3-point windows, all), ln P at 10 / 50 / 100 mT, the
+local-response measures from the snapshots; robust regression. The earlier
+plans (one-factor, factorial, 128 + 8) are replaced.
 
 ## 10. Known limitations
 
@@ -1445,7 +1489,12 @@ earlier one-factor and factorial options are replaced by this plan.
 - K_eff is set, not computed: the Herzer averaging from the grains to the
   cubes is assumed, not simulated (section 2.1).
 - No anisotropy on intermediate scales (≈ 300 nm), by choice.
-- Vortex cores and Bloch points not resolved (flagged).
+- Vortex cores and Bloch points not resolved (flagged). The loss at small B
+  sits at the vortex-core region; the absolute loss at dx 3 is too high by
+  20 … 80 % (7.25, 7.28).
+- Staircase surface (the volume-fraction model is not usable, 7.29).
+- One base point for the mechanism studies (7.17 … 7.29); f fixed at 30 MHz
+  (the loss per cycle depends on f, 7.26).
 
 ## 11. Numerical notes
 
@@ -1462,6 +1511,13 @@ earlier one-factor and factorial options are replaced by this plan.
   cost). This is in the library, not changed.
 
 ## 12. Open points for Chris
+
+**Status 2026-10-06:** all checks before the Sobol design are done
+(7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0; (2) credit top-up to
+≈ 45 $ (now ≈ 11 $); (3) the α 0.01 staircase runs R300v01_* (paired α
+comparison) are running; their evaluation follows. Decided: α 0.1 main +
+α 0.01 subset (items 3 below superseded); mesh dx 3 with the limits of 7.28
+(item 4 superseded); staircase surface.
 
 **Kept in mind (Chris, 2026-10-04): how does the model reach the high β of
 measured cores?** In the model μ = 8 is fixed by the stray field of the
