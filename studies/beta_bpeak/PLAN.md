@@ -141,6 +141,73 @@ time series (decision by Chris).
 
 ## 4. Step 2: randomized design (go 2)
 
+### 4.0 Plan v2 (2026-10-06, for approval by Chris)
+
+Supersedes 4.1 … 4.4 where they differ. Basis: PROTOKOLL 7.13 … 7.28.
+
+**Design:** scrambled Sobol sequence in 4 factors (below), extensible (fixed
+mapping, seed = 1001 + point index). Main design at α 0.1: 96 points + 8
+centre replicates. Subset at α 0.01: the first 32 points + 8 centre
+replicates, same points and seeds, started from the init.pt of the α 0.1
+run of the same point, 9 cycles per amplitude. Fixed: d is the particle
+diameter at A = 10 pJ/m and Js = 1.5 T (l_ex = 3.34 nm), dx = 3 l_ex,
+f = 30 MHz, B_peak 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles (kept
+from cycle 2), converged virgin state (hard gate), uniaxial anisotropy,
+staircase surface, T = 0, no eddy currents.
+
+**Factors and their real values** (A = 10 pJ/m, Js = 1.5 T):
+
+| Factor (reduced) | Range | Real value | Second reading |
+|---|---|---|---|
+| d/l_ex (log-uniform) | 212 … 300 | particle diameter 709 … 1003 nm | at d = 1 µm fixed: A = 19.9 … 9.9 pJ/m (l_ex 4.72 … 3.33 nm) |
+| L_eff/l_ex (4 levels, level = ⌊4u⌋) | 12 / 18 / 24 / 30 | Herzer length = cube edge 40 / 60 / 80 / 100 nm | |
+| ↳ K_eff = A/L_eff² | | 6.22 / 2.76 / 1.55 / 0.99 kJ/m³ (Q_eff 6.9 … 1.1·10⁻³) | grains D = L_eff with K1 = K_eff (x = 1, PROTOKOLL 2.1) |
+| ↳ K1 for D = 10 nm (Herzer, K_eff = K1⁴D⁶/A³) | | 50 / 41 / 35 / 32 kJ/m³ | for K1 = 8 kJ/m³ (Fe-Si): D = 34 / 30 / 27 / 25 nm |
+| r_p (uniform) | 0 … 3 | particle anisotropy K_p = r_p K_eff: 0 … 18.7 kJ/m³ (L_eff 12) … 0 … 3.0 kJ/m³ (L_eff 30) | residual stress; one uniaxial axis per particle |
+| φ (uniform) | 0.55 … 0.69 | packing fraction 55 … 69 % | |
+
+**Derived quantities and limits:**
+
+| Quantity | Min | Max | Limit / rule |
+|---|---|---|---|
+| mesh dx | 10.0 nm (3 l_ex) | 10.0 nm | fixed; at d = 1 µm with A varied: 10.0 … 14.2 nm |
+| box edge a | 1.04 µm (d 212, φ 0.69) | 1.56 µm (d 300, φ 0.55) | a multiple of 12 l_ex |
+| cells | 1.1 M | 3.8 M | cost ∝ cells |
+| smallest gap between particles | 1.7 cells ≈ 17 nm (d 212, φ 0.69) | 10.4 cells (d 300, φ 0.55) | ≥ 1 void cell over 26 neighbours (contact rule) |
+| d/L_eff | 7.1 (d 212, L 30) | 25 (d 300, L 12) | ≥ 7 (D3) |
+| cubes per particle | 185 | 8 200 | residual check vs d/L_eff (D3) |
+| local wall width l_ex/√(Q_eff(1 + r_p)) | 2.0 cells = 20 nm (L 12, r_p 3) | 10 cells = 100 nm (L 30, r_p 0) | ≥ 2 cells (resolved) |
+| wall width π L_eff | 126 nm | 315 nm | |
+| drive H amplitude (μ ≈ 8) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
+| α | 0.01 (subset) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
+
+**Validity of the mesh** (PROTOKOLL 7.28): β is mesh-independent within
+± 0.1 at the base point (1 µm); at small B dx 3 probably lowers β by ≈ 0.1;
+the small end d/l_ex 212 and the corners are not checked. Absolute losses at
+dx 3 are upper estimates (+20 … +80 %). **Stopping rule (no further mesh
+tests before the design):** check a design point at dx 1.5 only if a factor
+that changes the vortex structure (d, L_eff, r_p) shows an effect on β of
+the size of the mesh error (≈ 0.1 … 0.2); effects clearly above 0.2 need no
+check.
+
+**Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
+(9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
+100 mT, plus the event flags (balance, n60 drops). No snapshots (the wall
+measures showed no change with B, 7.19; this keeps the disk free).
+
+**Analysis:** regression of each output on (ln Q_eff, r_p, φ, ln d/l_ex),
+linear + quadratic + 2-factor interactions (15 terms), robust against single
+event runs (sensitivity without flagged runs, 4.3a); α subset: the same
+regression on 32 points and the difference to α 0.1 at the same points.
+Expected SE of the range effects on β at N = 96 (σ from the baseline):
+0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
+
+**Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
+cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
+104 runs ≈ 250 V100-h ≈ 25 $; α 0.01 subset 40 runs (9 cycles, smaller time
+step) ≈ 130 V100-h ≈ 13 $; total ≈ 380 V100-h ≈ 38 $. Wall time ≈ 4 days on
+4 GPUs, ≈ 2 days on 8. Credit now ≈ 12 $: a top-up of ≈ 35 … 40 $ is needed.
+
 ### 4.1 Factors and ranges
 
 | Factor | Range | Meaning |
