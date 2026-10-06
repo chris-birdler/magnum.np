@@ -10,7 +10,9 @@ A file is deletable only if ALL its conditions hold:
                        verified on the laptop)
   geometry.vti         as m_*.vti
   checkpoint.pt,       the run is DONE and its summary.json is listed in --local_md5 (resume is no
-  ckpt_*.pt            longer needed)
+  ckpt_*.pt            longer needed); for a run with snapshots (snap_phases > 0 in config.json, e.g. all
+                       Sobol runs) also: POSTPROC_DONE exists, domains.json holds the end state ("final")
+                       and domains.json is listed in --local_md5 (audit 3, item 3)
   init.pt              NEVER by default (it is small, 40 MB, and other runs start from it: the alpha 0.01
                        runs of the Sobol subset and the 50 / 100 mT jobs of mesh300 use --init_from; a
                        job file that is written later cannot be checked now). Only with --include_init,
@@ -21,6 +23,7 @@ Everything else is never touched.
     python cleanup_instance.py --local_md5 local.md5 --apply    # after the go
 """
 import argparse
+import json
 import pathlib
 import shlex
 
@@ -40,6 +43,23 @@ def dependents(jobs_dir):
                 src = a[a.index("--init_from") + 1]
                 dep.setdefault(str(pathlib.PurePosixPath(src)), set()).add(name)
     return dep
+
+
+def checkpoint_ok(d, local):
+    """May checkpoint.pt / ckpt_*.pt of run folder d be deleted? (conditions in the module doc)"""
+    if not (d / "DONE").exists() or ("%s/summary.json" % d.name) not in local:
+        return False
+    try:
+        snap = json.loads((d / "config.json").read_text()).get("snap_phases", 0) > 0
+    except (OSError, ValueError):
+        return False
+    if not snap:
+        return True
+    try:
+        final = "final" in json.loads((d / "domains.json").read_text())
+    except (OSError, ValueError):
+        return False
+    return (d / "POSTPROC_DONE").exists() and final and ("%s/domains.json" % d.name) in local
 
 
 def main():
@@ -65,7 +85,7 @@ def main():
                 all("%s/%s" % (d.name, j.name) in local for j in js)
             (todo if ok else keep).extend((v, "snapshot", ok) for v in vtis)
         for ck in list(d.glob("checkpoint.pt")) + list(d.glob("ckpt_*.pt")):
-            ok = done and ("%s/summary.json" % d.name) in local
+            ok = checkpoint_ok(d, local)
             (todo if ok else keep).append((ck, "checkpoint", ok))
         ip = d / "init.pt"
         if ip.exists():

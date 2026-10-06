@@ -353,3 +353,30 @@ def test_phase_angles_from_index_no_leak():
     assert abs(F(bad, 4)) > 0.01                            # the old way: the static 0.9 leaks into k = 4
     with pytest.raises(ValueError):
         phasemap_batch.phase_angles([22, 45, 68])
+
+
+def test_cleanup_checkpoint_needs_end_state_analysis(tmp_path):
+    """cleanup_instance.checkpoint_ok: a snapshot run's checkpoint is deletable only after POSTPROC_DONE, with
+    "final" in domains.json and domains.json fetched (local md5); a run without snapshots keeps the old rule."""
+    import json
+    import cleanup_instance as CI
+
+    def mk(name, snap, postproc=False, final=False):
+        d = tmp_path / name
+        d.mkdir()
+        (d / "DONE").touch()
+        (d / "config.json").write_text(json.dumps({"snap_phases": snap}))
+        (d / "checkpoint.pt").touch()
+        if postproc:
+            (d / "POSTPROC_DONE").touch()
+            (d / "domains.json").write_text(json.dumps({"stages": [], **({"final": {}} if final else {})}))
+        return d
+    a = mk("S001", 16)                                   # finished, not yet post-processed
+    b = mk("S002", 16, postproc=True, final=True)        # analysed, domains.json not fetched
+    c = mk("S003", 16, postproc=True, final=True)        # analysed and fetched
+    e = mk("S004", 16, postproc=True, final=False)       # analysed without end state
+    f = mk("OLD1", 0)                                    # no snapshots
+    local = {"%s/summary.json" % x for x in ("S001", "S002", "S003", "S004", "OLD1")} | \
+        {"S003/domains.json", "S004/domains.json"}
+    assert [CI.checkpoint_ok(x, local) for x in (a, b, c, e, f)] == [False, False, True, False, True]
+    assert not CI.checkpoint_ok(c, local - {"S003/summary.json"})

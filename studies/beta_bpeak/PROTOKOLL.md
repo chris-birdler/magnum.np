@@ -1499,6 +1499,9 @@ recorded here.
   refused by the lock; chain killed (kill -9 of the process group) during
   stage 1, restarted: "[resume] from stage 1", run DONE, post-processing
   done, logs complete.
+- 3. cleanup_instance.py: the checkpoint of a run with snapshots is
+  deletable only with POSTPROC_DONE, "final" in domains.json and
+  domains.json fetched (local md5); unit test with 5 run states.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
