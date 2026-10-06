@@ -1524,6 +1524,12 @@ recorded here.
   r_p → K2, d / φ → K3; 6 paired seeds at dx 1.5 and 3, mesh300 protocol;
   cost K2 ≈ 25 $, K3 ≈ 6 $ (the plan said 6.5 $ per corner: wrong); run only
   with a separate go after the regression (PLAN 4.0).
+- 7. Estimand (Chris: option C with the others as cross-checks): main fit
+  = Gamma GLM with log link on w per amplitude → ln E[w] and β_core of the
+  mean loss curve, SE by bootstrap over the runs; cross-checks OLS on ln w /
+  per-run β (HC3) and Huber. Reason: a core averages ≈ 10⁹ particles; Huber
+  down-weights real rare states (s921), and E[ln w] shifts β by ≈ −0.04
+  (estimate, lognormal approximation).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

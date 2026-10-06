@@ -267,27 +267,38 @@ bytes still to come of all running jobs minus its own expected bytes is
 instance 2026-10-06); if checkpoints are not deleted for a day, fewer jobs
 run in parallel near the end.
 
-**Analysis:** regression of each output on (ln Q_eff, r_p, φ, ln d/l_ex),
-linear + quadratic + 2-factor interactions (15 terms). Main fit: robust
-regression (Huber weights), because the scatter is dominated by rare events
-(PROTOKOLL 7.17, 7.27); ordinary least squares and the fit without flagged
-runs as comparison (4.3a). Scatter model (decided Chris 2026-10-06, audit 7.32, replaces the F-test
-with n = 3): the log of the squared residuals of the robust fit is regressed
-linearly on the 4 factors (all 104 + 12 runs, centre and corner replicates
-included); if a slope is significant, the main fit is repeated with the
-weights 1/σ²(x) from this model. The corner and centre replicates give the
-pure scatter at 5 points as a check of this model. α 0.01: paired
-difference to the α 0.1 run of the same seed at the centre (n = 8),
-plus |m₁|² and the loss map from the snapshots.
+**Analysis (estimand decided Chris 2026-10-06, audit 3 item 7, option C):**
+a core averages ≈ 10⁹ particles, so the target is the mean loss E[w] over
+the realisations and β_core = d ln E[w] / d ln B. **Main fit:** for each of
+the 7 amplitudes, w (the loss per cycle of each run) is regressed on
+(ln Q_eff, r_p, φ, ln d/l_ex) with a log link (Gamma GLM), linear +
+quadratic + 2-factor interactions (15 terms); ln E[w] at 10 / 50 / 100 mT and
+β_core of the windows (9-20-35, 35-50-70, 70-100-150 mT, and all
+amplitudes) follow from the predicted means; the SE and the range effects
+come from a bootstrap over the runs (the runs are the independent samples).
+**Cross-checks (reported next to the main fit):** (A) OLS of ln w and of the
+per-run β with HC3 SE (estimates E[ln w], the typical run); (B) Huber fit of
+the same (the bulk without rare states); and the fit without flagged runs
+(4.3a). A clear difference between C and B means that the rate of rare
+states depends on the factors: reported as a finding. **Scatter model**
+(decided Chris 2026-10-06, replaces the F-test with n = 3): the log of the
+squared residuals of fit A is regressed linearly on the 4 factors (all
+104 + 12 runs, centre and corner replicates included); if a slope is
+significant, the fits are repeated with the weights 1/σ²(x) from this
+model. The corner and centre replicates give the pure scatter at 5 points
+as a check of this model (only a change of σ by ≈ 2× is detectable).
+α 0.01: paired difference to the α 0.1 run of the same seed at the centre
+(n = 8), plus |m₁|² and the loss map from the snapshots.
 Expected SE of the range effects on β at N = 96 (σ from the baseline):
 0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
 
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
 cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
 104 runs ≈ 250 V100-h ≈ 25 $; corner replicates 12 runs ≈ 30 V100-h ≈ 3 $;
-α 0.01 centre 8 runs (9 cycles, smaller time step) ≈ 30 … 60 V100-h ≈
-3 … 6 $; total ≈ 310 … 340 V100-h ≈ 31 … 34 $. Optional mesh check after the
-main run: + 6.5 $ per corner. Wall time ≈ 3.5 days on 4 GPUs. Credit now
+α 0.01 centre 8 runs ≈ 20 V100-h ≈ 2 $ (audit 3: per cycle the same rate as
+α 0.1, measured; the jobs.py model overestimates α 0.01); total ≈ 280 …
+300 V100-h ≈ 29 … 30 $. Mesh check: see the rule above. Wall time ≈ 3.2 days
+on 4 GPUs. Credit now
 ≈ 11 $: top up to ≈ 45 $ (≈ 34 $ compute + reserve, because an empty credit
 stops the instance). The mesh check (if triggered) needs its own budget:
 K3 ≈ 6 $, K2 ≈ 25 $ (estimates).
