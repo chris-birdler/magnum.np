@@ -1519,6 +1519,11 @@ recorded here.
   converged is accepted with another limit (instance test: accepted; a
   state of another seed is still rejected). Corners K1_0 … K4_0 first in
   the queue.
+- 6. Mesh-check rule fixed before the start (Chris: option A): trigger
+  |range effect| ≥ 0.15 on β or ln P with the 95 % CI excluding 0; L_eff /
+  r_p → K2, d / φ → K3; 6 paired seeds at dx 1.5 and 3, mesh300 protocol;
+  cost K2 ≈ 25 $, K3 ≈ 6 $ (the plan said 6.5 $ per corner: wrong); run only
+  with a separate go after the regression (PLAN 4.0).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

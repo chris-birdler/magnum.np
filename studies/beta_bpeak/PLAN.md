@@ -215,15 +215,23 @@ is an equivalent reading of the cubes.
 detected at the base point (1 µm, n = 4; 95 % CI up to ≈ ± 0.2 … 0.4); the
 small end d/l_ex 212 and the corners are not checked. Absolute losses at
 dx 3 are 20 … 80 % higher than at dx 1.5 (direction to the converged value
-not known). **Mesh check (decided Chris 2026-10-06):** no further mesh
-tests before the design. After the main run, and only if needed: if L_eff or
-r_p (they set the wall width in cells) shows a clear effect on β, run the
-corner K2 (wall 2 cells) at dx 1.5; if d or φ (they set the gap in cells)
-shows a clear effect, run K3 (gap 1.7 cells) at dx 1.5. 3 seeds, the seeds
-of the dx 3 corner runs, paired; ≈ 65 V100-h ≈ 6.5 $ per corner (estimate).
-Reason (audit 7.32): the resolution of wall and gap changes with the
-factors, so a mesh error appears as a factor effect, and the base point
-test does not cover the worst-resolved corners. Separate go.
+not known). **Mesh check (rule fixed before the start, Chris 2026-10-06, option A of
+audit 3 item 6):** no further mesh tests before the design. After the main
+run and its regression: **trigger** = a resolution factor has a range effect
+|Δ| ≥ 0.15 on β (any window) or on ln P (10 / 50 / 100 mT) and its 95 % CI
+excludes 0. L_eff or r_p (wall width in cells) → corner K2 (wall 2 cells);
+d or φ (gap in cells) → corner K3 (gap 1.7 cells). **Check** = 6 seeds at
+dx 1.5 and dx 3, paired, mesh300 protocol (9 / 50 / 100 mT, 5 cycles);
+compared: the mesh difference at the corner against the one at the base
+point (mesh300). Equal → the effect is physical; different → the
+difference is the artefact share. Expected 95 % CI ±0.13 … 0.21. **Cost
+(estimate from mesh300 rates):** K2 ≈ 250 V100-h ≈ 25 $ (≈ 41 h per run,
+≈ 3.5 days on 4 GPUs), K3 ≈ 60 V100-h ≈ 6 $ (≈ 1 day). Run only with a
+separate go after the regression. Without trigger: no check; every effect
+of L_eff, r_p, d, φ is reported as a relative effect at dx 3 (mesh error up
+to ≈ 0.3 not excluded, in both directions); every d effect on ln P carries
+the measured mesh caveat (Δ ln w 50 mT: +0.26 ± 0.16 at d/l_ex 300, −0.06 ±
+0.14 at 212, 7.28).
 
 **Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
 (9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
@@ -281,7 +289,8 @@ cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
 3 … 6 $; total ≈ 310 … 340 V100-h ≈ 31 … 34 $. Optional mesh check after the
 main run: + 6.5 $ per corner. Wall time ≈ 3.5 days on 4 GPUs. Credit now
 ≈ 11 $: top up to ≈ 45 $ (≈ 34 $ compute + reserve, because an empty credit
-stops the instance; ≈ 52 $ with one mesh corner).
+stops the instance). The mesh check (if triggered) needs its own budget:
+K3 ≈ 6 $, K2 ≈ 25 $ (estimates).
 
 ### 4.1 Factors and ranges
 
