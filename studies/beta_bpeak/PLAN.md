@@ -230,9 +230,12 @@ test does not cover the worst-resolved corners. Separate go.
 100 mT, plus the event flags (balance, n60 drops).
 **Snapshots (decided 2026-10-06, Chris, option c):** main design and corner
 replicates (116 runs): 16 phases of the last cycle at 9, 50 and 150 mT
-(`--snap_phases 16 --snap_cycles 2`, ≈ 1.9 GB per run at 1 µm). Analysed on
-the instance right after each run (`phasemap_batch.py`, `phase_extra.py`:
-R1, lag spread, where the loss sits, texture, F90, slices); the 8 α 0.01
+(`--snap_phases 16 --snap_cycles 2`: 96 files of 48 MB at 148³ cells,
+measured; 1.6 … 5.6 GB per run, mean 3.1 GB). Analysed on the instance right
+after each run (`phasemap_batch.py`, `phase_extra.py`: R1, lag spread,
+where the loss sits, texture, F90, slices; `domains_batch.py`: wall measure,
+switched volume, l_C of the last cycle at 90/180/270/360°, of init.pt and of
+the end state checkpoint.pt; ≈ 13 states × 38 s CPU per run); the 8 α 0.01
 centre runs have the same snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
 (*.vti) of a finished run are deleted on the instance as soon as its
 analysis files are written there and their md5 is logged; the results are
@@ -241,8 +244,20 @@ NOT covered by this rule: they stay until the whole design is finished (the
 α 0.01 centre runs and a later α study start from the init.pt of the α 0.1
 run of the same point);
 then deletion only with a separate go after the dependency check of
-`cleanup_instance.py`. Disk (40 GB): start ≈ 3 GB, init.pt + checkpoints of
-all runs ≈ 8 GB, snapshots in flight ≈ 8 … 10 GB: peak ≈ 21 GB.
+`cleanup_instance.py`. **checkpoint.pt of finished runs (decision Chris
+2026-10-06):** deleted only by Claude during the daily fetch, after the
+dependency check (the end state is analysed in domains.json; α 0.01 and a
+later α study start from init.pt) and with the list shown in the log.
+**Disk (40 GB, corrected 2026-10-06 with measured sizes):** used now 4.4 GB;
+kept per run init.pt + checkpoint.pt ≈ 2 × 39 … 46 MB + CSV ≈ 0.09 GB, all
+124 runs ≈ 11 GB; snapshots in flight up to 4 × 5.6 GB ≈ 22 GB plus one run
+in post-processing. Without deleting checkpoints the worst case (≈ 42 GB)
+exceeds the disk; thus **disk guard with reservation** (`run_queue.py
+--min_free_gb 3`): a job starts only if the free space minus the expected
+bytes still to come of all running jobs minus its own expected bytes is
+≥ 3 GB. The queue then waits instead of filling the disk (tested on the
+instance 2026-10-06); if checkpoints are not deleted for a day, fewer jobs
+run in parallel near the end.
 
 **Analysis:** regression of each output on (ln Q_eff, r_p, φ, ln d/l_ex),
 linear + quadratic + 2-factor interactions (15 terms). Main fit: robust
@@ -265,7 +280,8 @@ cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
 α 0.01 centre 8 runs (9 cycles, smaller time step) ≈ 30 … 60 V100-h ≈
 3 … 6 $; total ≈ 310 … 340 V100-h ≈ 31 … 34 $. Optional mesh check after the
 main run: + 6.5 $ per corner. Wall time ≈ 3.5 days on 4 GPUs. Credit now
-≈ 11 $: a top-up of ≈ 30 $ is needed (≈ 37 $ with one mesh corner).
+≈ 11 $: top up to ≈ 45 $ (≈ 34 $ compute + reserve, because an empty credit
+stops the instance; ≈ 52 $ with one mesh corner).
 
 ### 4.1 Factors and ranges
 
