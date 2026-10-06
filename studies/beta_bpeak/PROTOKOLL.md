@@ -1329,8 +1329,11 @@ volume fraction; same volume as A, 7.6 % partial cells; the staircase has
   smoothed model at 10 nm lies far off in the opposite direction at 100 mT.
   **The fraction model is not usable at dx 3 for high fields; the staircase
   stays.** No new smoothing variant (it would be another unvalidated model).
-  At α 0.01 only the staircase runs are made (R300v01_*, as a reference with
-  event statistics); the started fraction run R300f01_s921_b9 was stopped.
+  At α 0.01 only the staircase runs are made (R300v01_*); the started
+  fraction run R300f01_s921_b9 was stopped. Their purpose now (Chris
+  2026-10-06): a **paired α comparison** (same relaxed state, mesh, surface
+  and protocol as M300_dx3_*, only α differs) and the event statistics at
+  α 0.01; they say nothing about the surface or the mesh at α 0.01.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
