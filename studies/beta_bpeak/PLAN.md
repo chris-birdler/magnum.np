@@ -195,7 +195,8 @@ staircase surface, T = 0, no eddy currents.
 **Validity of the mesh** (PROTOKOLL 7.28): β is mesh-independent within
 ± 0.1 at the base point (1 µm); at small B dx 3 probably lowers β by ≈ 0.1;
 the small end d/l_ex 212 and the corners are not checked. Absolute losses at
-dx 3 are upper estimates (+20 … +80 %). **Stopping rule (no further mesh
+dx 3 are 20 … 80 % higher than at dx 1.5 (direction to the converged value
+not known). **Stopping rule (no further mesh
 tests before the design):** check a design point at dx 1.5 only if a factor
 that changes the vortex structure (d, L_eff, r_p) shows an effect on β of
 the size of the mesh error (≈ 0.1 … 0.2); effects clearly above 0.2 need no

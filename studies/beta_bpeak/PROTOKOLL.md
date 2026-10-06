@@ -22,8 +22,9 @@ dx 3, base point, f = 30 MHz (details in the sections given):
 - No distinct 180° walls at 1 µm; every particle holds a vortex-like state
   (7.18, 7.19, 7.27).
 - Mesh: dx 3 is sufficient for β within ± 0.1 at the base point (probably
-  ≈ 0.1 too low at small B); the absolute loss at dx 3 is too high by
-  20 … 80 % (7.25, 7.28). Stopping rule for further mesh tests: PLAN 4.0.
+  ≈ 0.1 lower than at dx 1.5 at small B); the absolute loss at dx 3 is
+  20 … 80 % higher than at dx 1.5, the direction to the converged value is
+  not known (7.25, 7.28). Stopping rule for further mesh tests: PLAN 4.0.
 - Surface: the staircase stays; the volume-fraction model is not usable at
   dx 3 for high fields (7.29).
 - Next: Sobol design v2 (PLAN 4.0), prepared and tested (7.30), waiting for
@@ -1153,8 +1154,19 @@ from cycle 2. All 24 jobs done, no failure. Relaxation at dx 1.5: 20 500 …
 - **The loss level does depend on the mesh:** dx 3 gives more loss than
   dx 1.5, +20 … +45 % with all seeds (1.5 … 1.9 SE), +32 … +80 % without
   s921 (s921 at dx 3 has events: balance 1.70 at 9 mT, 2.35 at 100 mT). The
-  error is largest at small B. Absolute losses at dx 3 are thus too high by
-  a factor ≈ 1.2 … 1.8; whether dx 1.5 itself is converged is not known.
+  difference is largest at small B. Absolute losses at dx 3 are thus a
+  factor ≈ 1.2 … 1.8 higher than at dx 1.5. **This is relative to dx 1.5,
+  not to the converged value:** whether dx 1.5 is converged is not known,
+  and the true loss can lie below dx 1.5 or above it (corrected 2026-10-06;
+  the earlier wording "too high" was not supported).
+- Open question (Chris 2026-10-06): at d/l_ex 96 (old relaxation) dx 3 gave
+  LESS loss than dx 1.5 (× 0.26 … 0.37, "loss missing" at the pinned vortex
+  core), at 1 µm MORE. Hypothesis (not tested): an unresolved vortex core sits
+  in the cell grid; if the drive cannot move it (small particle) its loss is
+  missing; if it hops from cell to cell (1 µm, more structure in motion) each
+  hop over the grid barrier dissipates extra energy (a Peierls-like mesh
+  artifact). This fits the largest difference at small B; the event count of
+  7.27 does not resolve such small hops.
 - Events occur on both meshes (dx 1.5: s922 at 9 mT 1.56, s924 at 50 mT
   1.42; dx 3: s921).
 - Rule of PLAN step 1b at 50 mT (same mesh error at d/l_ex 212 and 300):
@@ -1305,10 +1317,12 @@ All mesh evidence with a valid state (newest first):
   step 1b not met). Expected by the mechanism to hold as long as walls and
   the vortex texture span many cells; a check at d/l_ex 212 (≈ 47 V100-h)
   would close it.
-- **Absolute loss density: dx 3 is not sufficient** (+20 … +80 % at 1 µm);
-  **dx ≤ 1.5 l_ex (5 nm) is necessary; whether dx 1.5 is sufficient is not
-  known** (no dx 1 run at 1 µm, ≈ 300 V100-h per realisation; at 330 nm
-  dx 1.5 was not converged). Absolute values from dx 3 are upper estimates;
+- **Absolute loss density: dx 3 is not sufficient** (+20 … +80 % relative to
+  dx 1.5 at 1 µm); **dx ≤ 1.5 l_ex (5 nm) is necessary; whether dx 1.5 is
+  sufficient is not known** (no dx 1 run at 1 µm, ≈ 300 V100-h per
+  realisation; at 330 nm dx 1.5 was not converged). Absolute values from
+  dx 3 carry an uncertainty of at least a factor ≈ 1.2 … 1.8; their
+  direction to the converged value is not known;
   ratios between parameters at the same dx are usable if the mesh error is
   similar (for d/l_ex it is not, see step 1b).
 - **Small particles (d/l_ex ≲ 100, ≈ 330 nm): dx 3 is not sufficient even
@@ -1490,8 +1504,9 @@ plans (one-factor, factorial, 128 + 8) are replaced.
   cubes is assumed, not simulated (section 2.1).
 - No anisotropy on intermediate scales (≈ 300 nm), by choice.
 - Vortex cores and Bloch points not resolved (flagged). The loss at small B
-  sits at the vortex-core region; the absolute loss at dx 3 is too high by
-  20 … 80 % (7.25, 7.28).
+  sits at the vortex-core region; the absolute loss at dx 3 is 20 … 80 %
+  higher than at dx 1.5, the direction to the converged value is not known
+  (7.25, 7.28).
 - Staircase surface (the volume-fraction model is not usable, 7.29).
 - One base point for the mechanism studies (7.17 … 7.29); f fixed at 30 MHz
   (the loss per cycle depends on f, 7.26).
