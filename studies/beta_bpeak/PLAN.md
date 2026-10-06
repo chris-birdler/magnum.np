@@ -149,7 +149,18 @@ Supersedes 4.1 … 4.4 where they differ. Basis: PROTOKOLL 7.13 … 7.28.
 mapping, seed = 1001 + point index). Main design at α 0.1: 96 points + 8
 centre replicates. Subset at α 0.01: the first 32 points + 8 centre
 replicates, same points and seeds, started from the init.pt of the α 0.1
-run of the same point, 9 cycles per amplitude. Fixed: d is the particle
+run of the same point, 9 cycles per amplitude.
+**Replicates at 4 corners (added 2026-10-06, Chris):** 3 seeds each at α 0.1
+(seeds 2001 …), to check whether the realisation scatter is the same over
+the factor space (the centre replicates measure it only at the centre):
+
+| Corner | d/l_ex | L_eff/l_ex | r_p | φ | why |
+|---|---|---|---|---|---|
+| K1 | 212 | 30 | 1.5 | 0.62 | fewest cubes per particle (185) |
+| K2 | 300 | 12 | 3 | 0.62 | narrowest local wall (2 cells) |
+| K3 | 212 | 18 | 1.5 | 0.69 | smallest gap between particles (1.7 cells) |
+| K4 | 300 | 18 | 1.5 | 0.55 | largest box, many cubes |
+ Fixed: d is the particle
 diameter at A = 10 pJ/m and Js = 1.5 T (l_ex = 3.34 nm), dx = 3 l_ex,
 f = 30 MHz, B_peak 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles (kept
 from cycle 2), converged virgin state (hard gate), uniaxial anisotropy,
@@ -196,8 +207,12 @@ check.
 measures showed no change with B, 7.19; this keeps the disk free).
 
 **Analysis:** regression of each output on (ln Q_eff, r_p, φ, ln d/l_ex),
-linear + quadratic + 2-factor interactions (15 terms), robust against single
-event runs (sensitivity without flagged runs, 4.3a); α subset: the same
+linear + quadratic + 2-factor interactions (15 terms). Main fit: robust
+regression (Huber weights), because the scatter is dominated by rare events
+(PROTOKOLL 7.17, 7.27); ordinary least squares and the fit without flagged
+runs as comparison (4.3a). Scatter check: sd of the 4 corner groups and of
+the centre group (n = 3 … 8 each) compared with an F-test; if the scatter
+differs, weighted regression with the group variances; α subset: the same
 regression on 32 points and the difference to α 0.1 at the same points.
 Expected SE of the range effects on β at N = 96 (σ from the baseline):
 0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
@@ -205,8 +220,9 @@ Expected SE of the range effects on β at N = 96 (σ from the baseline):
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
 cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
 104 runs ≈ 250 V100-h ≈ 25 $; α 0.01 subset 40 runs (9 cycles, smaller time
-step) ≈ 130 V100-h ≈ 13 $; total ≈ 380 V100-h ≈ 38 $. Wall time ≈ 4 days on
-4 GPUs, ≈ 2 days on 8. Credit now ≈ 12 $: a top-up of ≈ 35 … 40 $ is needed.
+step) ≈ 130 V100-h ≈ 13 $; corner replicates 12 runs ≈ 30 V100-h ≈ 3 $;
+total ≈ 410 V100-h ≈ 41 $. Wall time ≈ 4 days on
+4 GPUs, ≈ 2 days on 8. Credit now ≈ 12 $: a top-up of ≈ 40 $ is needed.
 
 ### 4.1 Factors and ranges
 
