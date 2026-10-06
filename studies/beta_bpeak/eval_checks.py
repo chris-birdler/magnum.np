@@ -65,18 +65,19 @@ def part_a():
 def part_b():
     print("\n**B. Phase-resolved local response** (16 snapshots per cycle, last 3 cycles; shares of the measured "
           "dissipation p_dis)\n")
-    print("| run | B | R1 (local fundamental) | R_harm (harmonics 2 … 7) | R_np (non-periodic) | rest (faster than T/16) "
-          "| local phase lag mean / spread [°] |")
-    print("|---|---|---|---|---|---|---|")
+    print("| run | B | R1 (local fundamental) | R_np (non-periodic) | local phase lag mean / spread [°] |")
+    print("|---|---|---|---|---|")
     for s in (921, 922):
         f = RUNS / ("PH_s%d" % s) / "phasemap.json"
         if not f.exists():
             print("| PH_s%d | – | phasemap.json missing | | | | |" % s)
             continue
         for st in json.loads(f.read_text())["stages"]:
-            print("| PH_s%d | %.0f mT | %.2f | %.3f | %.3f | %.2f | %.1f / %.1f |" %
-                  (s, st["B_peak_mT"], st["R1"], st["R_harm"], st["R_np"], st["R_rest"],
+            print("| PH_s%d | %.0f mT | %.2f | %.3f | %.1f / %.1f |" %
+                  (s, st["B_peak_mT"], st["R1"], st["R_np"],
                    math.degrees(st["lag_mean_rad"]), math.degrees(st["lag_spread_rad"])))
+    print("\nThe harmonics 2 … 7 (R_harm in phasemap.json) are not usable: motion faster than T/16 aliases into "
+          "them and the weight (k ω)² amplifies it (R_harm = 3.6 … 44 > 1 at 9 … 20 mT).")
 
 
 def part_c():

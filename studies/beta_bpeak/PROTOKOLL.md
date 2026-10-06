@@ -1140,6 +1140,64 @@ from cycle 2. All 24 jobs done, no failure. Relaxation at dx 1.5: 20 500 …
   −0.07 ± 0.05 / −0.02 ± 0.01 at 9 / 50 / 100 mT: no history effect.
 - §4 updated: the mesh decision rests now on this section.
 
+### 7.26 Checks before the Sobol design: frequency, phase map, ring-down (2026-10-06)
+
+`eval_checks.py` → results/checks.md; `phasemap_batch.py` on the instance.
+d/l_ex 300, dx 3, base point, α 0.1, start from the converged init.pt of
+B300_s921 … s923 (s921, s922 for the phase map). All 8 jobs done, no failure.
+
+**A. Frequency test at small B** (n = 3 seeds; f = 30 MHz is B300):
+
+| B | w(f/2) | w(f) | w(2f) | w per cycle ∝ f^n |
+|---|---|---|---|---|
+| 9 mT | 7.5·10⁻⁸ | 2.8·10⁻⁷ | 3.9·10⁻⁷ | n = 1.26 ± 0.19 |
+| 20 mT | 4.3·10⁻⁷ | 1.2·10⁻⁶ | 1.8·10⁻⁶ | n = 1.10 ± 0.15 |
+
+β(9 → 20 mT) = 2.26 ± 0.26 (f/2), 1.94 ± 0.15 (f), 1.98 ± 0.22 (2f).
+- The loss per cycle at small B grows with f (n ≈ 1): it is dynamic, not a
+  rate-independent hysteresis. The growth is stronger from f/2 to f (factor
+  3.8) than from f to 2f (factor 1.4): a relaxation-like response whose loss
+  peak lies near 30 … 60 MHz (estimate from 3 frequencies).
+- β at 9 → 20 mT does not differ significantly between the frequencies
+  (n = 3); f/2 is higher (hint).
+
+**B. Phase-resolved local response** (16 snapshots per cycle, last 3 cycles):
+
+| B | R1 = p_fund/p_dis (s921 / s922) | non-periodic share | local phase lag: mean / spread |
+|---|---|---|---|
+| 9 mT | 0.85 / 0.95 | 0.06 / 0.00 | ≈ 0° / 34 … 59° |
+| 20 mT | 0.81 / 0.51 | 0.01 / 0.15 | ≈ 0° / 32 … 37° |
+| 150 mT | 0.39 / 0.44 | 0.19 / 0.05 | ≈ −3° / 20 … 24° |
+
+- At small B the local rotation at the drive frequency carries most of the
+  loss (R1 0.85 … 0.95, now without the aliasing of 4 snapshots). The cells
+  respond with widely spread phases (spread 34 … 59°) whose mean is ≈ 0°;
+  the macroscopic lag δ is only ≈ 0.7°. Thus the local motions largely
+  cancel in ⟨M⟩, while each dissipates. This supports the candidate
+  "local responses with spread phases" (7.24).
+- Non-periodic motion (events, drift) carries ≤ 0.19 of the loss.
+- The harmonics 2 … 7 are not usable (aliasing of motion faster than T/16,
+  amplified by (kω)²). At 150 mT about half of the loss is in motion faster
+  than T/16.
+
+**C. Ring-down** (H held at H max after the last cycle, s921 / s922):
+- p_dis at the start of the hold is 0.52 … 0.90 of the cycle mean and
+  decays over about 0.3 … 0.5 T (≈ 10 … 15 ns): 0.11 … 0.40 at 0.5 T,
+  ≤ 0.03 at 2 T. The energy dissipated after the stop is 0.20 … 0.49 of the
+  loss per cycle.
+- The structure keeps relaxing for a large part of a period after the field
+  stops: a slow relaxation (ns scale, not the GHz precession). Together
+  with A: a relaxation process with a time near 1/(2π · 30 … 60 MHz)
+  (estimate) carries the loss at small B.
+
+**Consequences (hypotheses, base point only):** the loss at 30 MHz and
+small B is a relaxation-type loss of the internal structure, with local
+responses of spread phases; its relaxation time is close to the drive
+period. β then depends on how this relaxation changes with the amplitude,
+and probably on f relative to the relaxation frequency (f/2: β 2.26, hint).
+For the Sobol design: β is mesh-insensitive (7.25) and the checks show no
+reason against dx 3; the frequency is a hidden lever (fixed at 30 MHz).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
