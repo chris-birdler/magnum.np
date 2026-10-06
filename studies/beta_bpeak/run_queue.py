@@ -61,7 +61,15 @@ def expected_bytes(args):
 
 
 def folder_bytes(p):
-    return sum(f.stat().st_size for f in p.glob("*") if f.is_file()) if p.exists() else 0
+    """Bytes of the files in a run folder. A file can vanish while it is counted (atomic save: x.tmp -> x;
+    post-processing deletes snapshots): such a file is skipped."""
+    n = 0
+    for f in (p.glob("*") if p.exists() else []):
+        try:
+            n += f.stat().st_size
+        except OSError:
+            pass
+    return n
 
 
 def main():
@@ -84,6 +92,7 @@ def main():
         jobs.append((name, args))
 
     runs = pathlib.Path(a.runs)
+    runs.mkdir(parents=True, exist_ok=True)
     q = queue.Queue()
     for name, args in jobs:
         if (runs / name / "DONE").exists():
