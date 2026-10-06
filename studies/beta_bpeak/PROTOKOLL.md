@@ -1316,18 +1316,21 @@ volume fraction; same volume as A, 7.6 % partial cells; the staircase has
   (−0.19 at 100 mT) and leaves β almost unchanged. Thus C is not the limit
   of a finer staircase: the two surface models differ at high B, and the
   difference is not a mesh convergence effect of the staircase.
-- Possible cause (hypothesis, not tested): in the fraction model the partial
-  surface cells carry a reduced Ms AND a reduced exchange A·f; cells with a
-  small f are weakly bound spins that can oscillate strongly at high fields
-  and dissipate. A real surface is a sharp boundary with the full Ms and A.
-  The fraction model is an effective-medium approximation whose dynamics is
-  not validated.
-- Consequence: the surface model is a source of model uncertainty at high B
-  (β above 50 mT). The staircase is kept (it converges with dx: A ≈ B in β).
-  A clean decision between the two models needs the fraction model at
-  dx 1.5 (if it moves towards B, the effect is an artifact of the partial
-  cells; ≈ 150 V100-h) or a test of the fraction model without scaling A.
-- α 0.01 part: running (rough300a).
+- A first hypothesis (partial cells weakly bound because A is scaled with f)
+  is **refuted by the code** (magnumnp/field_terms/exchange.py): with A·f,
+  Ms·f and the harmonic mean of A to a full neighbour, the exchange field of
+  a partial cell is ≈ 4A/((1 + f) μ0 Ms) Δm/dx², as strong as inside; the
+  anisotropy and Zeeman fields do not depend on f either. The model is
+  energy-consistent. The cause of the extra loss is not known (possibly the
+  smeared distribution of the surface charges).
+- **Decision (Chris 2026-10-06):** both surface models converge to the exact
+  sphere for dx → 0; the staircase is the controlled approximation (its
+  refinement is measured: β stable within ± 0.1 from 10 to 5 nm), while the
+  smoothed model at 10 nm lies far off in the opposite direction at 100 mT.
+  **The fraction model is not usable at dx 3 for high fields; the staircase
+  stays.** No new smoothing variant (it would be another unvalidated model).
+  At α 0.01 only the staircase runs are made (R300v01_*, as a reference with
+  event statistics); the started fraction run R300f01_s921_b9 was stopped.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

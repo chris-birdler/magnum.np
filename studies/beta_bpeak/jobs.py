@@ -61,7 +61,8 @@ Groups:
   rough300  surface roughness with the converged state: as the dx 3 jobs of mesh300 (seeds 921-924,
             9 / 50 / 100 mT, 5 cycles) but --surface fraction; compared with M300_dx3_* (staircase).
   rough300a the same at alpha 0.01: staircase (from M300_dx3 init.pt) and fraction (from R300f init.pt),
-            seeds 921-924, 9 / 50 / 100 mT, 9 cycles.
+            seeds 921-924, 9 / 50 / 100 mT, 9 cycles. Only the staircase jobs are run (Chris 2026-10-06:
+            the fraction model is not usable at dx 3, PROTOKOLL 7.29).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
