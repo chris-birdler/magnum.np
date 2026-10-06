@@ -12,23 +12,33 @@ and wait. Engineering fixes (bugs, logging, speed) need no decision, but tell hi
 
 Key findings with a valid (converged) virgin state, d/l_ex 300 (1 µm),
 dx 3, base point, f = 30 MHz (details in the sections given):
-- β (power law 9 … 150 mT) = 1.76 ± 0.05 at α 0.1 (n = 8, 7.17); local β
-  1.87 → 1.61 → 1.72 at ≈ 18 / 50 / 100 mT (3-point windows, 7.17).
+- β (power law 9 … 150 mT) = 1.76 ± 0.05 at α 0.1 (n = 8, 7.17). Local β
+  (3-point windows, all valid α 0.1 runs, n = 11, results/beta_windows.md):
+  1.87 (9-20-35 mT) → 1.77 (20-35-50) → 1.64 (35-50-70) → 1.61 (50-70-100)
+  → 1.72 (70-100-150 mT). The fall from small B to ≈ 50 mT is a hint
+  (paired +0.24 ± 0.11, p ≈ 0.05, 7.24).
 - α acts on the loss level: α 0.01 lowers the loss at 50 mT by a factor
   0.59 (paired n = 4, p = 0.002, 7.31) and at 100 mT by ≈ 0.5 (unpaired);
   at 9 mT no α dependence was detected. **The α effect on β is not
   established:** pooled with spliced runs −0.27 ± 0.08 (n = 6 vs 11), clean
   unpaired −0.34 ± 0.14 (p = 0.10), clean paired −0.09 ± 0.17 (n = 4,
   p = 0.65, 95 % CI −0.64 … +0.46) (7.17, 7.31).
-- The core response is linear (μ = 8.0, set by the geometry); the loss at
-  small B is a dynamic relaxation of the vortex-core region with widely
-  spread local phases, ∝ f^1.1 … 1.3, ring-down 10 … 20 ns (7.26, 7.27).
+- The core response is linear (μ ≈ 8, set mainly by the geometry; it
+  depends on the discretisation by 3 … 6 %: 8.00 at dx 3, 7.80 at dx 1.5,
+  8.48 with the smoothed surface, 7.32). **Hypotheses (n = 2 seeds, one base
+  point):** at small B the loss sits at the vortex-core region, the dissipation
+  goes on after the drive stops (ring-down 10 … 20 ns, 7.26, 7.27). The loss
+  per cycle is higher at 2 f than at f/2 in 3 of 3 seeds; per seed it changes
+  by × 0.5 … × 11 between neighbouring frequencies (metastable states), so a
+  single exponent (f^1.1 … 1.3) is not supported (7.32).
 - No distinct 180° walls at 1 µm; every particle holds a vortex-like state
   (7.18, 7.19, 7.27).
-- Mesh: dx 3 is sufficient for β within ± 0.1 at the base point (probably
-  ≈ 0.1 lower than at dx 1.5 at small B); the absolute loss at dx 3 is
-  20 … 80 % higher than at dx 1.5, the direction to the converged value is
-  not known (7.25, 7.28). Stopping rule for further mesh tests: PLAN 4.0.
+- Mesh (n = 4 paired, 7.25, 7.28, 7.32): **no mesh effect on β detected**
+  between dx 3 and dx 1.5 (Δβ −0.05 … −0.11); the 95 % CI allows effects up
+  to ≈ 0.2 … 0.4. The loss level at dx 3 is higher than at dx 1.5 in 3 of 4
+  seeds (+0.19 … +0.36 in ln w, not significant, p ≈ 0.16 … 0.23); the
+  direction to the converged value is not known. dx 3 is the coarsest mesh
+  the model rules allow.
 - Surface: the staircase stays; the volume-fraction model is not usable at
   dx 3 for high fields (7.29).
 - Next: Sobol design v2 (PLAN 4.0), prepared and tested (7.30), waiting for
@@ -1153,10 +1163,13 @@ from cycle 2. All 24 jobs done, no failure. Relaxation at dx 1.5: 20 500 …
 | 50 → 100 mT | 1.81 ± 0.06 | 1.70 ± 0.06 | −0.11 ± 0.10 |
 | 9 → 100 mT | 1.89 ± 0.04 | 1.82 ± 0.10 | −0.06 ± 0.06 |
 
-- **β does not depend on the mesh within ≈ 0.1** (Δβ −0.05 … −0.11, each
-  within 1.1 SE; n = 4 paired). dx 3 is sufficient for β at 1 µm.
-- **The loss level does depend on the mesh:** dx 3 gives more loss than
-  dx 1.5, +20 … +45 % with all seeds (1.5 … 1.9 SE), +32 … +80 % without
+- **No mesh effect on β detected** (Δβ −0.05 … −0.11, each within 1.1 SE;
+  n = 4 paired). The 95 % CI (df 3) is −0.24 … +0.14 (9→50 mT), −0.43 …
+  +0.21 (50→100 mT), −0.25 … +0.13 (9→100 mT): effects up to ≈ 0.2 … 0.4 are
+  not excluded (corrected 2026-10-06 after the audit, 7.32).
+- **The loss level at dx 3 is higher than at dx 1.5 in 3 of 4 seeds, not
+  significant** (p ≈ 0.16 … 0.23; 95 % CI at 9 mT −0.39 … +1.10 in ln w):
+  +20 … +45 % with all seeds (1.5 … 1.9 SE), +32 … +80 % without
   s921 (s921 at dx 3 has events: balance 1.70 at 9 mT, 2.35 at 100 mT). The
   difference is largest at small B. Absolute losses at dx 3 are thus a
   factor ≈ 1.2 … 1.8 higher than at dx 1.5. **This is relative to dx 1.5,
@@ -1215,8 +1228,11 @@ B300_s921 … s923 (s921, s922 for the phase map). All 8 jobs done, no failure.
   loss (R1 0.85 … 0.95, now without the aliasing of 4 snapshots). The cells
   respond with widely spread phases (spread 34 … 59°) whose mean is ≈ 0°;
   the macroscopic lag δ is only ≈ 0.7°. Thus the local motions largely
-  cancel in ⟨M⟩, while each dissipates. This supports the candidate
-  "local responses with spread phases" (7.24).
+  cancel in ⟨M⟩, while each dissipates. (Corrected after the audit, 7.32:
+  the phase spread is not a loss mechanism, the LLG dissipation does not
+  depend on the phase; it describes the internal redistribution of energy.
+  The lag uses only the drive component and ignores transverse core motion.
+  n = 2 seeds.)
 - Non-periodic motion (events, drift) carries ≤ 0.19 of the loss.
 - The harmonics 2 … 7 are not usable (aliasing of motion faster than T/16,
   amplified by (kω)²). At 150 mT about half of the loss is in motion faster
@@ -1232,10 +1248,12 @@ B300_s921 … s923 (s921, s922 for the phase map). All 8 jobs done, no failure.
   with A: a relaxation process with a time near 1/(2π · 30 … 60 MHz)
   (estimate) carries the loss at small B.
 
-**Consequences (hypotheses, base point only):** the loss at 30 MHz and
-small B is a relaxation-type loss of the internal structure, with local
-responses of spread phases; its relaxation time is close to the drive
-period. β then depends on how this relaxation changes with the amplitude,
+**Consequences (hypotheses, base point only, n = 2 … 3; see 7.32):** the
+loss at 30 MHz and small B is a dynamic loss of the internal structure
+around the vortex core; three hypotheses fit the data and are not separated:
+(a) a near-resonant internal mode, (b) α-independent micro-avalanches whose
+number grows with dH/dt, (c) relaxation. The earlier "relaxation time close
+to the drive period" is not supported (7.27). β then depends on how this relaxation changes with the amplitude,
 and probably on f relative to the relaxation frequency (f/2: β 2.26, hint).
 For the Sobol design: β is mesh-insensitive (7.25) and the checks show no
 reason against dx 3; the frequency is a hidden lever (fixed at 30 MHz).
@@ -1277,7 +1295,8 @@ core and its surroundings) on the 10 ns scale.
 **Debye fit of the frequency test (7.26 A): not determinable.** One Debye
 relaxation per seed does not fit the 3 frequencies (residual 0.2 … 0.75 in
 ln w; τ runs to the bound). The statement "loss peak near 30 … 60 MHz"
-(7.26) is withdrawn; only n ≈ 1.1 … 1.3 (loss per cycle ∝ f) holds.
+(7.26) is withdrawn. Per seed the loss changes by × 0.5 … × 11 between
+neighbouring frequencies (7.32); only "2 f > f/2 in 3 of 3 seeds" holds.
 
 **Events per mesh** (mesh300 and baseline): kept cycles with balance
 outside 0.9 … 1.1: dx 1.5 8 of 36 (22 %), dx 3 8 of 36 (22 %), baseline
@@ -1312,10 +1331,11 @@ All mesh evidence with a valid state (newest first):
    model rules allow.
 
 **Answer:**
-- **β (the Steinmetz exponent) at d/l_ex 300 (1 µm): dx = 3 l_ex (10 nm) is
-  sufficient** (measured: |Δβ| ≤ 0.11 ± 0.10 vs dx 1.5, n = 4) **and it is
-  the coarsest mesh the model rules allow** (wall width, cube grid). Thus
-  dx 3 is necessary and sufficient for β at 1 µm within ≈ 0.1.
+- **β (the Steinmetz exponent) at d/l_ex 300 (1 µm): no mesh effect
+  detected between dx 3 and dx 1.5** (|Δβ| ≤ 0.11 ± 0.10, n = 4; 95 % CI up
+  to ≈ ± 0.2 … 0.4) **and dx 3 is the coarsest mesh the model rules allow**
+  (wall width, cube grid). "Necessary" means only this rule; "sufficient"
+  is not proven as an equivalence (corrected after the audit, 7.32).
 - **β at the small end of the Sobol range (d/l_ex 212): sufficiency not
   shown** (no valid β comparison; the level error differs from 1 µm, rule of
   step 1b not met). Expected by the mechanism to hold as long as walls and
@@ -1364,7 +1384,7 @@ volume fraction; same volume as A, 7.6 % partial cells; the staircase has
   smeared distribution of the surface charges).
 - **Decision (Chris 2026-10-06):** both surface models converge to the exact
   sphere for dx → 0; the staircase is the controlled approximation (its
-  refinement is measured: β stable within ± 0.1 from 10 to 5 nm), while the
+  refinement is measured: no change of β detected from 10 to 5 nm, n = 4), while the
   smoothed model at 10 nm lies far off in the opposite direction at 100 mT.
   **The fraction model is not usable at dx 3 for high fields; the staircase
   stays.** No new smoothing variant (it would be another unvalidated model).
@@ -1421,6 +1441,41 @@ Paired differences α 0.01 − α 0.1, mean ± SE [95 % CI, df 3], p:
   clean data do not confirm it. Status: open.
 - Events at α 0.01: 5 of 12 stages have a balance outside 0.9 … 1.1
   (s922 at 9 mT: 6.1); at α 0.1 the same seeds give 2 of 12.
+
+### 7.32 Second independent audit and corrections (2026-10-06)
+
+A context-free agent (Opus) audited the whole study against the raw data
+and the scripts; every number it recomputed reproduced. Corrections taken
+over (sections updated: 0, 7.25, 7.26, 7.27, 7.28, 7.29, 10, 12; PLAN 4.0):
+- Mesh: "β within ± 0.1" and "necessary and sufficient" are equivalence
+  claims that n = 4 cannot carry; now "no effect detected, 95 % CI ≈ ±0.2 …
+  0.4". The level difference (dx 3 vs 1.5) is not significant (p ≈ 0.16 …
+  0.23). s921 is not an event-only outlier: its relaxed state differs
+  (texture +5 %, 7.19) and its low 9 mT loss repeats in B300 and mesh300.
+- Mechanism (phase map, ring-down, cut images) rests on n = 2 seeds: marked
+  as hypothesis. "Spread local phases" is not a loss mechanism.
+- Frequency: per-seed ratios at 9 mT f/2 → f: × 0.78 / 11.4 / 7.6, f → 2f:
+  × 4.9 / 0.46 / 1.25 (verified); the exponent n ≈ 1.1 … 1.3 hides this.
+- §0 numbers corrected (windows are n = 11; 1.61 is the 50-70-100 window).
+- §12: "linear, thus β ≤ 2" was a wrong inference (see §12).
+- μ depends on the discretisation (verified, 12 cycles each at 50 mT):
+  8.00 (dx 3), 7.80 (dx 1.5), 8.48 (smoothed surface); 9 mT: 8.03 / 7.77.
+- Eddy-current estimate added (§10).
+- Sobol automation (fixed, b437226): 2 snapshot cycles (periodic vs
+  non-periodic part, R1); post-processing robust, limited to the Sobol run
+  names, a broken run keeps its snapshots (R2, tested); disk guard in
+  run_queue (`--min_free_gb 8`); α 0.01 jobs without the 48 h wait (R3).
+- Open, decision by Chris: (a) mesh check at the corners K2 (2-cell walls)
+  and K3 (1.7-cell gap) after the main run (the auditor considers the
+  stopping rule in PLAN 4.0 backwards: large factor effects arise where the
+  resolution is worst); (b) snapshots of some α 0.01 centre runs (test of
+  |m1|² ∝ 1/α); (c) model the residual variance over the factors instead of
+  F-tests with n = 3; (d) the α 0.01 subset (its power for β is low after
+  7.31); daily fetch of the small result files during the design.
+- Referee view: no validation against measurements; systematic
+  uncertainties of β (surface ≈ 0.3, mesh CI ≈ ± 0.3, f, α) are larger than
+  the statistical precision (≈ 0.05 … 0.1); results are relative factor
+  effects at a fixed discretisation (dx 3, staircase, α 0.1, 30 MHz).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
@@ -1529,7 +1584,9 @@ plans (one-factor, factorial, 128 + 8) are replaced.
 ## 10. Known limitations
 
 - 4 particles per box, identical spheres, FCC order, no contacts.
-- T = 0 (no thermal activation). No eddy currents (add them analytically).
+- T = 0 (no thermal activation). No eddy currents: estimate (π f B̂ d)²/(20 ρ)
+  ≈ 9 W/cm³ of particle volume at 100 mT, 30 MHz, d = 1 µm, ρ ≈ 1.2 µΩm,
+  against 576 W/cm³ in the model (audit 7.32): small.
 - Herzer length only up to a factor of order 1.
 - K_eff is set, not computed: the Herzer averaging from the grains to the
   cubes is assumed, not simulated (section 2.1).
@@ -1567,9 +1624,13 @@ comparison) are running; their evaluation follows. Decided: α 0.1 main +
 
 **Kept in mind (Chris, 2026-10-04): how does the model reach the high β of
 measured cores?** In the model μ = 8 is fixed by the stray field of the
-spheres (the particles are intrinsically very soft), the response is linear,
-thus β ≤ 2 (7.22). β > 2 needs a loss angle that grows with B (Rayleigh-like,
-w ∝ B³): particles whose own susceptibility is not ≫ 1/N, e.g. a particle
+spheres (the particles are intrinsically very soft) and the response is
+linear. (Corrected after the audit, 7.32: this does not imply β ≤ 2. With
+β = 2 + d ln sin δ/d ln B, β > 2 is possible at constant μ; the demag
+shearing does not change ∮H dM at a given ΔM, so Rayleigh hysteresis
+inside the particles survives as β → 3, but its size scales with
+(ΔM/χ_i)³ and is small for very soft particles.) A larger β needs a loss
+angle that grows with B: particles whose own susceptibility is not ≫ 1/N, e.g. a particle
 anisotropy K_p ≈ 90 kJ/m³ (r_p ≈ 14, estimate); the Sobol range r_p ≤ 3 is
 probably still linear. Options: (A) extend r_p to 10 … 15 (local wall width
 ≈ 1 cell at dx 3: needs dx 1.5, ≈ 30× cost); (B) pre-test r_p 3 and 6 at

@@ -192,15 +192,16 @@ staircase surface, T = 0, no eddy currents.
 | drive H amplitude (μ ≈ 8) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
 | α | 0.01 (subset) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
 
-**Validity of the mesh** (PROTOKOLL 7.28): β is mesh-independent within
-± 0.1 at the base point (1 µm); at small B dx 3 probably lowers β by ≈ 0.1;
-the small end d/l_ex 212 and the corners are not checked. Absolute losses at
+**Validity of the mesh** (PROTOKOLL 7.28, 7.32): no mesh effect on β
+detected at the base point (1 µm, n = 4; 95 % CI up to ≈ ± 0.2 … 0.4); the
+small end d/l_ex 212 and the corners are not checked. Absolute losses at
 dx 3 are 20 … 80 % higher than at dx 1.5 (direction to the converged value
 not known). **Stopping rule (no further mesh
 tests before the design):** check a design point at dx 1.5 only if a factor
 that changes the vortex structure (d, L_eff, r_p) shows an effect on β of
 the size of the mesh error (≈ 0.1 … 0.2); effects clearly above 0.2 need no
-check.
+check. (Audit 7.32: this rule may be backwards, a check at the corners K2/K3
+after the main run is proposed; decision by Chris.)
 
 **Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
 (9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
