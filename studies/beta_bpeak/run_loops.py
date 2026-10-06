@@ -175,6 +175,9 @@ def parse_args(argv=None):
     g.add_argument("--snap_phases", type=int, default=0,
                    help="write m as .vti at N equal phase points of the LAST cycle of each measured stage "
                         "(N = 4: H max, H = 0 falling, H min, H = 0 rising) and geometry.vti once")
+    g.add_argument("--snap_mT", type=float, nargs="*", default=None,
+                   help="with --snap_phases: snapshots only in the stages whose b target is within 10 %% of these "
+                        "B_peak values [mT] (default: all measured stages)")
     g.add_argument("--snap_cycles", type=int, default=1,
                    help="with --snap_phases: snapshots in the last N cycles of each measured stage")
     g.add_argument("--ringdown_periods", type=float, default=0.0,
@@ -584,6 +587,9 @@ def main(argv=None):
 
             sample()
             snap = args.snap_phases > 0 and st["measure"] and ci >= st["n_cycles"] - args.snap_cycles
+            if snap and args.snap_mT and st.get("b_target") is not None:
+                bmT = 1000.0 * st["b_target"] * args.Js
+                snap = any(abs(bmT / x - 1.0) < 0.1 for x in args.snap_mT)
             for k in range(args.samples):
                 llg.step(state, dt_s)
                 if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):

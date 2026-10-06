@@ -298,3 +298,12 @@ def test_features_power_law_windows():
     assert abs(f["lnw@10mT"] - math.log(2.0 * (10 / 1500.0) ** 1.7)) < 1e-9
     f5, _ = analyze.features([r for r in rows if round(r["b_peak"] * 1500) in (9, 20, 50, 100, 150)])
     assert math.isnan(f5["beta@9-35mT"]) and abs(f5["beta_pow"] - 1.7) < 1e-9
+
+
+def test_sobol_design_mapping():
+    """sobol_design.point: fixed mapping (independent of N), ranges and the 4 L_eff levels."""
+    import sobol_design as SD
+    assert SD.point([0.0, 0.0, 0.0, 0.0]) == dict(Leff_lex=12.0, r_p=0.0, phi=0.55, d_lex=212.0)
+    p = SD.point([0.999999, 1.0, 1.0, 1.0])
+    assert p["Leff_lex"] == 30.0 and abs(p["r_p"] - 3.0) < 1e-6 and abs(p["phi"] - 0.69) < 1e-6 and abs(p["d_lex"] - 300.0) < 1e-3
+    assert [SD.point([u, .5, .5, .5])["Leff_lex"] for u in (0.1, 0.3, 0.6, 0.9)] == [12.0, 18.0, 24.0, 30.0]
