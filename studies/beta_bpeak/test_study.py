@@ -436,3 +436,10 @@ def test_run_queue_failure_burst_pauses_then_disables_gpu(tmp_path):
     res = run_queue.run_jobs([("X", "fail"), ("Y", "ok")], ["g0"], tmp_path / "runs2", retries=1, command=_cmd,
                              burst_n=2, burst_s=600, pause_s=0.1, burst_max=1)
     assert res["done"] == ["Y"] and not (tmp_path / "runs2" / "ALERT").exists()
+
+
+def test_all_study_scripts_compile():
+    """Every script of the study compiles (run_loops.py is not imported by the other tests)."""
+    import py_compile
+    for f in sorted(pathlib.Path(__file__).resolve().parent.glob("*.py")):
+        py_compile.compile(str(f), doraise=True)

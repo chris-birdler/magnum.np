@@ -385,9 +385,9 @@ def main(argv=None):
     n_pairs = int(sum(int(pm.sum()) for pm in pair_masks))
     cos60 = 0.5
 
-    @torch.no_grad()
     last_p = {}                                  # per-cell dissipation of the last diagnostics() call (--acc)
 
+    @torch.no_grad()
     def diagnostics():
         m = state.m
         Mvec = (Ms_t * m).double().mean(dim=(0, 1, 2))
