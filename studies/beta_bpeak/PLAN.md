@@ -162,35 +162,52 @@ the factor space (the centre replicates measure it only at the centre):
 | K2 | 300 | 12 | 3 | 0.62 | narrowest local wall (2 cells) |
 | K3 | 212 | 18 | 1.5 | 0.69 | smallest gap between particles (1.7 cells) |
 | K4 | 300 | 18 | 1.5 | 0.55 | largest box, many cubes |
- Fixed: d is the particle
-diameter at A = 10 pJ/m and Js = 1.5 T (l_ex = 3.34 nm), dx = 3 l_ex,
-f = 30 MHz, B_peak 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles (kept
-from cycle 2), converged virgin state (hard gate), uniaxial anisotropy,
-staircase surface, T = 0, no eddy currents.
 
-**Factors and their real values** (A = 10 pJ/m, Js = 1.5 T):
+Fixed: Js = 1.5 T (K_d = μ₀Ms²/2 = 895 kJ/m³), dx = 3 l_ex, f = 30 MHz,
+B_peak 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles (kept from cycle 2),
+converged virgin state (hard gate), uniaxial anisotropy, staircase surface,
+T = 0, no eddy currents.
 
-| Factor (reduced) | Range | Real value | Second reading |
+**Two readings of the same runs.** The simulation uses reduced units: A
+enters only through l_ex = √(2A/(μ₀Ms²)); at fixed Js the time scale and
+K_d do not depend on A. Thus a run with d/l_ex = 212 is the same
+calculation for "d = 1 µm, A = 19.9 pJ/m" and for "A = 10 pJ/m, d = 709 nm";
+w (J/m³), f and β are the same. The effects of d and A cannot be
+separated: it is one factor. **Reading 1 (main, d = 1 µm fixed, A varied)**
+and reading 2 (A = 10 pJ/m fixed, d varied) below. Nominal ranges; the
+realised values are in results/sobol_design.csv (d/l_ex 209.7 … 303.9,
+thus A 9.7 … 20.4 pJ/m in reading 1).
+
+**Factors and their real values** (Js = 1.5 T):
+
+| Factor (reduced), sampling | Range | Reading 1: d = 1 µm, A varied | Reading 2: A = 10 pJ/m, d varied |
 |---|---|---|---|
-| d/l_ex (log-uniform) | 212 … 300 | particle diameter 709 … 1003 nm | at d = 1 µm fixed: A = 19.9 … 9.9 pJ/m (l_ex 4.72 … 3.33 nm) |
-| L_eff/l_ex (4 levels, level = ⌊4u⌋) | 12 / 18 / 24 / 30 | Herzer length = cube edge 40 / 60 / 80 / 100 nm | |
-| ↳ K_eff = A/L_eff² | | 6.22 / 2.76 / 1.55 / 0.99 kJ/m³ (Q_eff 6.9 … 1.1·10⁻³) | grains D = L_eff with K1 = K_eff (x = 1, PROTOKOLL 2.1) |
-| ↳ K1 for D = 10 nm (Herzer, K_eff = K1⁴D⁶/A³) | | 50 / 41 / 35 / 32 kJ/m³ | for K1 = 8 kJ/m³ (Fe-Si): D = 34 / 30 / 27 / 25 nm |
-| r_p (uniform) | 0 … 3 | particle anisotropy K_p = r_p K_eff: 0 … 18.7 kJ/m³ (L_eff 12) … 0 … 3.0 kJ/m³ (L_eff 30) | residual stress; one uniaxial axis per particle |
-| φ (uniform) | 0.55 … 0.69 | packing fraction 55 … 69 % | |
+| d/l_ex, log-uniform | 212 … 300 | A = 19.9 … 9.9 pJ/m (l_ex 4.72 … 3.33 nm) | d = 709 … 1003 nm (l_ex 3.34 nm) |
+| L_eff/l_ex, 4 levels (level = ⌊4u⌋), linear in L | 12 / 18 / 24 / 30 | Herzer length = cube edge 40 … 57 / 60 … 85 / 80 … 113 / 100 … 142 nm (at A 10 … 20 pJ/m) | 40 / 60 / 80 / 100 nm |
+| ↳ Q_eff = (l_ex/L_eff)², K_eff = Q_eff K_d = A/L_eff² | 6.9 / 3.1 / 1.7 / 1.1·10⁻³ | K_eff 6.22 / 2.76 / 1.55 / 0.99 kJ/m³ (independent of A) | same |
+| ↳ K1 for grains D = 10 nm (Herzer K_eff = K1⁴D⁶/A³, K1 ∝ A^¾) | | 50 … 84 / 41 … 69 / 35 … 59 / 32 … 54 kJ/m³ (at A 10 … 20 pJ/m) | 50 / 41 / 35 / 32 kJ/m³ |
+| r_p, uniform (linear) | 0 … 3 | K_p = r_p K_eff: 0 … 18.7 kJ/m³ (L 12) … 0 … 3.0 kJ/m³ (L 30); residual stress, one uniaxial axis per particle | same |
+| φ, uniform (linear) | 0.55 … 0.69 | packing fraction 55 … 69 % | same |
 
-**Derived quantities and limits:**
+Regression variables: ln Q_eff, r_p, φ, ln d/l_ex. Note: the factor d/l_ex
+alone is "A changed at fixed Q_eff and fixed r_p", not "A changed, material
+otherwise the same"; the full A effect at 1 µm follows from the regression
+(4.3: dβ/d ln A = −3 ∂β/∂ ln Q_eff − ½ ∂β/∂ ln(d/l_ex), plus a r_p term if
+K_p is fixed). The grain size D = L_eff with K1 = K_eff (x = 1, PROTOKOLL 2.1)
+is an equivalent reading of the cubes.
+
+**Derived quantities and limits** (nominal; reading 1 / reading 2):
 
 | Quantity | Min | Max | Limit / rule |
 |---|---|---|---|
-| mesh dx | 10.0 nm (3 l_ex) | 10.0 nm | fixed; at d = 1 µm with A varied: 10.0 … 14.2 nm |
-| box edge a | 1.04 µm (d 212, φ 0.69) | 1.56 µm (d 300, φ 0.55) | a multiple of 12 l_ex |
+| mesh dx = 3 l_ex | 10.0 nm (A 10) / 10.0 nm | 14.2 nm (A 20) / 10.0 nm | fixed in reduced units |
+| box edge a | 1.47 µm / 1.04 µm (d/l_ex 212, φ 0.69) | 1.56 µm / 1.56 µm (d/l_ex 300, φ 0.55) | a multiple of 12 l_ex |
 | cells | 1.1 M | 3.8 M | cost ∝ cells |
-| smallest gap between particles | 1.7 cells ≈ 17 nm (d 212, φ 0.69) | 10.4 cells (d 300, φ 0.55) | ≥ 1 void cell over 26 neighbours (contact rule) |
-| d/L_eff | 7.1 (d 212, L 30) | 25 (d 300, L 12) | ≥ 7 (D3) |
+| smallest gap between particles | 1.7 cells = 24 nm / 17 nm (d/l_ex 212, φ 0.69) | 10.4 cells = 104 nm (d/l_ex 300, φ 0.55) | ≥ 1 void cell over 26 neighbours (contact rule) |
+| d/L_eff | 7.1 (d/l_ex 212, L 30) | 25 (d/l_ex 300, L 12) | ≥ 7 (D3) |
 | cubes per particle | 185 | 8 200 | residual check vs d/L_eff (D3) |
-| local wall width l_ex/√(Q_eff(1 + r_p)) | 2.0 cells = 20 nm (L 12, r_p 3) | 10 cells = 100 nm (L 30, r_p 0) | ≥ 2 cells (resolved) |
-| wall width π L_eff | 126 nm | 315 nm | |
+| local wall width L_eff/√(1 + r_p) | 2.0 cells = 20 nm (L 12, r_p 3, A 10) … 28 nm (A 20) / 20 nm | 10 cells = 100 … 142 nm (L 30, r_p 0) / 100 nm | ≥ 2 cells (resolved) |
+| wall width π L_eff | 126 nm | 445 nm / 315 nm | |
 | drive H amplitude (μ ≈ 8) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
 | α | 0.01 (8 centre runs) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
 
