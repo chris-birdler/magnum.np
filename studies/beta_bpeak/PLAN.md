@@ -236,6 +236,16 @@ the measured mesh caveat (Δ ln w 50 mT: +0.26 ± 0.16 at d/l_ex 300, −0.06 ±
 **Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
 (9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
 100 mT, plus the event flags (balance, n60 drops).
+**Accumulators (decided Chris 2026-10-06, audit 3 item 9b, option B):** all
+124 runs, all 7 amplitudes (`--acc`): per cell over the cycles ≥ 2 the mean
+local dissipation p, the mean m and the fundamental m₁ from all 256 samples
+per cycle (no aliasing). Reduced on the instance by `acc_reduce.py` →
+acc.json (sum check p_box/p_dis, R1, shares of p and p_fund and the lag in
+the classes core / middle / shell / texture top 10 % / p top 10 %) and
+acc_slices.npz; then the acc_*.npz (≈ 40 B per cell and amplitude) are
+deleted like the snapshots. Instance test (d/l_ex 96, 2 amplitudes): sum
+check 1.000000, R1 0.960 / 0.206 against 0.956 / 0.207 from the 16-phase
+snapshots, run time +4 … 5 %, loss unchanged.
 **Snapshots (decided 2026-10-06, Chris, option c):** main design and corner
 replicates (116 runs): 16 phases of the last cycle at 9, 50 and 150 mT
 (`--snap_phases 16 --snap_cycles 2`: 96 files of 48 MB at 148³ cells,
@@ -245,7 +255,7 @@ where the loss sits, texture, F90, slices; `domains_batch.py`: wall measure,
 switched volume, l_C of the last cycle at 90/180/270/360°, of init.pt and of
 the end state checkpoint.pt; ≈ 13 states × 38 s CPU per run); the 8 α 0.01
 centre runs have the same snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
-(*.vti) of a finished run are deleted on the instance as soon as its
+(*.vti) and accumulator files (acc_*.npz) of a finished run are deleted on the instance as soon as its
 analysis files are written there and their md5 is logged; the results are
 fetched and md5-checked on the laptop later. init.pt and checkpoints are
 NOT covered by this rule: they stay until the whole design is finished (the
@@ -256,10 +266,16 @@ then deletion only with a separate go after the dependency check of
 2026-10-06):** deleted only by Claude during the daily fetch, after the
 dependency check (the end state is analysed in domains.json; α 0.01 and a
 later α study start from init.pt) and with the list shown in the log.
+**Fetch of the states (decided Chris 2026-10-06, audit 3 item 9a):** during
+the daily fetch the new init.pt and checkpoint.pt are downloaded too
+(all runs: init.pt 2.98 GB + checkpoint.pt 3.18 GB = 6.15 GB, ≈ 2 GB per
+day), md5-verified, kept local as raw data (MANIFEST.md5, not in git); a
+checkpoint is deleted on the instance only after this.
 **Disk (40 GB, corrected 2026-10-06 with measured sizes):** used now 4.4 GB;
-kept per run init.pt + checkpoint.pt ≈ 2 × 39 … 46 MB + CSV ≈ 0.09 GB, all
-124 runs ≈ 11 GB; snapshots in flight up to 4 × 5.6 GB ≈ 22 GB plus one run
-in post-processing. Without deleting checkpoints the worst case (≈ 42 GB)
+kept per run init.pt + checkpoint.pt + CSV ≈ 0.05 GB, all 124 runs
+≈ 6.2 GB (computed from the job files, 12 B per cell); snapshots and
+accumulators in flight up to 4 × 6.6 GB ≈ 26 GB (expected bytes per run
+2.0 … 6.6 GB, mean 3.7 GB) plus one run in post-processing. Without deleting checkpoints the worst case (≈ 42 GB)
 exceeds the disk; thus **disk guard with reservation** (`run_queue.py
 --min_free_gb 3`): a job starts only if the free space minus the expected
 bytes still to come of all running jobs minus its own expected bytes is

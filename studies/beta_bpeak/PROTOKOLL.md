@@ -1535,6 +1535,18 @@ recorded here.
   "not a lever" = 90 % CI inside ±0.15 (TOST); scatter-model slopes Holm
   5 %; α 0.01 predictions R ≈ 1 / 10 / 100 (PLAN 4.0). r_p 3 vs 6 pre-test
   noted as an open option.
+- 9a. init.pt and checkpoint.pt of all runs (6.15 GB, computed) are fetched
+  during the daily fetch before a checkpoint is deleted (Chris: yes).
+- 9b. Per-cell accumulators (Chris: option B): run_loops --acc sums per
+  cell over the cycles ≥ 2 of each measured stage the local dissipation, m
+  and the fundamental m₁ from all 256 samples; acc_reduce.py reduces them on
+  the instance (sum check, R1, shares by class, lag) and the large files are
+  deleted. Instance test (d/l_ex 96, 2 amplitudes, with and without --acc):
+  sum check p_box/p_dis = 1.000000; R1 0.960 / 0.206 vs 0.956 / 0.207 from
+  the 16-phase snapshots; run time +4.9 / +4.1 %; w_dis identical; the two
+  runs gave identical slices (md5), so the runs are deterministic. A syntax
+  error (decorator) was found by this test; a test now compiles all study
+  scripts.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
