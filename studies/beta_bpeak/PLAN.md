@@ -1,9 +1,9 @@
 # PLAN: β(B_peak) production study (draft for approval)
 
-Status 2026-10-03: step 1 (frequency test) FAILED: from ≈ 35 mT the loss
-at 30 MHz is mainly damping loss (PROTOKOLL 7.9). Step 1b: rule not met
-(PROTOKOLL 7.10). Step 2 is on hold until Chris decides the method for the
-hysteresis loss (PROTOKOLL §12).
+Status 2026-10-06: plan v2 (4.0) prepared and tested (PROTOKOLL 7.30,
+7.33); waiting for Chris's go and a credit top-up. The target is the total
+loss at 30 MHz with the model α (Chris 2026-10-03, PROTOKOLL §12); the
+history of steps 1 … 1d is in §3 … 3f.
 Basis: PROTOKOLL.md (model, tests, mesh decision).
 
 ## 1. Question
@@ -22,12 +22,12 @@ a classification of the factors (PLAN 4.0, decision rules).
 | Setting | Value | Reason |
 |---|---|---|
 | model | Herzer cubes (Q_eff, L_eff) + particle-scale stress r_p; FCC cell of 4 spheres | PROTOKOLL §2 |
-| mesh | dx = 3 l_ex (10 nm) | no mesh effect on β detected at 1 µm (95 % CI ≈ ±0.2 … 0.4); level at dx 3 20 … 80 % above dx 1.5, direction to the converged value unknown (PROTOKOLL 7.28, 7.32) |
+| mesh | dx = 3 l_ex (10 nm) | no mesh effect on β detected at 1 µm (95 % CI ≈ ±0.2 … 0.4); level at dx 3 higher than at dx 1.5 in 3 of 4 seeds (+21 … +43 %, not significant), direction to the converged value unknown (PROTOKOLL 7.28, 7.32) |
 | initial state | virgin state (random m on 6 l_ex blocks, relaxed), ascending amplitudes | PROTOKOLL §7.4 … 7.6 |
-| damping | α = 0.1 | steady cycles (PROTOKOLL §7.2) |
+| damping | α = 0.1 (8 centre runs at α 0.01) | model parameter (PROTOKOLL 7.17, 7.31) |
 | precision | fp32, atol 10⁻⁵ | numerical floor test PASS |
-| amplitudes | B_peak = 9 / 20 / 35 / 50 / 70 / 100 / 150 mT (D2), 7 cycles each, cycles 0 and 1 discarded | study range; β at 10 / 50 / 100 mT by local fit (two-sided at 50 and 100 mT) |
-| frequency | f = 30 MHz (f/f_M = 7.14·10⁻⁴) | unless step 1 shows a large dynamic share |
+| amplitudes | B_peak = 9 / 20 / 35 / 50 / 70 / 100 / 150 mT (D2), 7 cycles at α 0.1 (9 at α 0.01), cycles 0 and 1 discarded | study range; β_core in the windows 9-20-35, 35-50-70, 70-100-150 mT and over all amplitudes (4.0) |
+| frequency | f = 30 MHz (f/f_M = 7.14·10⁻⁴) | target is the total loss with the model α (Chris 2026-10-03, PROTOKOLL §12) |
 
 ## 3. Step 1: frequency test (go 1)
 
@@ -146,18 +146,55 @@ time series (decision by Chris).
 
 ### 4.0 Plan v2 (2026-10-06, for approval by Chris)
 
-Supersedes 4.1 … 4.4 where they differ. Basis: PROTOKOLL 7.13 … 7.28.
+Supersedes 4.1 … 4.4 and §5 where they differ. Basis: PROTOKOLL 7.13 … 7.33
+(7.33: decisions on the third audit, one by one with Chris).
 
-**Design:** scrambled Sobol sequence in 4 factors (below), extensible (fixed
-mapping, seed = 1001 + point index). Main design at α 0.1: 96 points + 8
-centre replicates. At α 0.01 only the 8 centre replicates (same seeds,
-started from the init.pt of the α 0.1 centre run, 9 cycles per amplitude,
-with snapshots): test of |m₁|² ∝ 1/α at one point with 8 seeds (decision
-Chris 2026-10-06, after audit 7.32; the α 0.01 Sobol subset is dropped, a
-later own α study can start from the kept init.pt files).
-**Replicates at 4 corners (added 2026-10-06, Chris):** 3 seeds each at α 0.1
-(seeds 2011 … 2013, 2021 … 2023, 2031 … 2033, 2041 … 2043), to check whether the realisation scatter is the same over
-the factor space (the centre replicates measure it only at the centre):
+**Terms.**
+- l_ex = √(2A/(μ₀Ms²)) exchange length; K_d = μ₀Ms²/2; reduced lengths are
+  in units of l_ex. d particle diameter; L_eff edge of the Herzer cubes
+  (random-anisotropy cells); Q_eff = (l_ex/L_eff)² = K_eff/K_d; r_p = K_p/K_eff
+  particle anisotropy (residual stress) relative to K_eff; φ packing fraction.
+- Run: one simulation of one design point with one seed (its own cubes,
+  axes and initial state). Realisation scatter: the scatter of a result over
+  seeds at the same factors.
+- init.pt: the relaxed virgin state of a run (start of the amplitude
+  ramp); checkpoint.pt: the state after the last finished amplitude stage.
+- w: loss per cycle and core volume (J/m³), w = mean of w_loop = ∮H dB over
+  the kept cycles; P = f·w (W/cm³). E[w]: mean of w over the realisations
+  (what a core of ≈ 10⁹ particles shows). β_core = d ln E[w]/d ln B̂.
+  ln E[w] is the loss output in all rules below.
+- Window: 3 neighbouring amplitudes (9-20-35, 35-50-70, 70-100-150 mT;
+  centres ≈ 18 / 50 / 102 mT); β in a window = slope of a power law through
+  its 3 points. "β all": over all 7 amplitudes.
+- Range effect of a factor: prediction of the main fit at the factor
+  maximum minus at its minimum, the other factors averaged over the design
+  points.
+- p: local LLG dissipation per cell; p_dis: its box mean; p_fund: the part
+  of the fundamental (drive frequency); R1 = p_fund/p_dis; lag: phase of the
+  local fundamental against the drive; texture: |∇m| of the cycle-mean state
+  smoothed over 0.5 L_eff (top 10 % cells = "texture top 10 %"); F90:
+  fraction of the volume rotated by > 90° (PROTOKOLL 7.14); l_C:
+  correlation length of m.
+- Gamma GLM: regression of w with a log link and a Gamma error model (it
+  estimates ln E[w]); OLS: ordinary least squares; HC3: heteroscedasticity-
+  consistent standard error; Huber fit: robust regression that down-weights
+  outliers; Holm: Holm–Bonferroni step-down correction for several tests;
+  TOST: two one-sided tests (equivalence test).
+- Sobol sequence: a quasi-random set of points that fills the factor space
+  evenly (scrambled, scipy.stats.qmc, design seed 20261006).
+- V100-h: GPU hours on one V100 (cost unit; ≈ 0.1 $ per V100-h on the
+  4×V100 instance at 0.41 $/h).
+
+**Design.** 96 Sobol points (seed 1001 + point index, mapping fixed, so the
+design can be extended) + 8 centre replicates C0 … C7 (d/l_ex 252, L_eff 18,
+r_p 1.5, φ 0.62; seeds 1901 … 1908) + 4 corners × 3 seeds (seeds 2011 …
+2013, 2021 … 2023, 2031 … 2033, 2041 … 2043), all at α 0.1; at α 0.01 only the
+8 centre replicates (same seeds, started from the init.pt of the α 0.1
+centre run, 9 cycles per amplitude): 124 runs. The α 0.01 Sobol subset is
+dropped (Chris 2026-10-06); a later own α study can start from the kept
+init.pt files. The corners check whether the realisation scatter is the
+same over the factor space (the centre replicates measure it only at the
+centre):
 
 | Corner | d/l_ex | L_eff/l_ex | r_p | φ | why |
 |---|---|---|---|---|---|
@@ -166,10 +203,10 @@ the factor space (the centre replicates measure it only at the centre):
 | K3 | 212 | 18 | 1.5 | 0.69 | smallest gap between particles (1.7 cells) |
 | K4 | 300 | 18 | 1.5 | 0.55 | largest box, many cubes |
 
-Fixed: Js = 1.5 T (K_d = μ₀Ms²/2 = 895 kJ/m³), dx = 3 l_ex, f = 30 MHz,
-B_peak 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles (kept from cycle 2),
-converged virgin state (hard gate), uniaxial anisotropy, staircase surface,
-T = 0, no eddy currents.
+**Fixed settings.** Js = 1.5 T (K_d = 895 kJ/m³), dx = 3 l_ex, f = 30 MHz,
+B̂ = 9 / 20 / 35 / 50 / 70 / 100 / 150 mT, 7 cycles per amplitude at α 0.1
+(9 at α 0.01), cycles 0 and 1 discarded, converged virgin state (hard
+gate), uniaxial anisotropy, staircase surface, T = 0, no eddy currents.
 
 **Two readings of the same runs.** The simulation uses reduced units: A
 enters only through l_ex = √(2A/(μ₀Ms²)); at fixed Js the time scale and
@@ -215,140 +252,173 @@ is an equivalent reading of the cubes.
 | α | 0.01 (8 centre runs) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
 
 **Validity of the mesh** (PROTOKOLL 7.28, 7.32): no mesh effect on β
-detected at the base point (1 µm, n = 4; 95 % CI up to ≈ ± 0.2 … 0.4); the
-small end d/l_ex 212 and the corners are not checked. Absolute losses at
-dx 3 are 20 … 80 % higher than at dx 1.5 (direction to the converged value
-not known). **Mesh check (rule fixed before the start, Chris 2026-10-06, option A of
-audit 3 item 6):** no further mesh tests before the design. After the main
-run and its regression: **trigger** = a resolution factor has a range effect
-|Δ| ≥ 0.15 on β (any window) or on ln P (10 / 50 / 100 mT) and its 95 % CI
-excludes 0. L_eff or r_p (wall width in cells) → corner K2 (wall 2 cells);
-d or φ (gap in cells) → corner K3 (gap 1.7 cells). **Check** = 6 seeds at
-dx 1.5 and dx 3, paired, mesh300 protocol (9 / 50 / 100 mT, 5 cycles);
-compared: the mesh difference at the corner against the one at the base
-point (mesh300). Equal → the effect is physical; different → the
-difference is the artefact share. Expected 95 % CI ±0.13 … 0.21. **Cost
-(estimate from mesh300 rates):** K2 ≈ 250 V100-h ≈ 25 $ (≈ 41 h per run,
-≈ 3.5 days on 4 GPUs), K3 ≈ 60 V100-h ≈ 6 $ (≈ 1 day). Run only with a
+detected at the base point (1 µm, n = 4; 95 % CI up to ≈ ±0.2 … 0.4); the
+small end d/l_ex 212 and the corners are not checked. The absolute loss at
+dx 3 was higher than at dx 1.5 in 3 of 4 seeds (mean Δ ln w +0.19 … +0.36,
+i.e. +21 … +43 %; not significant, n = 4); the direction to the converged
+value is not known.
+**Mesh check (rule fixed before the start, Chris 2026-10-06, audit 3
+item 6, option A):** no further mesh tests before the design. After the
+main run and its regression: **trigger** = in the main fit (Gamma GLM), a
+factor has |range effect| ≥ 0.15 on β_core (any window or all) or on
+ln E[w] (10 / 50 / 100 mT), with its 95 % CI (not corrected, on purpose
+generous) excluding 0. L_eff or r_p (they set the wall width in cells) →
+corner K2 (wall 2 cells); d/l_ex or φ (they set the gap in cells) → corner
+K3 (gap 1.7 cells). **Check** = 6 seeds at dx 1.5 and dx 3, paired, mesh300
+protocol (9 / 50 / 100 mT, 5 cycles), run without the 12 h job timeout
+(`--job_timeout_h 30`: a dx 1.5 job needs ≈ 21 h); compared: the mesh
+difference at the corner against the one at the base point (mesh300).
+Equal → the effect is physical; different → the difference is the artefact
+share. Expected 95 % CI ±0.13 … 0.21. **Cost (estimates from mesh300
+rates, cost ∝ cells):** K2 ≈ 250 V100-h ≈ 25 $ (≈ 41 h per run, ≈ 3.5 days
+on 4 GPUs), K3 ≈ 80 V100-h ≈ 8 $ (≈ 13 h per run, ≈ 1 day). Run only with a
 separate go after the regression. Without trigger: no check; every effect
-of L_eff, r_p, d, φ is reported as a relative effect at dx 3 (mesh error up
-to ≈ 0.3 not excluded, in both directions); every d effect on ln P carries
-the measured mesh caveat (Δ ln w 50 mT: +0.26 ± 0.16 at d/l_ex 300, −0.06 ±
-0.14 at 212, 7.28).
+of L_eff, r_p, d/l_ex, φ is reported as a relative effect at dx 3 (mesh
+error up to ≈ 0.3 not excluded, in both directions); every d/l_ex effect on
+ln E[w] carries the measured mesh caveat (Δ ln w at 50 mT: +0.26 ± 0.16 at
+d/l_ex 300, −0.06 ± 0.14 at 212, 7.28).
 
-**Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
-(9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
-100 mT, plus the event flags (balance, n60 drops).
+**Outputs per run** (`analyze.features`): β in the 3 windows and β all,
+ln w at 10 / 50 / 100 mT, and the flags per amplitude (definitions in the
+`analyze.py` docstring): `c` loop not closed (drift), `o` loop centre
+shifted (|offset| > 0.10), `*` energy balance |w_dis/w_loop − 1| > 2 %,
+`#` jump of n60 (number of neighbour-cell pairs with > 60° between their m),
+`!` cycle-to-cycle scatter above the target.
+**Snapshots (decided 2026-10-06, Chris, option c):** all 124 runs: m at 16
+phases in each of the last 2 cycles at 9, 50 and 150 mT (`--snap_phases 16
+--snap_cycles 2`; 96 files of 48 MB at 148³ cells, measured; 1.6 … 5.5 GB
+per run, mean 3.1 GB). Analysed on the instance right after each run:
+`phasemap_batch.py`, `phase_extra.py` (R1, lag spread, where the loss sits,
+texture, F90, slices) and `domains_batch.py` (wall measure, switched
+volume, l_C of the last cycle at 90/180/270/360°, of init.pt and of the end
+state checkpoint.pt; ≈ 14 states × 38 s CPU per run).
 **Accumulators (decided Chris 2026-10-06, audit 3 item 9b, option B):** all
 124 runs, all 7 amplitudes (`--acc`): per cell over the cycles ≥ 2 the mean
-local dissipation p, the mean m and the fundamental m₁ from all 256 samples
-per cycle (no aliasing). Reduced on the instance by `acc_reduce.py` →
-acc.json (sum check p_box/p_dis, R1, shares of p and p_fund and the lag in
-the classes core / middle / shell / texture top 10 % / p top 10 %) and
-acc_slices.npz; then the acc_*.npz (≈ 40 B per cell and amplitude) are
-deleted like the snapshots. Instance test (d/l_ex 96, 2 amplitudes): sum
-check 1.000000, R1 0.960 / 0.206 against 0.956 / 0.207 from the 16-phase
-snapshots, run time +4 … 5 %, loss unchanged.
-**Snapshots (decided 2026-10-06, Chris, option c):** main design and corner
-replicates (116 runs): 16 phases of the last cycle at 9, 50 and 150 mT
-(`--snap_phases 16 --snap_cycles 2`: 96 files of 48 MB at 148³ cells,
-measured; 1.6 … 5.6 GB per run, mean 3.1 GB). Analysed on the instance right
-after each run (`phasemap_batch.py`, `phase_extra.py`: R1, lag spread,
-where the loss sits, texture, F90, slices; `domains_batch.py`: wall measure,
-switched volume, l_C of the last cycle at 90/180/270/360°, of init.pt and of
-the end state checkpoint.pt; ≈ 13 states × 38 s CPU per run); the 8 α 0.01
-centre runs have the same snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
-(*.vti) and accumulator files (acc_*.npz) of a finished run are deleted on the instance as soon as its
-analysis files are written there and their md5 is logged; the results are
-fetched and md5-checked on the laptop later. init.pt and checkpoints are
-NOT covered by this rule: they stay until the whole design is finished (the
-α 0.01 centre runs and a later α study start from the init.pt of the α 0.1
-run of the same point);
-then deletion only with a separate go after the dependency check of
-`cleanup_instance.py`. **checkpoint.pt of finished runs (decision Chris
-2026-10-06):** deleted only by Claude during the daily fetch, after the
-dependency check (the end state is analysed in domains.json; α 0.01 and a
-later α study start from init.pt) and with the list shown in the log.
-**Fetch of the states (decided Chris 2026-10-06, audit 3 item 9a):** during
-the daily fetch the new init.pt and checkpoint.pt are downloaded too
-(all runs: init.pt 2.98 GB + checkpoint.pt 3.18 GB = 6.15 GB, ≈ 2 GB per
-day), md5-verified, kept local as raw data (MANIFEST.md5, not in git); a
-checkpoint is deleted on the instance only after this.
-**Disk (40 GB, corrected 2026-10-06 with measured sizes):** used now 4.4 GB;
-kept per run init.pt + checkpoint.pt + CSV ≈ 0.05 GB, all 124 runs
-≈ 6.2 GB (computed from the job files, 12 B per cell); snapshots and
-accumulators in flight up to 4 × 6.6 GB ≈ 26 GB (expected bytes per run
-2.0 … 6.6 GB, mean 3.7 GB) plus one run in post-processing. Without deleting checkpoints the worst case (≈ 42 GB)
-exceeds the disk; thus **disk guard with reservation** (`run_queue.py
---min_free_gb 3`): a job starts only if the free space minus the expected
-bytes still to come of all running jobs minus its own expected bytes is
-≥ 3 GB. The queue then waits instead of filling the disk (tested on the
-instance 2026-10-06); if checkpoints are not deleted for a day, fewer jobs
-run in parallel near the end.
+p, the mean m and the fundamental m₁ from all 256 samples per cycle (no
+aliasing). Reduced on the instance by `acc_reduce.py` → acc.json (sum check
+p_box/p_dis = box mean of p over the measured p_dis, must be 1; R1; shares
+of p and p_fund and the lag in the classes core r/R_p < 0.5 / middle /
+shell r/R_p ≥ 0.8 / texture top 10 % / p top 10 %) and acc_slices.npz.
+Instance test (d/l_ex 96, 2 amplitudes): sum check 1.000000, R1 0.960 /
+0.206 against 0.956 / 0.207 from the 16-phase snapshots, run time +4 … 5 %,
+loss unchanged.
 
-**Note on φ:** P is per core volume, so the φ effect on ln P contains the
-trivial dilution ln(0.69/0.55) = 0.23; it is reported with and without it.
-**Snapshots of a failed post-processing (POSTPROC_FAILED):** they stay on
-the instance; `cleanup_instance.py` does not delete them (it needs
-dissmap.json, which the Sobol runs do not write); they are removed only by a
-manual step after the failure is understood.
+**Deletion and fetch rules.**
+- Snapshots (*.vti) and accumulator files (acc_*.npz) (standing go, Chris
+  2026-10-06): deleted on the instance by `instance_postproc.py` as soon as
+  the analysis files are written and checked there and their md5 is logged;
+  the results are fetched and md5-checked on the laptop later. If the
+  post-processing of a run fails (POSTPROC_FAILED), its files stay; they are
+  removed only by a manual step after the failure is understood.
+- init.pt: stays on the instance until the whole design is finished (the
+  α 0.01 centre runs and a later α study start from it); then deletion only
+  with a separate go after the dependency check of `cleanup_instance.py
+  --include_init`.
+- checkpoint.pt (decision Chris 2026-10-06): deleted only by Claude during
+  the daily fetch, after a dry run of `cleanup_instance.py`; conditions: the
+  run is DONE and POSTPROC_DONE, domains.json holds the end state ("final"),
+  and summary.json, domains.json, checkpoint.pt and init.pt are listed in the
+  local MANIFEST.md5 (fetched and verified).
+- Fetch (decided Chris 2026-10-06, audit 3 item 9a): during the daily fetch
+  the result files and the new init.pt and checkpoint.pt are downloaded
+  (state files of all runs: init.pt 2.98 GB of the 116 α 0.1 runs +
+  checkpoint.pt 3.18 GB of all 124 runs = 6.15 GB, ≈ 2 GB per day),
+  md5-verified and kept local as raw data (MANIFEST.md5, not in git).
+- Disk (40 GB): used now 4.4 GB; kept per run init.pt + checkpoint.pt + CSV
+  ≈ 0.05 GB (12 B per cell per state file; α 0.01 runs write no init.pt);
+  expected bytes per run (snapshots + accumulators + state files)
+  2.0 … 6.6 GB, mean 3.7 GB. **Disk guard with reservation** (`run_queue.py
+  --min_free_gb 3`): a job starts only if the free space minus the expected
+  bytes still to come of all running jobs minus its own expected bytes is
+  ≥ 3 GB; the queue waits instead of filling the disk (tested on the
+  instance). If checkpoints are not deleted for a day, fewer jobs run in
+  parallel near the end.
 
-**Analysis (estimand decided Chris 2026-10-06, audit 3 item 7, option C):**
-a core averages ≈ 10⁹ particles, so the target is the mean loss E[w] over
-the realisations and β_core = d ln E[w] / d ln B. **Main fit:** for each of
-the 7 amplitudes, w (the loss per cycle of each run) is regressed on
-(ln Q_eff, r_p, φ, ln d/l_ex) with a log link (Gamma GLM), linear +
-quadratic + 2-factor interactions (15 terms); ln E[w] at 10 / 50 / 100 mT and
-β_core of the windows (9-20-35, 35-50-70, 70-100-150 mT, and all
-amplitudes) follow from the predicted means; the SE and the range effects
-come from a bootstrap over the runs (the runs are the independent samples).
-**Cross-checks (reported next to the main fit):** (A) OLS of ln w and of the
-per-run β with HC3 SE (estimates E[ln w], the typical run); (B) Huber fit of
-the same (the bulk without rare states); and the fit without flagged runs
-(4.3a). A clear difference between C and B means that the rate of rare
-states depends on the factors: reported as a finding. **Scatter model**
-(decided Chris 2026-10-06, replaces the F-test with n = 3): the log of the
-squared residuals of fit A is regressed linearly on the 4 factors (all
-104 + 12 runs, centre and corner replicates included); if a slope is
-significant, the fits are repeated with the weights 1/σ²(x) from this
-model. The corner and centre replicates give the pure scatter at 5 points
-as a check of this model (only a change of σ by ≈ 2× is detectable).
-α 0.01: paired difference to the α 0.1 run of the same seed at the centre
-(n = 8), plus |m₁|² and the loss map from the snapshots.
-**Decision rules (fixed before the start, Chris 2026-10-06, audit 3 item 8):**
+**Unattended operation** (PROTOKOLL 7.33 items 2, 4, 5, C2; all tested).
+The chain (`instance/chain_sobol.sh`) runs the code of one pinned commit,
+restarts itself after an instance restart (onstart, lock), and appends all
+logs. Order: K1_0, K2_0, K3_0, K4_0 first (relaxation, time, disk and
+post-processing at the extremes in the first ≈ 4 h), then the other main
+and corner runs in random order (seed 20261006), then the 8 α 0.01 runs.
+`run_queue.py`: a failed job runs once more (it resumes from its
+checkpoint); a relaxation-gate failure (exit code 3, deterministic) runs
+once more with relax_maxiter 200000 and a fresh start, then it is excluded;
+a NaN state stops a run (exit code 4); job timeout 12 h; failures of 2
+different jobs on one GPU within 10 min pause it 30 min, the 3rd such burst
+disables it (ALERT); the retry state of each job is kept in
+QUEUE_STATE.json, so a restart gives no new attempts; status file
+status_sobol.json every 5 min. Post-processing runs under a restart loop.
+
+**Analysis (estimand decided Chris 2026-10-06, audit 3 item 7, option C).**
+- Runs in the fits: the 104 main runs and the 12 corner runs at α 0.1;
+  excluded runs (4.3a) are left out.
+- Main fit: for each of the 7 amplitudes, w of each run is regressed on
+  (ln Q_eff, r_p, φ, ln d/l_ex) with a Gamma GLM, linear + quadratic +
+  2-factor interactions (15 terms); ln E[w] at 10 / 50 / 100 mT and β_core
+  of the windows and over all amplitudes follow from the predicted means; the
+  SE and the range effects come from a bootstrap over the runs (the runs are
+  the independent samples).
+- Cross-checks, reported next to the main fit: (A) OLS of ln w and of the
+  per-run β with HC3 SE (it estimates E[ln w], the typical run); (B) Huber
+  fit of the same (the bulk without rare states); the main fit without
+  flagged runs (4.3a). A clear difference between the main fit and fit B
+  means that the rate of rare states depends on the factors: reported as a
+  finding.
+- φ: w is per core volume, so the φ effect on ln E[w] contains the trivial
+  dilution ln(0.69/0.55) = 0.23; it is reported with and without it.
+- Scatter model (decided Chris 2026-10-06, replaces the F-test with
+  n = 3): for the 2 primary outputs, the log of the squared residuals of
+  fit A is regressed linearly on the 4 factors (all 116 runs, centre and
+  corner replicates included); if a slope is significant (Holm over the 4
+  slopes of one output, 5 %), the fits are repeated with the weights
+  1/σ²(x) from this model. The corner and centre replicates give the pure
+  scatter at 5 points as a check (only a change of σ by ≈ 2× is detectable).
+- α 0.01: per seed the ratio to the α 0.1 run of the same seed at the
+  centre (n = 8, paired): w and R = |m₁|²(α 0.01)/|m₁|²(α 0.1), with |m₁|²
+  the mean over the magnetic cells from the accumulators; plus the loss map
+  (acc.json) and the snapshots.
+
+**Decision rules (fixed before the start, Chris 2026-10-06, audit 3 item 8).**
 - Primary outputs: β_core over all amplitudes and ln E[w] at 50 mT, each
   against the 4 factors: 8 tests of the range effect, Holm correction,
-  family level 5 %. All other outputs (β windows, ln E[w] at 10 / 100 mT,
-  snapshot measures) are secondary: reported with CI, called a hint, not a
-  finding. Interaction and quadratic terms: hints only.
-- Class of each factor and output: "lever" = range effect significant after
-  the correction; "not a lever" = 90 % CI of the range effect inside ±0.15
-  (β; ln E[w]: ±0.15 ≈ ±16 % loss; equivalence test TOST); otherwise "not
-  determined".
-- Scatter model: a slope is significant at 5 % with Holm over the 4 factors.
-- α 0.01 centre test (predictions): R = |m₁|²(α 0.01)/|m₁|²(α 0.1), paired
-  over the 8 seeds, at 9 and 50 mT: viscous (loss ∝ α) R ≈ 1;
-  α-independent loss (micro-avalanches) R ≈ 10; resonance R ≈ 100. The
-  hypothesis whose value lies in the 95 % CI of ln R is assigned; none →
-  "mixed".
+  family level 5 %.
+- Class (only for the 2 primary outputs): "lever" = range effect
+  significant after the correction; "not a lever" = 90 % CI of the range
+  effect inside ±0.15 (β; ln E[w]: ±0.15 = −14 … +16 % loss; TOST);
+  otherwise "not determined". All other outputs (β windows, ln E[w] at 10 /
+  100 mT, snapshot and accumulator measures), interaction and quadratic
+  terms: reported with CI and called a hint, not a finding.
+- α 0.01 centre test (predictions): viscous loss (∝ α) R ≈ 1; α-independent
+  loss (micro-avalanches) R ≈ 10; resonance R ≈ 100. The hypothesis whose
+  value lies in the 95 % CI of ln R is assigned; none → "mixed". Note: the
+  paired loss ratio 0.59 at 50 mT (7.31) gives R ≈ 6 if the loss is mainly
+  in the fundamental (estimate), so "mixed" is the likely outcome; the test
+  then gives the share.
 - Limits of the design (stated in the report): α and f are fixed and cannot
   be ranked as levers; r_p ≤ 3 is probably in the linear range (open option
-  for later: pre-test r_p 3 and 6, PROTOKOLL §12 option B, ≈ 2 $).
-Expected SE of the range effects on β at N = 96 (σ from the baseline):
-0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
+  for later: pre-test r_p 3 and 6, PROTOKOLL §12 option B, ≈ 2 $); β at
+  10 mT itself is not delivered (lowest window centre ≈ 18 mT).
+- Expected SE of the range effects on β at N = 96 (σ from the baseline,
+  for OLS of the per-run β, fit A): 0.06 (β all), 0.10 (9-35 mT), 0.06
+  (35-70 mT), 0.07 (70-150 mT); the main fit is checked against these with
+  synthetic data (below).
+- Analysis code (audit 3 C4): the code for the main fit, the bootstrap,
+  Holm, TOST and the scatter model is written and tested on synthetic data
+  with a known answer during the runs, before any result is looked at.
 
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
-cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
-104 runs ≈ 250 V100-h ≈ 25 $; corner replicates 12 runs ≈ 30 V100-h ≈ 3 $;
-α 0.01 centre 8 runs ≈ 20 V100-h ≈ 2 $ (audit 3: per cycle the same rate as
-α 0.1, measured; the jobs.py model overestimates α 0.01); total ≈ 280 …
-300 V100-h ≈ 29 … 30 $. Mesh check: see the rule above. Wall time ≈ 3.2 days
-on 4 GPUs. Credit now
-≈ 11 $: top up to ≈ 45 $ (≈ 34 $ compute + reserve, because an empty credit
-stops the instance). The mesh check (if triggered) needs its own budget:
-K3 ≈ 6 $, K2 ≈ 25 $ (estimates).
+cells, cost ∝ cells, + 4 … 5 % for the accumulators):** per run 1.2 … 4.0
+V100-h, mean ≈ 2.4. Main design 104 runs ≈ 250 V100-h; corners 12 runs
+≈ 30 V100-h; α 0.01 centre 8 runs ≈ 20 V100-h (per cycle the same rate as
+α 0.1, measured); total ≈ 300 V100-h. Wall time ≈ 3.2 days on 4 GPUs. The
+instance is paid per hour (0.41 $/h), also for idle GPUs at the end of each
+queue: rental ≈ 32 … 35 $ (estimate). Credit now ≈ 11 $: top up to ≈ 45 $
+(an empty credit stops the instance). The mesh check (if triggered) needs
+its own budget: K3 ≈ 8 $, K2 ≈ 25 $ (estimates).
 
 ### 4.1 Factors and ranges
+
+(4.1 … 4.4 are the earlier plan; where they differ from 4.0, 4.0 holds.)
 
 | Factor | Range | Meaning |
 |---|---|---|
@@ -395,15 +465,10 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 - 8 replicates at the centre point (L_eff = 18, r_p = 1.5, φ = 0.62,
   d/l_ex = 252): pure error σ independent of the model (with the corner
   replicates a check of the scatter model, 4.0).
-- Disk of the instance (40 GB): large files are deleted when no longer needed
-  (Chris, 2026-10-04), with `cleanup_instance.py`: dry run first, deletion
-  only after the go for the printed list. Snapshots only after domains.json
-  and dissmap.json are fetched and md5-verified; checkpoints only after the
-  run is DONE and fetched; **init.pt never by default** (the α 0.01 runs
-  start from the init.pt of the α 0.1 run of the same point).
+- Disk, deletion and fetch: see PLAN 4.0 (superseded here).
 - Extension: the next Sobol points of the same sequence (up to 128 / 256 in
-  total at α 0.1; up to 96 at α 0.01) if the errors of step 2 are too large
-  (decision by Chris).
+  total at α 0.1) if the errors of step 2 are too large (decision by
+  Chris); at α 0.01: a later own α study (separate plan).
 
 ### 4.3 Analysis
 
@@ -467,16 +532,18 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 
 | | Value |
 |---|---|
-| per run (V100, dx = 3), 5 amplitudes | 0.9 h (d/l_ex = 212) … 2.2 h (d/l_ex = 300); mean ≈ 1.42 h (review) |
 | per run, 7 amplitudes, converged relaxation (measured, d/l_ex 300) | 3.4 V100-h (α 0.1); α 0.01 per cycle the same rate (measured, audit 3) |
-| main design 96 + 8 + corners 12 at α 0.1 | ≈ 260 V100-h ≈ 26 $ (+ 4 … 5 % for the accumulators) |
-| α 0.01: 8 centre runs (decided 2026-10-06) | ≈ 20 V100-h ≈ 2 $ |
+| main design 96 + 8 + corners 12 at α 0.1 | ≈ 280 V100-h (incl. accumulators, PLAN 4.0) |
+| α 0.01: 8 centre runs (decided 2026-10-06) | ≈ 20 V100-h |
+| rental (0.41 $/h, incl. idle GPUs) | ≈ 32 … 35 $ (PLAN 4.0) |
 | a later own α study | separate plan and go |
-| if step 1 needs f / 2 f pairs | × 1.5 |
 
 GPU selection: offers are shown to Chris before rent (low hourly rate).
 
 ## 5. Optional step 3: mesh control (separate go)
+
+**Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
+corners K2 / K3, 6 seeds). The text below is the earlier idea.
 
 One factor change (L_eff 12 → 30 at the base point) at dx = 3 and dx = 1.5:
 is the effect the same on both meshes? A run at dx = 1.5 and d/l_ex = 300
@@ -490,10 +557,12 @@ Decision by Chris after step 2.
 
 1. `jobs.py`: group `freqtest` (step 1) and group `sobol` (design, validity
    check of every point, seed per point, extension by m).
-2. `analyze_design.py`: per-run features to a CSV, regression, lack-of-fit,
-   ranking, plots.
-3. Tests: design generation (reproducible, valid, extensible), regression on
-   synthetic data with a known answer.
+2. `analyze_design.py` (not written yet; PLAN 4.0: written and tested on
+   synthetic data with a known answer during the runs, before any result is
+   looked at): per-run features to a CSV, Gamma GLM with bootstrap, fits A
+   and B, scatter model, Holm, TOST, plots.
+3. Tests: design generation (reproducible, valid, extensible: done),
+   regression on synthetic data with a known answer (with item 2).
 
 ## 7. Open decisions for Chris
 
@@ -508,8 +577,8 @@ Decision by Chris after step 2.
 
 | Risk | Consequence | Measure |
 |---|---|---|
-| large dynamic share at 30 MHz | β measures damping | step 1 first; options for Chris |
+| large dynamic share at 30 MHz | β contains the damping loss | accepted: the target is the total loss with the model α (PROTOKOLL §12) |
 | regression model too simple | biased effects | residuals vs factors, scatter model, centre and corner replicates; extend points |
-| σ larger at some corners (small d, 9 mT) | larger errors there | weights from the cycle statistics; extension |
-| level bias of dx = 3 (20 … 80 %, direction unknown) | absolute losses uncertain; d effect on ln P mesh-confounded | state as validity limit; mesh-check rule (4.0) |
+| σ larger at some corners (small d, 9 mT) | larger errors there | scatter model (4.0) with weights 1/σ²(x); corner replicates; extension |
+| level bias of dx = 3 (higher in 3 of 4 seeds, +21 … +43 %, not significant; direction unknown) | absolute losses uncertain; d effect on ln E[w] mesh-confounded | state as validity limit; mesh-check rule (4.0) |
 | d/l_ex = 212 is not "1 µm" for A = 10 pJ/m | — | interpret d/l_ex as exchange at fixed 1 µm (Js fixed) |

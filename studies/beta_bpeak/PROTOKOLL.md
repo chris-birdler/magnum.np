@@ -166,16 +166,16 @@ Physics background (short):
 | Material | fictitious nanocrystalline powder, reduced units, SI unit system Js = 1.5 T, 30 MHz | general answer, clean separation |
 | Anisotropy | only Herzer cubes (Q_eff) + particle-scale stress (r_p) | a global K per particle mixes with the pinning source; short-range stress merges into Q_eff |
 | Cubes | equal cubes of edge L_eff, not Voronoi | Herzer assumes one grain size; no size distribution as a hidden parameter; cube faces lie on cell faces (no staircase pinning) |
-| Q_eff window | 1.1·10⁻³ … 6.9·10⁻³ | L_eff ≥ 4 cells (resolved); d/L_eff ≥ 10 (walls in the particle, ≥ 500 cubes per particle, small realisation scatter) |
+| Q_eff window | 1.1·10⁻³ … 6.9·10⁻³ | L_eff ≥ 4 cells (resolved); d/L_eff ≥ 10 (walls in the particle, ≥ 500 cubes per particle, small realisation scatter); superseded by D3 (PLAN 4.0): d/L_eff ≥ 7, residual check vs d/L_eff |
 | Mesh-identical cubes | box edge a = multiple of 12 l_ex, L_eff = multiple of 6 l_ex | dx = 3, 2 and 1.5 see exactly the same cubes (tested on a common fine grid, with a negative control); d is adjusted by ≤ 2.5 % to keep φ exact |
 | Contacts | at least one void cell between particles (no face, edge or corner contact) | no exchange coupling, no extreme stray fields at contacts; at d/l_ex = 150 and dx = 3, φ = 0.69 and 0.71 are not possible |
-| Size | d/l_ex = 300 (1 µm), fixed | Chris |
+| Size | d/l_ex = 300 (1 µm), fixed; superseded by D3 (PLAN 4.0): d/l_ex 212 … 300 as a factor (at d = 1 µm: A 10 … 20 pJ/m) | Chris |
 | Amplitudes | B_peak = 150 / 100 / 70 / 50 / 35 / 20 / 9 mT (`--b_list`; 9 mT keeps 10 mT inside the range). The drive of each stage comes from b/h of the stage before and is corrected once after cycle 0 with b/h of cycle 0 (factor limited to 0.67 … 1.5) | study range 10 … 150 mT; no time on saturation. b of cycle 0 is within ±4 % of the later cycles (V100 data), thus each stage hits its target to ≈ 4 % |
 | Drive | sinusoidal H (not controlled B) | below 150 mT the core is almost linear: B(t) has 0.2 … 3 % harmonics, b varies by 0.1 … 3 % from cycle to cycle (mesh test data). Thus sinusoidal H ≈ sinusoidal B (Steinmetz condition) |
 | Initial state | **decided: A, virgin state relaxed to convergence with a hard gate (7.13, 7.15).** Original text: open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
 | Protocol | A and B: ascending amplitudes (the classic Rayleigh procedure: every larger loop erases the smaller ones, the loops stay centred). C: descending. 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
-| Damping | α = 0.1 (main design); α 0.01 only at the 8 centre replicates (PLAN 4.0, decision 2026-10-06) | α is a model parameter: α 0.01 vs 0.1 changes β_pow by −0.27 ± 0.08 and P at 100 mT by ×0.49 (7.17, n = 6 vs 11). Older reason (α 0.02 not settled at dx 1.5, 7.2; "−12 %" from unconverged runs) superseded |
+| Damping | α = 0.1 (main design); α 0.01 only at the 8 centre replicates (PLAN 4.0, decision 2026-10-06) | α is a model parameter: α 0.01 lowers the loss at 50 mT by ×0.59 (paired n = 4, p = 0.002, 7.31); an α effect on β is not established (paired −0.09 ± 0.17, 7.31; the earlier −0.27 ± 0.08 of 7.17 rests on spliced runs) |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
 
 ## 4. Mesh validity
@@ -1171,8 +1171,9 @@ from cycle 2. All 24 jobs done, no failure. Relaxation at dx 1.5: 20 500 …
   significant** (p ≈ 0.16 … 0.23; 95 % CI at 9 mT −0.39 … +1.10 in ln w):
   +20 … +45 % with all seeds (1.5 … 1.9 SE), +32 … +80 % without
   s921 (s921 at dx 3 has events: balance 1.70 at 9 mT, 2.35 at 100 mT). The
-  difference is largest at small B. Absolute losses at dx 3 are thus a
-  factor ≈ 1.2 … 1.8 higher than at dx 1.5. **This is relative to dx 1.5,
+  difference is largest at small B. In the mean over all seeds the level
+  at dx 3 is +20 … +45 % above dx 1.5 (not significant; the +80 % is the
+  value without s921). **This is relative to dx 1.5,
   not to the converged value:** whether dx 1.5 is converged is not known,
   and the true loss can lie below dx 1.5 or above it (corrected 2026-10-06;
   the earlier wording "too high" was not supported).
@@ -1350,7 +1351,8 @@ All mesh evidence with a valid state (newest first):
   dx 1.5 at 1 µm); **dx ≤ 1.5 l_ex (5 nm) is necessary; whether dx 1.5 is
   sufficient is not known** (no dx 1 run at 1 µm, ≈ 300 V100-h per
   realisation; at 330 nm dx 1.5 was not converged). Absolute values from
-  dx 3 carry an uncertainty of at least a factor ≈ 1.2 … 1.8; their
+  dx 3 carry an uncertainty of at least ≈ 40 % (dx 3 vs 1.5: +20 … +45 %
+  in the mean, not significant); their
   direction to the converged value is not known;
   ratios between parameters at the same dx are usable if the mesh error is
   similar (for d/l_ex it is not, see step 1b).
@@ -1414,12 +1416,13 @@ jobs/sobol_a001.txt (first 32 points + 8 centre replicates at α 0.01,
 - Snapshots: 16 phases of the last cycle at 9 / 50 / 150 mT only (new option
   `--snap_mT`, tested: snapshots only in the selected stage).
 - `instance_postproc.py`: per finished run phasemap + phase_extra, check,
-  md5 log, then deletion of the *.vti only (tested locally: checkpoint and
+  md5 log, then deletion of the *.vti only (7.33: and of the acc_*.npz; tested locally: checkpoint and
   results stay). `instance/chain_sobol.sh`: main + corners in random order,
   then the α 0.01 subset (7.33: the 8 centre runs); not installed on the instance yet.
 - Cost: cost model 232 (main) + 31 (corners) + 283 (α 0.01, the model
   overestimates small α ≈ 2×) V100-h; realistic ≈ 400 V100-h ≈ 40 $,
-  ≈ 4 days on 4 V100.
+  ≈ 4 days on 4 V100. (Updated 7.33: α 0.01 only 8 centre runs; ≈ 300
+  V100-h, rental ≈ 32 … 35 $, ≈ 3.2 days on 4 V100, PLAN 4.0.)
 
 ### 7.31 Paired α comparison (2026-10-06)
 
@@ -1479,6 +1482,7 @@ over (sections updated: 0, 7.25, 7.26, 7.27, 7.28, 7.29, 10, 12; PLAN 4.0):
   |m1|² ∝ 1/α); (c) model the residual variance over the factors instead of
   F-tests with n = 3; (d) the α 0.01 subset (its power for β is low after
   7.31); daily fetch of the small result files during the design.
+  (Decided in 7.33 items 6, 7, 8, 9 and PLAN 4.0.)
 - Referee view: no validation against measurements; systematic
   uncertainties of β (surface ≈ 0.3, mesh CI ≈ ± 0.3, f, α) are larger than
   the statistical precision (≈ 0.05 … 0.1); results are relative factor
@@ -1544,6 +1548,21 @@ recorded here.
   box edge 1.45 µm, 4.2 / 4.3 / 4.4 / §7 D1 / §8 updated to 4.0, φ dilution
   note, POSTPROC_FAILED snapshots manual; PROTOKOLL §3 damping row, §9,
   7.30, 7.32, §12.
+- Contradiction check of PLAN / PROTOKOLL by a context-free agent (44
+  findings, all numbers reproduced): PLAN 4.0 rewritten as one text with a
+  terms block; definitions for the analysis fixed (Chris: go): runs in the
+  fits = 104 main + 12 corners at α 0.1; w = w_loop; range effect = main
+  fit at factor max minus min, other factors averaged over the design
+  points; mesh-check trigger in the main fit with an uncorrected 95 % CI;
+  classes only for the 2 primary outputs; scatter model for the 2 primary
+  outputs (Holm over 4 slopes); |m₁|² for the α test from the accumulators.
+  C1: a checkpoint is deletable only when it and init.pt are fetched. C2:
+  run_queue keeps the retry state per job (QUEUE_STATE.json) across
+  restarts. C3: mesh check runs with a 30 h job limit. C4: analysis code
+  written and tested on synthetic data during the runs, before results are
+  looked at. Cost: rental ≈ 32 … 35 $ (idle GPUs at queue ends); K3 mesh
+  check ≈ 8 $. The α 0.01 test likely gives "mixed" (R ≈ 6 from 7.31,
+  estimate).
 - 9b. Per-cell accumulators (Chris: option B): run_loops --acc sums per
   cell over the cycles ≥ 2 of each measured stage the local dissipation, m
   and the fundamental m₁ from all 256 samples; acc_reduce.py reduces them on
@@ -1636,6 +1655,9 @@ particle. Thus the realisation scatter is larger than in production.
 
 ## 8. Error budget
 
+(Pilot error budget; for the Sobol design superseded by PLAN 4.0: Gamma GLM
+with bootstrap, decision rules with Holm and TOST ±0.15, expected SE ≈ 0.06.)
+
 | Quantity | Error (10 % scatter) | How `analyze.py` gets it |
 |---|---|---|
 | ln w at one amplitude | max(s_cyc, 0.10)/√n (n = 5 kept cycles) | s_cyc pooled over all amplitudes of one run |
@@ -1665,16 +1687,19 @@ plans (one-factor, factorial, 128 + 8) are replaced.
 ## 10. Known limitations
 
 - 4 particles per box, identical spheres, FCC order, no contacts.
-- T = 0 (no thermal activation). No eddy currents: estimate (π f B̂ d)²/(20 ρ)
-  ≈ 9 W/cm³ of particle volume at 100 mT, 30 MHz, d = 1 µm, ρ ≈ 1.2 µΩm,
-  against 576 W/cm³ in the model (audit 7.32): small.
+- T = 0 (no thermal activation). No eddy currents: estimate for a sphere
+  (π f B̂ d)²/(20 ρ) at 30 MHz, d = 1 µm, ρ ≈ 1.2 µΩm: 3.7 W/cm³ of particle
+  volume for B̂ = 0.10 T in the particle, ≈ 8 W/cm³ for B̂ ≈ 0.15 T in the
+  particle (≈ B_core/φ at 100 mT); per core volume (× φ) ≈ 5 W/cm³, against
+  576 W/cm³ in the model (core volume, 100 mT): small (audit 7.32, 7.33).
 - Herzer length only up to a factor of order 1.
 - K_eff is set, not computed: the Herzer averaging from the grains to the
   cubes is assumed, not simulated (section 2.1).
 - No anisotropy on intermediate scales (≈ 300 nm), by choice.
 - Vortex cores and Bloch points not resolved (flagged). The loss at small B
-  sits at the vortex-core region; the absolute loss at dx 3 is 20 … 80 %
-  higher than at dx 1.5, the direction to the converged value is not known
+  sits at the vortex-core region; the absolute loss at dx 3 was higher
+  than at dx 1.5 in 3 of 4 seeds (+21 … +43 % in the mean, not
+  significant), the direction to the converged value is not known
   (7.25, 7.28).
 - Staircase surface (the volume-fraction model is not usable, 7.29).
 - One base point for the mechanism studies (7.17 … 7.29); f fixed at 30 MHz
@@ -1699,7 +1724,7 @@ plans (one-factor, factorial, 128 + 8) are replaced.
 **Status 2026-10-06:** all checks before the Sobol design are done
 (7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0 (audit 3 handled, 7.33);
 (2) credit top-up to ≈ 45 $ (now ≈ 11 $). Decided: α 0.1 main + 8 centre
-replicates at α 0.01 (items 3 below superseded); mesh dx 3 with the limits
+replicates at α 0.01 (item 3 below extended); mesh dx 3 with the limits
 of 7.28 and the mesh-check rule of PLAN 4.0 (item 4 superseded); staircase
 surface; paired α comparison done (7.31).
 
@@ -1732,11 +1757,13 @@ construction; validation against LLG at 9 … 20 mT); (B) LLG at a much lower
 f (cost ∝ 1/f, ≈ 100× for 100 mT); (C) smaller α and f. Step 2 of PLAN.md
 waits for this decision.
 
-Decisions 2026-10-02 for the production (PLAN.md): D1 128 + 8 Sobol points
+(Superseded by PLAN 4.0 / 7.33:) Decisions 2026-10-02 for the production (PLAN.md): D1 128 + 8 Sobol points
 first, extension to 256 if necessary; D2 7 amplitudes (9 … 150 mT); D3
 d/l_ex 212 … 300 with d/L_eff ≥ 7 and a residual check vs d/L_eff; D4
 frequency test at the base point and at the corner L_eff 30, r_p 3.
 
+
+Older open points (superseded by PLAN 4.0 / 7.33; kept as record):
 
 1. After the benchmark: GPU type and budget.
 2. After the pilot: the r_p level and the production matrix (section 9).
