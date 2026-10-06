@@ -3,8 +3,9 @@
 Sobol design v2 (PLAN 4.0, PROTOKOLL 7.13 ... 7.29). Writes the job files and the design table:
   jobs/sobol_main.txt     96 Sobol points + 8 centre replicates, alpha 0.1, 16-phase snapshots at 9/50/150 mT
   jobs/sobol_corners.txt  4 corners x 3 seeds, alpha 0.1, snapshots as main
-  jobs/sobol_a001.txt     first 32 points + the 8 centre replicates at alpha 0.01, 9 cycles, no snapshots,
-                          started from the init.pt of the alpha 0.1 run of the same point and seed
+  jobs/sobol_a001.txt     the 8 centre replicates at alpha 0.01, 9 cycles, snapshots as main (test |m1|^2 ~ 1/alpha),
+                          started from the init.pt of the alpha 0.1 run of the same seed (Chris 2026-10-06:
+                          the alpha 0.01 Sobol subset is dropped, --n_a001 0; a later own alpha study can use it)
   results/sobol_design.csv  point, seed, factors (nominal and realised d/l_ex, phi), checks, cost
 The design is extensible: the mapping of a Sobol point does not depend on N (L_eff level = floor(4 u)),
 seed = 1001 + point index. Every point is checked with the geometry of the study (contact rule over 26
@@ -78,7 +79,7 @@ def cost(a):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--n", type=int, default=96)
-    ap.add_argument("--n_a001", type=int, default=32)
+    ap.add_argument("--n_a001", type=int, default=0)
     a = ap.parse_args()
     T = template()
     U = qmc.Sobol(d=4, scramble=True, seed=DESIGN_SEED).random(a.n)
@@ -109,7 +110,7 @@ def main():
                                  parent="S%03d" % i))
     for r in range(8):
         main_jobs.append(add("C%d" % r, CENTRE, 1901 + r, "centre"))
-        a001_jobs.append(add("C%d_a001" % r, CENTRE, 1901 + r, "centre alpha 0.01", alpha=0.01, snap=False,
+        a001_jobs.append(add("C%d_a001" % r, CENTRE, 1901 + r, "centre alpha 0.01", alpha=0.01, snap=True,
                              parent="C%d" % r))
     for tag, f in CORNERS:
         for r in range(3):
@@ -125,7 +126,7 @@ def main():
         w.writerows(rows)
     tot = {"main alpha 0.1 (96 + 8)": sum(r["cost_V100h"] for r in rows if r["alpha"] == 0.1 and not r["kind"].startswith("corner")),
            "corners": sum(r["cost_V100h"] for r in rows if r["kind"].startswith("corner")),
-           "alpha 0.01 (32 + 8, model; overestimates alpha 0.01 ~2x, PROTOKOLL)": sum(r["cost_V100h"] for r in rows if r["alpha"] != 0.1)}
+           "alpha 0.01 (%d + 8, model; overestimates alpha 0.01 ~2x, PROTOKOLL)" % a.n_a001: sum(r["cost_V100h"] for r in rows if r["alpha"] != 0.1)}
     lv = np.bincount([L_LEVELS.index(r["Leff_lex"]) for r in rows if r["kind"] == "sobol"], minlength=4)
     print("main %d + centre 8 + corners %d + alpha 0.01 %d jobs" % (a.n, len(corner_jobs), len(a001_jobs)))
     print("points per L_eff level (main): %s" % lv.tolist())

@@ -147,9 +147,11 @@ Supersedes 4.1 … 4.4 where they differ. Basis: PROTOKOLL 7.13 … 7.28.
 
 **Design:** scrambled Sobol sequence in 4 factors (below), extensible (fixed
 mapping, seed = 1001 + point index). Main design at α 0.1: 96 points + 8
-centre replicates. Subset at α 0.01: the first 32 points + 8 centre
-replicates, same points and seeds, started from the init.pt of the α 0.1
-run of the same point, 9 cycles per amplitude.
+centre replicates. At α 0.01 only the 8 centre replicates (same seeds,
+started from the init.pt of the α 0.1 centre run, 9 cycles per amplitude,
+with snapshots): test of |m₁|² ∝ 1/α at one point with 8 seeds (decision
+Chris 2026-10-06, after audit 7.32; the α 0.01 Sobol subset is dropped, a
+later own α study can start from the kept init.pt files).
 **Replicates at 4 corners (added 2026-10-06, Chris):** 3 seeds each at α 0.1
 (seeds 2001 …), to check whether the realisation scatter is the same over
 the factor space (the centre replicates measure it only at the centre):
@@ -190,33 +192,37 @@ staircase surface, T = 0, no eddy currents.
 | local wall width l_ex/√(Q_eff(1 + r_p)) | 2.0 cells = 20 nm (L 12, r_p 3) | 10 cells = 100 nm (L 30, r_p 0) | ≥ 2 cells (resolved) |
 | wall width π L_eff | 126 nm | 315 nm | |
 | drive H amplitude (μ ≈ 8) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
-| α | 0.01 (subset) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
+| α | 0.01 (8 centre runs) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
 
 **Validity of the mesh** (PROTOKOLL 7.28, 7.32): no mesh effect on β
 detected at the base point (1 µm, n = 4; 95 % CI up to ≈ ± 0.2 … 0.4); the
 small end d/l_ex 212 and the corners are not checked. Absolute losses at
 dx 3 are 20 … 80 % higher than at dx 1.5 (direction to the converged value
-not known). **Stopping rule (no further mesh
-tests before the design):** check a design point at dx 1.5 only if a factor
-that changes the vortex structure (d, L_eff, r_p) shows an effect on β of
-the size of the mesh error (≈ 0.1 … 0.2); effects clearly above 0.2 need no
-check. (Audit 7.32: this rule may be backwards, a check at the corners K2/K3
-after the main run is proposed; decision by Chris.)
+not known). **Mesh check (decided Chris 2026-10-06):** no further mesh
+tests before the design. After the main run, and only if needed: if L_eff or
+r_p (they set the wall width in cells) shows a clear effect on β, run the
+corner K2 (wall 2 cells) at dx 1.5; if d or φ (they set the gap in cells)
+shows a clear effect, run K3 (gap 1.7 cells) at dx 1.5. 3 seeds, the seeds
+of the dx 3 corner runs, paired; ≈ 65 V100-h ≈ 6.5 $ per corner (estimate).
+Reason (audit 7.32): the resolution of wall and gap changes with the
+factors, so a mesh error appears as a factor effect, and the base point
+test does not cover the worst-resolved corners. Separate go.
 
 **Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
 (9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
 100 mT, plus the event flags (balance, n60 drops).
 **Snapshots (decided 2026-10-06, Chris, option c):** main design and corner
 replicates (116 runs): 16 phases of the last cycle at 9, 50 and 150 mT
-(`--snap_phases 16`, ≈ 1.9 GB per run at 1 µm). Analysed on the instance
-right after each run (`phasemap_batch.py`, `phase_extra.py`: R1, lag spread,
-where the loss sits, texture, F90, slices); the α 0.01 subset runs without
-snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
+(`--snap_phases 16 --snap_cycles 2`, ≈ 1.9 GB per run at 1 µm). Analysed on
+the instance right after each run (`phasemap_batch.py`, `phase_extra.py`:
+R1, lag spread, where the loss sits, texture, F90, slices); the 8 α 0.01
+centre runs have the same snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
 (*.vti) of a finished run are deleted on the instance as soon as its
 analysis files are written there and their md5 is logged; the results are
 fetched and md5-checked on the laptop later. init.pt and checkpoints are
 NOT covered by this rule: they stay until the whole design is finished (the
-α 0.01 runs start from the init.pt of the α 0.1 run of the same point);
+α 0.01 centre runs and a later α study start from the init.pt of the α 0.1
+run of the same point);
 then deletion only with a separate go after the dependency check of
 `cleanup_instance.py`. Disk (40 GB): start ≈ 3 GB, init.pt + checkpoints of
 all runs ≈ 8 GB, snapshots in flight ≈ 8 … 10 GB: peak ≈ 21 GB.
@@ -225,19 +231,24 @@ all runs ≈ 8 GB, snapshots in flight ≈ 8 … 10 GB: peak ≈ 21 GB.
 linear + quadratic + 2-factor interactions (15 terms). Main fit: robust
 regression (Huber weights), because the scatter is dominated by rare events
 (PROTOKOLL 7.17, 7.27); ordinary least squares and the fit without flagged
-runs as comparison (4.3a). Scatter check: sd of the 4 corner groups and of
-the centre group (n = 3 … 8 each) compared with an F-test; if the scatter
-differs, weighted regression with the group variances; α subset: the same
-regression on 32 points and the difference to α 0.1 at the same points.
+runs as comparison (4.3a). Scatter model (decided Chris 2026-10-06, audit 7.32, replaces the F-test
+with n = 3): the log of the squared residuals of the robust fit is regressed
+linearly on the 4 factors (all 104 + 12 runs, centre and corner replicates
+included); if a slope is significant, the main fit is repeated with the
+weights 1/σ²(x) from this model. The corner and centre replicates give the
+pure scatter at 5 points as a check of this model. α 0.01: paired
+difference to the α 0.1 run of the same seed at the centre (n = 8),
+plus |m₁|² and the loss map from the snapshots.
 Expected SE of the range effects on β at N = 96 (σ from the baseline):
 0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
 
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
 cells, cost ∝ cells):** per run 1.2 … 4.0 V100-h, mean ≈ 2.4. Main design
-104 runs ≈ 250 V100-h ≈ 25 $; α 0.01 subset 40 runs (9 cycles, smaller time
-step) ≈ 130 V100-h ≈ 13 $; corner replicates 12 runs ≈ 30 V100-h ≈ 3 $;
-total ≈ 410 V100-h ≈ 41 $. Wall time ≈ 4 days on
-4 GPUs, ≈ 2 days on 8. Credit now ≈ 12 $: a top-up of ≈ 40 $ is needed.
+104 runs ≈ 250 V100-h ≈ 25 $; corner replicates 12 runs ≈ 30 V100-h ≈ 3 $;
+α 0.01 centre 8 runs (9 cycles, smaller time step) ≈ 30 … 60 V100-h ≈
+3 … 6 $; total ≈ 310 … 340 V100-h ≈ 31 … 34 $. Optional mesh check after the
+main run: + 6.5 $ per corner. Wall time ≈ 3.5 days on 4 GPUs. Credit now
+≈ 11 $: a top-up of ≈ 30 $ is needed (≈ 37 $ with one mesh corner).
 
 ### 4.1 Factors and ranges
 
