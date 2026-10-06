@@ -17,8 +17,19 @@ Run a job file on several GPUs of one machine (one job per GPU at a time).
   Expected bytes of a job (`expected_bytes`): snapshots (phases x cycles x amplitudes x N^3 x 15 B, measured
   47.7 MB for N = 148 in single precision) + init.pt + checkpoint.pt (2 x N^3 x 12 B). Still to come = expected
   minus the bytes already in the run folder. Thus the running jobs cannot fill the disk; the queue waits instead.
+Unattended operation (audit 3, item 4):
+* a failed job (exit code != 0, timeout, exception) goes once more to the end of the queue (--retries 1); it
+  resumes from its checkpoint. Exit code 3 (relaxation gate not met) is deterministic: no plain retry.
+* failure burst: a GPU with 2 failures within 10 min takes no more jobs (defective GPU); the line goes to
+  <runs>/ALERT; the other GPUs go on.
+* --job_timeout_h H: a job that runs longer is killed (FAIL "timeout").
+* every exception of a worker is caught; the reservation of the job is always released.
+* --status FILE: a JSON status (running, done, failed, waiting, disabled GPUs, disk, reservations, alerts,
+  post-processing state) is written every 5 min and at the end.
+* exit code 0 only if all jobs are DONE.
 """
 import argparse
+import json
 import os
 import pathlib
 import queue
@@ -72,6 +83,169 @@ def folder_bytes(p):
     return n
 
 
+def default_command(args, out):
+    return [sys.executable, str(HERE / "run_loops.py")] + shlex.split(args) + ["--out", str(out)]
+
+
+def postproc_state(runs):
+    st = {"done": 0, "failed": [], "waiting": 0}
+    for d in runs.iterdir() if runs.exists() else []:
+        if not d.is_dir():
+            continue
+        if (d / "POSTPROC_DONE").exists():
+            st["done"] += 1
+        elif (d / "POSTPROC_FAILED").exists():
+            st["failed"].append(d.name)
+        elif (d / "DONE").exists() and any(d.glob("m_*.vti")):
+            st["waiting"] += 1
+    return st
+
+
+def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
+             burst_n=2, burst_s=600.0, status_s=300.0, poll_s=300.0):
+    """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
+    runs = pathlib.Path(runs)
+    runs.mkdir(parents=True, exist_ok=True)
+    q = queue.Queue()
+    for name, args in jobs:
+        if (runs / name / "DONE").exists():
+            print("[skip] %s (DONE)" % name, flush=True)
+            continue
+        q.put((name, args))
+    lock = threading.Lock()
+    running = {}                                    # name -> (run folder, expected bytes, gpu, start time)
+    attempts, failed, done, disabled, alerts = {}, {}, [], set(), []
+    active = {"n": 0}                               # jobs taken from the queue and not finished
+    t_start = time.time()
+
+    def alert(msg):
+        line = "%s %s" % (time.strftime("%F %T"), msg)
+        alerts.append(line)
+        print("[ALERT] " + msg, flush=True)
+        with open(runs / "ALERT", "a") as f:
+            f.write(line + "\n")
+
+    def write_status(final=False):
+        if not status:
+            return
+        with lock:
+            free = shutil.disk_usage(str(runs)).free
+            pending = sum(max(e - folder_bytes(o), 0) for o, e, _, _ in running.values())
+            st = {"time": time.strftime("%F %T"), "final": final, "hours": (time.time() - t_start) / 3600,
+                  "running": {n: {"gpu": g, "hours": (time.time() - t0) / 3600} for n, (_, _, g, t0) in running.items()},
+                  "done": len(done), "failed": dict(failed), "waiting": q.qsize(), "disabled_gpus": sorted(disabled),
+                  "free_gb": free / 1e9, "reserved_gb": pending / 1e9, "alerts": list(alerts),
+                  "postproc": postproc_state(runs)}
+        tmp = pathlib.Path(str(status) + ".tmp")
+        tmp.write_text(json.dumps(st, indent=1))
+        os.replace(tmp, status)
+
+    def reserve(name, args, out, gpu):
+        need = expected_bytes(args) if min_free_gb > 0 else 0
+        waited = False
+        while True:
+            with lock:
+                pending = sum(max(e - folder_bytes(o), 0) for o, e, _, _ in running.values())
+                free = shutil.disk_usage(str(runs)).free
+                if min_free_gb <= 0 or free - pending - need >= min_free_gb * 1e9:
+                    running[name] = (out, need, gpu, time.time())
+                    if waited:
+                        print("[go] %s: free %.1f GB, reserved %.1f GB + %.1f GB" % (name, free / 1e9, pending / 1e9,
+                                                                                   need / 1e9), flush=True)
+                    return
+            if not waited:
+                print("[wait] %s: free %.1f GB - reserved %.1f GB - needs %.1f GB < %.0f GB" %
+                      (name, free / 1e9, pending / 1e9, need / 1e9, min_free_gb), flush=True)
+                waited = True
+            time.sleep(poll_s)
+
+    def run_one(name, args, gpu):
+        out = runs / name
+        reserve(name, args, out, gpu)
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+            env = dict(os.environ, CUDA_DEVICE=str(gpu))
+            print("[start] gpu %s  %s" % (gpu, name), flush=True)
+            with open(out / "stdout.log", "a") as log:
+                proc = subprocess.Popen(command(args, out), env=env, stdout=log, stderr=subprocess.STDOUT)
+                try:
+                    rc = proc.wait(timeout=job_timeout_h * 3600 if job_timeout_h > 0 else None)
+                    return rc, "exit code %d" % rc
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                    return -1, "timeout %.1f h" % job_timeout_h
+        except Exception as e:                      # noqa: BLE001 - a worker must not die
+            return -2, "exception %r" % e
+        finally:
+            with lock:
+                running.pop(name, None)
+
+    def worker(gpu):
+        fails = []
+        while True:
+            try:
+                name, args = q.get(timeout=5)
+            except queue.Empty:
+                with lock:
+                    if active["n"] == 0:            # nothing running that could come back to the queue
+                        return
+                continue
+            with lock:
+                active["n"] += 1
+            t0 = time.time()
+            rc, why = run_one(name, args, gpu)
+            h = (time.time() - t0) / 3600
+            with lock:
+                if rc == 0 and (runs / name / "DONE").exists():
+                    done.append(name)
+                    failed.pop(name, None)
+                    print("[done] gpu %s  %s  %.2f h" % (gpu, name, h), flush=True)
+                else:
+                    attempts[name] = attempts.get(name, 0) + 1
+                    retry = rc != 3 and attempts[name] <= retries
+                    failed[name] = why
+                    print("[FAIL] gpu %s  %s  %.2f h  %s%s" % (gpu, name, h, why, ", again later" if retry else ""),
+                          flush=True)
+                    if retry:
+                        q.put((name, args))
+                    fails = [t for t in fails if time.time() - t < burst_s] + [time.time()]
+                active["n"] -= 1
+            if len(fails) >= burst_n:
+                with lock:
+                    disabled.add(gpu)
+                alert("gpu %s disabled: %d failures within %.0f min (last: %s %s)" % (gpu, len(fails), burst_s / 60,
+                                                                                     name, why))
+                if len(disabled) == len(gpus):
+                    alert("all GPUs disabled: the queue stops")
+                return
+
+    stop = threading.Event()
+
+    def status_loop():
+        while not stop.wait(status_s):
+            try:
+                write_status()
+            except Exception as e:                  # noqa: BLE001
+                print("[status] %r" % e, flush=True)
+
+    threads = [threading.Thread(target=worker, args=(g,)) for g in gpus]
+    st_thread = threading.Thread(target=status_loop, daemon=True)
+    st_thread.start()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    stop.set()
+    left = []
+    while not q.empty():
+        left.append(q.get()[0])
+    for n in left:
+        failed.setdefault(n, "not run (no GPU left)")
+    write_status(final=True)
+    return {"done": done, "failed": {n: w for n, w in failed.items() if n not in done}}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("jobfile")
@@ -81,6 +255,9 @@ def main():
     ap.add_argument("--dry", action="store_true", help="print the commands only")
     ap.add_argument("--min_free_gb", type=float, default=0.0,
                     help="disk guard with reservation (see above): free space left after all reservations (0 = off)")
+    ap.add_argument("--retries", type=int, default=1, help="extra attempts of a failed job (not for exit code 3)")
+    ap.add_argument("--job_timeout_h", type=float, default=0.0, help="kill a job after this time (0 = off)")
+    ap.add_argument("--status", default=None, help="JSON status file, written every 5 min")
     a = ap.parse_args()
 
     i_sh, n_sh = (int(x) for x in a.shard.split("/"))
@@ -90,68 +267,15 @@ def main():
             continue
         name, _, args = line.strip().partition(" ")
         jobs.append((name, args))
-
-    runs = pathlib.Path(a.runs)
-    runs.mkdir(parents=True, exist_ok=True)
-    q = queue.Queue()
-    for name, args in jobs:
-        if (runs / name / "DONE").exists():
-            print("[skip] %s (DONE)" % name)
-            continue
-        q.put((name, args))
-
-    running = {}                                    # name -> (run folder, expected bytes)
-    lock = threading.Lock()
-
-    def reserve(name, args, out):
-        """Disk guard with reservation; returns when the job may start (and registers it)."""
-        need = expected_bytes(args)
-        waited = False
-        while True:
-            with lock:
-                pending = sum(max(e - folder_bytes(o), 0) for o, e in running.values())
-                free = shutil.disk_usage(str(runs)).free
-                if free - pending - need >= a.min_free_gb * 1e9:
-                    running[name] = (out, need)
-                    if waited:
-                        print("[go] %s: free %.1f GB, reserved %.1f GB + %.1f GB" % (name, free / 1e9, pending / 1e9,
-                                                                                   need / 1e9), flush=True)
-                    return
-            if not waited:
-                print("[wait] %s: free %.1f GB - reserved %.1f GB - needs %.1f GB < %.0f GB" %
-                      (name, free / 1e9, pending / 1e9, need / 1e9, a.min_free_gb), flush=True)
-                waited = True
-            time.sleep(300)
-
-    def worker(gpu):
-        while True:
-            try:
-                name, args = q.get_nowait()
-            except queue.Empty:
-                return
-            out = runs / name
-            cmd = [sys.executable, str(HERE / "run_loops.py")] + shlex.split(args) + ["--out", str(out)]
-            if a.dry:
-                print("CUDA_DEVICE=%s %s" % (gpu, " ".join(cmd)))
-                continue
-            if a.min_free_gb > 0:
-                reserve(name, args, out)
-            out.mkdir(parents=True, exist_ok=True)
-            env = dict(os.environ, CUDA_DEVICE=str(gpu))
-            t0 = time.time()
-            print("[start] gpu %s  %s" % (gpu, name), flush=True)
-            with open(out / "stdout.log", "a") as log:
-                rc = subprocess.call(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
-            with lock:
-                running.pop(name, None)
-            print("[%s] gpu %s  %s  %.2f h" % ("done" if rc == 0 else "FAIL rc=%d" % rc, gpu, name,
-                                                (time.time() - t0) / 3600), flush=True)
-
-    threads = [threading.Thread(target=worker, args=(g.strip(),)) for g in a.gpus.split(",")]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    gpus = [g.strip() for g in a.gpus.split(",")]
+    if a.dry:
+        for name, args in jobs:
+            print("CUDA_DEVICE=%s %s" % (gpus[0], " ".join(default_command(args, pathlib.Path(a.runs) / name))))
+        return
+    res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status)
+    print("[end] done %d, failed %d: %s" % (len(res["done"]), len(res["failed"]),
+                                           ", ".join("%s (%s)" % kv for kv in sorted(res["failed"].items()))), flush=True)
+    sys.exit(0 if not res["failed"] else 1)
 
 
 if __name__ == "__main__":

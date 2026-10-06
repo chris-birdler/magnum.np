@@ -600,6 +600,11 @@ def main(argv=None):
                     write_vti({"m": state.m}, str(out / ("m_%s_c%d_ph%03d.vti" % (st["name"], ci, deg))), state)
             wall = time.time() - t_w
             steps = state._step - steps0
+            if not bool(torch.isfinite(state.m).all()):
+                # audit 3, item 4: a NaN state must not block a GPU; exit code 4 (run_queue: FAIL, one retry)
+                fcsv.close()
+                print("ERROR: [%s] m is not finite after cycle %d" % (st["name"], ci), flush=True)
+                sys.exit(4)
 
             a = np.array(rows)
             t_a, H_a, M_a, p_a = a[:, 0], a[:, 1], a[:, 2], a[:, 6]

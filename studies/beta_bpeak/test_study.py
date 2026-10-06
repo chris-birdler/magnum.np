@@ -380,3 +380,47 @@ def test_cleanup_checkpoint_needs_end_state_analysis(tmp_path):
         {"S003/domains.json", "S004/domains.json"}
     assert [CI.checkpoint_ok(x, local) for x in (a, b, c, e, f)] == [False, False, True, False, True]
     assert not CI.checkpoint_ok(c, local - {"S003/summary.json"})
+
+
+def _fake_command(args, out):
+    """Fake run_loops for the queue tests: the behaviour comes from the job args."""
+    code = {"ok": "open(r'%s/DONE','w').write('ok')" % out,
+            "fail": "raise SystemExit(1)",
+            "gate": "raise SystemExit(3)",
+            "hang": "import time; time.sleep(30)",
+            "flaky": ("import os; f=r'%s/tried'\nif os.path.exists(f): open(r'%s/DONE','w').write('ok')\n"
+                      "else: open(f,'w').write('1'); raise SystemExit(1)") % (out, out)}[args]
+    return [sys.executable, "-c", code]
+
+
+def _cmd(args, out):
+    if args == "boom":
+        raise OSError("boom")
+    return _fake_command(args, out)
+
+
+def test_run_queue_retry_gate_timeout_exception(tmp_path):
+    """run_queue.run_jobs: a failed job runs once more (flaky -> DONE); exit code 3 is not retried; a hanging
+    job is killed by the timeout; an exception in a job does not stop the worker; status file is written."""
+    import json
+    import run_queue
+    jobs = [("A", "ok"), ("B", "flaky"), ("C", "gate"), ("D", "hang"), ("E", "boom"), ("F", "ok")]
+    res = run_queue.run_jobs(jobs, ["g0", "g1"], tmp_path / "runs", retries=1, job_timeout_h=2.0 / 3600,
+                             status=tmp_path / "status.json", command=_cmd, burst_n=99, status_s=0.2)
+    assert sorted(res["done"]) == ["A", "B", "F"]
+    assert set(res["failed"]) == {"C", "D", "E"}
+    assert res["failed"]["C"] == "exit code 3" and res["failed"]["D"].startswith("timeout")
+    assert res["failed"]["E"].startswith("exception")
+    st = json.loads((tmp_path / "status.json").read_text())
+    assert st["final"] and st["done"] == 3 and not st["running"]
+
+
+def test_run_queue_failure_burst_disables_gpu(tmp_path):
+    """run_queue.run_jobs: 2 failures within the window disable the GPU (ALERT); with one GPU the rest is
+    reported as not run."""
+    import run_queue
+    jobs = [("A", "fail"), ("B", "fail"), ("C", "ok")]
+    res = run_queue.run_jobs(jobs, ["g0"], tmp_path / "runs", retries=1, command=_cmd, burst_n=2, burst_s=600)
+    assert res["done"] == []
+    assert res["failed"]["C"] == "not run (no GPU left)"
+    assert "gpu g0 disabled" in (tmp_path / "runs" / "ALERT").read_text()

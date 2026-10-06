@@ -18,8 +18,10 @@ Stops when the file --stop exists and no run is left to process.
 """
 import argparse
 import concurrent.futures as cf
+from concurrent.futures.process import BrokenProcessPool
 import hashlib
 import json
+import math
 import os
 import pathlib
 import re
@@ -46,11 +48,15 @@ def process(d):
         if r.returncode != 0:
             return d, "%s failed: %s" % (script, r.stderr[-500:])
     try:
-        n1 = len(json.loads((d / "phasemap.json").read_text())["stages"])
+        pm = json.loads((d / "phasemap.json").read_text())["stages"]
+        n1 = len(pm)
         n2 = len(json.loads((d / "phase_extra.json").read_text())["stages"])
         n3 = len(json.loads((d / "domains.json").read_text())["stages"])
     except Exception as e:                                  # noqa: BLE001
         return d, "result files not readable: %s" % e
+    bad = [s.get("stage") for s in pm if not all(math.isfinite(s.get(k, float("nan"))) for k in ("R1", "R_np", "p_dis"))]
+    if bad:
+        return d, "phasemap.json: R1 / R_np / p_dis not finite in stage(s) %s" % bad
     if not (n1 == n2 == n3 == len(stages)) or not (d / "slices.npz").exists():
         return d, "stage count mismatch: snapshots %d, phasemap %d, phase_extra %d, domains %d" % (
             len(stages), n1, n2, n3)
@@ -80,6 +86,9 @@ def main():
                 d = futs[fu]
                 try:
                     d, res = fu.result()
+                except BrokenProcessPool:
+                    raise                                   # a worker was killed (e.g. OOM): not the run's fault;
+                    #                                         the supervisor loop of the chain restarts this script
                 except Exception as e:                      # noqa: BLE001 - one run must not stop the loop
                     res = "exception: %r" % e
                 if isinstance(res, str):
