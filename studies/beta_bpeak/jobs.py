@@ -58,6 +58,8 @@ Groups:
             virgin state of B300 (f is in the baseline): is the loss at small B dynamic or hysteretic?
   phase16   check before the Sobol design: seeds 921, 922, 9 / 20 / 150 mT, 16 snapshots per cycle in the
             last 3 cycles, and a ring-down test (H held at H max for 2 periods, p_dis at 512 per period).
+  rough300  surface roughness with the converged state: as the dx 3 jobs of mesh300 (seeds 921-924,
+            9 / 50 / 100 mT, 5 cycles) but --surface fraction; compared with M300_dx3_* (staircase).
   roughtest PLAN.md step 1b: mesh error at the small end of the d/l_ex range:
             d/l_ex 212, dx 3 vs dx 1.5, 4 seeds each (911-914), 9 and 50 mT,
             base point (L_eff 12, r_p 0, phi 0.65). Compared with d/l_ex 300
@@ -248,6 +250,17 @@ def matrix():
             for mT in (50, 100):             # directly from the relaxed virgin state of the 9 mT job
                 mesh300.append(job(M, "M300_dx%s_s%d_b%d" % (tag, sd, mT), seed=sd, b_list=b_of_mT(mT),
                                    init_from="%s/init.pt" % first, init_wait_h=30.0))
+    # surface roughness with the converged state (PROTOKOLL 7.11 withdrawn; Chris 2026-10-06): identical to
+    # the dx 3 jobs of mesh300 except the surface (volume-fraction surface instead of the staircase)
+    rough300 = []
+    for sd in (921, 922, 923, 924):
+        M3 = dict(B0, dx_lex=3.0, n_amp=1, cycles_per_amp=5, max_cycles_per_amp=5, relax_maxiter=80000,
+                  surface="fraction")
+        first = "R300f_s%d_b9" % sd
+        rough300.append(job(M3, first, seed=sd, b_list=b_of_mT(9)))
+        for mT in (50, 100):
+            rough300.append(job(M3, "R300f_s%d_b%d" % (sd, mT), seed=sd, b_list=b_of_mT(mT),
+                                init_from="%s/init.pt" % first, init_wait_h=5.0))
     # checks before the Sobol design (PROTOKOLL 7.24, Chris 2026-10-04): start from the relaxed virgin
     # state of the baseline runs (the relaxation does not depend on f, alpha or the amplitudes)
     freq9 = []
@@ -265,7 +278,7 @@ def matrix():
             "alphatest2": [job(AT, "A010c_s%d" % sd, seed=sd, alpha=0.01, **CONV) for sd in (904, 905, 906)],
             "snaptest": [job(RX, "V_s%d" % sd, seed=sd, alpha=0.1, b_list=b_of_mT(20, 150), snap_phases=4)
                          for sd in (901, 902)],
-            "baseline": baseline, "mesh300": mesh300, "freq9": freq9, "phase16": phase16,
+            "baseline": baseline, "mesh300": mesh300, "freq9": freq9, "phase16": phase16, "rough300": rough300,
             "pilot": pilot}
 
 
