@@ -18,6 +18,7 @@ import os
 import pathlib
 import queue
 import shlex
+import shutil
 import subprocess
 import sys
 import threading
@@ -33,6 +34,8 @@ def main():
     ap.add_argument("--runs", default=str(HERE / "runs"), help="output root")
     ap.add_argument("--shard", default="0/1", help="i/n: run every n-th job starting at i")
     ap.add_argument("--dry", action="store_true", help="print the commands only")
+    ap.add_argument("--min_free_gb", type=float, default=0.0,
+                    help="wait before a job starts until the disk of --runs has this much free space (0 = off)")
     a = ap.parse_args()
 
     i_sh, n_sh = (int(x) for x in a.shard.split("/"))
@@ -62,6 +65,9 @@ def main():
             if a.dry:
                 print("CUDA_DEVICE=%s %s" % (gpu, " ".join(cmd)))
                 continue
+            while a.min_free_gb > 0 and shutil.disk_usage(str(runs)).free / 1e9 < a.min_free_gb:
+                print("[wait] gpu %s  %s: free disk below %.0f GB" % (gpu, name, a.min_free_gb), flush=True)
+                time.sleep(300)
             out.mkdir(parents=True, exist_ok=True)
             env = dict(os.environ, CUDA_DEVICE=str(gpu))
             t0 = time.time()

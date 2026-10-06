@@ -8,7 +8,7 @@ cd /root/magnum.np && git fetch -q --depth 1 origin study/beta-bpeak-pinning && 
 cd $B && git log --oneline -1 > queue_sobol.log
 python -c "import random; L=open('jobs/sobol_main.txt').readlines()+open('jobs/sobol_corners.txt').readlines(); random.Random(20261006).shuffle(L); open('jobs/sobol_a01_shuffled.txt','w').writelines(L)"
 nohup python instance_postproc.py --runs runs --stop runs/ALL10_DONE --workers 4 >> postproc.log 2>&1 &
-python run_queue.py jobs/sobol_a01_shuffled.txt --gpus 0,1,2,3 >> queue_sobol.log 2>&1
-python run_queue.py jobs/sobol_a001.txt --gpus 0,1,2,3 >> queue_sobol.log 2>&1
+python run_queue.py jobs/sobol_a01_shuffled.txt --gpus 0,1,2,3 --min_free_gb 8 >> queue_sobol.log 2>&1
+python run_queue.py jobs/sobol_a001.txt --gpus 0,1,2,3 --min_free_gb 8 >> queue_sobol.log 2>&1
 touch runs/ALL10_DONE
 wait

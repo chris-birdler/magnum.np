@@ -35,7 +35,7 @@ CORNERS = [("K1", dict(d_lex=212.0, Leff_lex=30.0, r_p=1.5, phi=0.62)),
            ("K2", dict(d_lex=300.0, Leff_lex=12.0, r_p=3.0, phi=0.62)),
            ("K3", dict(d_lex=212.0, Leff_lex=18.0, r_p=1.5, phi=0.69)),
            ("K4", dict(d_lex=300.0, Leff_lex=18.0, r_p=1.5, phi=0.55))]
-SNAP = dict(snap_phases=16, snap_cycles=1, snap_mT=[9.0, 50.0, 150.0])
+SNAP = dict(snap_phases=16, snap_cycles=2, snap_mT=[9.0, 50.0, 150.0])   # 2 cycles: periodic vs non-periodic part (audit R1)
 LEX = 3.342e-9
 
 
@@ -89,7 +89,9 @@ def main():
         if snap:
             j.update(SNAP)
         if alpha != 0.1:
-            j.update(cycles_per_amp=9, max_cycles_per_amp=9, init_from="%s/init.pt" % parent, init_wait_h=48.0)
+            # init_wait_h 0 (audit R3): the chain starts the subset after the main queue; a missing parent init.pt
+            # makes the job fail at once instead of blocking a GPU
+            j.update(cycles_per_amp=9, max_cycles_per_amp=9, init_from="%s/init.pt" % parent, init_wait_h=0.0)
         c = check(f)
         if not c["ok"]:
             raise SystemExit("design point %s fails the checks: %s" % (name, c))

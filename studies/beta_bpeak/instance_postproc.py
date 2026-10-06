@@ -8,6 +8,8 @@ Loop: for every finished run (DONE) with snapshots (*.vti) and without POSTPROC_
      (ONLY *.vti: init.pt and checkpoint.pt are never touched here)
   4. touch POSTPROC_DONE
 A run whose check fails keeps its snapshots and is listed in postproc_errors.log.
+Only runs whose name matches --pattern (default: the Sobol runs S###, S###_a001, C#, C#_a001, K#_#) are
+touched. Every error of one run is caught (logged, the run keeps its snapshots); the loop never stops on it.
 Stops when the file --stop exists and no run is left to process.
 
     python instance_postproc.py --runs runs --stop runs/ALL10_DONE --workers 4
@@ -58,24 +60,38 @@ def main():
     ap.add_argument("--stop", required=True)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--once", action="store_true", help="one pass, then exit (test)")
+    ap.add_argument("--pattern", default=r"^(S\d{3}(_a001)?|C\d(_a001)?|K\d_\d)$",
+                    help="regular expression of the run names that may be processed (and whose *.vti are deleted)")
     a = ap.parse_args()
     runs = pathlib.Path(a.runs)
+    pat = re.compile(a.pattern)
     with cf.ProcessPoolExecutor(a.workers) as ex:
         while True:
-            todo = [d for d in sorted(runs.iterdir()) if d.is_dir() and (d / "DONE").exists()
-                    and not (d / "POSTPROC_DONE").exists() and any(d.glob("m_*.vti"))]
-            for d, res in ex.map(process, todo):
+            todo = [d for d in sorted(runs.iterdir()) if d.is_dir() and pat.match(d.name) and (d / "DONE").exists()
+                    and not (d / "POSTPROC_DONE").exists() and not (d / "POSTPROC_FAILED").exists()
+                    and any(d.glob("m_*.vti"))]
+            futs = {ex.submit(process, d): d for d in todo}
+            for fu in cf.as_completed(futs):
+                d = futs[fu]
+                try:
+                    d, res = fu.result()
+                except Exception as e:                      # noqa: BLE001 - one run must not stop the loop
+                    res = "exception: %r" % e
                 if isinstance(res, str):
                     with open(runs / "postproc_errors.log", "a") as f:
                         f.write("%s %s: %s\n" % (time.strftime("%F %T"), d.name, res))
                     (d / "POSTPROC_FAILED").write_text(res)
                     continue
-                with open(runs / "postproc.md5", "a") as f:
-                    f.writelines(res)
-                for v in d.glob("*.vti"):
-                    v.unlink()
-                (d / "POSTPROC_DONE").write_text(time.strftime("%F %T\n"))
-                print("%s %s: analysed, snapshots deleted" % (time.strftime("%T"), d.name), flush=True)
+                try:
+                    with open(runs / "postproc.md5", "a") as f:
+                        f.writelines(res)
+                    for v in d.glob("*.vti"):
+                        v.unlink()
+                    (d / "POSTPROC_DONE").write_text(time.strftime("%F %T\n"))
+                    print("%s %s: analysed, snapshots deleted" % (time.strftime("%T"), d.name), flush=True)
+                except Exception as e:                      # noqa: BLE001
+                    with open(runs / "postproc_errors.log", "a") as f:
+                        f.write("%s %s: after analysis: %r\n" % (time.strftime("%F %T"), d.name, e))
             if a.once or (pathlib.Path(a.stop).exists() and not todo):
                 break
             time.sleep(60)
