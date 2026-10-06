@@ -1580,6 +1580,15 @@ recorded here.
   error (decorator) was found by this test; a test now compiles all study
   scripts.
 
+### 7.34 Sobol design v2 started (2026-10-06 19:11 UTC)
+
+Go by Chris after audit 3 (7.33); N = 96 kept (extensible to 128: points
+96 … 127 complete the 128-point net). Chain on instance 53995473 (4×V100),
+pinned commit 181b9ff, onstart entry, 124 jobs (104 main + 12 corners, then
+8 α 0.01). First jobs K1_0 … K4_0 on GPU 0 … 3; post-processing running.
+Credit at start 6.16 $ (≈ 14 h at ≈ 0.43 $/h): top-up by Chris needed
+before ≈ 2026-10-07 09:00 UTC.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
