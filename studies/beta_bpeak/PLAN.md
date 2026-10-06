@@ -289,6 +289,25 @@ model. The corner and centre replicates give the pure scatter at 5 points
 as a check of this model (only a change of σ by ≈ 2× is detectable).
 α 0.01: paired difference to the α 0.1 run of the same seed at the centre
 (n = 8), plus |m₁|² and the loss map from the snapshots.
+**Decision rules (fixed before the start, Chris 2026-10-06, audit 3 item 8):**
+- Primary outputs: β_core over all amplitudes and ln E[w] at 50 mT, each
+  against the 4 factors: 8 tests of the range effect, Holm correction,
+  family level 5 %. All other outputs (β windows, ln E[w] at 10 / 100 mT,
+  snapshot measures) are secondary: reported with CI, called a hint, not a
+  finding. Interaction and quadratic terms: hints only.
+- Class of each factor and output: "lever" = range effect significant after
+  the correction; "not a lever" = 90 % CI of the range effect inside ±0.15
+  (β; ln E[w]: ±0.15 ≈ ±16 % loss; equivalence test TOST); otherwise "not
+  determined".
+- Scatter model: a slope is significant at 5 % with Holm over the 4 factors.
+- α 0.01 centre test (predictions): R = |m₁|²(α 0.01)/|m₁|²(α 0.1), paired
+  over the 8 seeds, at 9 and 50 mT: viscous (loss ∝ α) R ≈ 1;
+  α-independent loss (micro-avalanches) R ≈ 10; resonance R ≈ 100. The
+  hypothesis whose value lies in the 95 % CI of ln R is assigned; none →
+  "mixed".
+- Limits of the design (stated in the report): α and f are fixed and cannot
+  be ranked as levers; r_p ≤ 3 is probably in the linear range (open option
+  for later: pre-test r_p 3 and 6, PROTOKOLL §12 option B, ≈ 2 $).
 Expected SE of the range effects on β at N = 96 (σ from the baseline):
 0.06 (β all), 0.10 (9-35 mT), 0.06 (35-70 mT), 0.07 (70-150 mT).
 

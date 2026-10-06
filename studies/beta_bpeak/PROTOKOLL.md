@@ -1530,6 +1530,11 @@ recorded here.
   per-run β (HC3) and Huber. Reason: a core averages ≈ 10⁹ particles; Huber
   down-weights real rare states (s921), and E[ln w] shifts β by ≈ −0.04
   (estimate, lognormal approximation).
+- 8. Decision rules fixed before the start (Chris: as proposed): 2 primary
+  outputs (β_core all amplitudes, ln E[w] 50 mT) × 4 factors, Holm 5 %;
+  "not a lever" = 90 % CI inside ±0.15 (TOST); scatter-model slopes Holm
+  5 %; α 0.01 predictions R ≈ 1 / 10 / 100 (PLAN 4.0). r_p 3 vs 6 pre-test
+  noted as an open option.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
