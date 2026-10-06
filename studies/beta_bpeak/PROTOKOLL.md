@@ -162,10 +162,9 @@ mean ± SE over realisations):**
 | d/l_ex = 300 (1 µm), dx 3 | ×1.4 / ×1.26 | −0.20 ± 0.23 | ≈ 17 (dx 1.5: ≈ 2 … 5) |
 
 - **Withdrawn (7.11, 7.13): all d/l_ex 300 values in this table come from
-  runs with an unconverged virgin state. Mesh decision 2026-10-05 (7.25,
-  converged, n = 4 paired): dx 3 is sufficient for β (Δβ ≤ 0.11 ± 0.10);
-  the loss level at dx 3 is too high by +20 … +45 % (+32 … +80 % without
-  the event seed), largest at small B.** Original text: At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β (−0.20 ± 0.23). The
+  runs with an unconverged virgin state. Mesh decision: see 7.28 (dx 3
+  necessary and sufficient for β at 1 µm; dx ≤ 1.5 necessary for the
+  absolute loss, sufficiency unknown).** Original text: At d/l_ex = 300 (1 µm) dx = 3 is sufficient for β (−0.20 ± 0.23). The
   loss level is ≈ 26 % high at 50 mT (± 5 %) and ≈ 40 % high at 9 mT
   (uncertain). dx = 3 costs 0.06 h per cycle, dx = 1.5 costs 1.87 h (V100).
 - At d/l_ex = 96 (330 nm) dx = 3 is not sufficient: the loss is 3 … 4× too low.
@@ -789,7 +788,8 @@ Amplitudes hit within 0.7 %, closure ≤ 0.5 %, offset ≤ 0.12.
   release also in kept or skipped cycles of s923 (20 mT, cycle 1: 6.6):
   events in at least 5 of 8 runs. They coincide with drops of the number of
   large-angle pairs (e.g. 28 → 23, 33 → 20, 29 → 22): rearrangements of the
-  unresolved structures, thus **mesh dependent** (mesh300 checks this).
+  structure. (Corrected 2026-10-06, 7.27: they are equally frequent at
+  dx 1.5, thus not a coarse-mesh artifact.)
   s921 at 9 mT: kept cycle 2 has balance 4.0 and w ≈ 3× below the other
   seeds (P at 10 mT 3.8 vs 9.4 … 13.8 W/cm³); this one stage gives its
   β_pow 2.11. s922 at 20 mT is its second stage: an irreversible event
@@ -1197,6 +1197,96 @@ period. β then depends on how this relaxation changes with the amplitude,
 and probably on f relative to the relaxation frequency (f/2: β 2.26, hint).
 For the Sobol design: β is mesh-insensitive (7.25) and the checks show no
 reason against dx 3; the frequency is a hidden lever (fixed at 30 MHz).
+
+### 7.27 Further evaluation of the checks (2026-10-06)
+
+Scripts: `phase_extra.py` (instance) → runs/PH_*/phase_extra.json,
+slices.npz; `make_phase_slices.py` → results/phase_slices_PH_s92*.png (not
+in git, the .gitignore excludes png); `eval_extra.py` → results/extra.md.
+
+**Cut images (PH_s921, PH_s922, plane through particles 0 and 3):** every
+particle holds a vortex-like state: two halves with opposite m_x, a broad
+curved transition zone between them and a vortex core near the particle
+centre (in-plane m curls around it). At 9 mT the change of m over the cycle
+is concentrated at the vortex core (a point-like spot); at 150 mT the whole
+particle moves.
+
+**Where the loss of the local fundamental sits** (16 phases, s921 / s922):
+
+| B | share in r/R_p < 0.5 (13 % of the volume) | share in 0.5 … 0.8 (39 %) | share in r/R_p ≥ 0.8 (49 %) | share in the 10 % cells of largest texture | lag spread there / elsewhere |
+|---|---|---|---|---|---|
+| 9 mT | 0.33 / 0.39 | 0.43 / 0.41 | 0.24 / 0.20 | 0.51 / 0.55 | 40 … 62° / 28 … 54° |
+| 20 mT | 0.31 / 0.26 | 0.44 / 0.43 | 0.26 / 0.31 | 0.51 / 0.53 | 37 … 38° / 27 … 36° |
+| 150 mT | 0.18 / 0.17 | 0.40 / 0.41 | 0.42 / 0.42 | 0.45 / 0.44 | 23 … 29° / 18 … 19° |
+
+- Confirms 7.23 without the aliasing of 4 snapshots: at small B the loss is
+  in the particle centre and in the textured region around the vortex core
+  (half of it in 10 % of the cells); with growing B it moves outward. The
+  phase spread is largest where the loss sits.
+- Texture T(2 L_eff) and F90 do not change within a cycle (≤ 1 % at 9 and
+  20 mT; F90 2.1 … 3.1 % at 150 mT).
+
+**Ring-down fit** p(t) = p_inf + A exp(−t/τ): τ = 8.5 … 22.5 ns
+(0.25 … 0.68 T), p_inf ≤ 0.04 of the cycle mean; ⟨M⟩ changes during the
+hold by ≤ 0.6 % of its amplitude. The dissipation goes on after the stop
+without a change of ⟨M⟩: an internal relaxation of the structure (vortex
+core and its surroundings) on the 10 ns scale.
+
+**Debye fit of the frequency test (7.26 A): not determinable.** One Debye
+relaxation per seed does not fit the 3 frequencies (residual 0.2 … 0.75 in
+ln w; τ runs to the bound). The statement "loss peak near 30 … 60 MHz"
+(7.26) is withdrawn; only n ≈ 1.1 … 1.3 (loss per cycle ∝ f) holds.
+
+**Events per mesh** (mesh300 and baseline): kept cycles with balance
+outside 0.9 … 1.1: dx 1.5 8 of 36 (22 %), dx 3 8 of 36 (22 %), baseline
+dx 3 30 of 280 (11 %); drops of the large-angle pairs ≥ 20 %: 9 / 3 / 5.
+**The events are not an artifact of the coarse mesh** (they occur at least
+as often at dx 1.5); the statement "mesh dependent" in 7.17 and 7.24 is
+corrected: the events belong to the model (unresolved or resolved), not to
+dx 3 only.
+
+### 7.28 Mesh: which dx is necessary and sufficient? (synthesis, 2026-10-06)
+
+All mesh evidence with a valid state (newest first):
+1. d/l_ex 300, converged virgin state, dx 1.5 vs 3, n = 4 paired (7.25):
+   β: Δβ = −0.05 ± 0.06 (9→50 mT), −0.11 ± 0.10 (50→100), −0.06 ± 0.06
+   (9→100). Level: dx 3 higher by +20 … +45 % (all seeds), +32 … +80 %
+   (without s921), largest at small B.
+2. d/l_ex 212, 50 mT, second stage (valid), dx 1.5 vs 3, n = 4 (7.10):
+   level −6 % ± 14 %. β not measured with a valid 9 mT value.
+3. d/l_ex 96 (330 nm, old relaxation, balance ≤ 1.5; hints, 4.2 / 7.8):
+   dx 3 gives 0.26 … 0.37 of the dx 1.5 loss; dx 1 gives 1.2 … 1.6× the
+   dx 1.5 loss (dx 1.5 not converged there).
+4. Wall measures and F90 on synthetic states: dx 3 = dx 1.5 within 0.3 %
+   (7.14); events equally frequent at dx 1.5 and dx 3 (7.27).
+5. Mechanism (7.26, 7.27): at small B the loss sits at the vortex core and
+   in the textured region around it; the core (size ≈ l_ex) is not resolved
+   at dx 3 (3 l_ex) and only marginally at dx 1.5. This explains why the
+   level error is largest at small B and why small particles (vortex
+   dominated) fail at dx 3.
+6. Model rules: the local wall width l_ex/√(Q_eff(1 + r_p)) is 2 cells at
+   dx 3 at the Sobol corner (L_eff 12, r_p 3) and the Herzer cubes
+   (L_eff ≥ 12 l_ex) must be multiples of dx: dx 3 is the coarsest mesh the
+   model rules allow.
+
+**Answer:**
+- **β (the Steinmetz exponent) at d/l_ex 300 (1 µm): dx = 3 l_ex (10 nm) is
+  sufficient** (measured: |Δβ| ≤ 0.11 ± 0.10 vs dx 1.5, n = 4) **and it is
+  the coarsest mesh the model rules allow** (wall width, cube grid). Thus
+  dx 3 is necessary and sufficient for β at 1 µm within ≈ 0.1.
+- **β at the small end of the Sobol range (d/l_ex 212): sufficiency not
+  shown** (no valid β comparison; the level error differs from 1 µm, rule of
+  step 1b not met). Expected by the mechanism to hold as long as walls and
+  the vortex texture span many cells; a check at d/l_ex 212 (≈ 47 V100-h)
+  would close it.
+- **Absolute loss density: dx 3 is not sufficient** (+20 … +80 % at 1 µm);
+  **dx ≤ 1.5 l_ex (5 nm) is necessary; whether dx 1.5 is sufficient is not
+  known** (no dx 1 run at 1 µm, ≈ 300 V100-h per realisation; at 330 nm
+  dx 1.5 was not converged). Absolute values from dx 3 are upper estimates;
+  ratios between parameters at the same dx are usable if the mesh error is
+  similar (for d/l_ex it is not, see step 1b).
+- **Small particles (d/l_ex ≲ 100, ≈ 330 nm): dx 3 is not sufficient even
+  for the qualitative level** (vortex core carries the process).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
