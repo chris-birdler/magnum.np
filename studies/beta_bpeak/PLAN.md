@@ -376,9 +376,18 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 ### 4.3a Exclusion and failure rules (fixed before the runs)
 
 - A run is excluded if it crashed, gives NaN, or misses an amplitude.
-  A failed point is run again once with the same seed; if it fails again,
-  it is reported and left out (no replacement point, to keep the Sobol
-  balance).
+  A failed point is run again once with the same seed (it resumes from its
+  checkpoint); if it fails again, it is reported and left out (no
+  replacement point, to keep the Sobol balance). **Relaxation gate not met
+  (exit code 3, decided 2026-10-06, audit 3 item 5):** the relaxation is
+  deterministic (same seed, same iterations), so the one retry uses the
+  same seed with relax_maxiter 200000 (instead of 80000) and starts again
+  (--no_resume); a converged state does not depend on the limit. If it
+  fails again, the point is excluded; the factor values of all excluded
+  points are reported, to show a cluster in the factor space.
+- Order: one seed of each corner K1 … K4 first (tests relaxation, time,
+  disk and post-processing at the extremes in the first ≈ 4 h), then the
+  shuffled rest.
 - Flags `#`, `o`, `c`, `*` are reported per run but do not exclude it.
   A sensitivity analysis repeats the regression without the flagged runs.
 - Raw data stay local with MANIFEST.md5 (no commit); the per-run feature

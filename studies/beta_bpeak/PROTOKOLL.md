@@ -1513,6 +1513,12 @@ recorded here.
   and post-processed, status file written. The test showed two faults, both
   fixed: one job failing twice disabled a GPU (now: different jobs only, with
   pause), and the log showed exit code 0 instead of 1 (shell $? reset).
+- 5. Gate failure (exit 3): one retry with relax_maxiter 200000 and
+  --no_resume, then excluded and reported with its factors (PLAN 4.3a).
+  relax_maxiter is now a run-control key: an --init_from state that
+  converged is accepted with another limit (instance test: accepted; a
+  state of another seed is still rejected). Corners K1_0 … K4_0 first in
+  the queue.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
