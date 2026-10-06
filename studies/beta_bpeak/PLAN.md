@@ -203,8 +203,21 @@ check.
 
 **Outputs per run** (`analyze.features`): β over 3 neighbouring amplitudes
 (9-20-35, 35-50-70, 70-100-150 mT), β over all amplitudes, ln P at 10 / 50 /
-100 mT, plus the event flags (balance, n60 drops). No snapshots (the wall
-measures showed no change with B, 7.19; this keeps the disk free).
+100 mT, plus the event flags (balance, n60 drops).
+**Snapshots (decided 2026-10-06, Chris, option c):** main design and corner
+replicates (116 runs): 16 phases of the last cycle at 9, 50 and 150 mT
+(`--snap_phases 16`, ≈ 1.9 GB per run at 1 µm). Analysed on the instance
+right after each run (`phasemap_batch.py`, `phase_extra.py`: R1, lag spread,
+where the loss sits, texture, F90, slices); the α 0.01 subset runs without
+snapshots. **Deletion rule (standing go, Chris 2026-10-06):** the snapshots
+(*.vti) of a finished run are deleted on the instance as soon as its
+analysis files are written there and their md5 is logged; the results are
+fetched and md5-checked on the laptop later. init.pt and checkpoints are
+NOT covered by this rule: they stay until the whole design is finished (the
+α 0.01 runs start from the init.pt of the α 0.1 run of the same point);
+then deletion only with a separate go after the dependency check of
+`cleanup_instance.py`. Disk (40 GB): start ≈ 3 GB, init.pt + checkpoints of
+all runs ≈ 8 GB, snapshots in flight ≈ 8 … 10 GB: peak ≈ 21 GB.
 
 **Analysis:** regression of each output on (ln Q_eff, r_p, φ, ln d/l_ex),
 linear + quadratic + 2-factor interactions (15 terms). Main fit: robust

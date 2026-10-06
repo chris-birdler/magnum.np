@@ -900,6 +900,11 @@ s928 and V_s901/902 were deleted on the instance after the evaluation; their
 results are in runs/*/domains.json and dissmap.json (local, md5 manifest).
 They were never downloaded (Chris 2026-10-04).
 
+Data note (2026-10-06, Chris's go): the 290 snapshots of PH_s921/922 (after
+phasemap, phase_extra and slices were fetched and md5-checked) and 67
+checkpoints of finished runs (5.8 GB) were deleted on the instance; the 21
+init.pt files stay. Disk 3.4 of 40 GB.
+
 ### 7.20 Loss decomposition w = c1 b + c2 b² (hypothesis test, 2026-10-04)
 
 Hypothesis (Chris, 2026-10-04): pinned structures give only reversible
