@@ -1563,6 +1563,12 @@ recorded here.
   looked at. Cost: rental ≈ 32 … 35 $ (idle GPUs at queue ends); K3 mesh
   check ≈ 8 $. The α 0.01 test likely gives "mixed" (R ≈ 6 from 7.31,
   estimate).
+- Re-check of the rewritten PLAN 4.0 (context-free agent): numbers fixed
+  (cost per run 1.2 … 4.2 V100-h, K1 32 … 53 kJ/m³ at L 30, nominal box
+  edge 1.47 µm, K1 corner cube count realised 195), terms added (job, Ms,
+  B̂, w_dis, μ, r and R, x, u, marker files), mesh-check cost per seed in
+  V100-h, 10 mT interpolation rule. run_queue: a later retry after a gate
+  retry now resumes from the checkpoint (as after a restart).
 - 9b. Per-cell accumulators (Chris: option B): run_loops --acc sums per
   cell over the cycles ≥ 2 of each measured stage the local dissipation, m
   and the fundamental m₁ from all 256 samples; acc_reduce.py reduces them on

@@ -22,7 +22,7 @@ a classification of the factors (PLAN 4.0, decision rules).
 | Setting | Value | Reason |
 |---|---|---|
 | model | Herzer cubes (Q_eff, L_eff) + particle-scale stress r_p; FCC cell of 4 spheres | PROTOKOLL §2 |
-| mesh | dx = 3 l_ex (10 nm) | no mesh effect on β detected at 1 µm (95 % CI ≈ ±0.2 … 0.4); level at dx 3 higher than at dx 1.5 in 3 of 4 seeds (+21 … +43 %, not significant), direction to the converged value unknown (PROTOKOLL 7.28, 7.32) |
+| mesh | dx = 3 l_ex (10 nm at A = 10 pJ/m; 10 … 14.2 nm in reading 1 of PLAN 4.0) | no mesh effect on β detected at 1 µm (95 % CI ≈ ±0.2 … 0.4); level at dx 3 higher than at dx 1.5 in 3 of 4 seeds (+21 … +43 %, not significant), direction to the converged value unknown (PROTOKOLL 7.28, 7.32) |
 | initial state | virgin state (random m on 6 l_ex blocks, relaxed), ascending amplitudes | PROTOKOLL §7.4 … 7.6 |
 | damping | α = 0.1 (8 centre runs at α 0.01) | model parameter (PROTOKOLL 7.17, 7.31) |
 | precision | fp32, atol 10⁻⁵ | numerical floor test PASS |
@@ -150,18 +150,25 @@ Supersedes 4.1 … 4.4 and §5 where they differ. Basis: PROTOKOLL 7.13 … 7.33
 (7.33: decisions on the third audit, one by one with Chris).
 
 **Terms.**
-- l_ex = √(2A/(μ₀Ms²)) exchange length; K_d = μ₀Ms²/2; reduced lengths are
+- Ms = Js/μ₀ saturation magnetisation; l_ex = √(2A/(μ₀Ms²)) exchange length; K_d = μ₀Ms²/2; reduced lengths are
   in units of l_ex. d particle diameter; L_eff edge of the Herzer cubes
   (random-anisotropy cells); Q_eff = (l_ex/L_eff)² = K_eff/K_d; r_p = K_p/K_eff
   particle anisotropy (residual stress) relative to K_eff; φ packing fraction.
 - Run: one simulation of one design point with one seed (its own cubes,
-  axes and initial state). Realisation scatter: the scatter of a result over
+  axes and initial state). Job: one line of a job file = one call of
+  run_loops.py; in the design one job = one run; in the mesh300 protocol one
+  run = 3 jobs (one per amplitude). DONE / POSTPROC_DONE / POSTPROC_FAILED:
+  marker files in the run folder (run finished / analysed on the instance /
+  analysis failed). Realisation scatter: the scatter of a result over
   seeds at the same factors.
 - init.pt: the relaxed virgin state of a run (start of the amplitude
   ramp); checkpoint.pt: the state after the last finished amplitude stage.
 - w: loss per cycle and core volume (J/m³), w = mean of w_loop = ∮H dB over
   the kept cycles; P = f·w (W/cm³). E[w]: mean of w over the realisations
-  (what a core of ≈ 10⁹ particles shows). β_core = d ln E[w]/d ln B̂.
+  (what a core of ≈ 10⁹ particles shows). B̂ = B_peak, the peak flux
+  density of the core (mT). β_core = d ln E[w]/d ln B̂. w_dis: the same loss
+  from the LLG dissipation (check of w_loop). μ: relative permeability of
+  the core (≈ 8, PROTOKOLL §0).
   ln E[w] is the loss output in all rules below.
 - Window: 3 neighbouring amplitudes (9-20-35, 35-50-70, 70-100-150 mT;
   centres ≈ 18 / 50 / 102 mT); β in a window = slope of a power law through
@@ -169,6 +176,8 @@ Supersedes 4.1 … 4.4 and §5 where they differ. Basis: PROTOKOLL 7.13 … 7.33
 - Range effect of a factor: prediction of the main fit at the factor
   maximum minus at its minimum, the other factors averaged over the design
   points.
+- r: distance of a cell from its particle centre, R = d/2 particle radius.
+- x = (ln Q_eff, r_p, φ, ln d/l_ex): the regression variables.
 - p: local LLG dissipation per cell; p_dis: its box mean; p_fund: the part
   of the fundamental (drive frequency); R1 = p_fund/p_dis; lag: phase of the
   local fundamental against the drive; texture: |∇m| of the cycle-mean state
@@ -198,7 +207,7 @@ centre):
 
 | Corner | d/l_ex | L_eff/l_ex | r_p | φ | why |
 |---|---|---|---|---|---|
-| K1 | 212 | 30 | 1.5 | 0.62 | fewest cubes per particle (185) |
+| K1 | 212 | 30 | 1.5 | 0.62 | fewest cubes per particle (nominal 185, realised 195; the smallest Sobol point has 183) |
 | K2 | 300 | 12 | 3 | 0.62 | narrowest local wall (2 cells) |
 | K3 | 212 | 18 | 1.5 | 0.69 | smallest gap between particles (1.7 cells) |
 | K4 | 300 | 18 | 1.5 | 0.55 | largest box, many cubes |
@@ -223,9 +232,9 @@ thus A 9.7 … 20.4 pJ/m in reading 1).
 | Factor (reduced), sampling | Range | Reading 1: d = 1 µm, A varied | Reading 2: A = 10 pJ/m, d varied |
 |---|---|---|---|
 | d/l_ex, log-uniform | 212 … 300 | A = 19.9 … 9.9 pJ/m (l_ex 4.72 … 3.33 nm) | d = 709 … 1003 nm (l_ex 3.34 nm) |
-| L_eff/l_ex, 4 levels (level = ⌊4u⌋), linear in L | 12 / 18 / 24 / 30 | Herzer length = cube edge 40 … 57 / 60 … 85 / 80 … 113 / 100 … 142 nm (at A 10 … 20 pJ/m) | 40 / 60 / 80 / 100 nm |
+| L_eff/l_ex, 4 levels (level = ⌊4u⌋, u = Sobol coordinate in [0, 1)), linear in L | 12 / 18 / 24 / 30 | Herzer length = cube edge 40 … 57 / 60 … 85 / 80 … 113 / 100 … 142 nm (at A 10 … 20 pJ/m) | 40 / 60 / 80 / 100 nm |
 | ↳ Q_eff = (l_ex/L_eff)², K_eff = Q_eff K_d = A/L_eff² | 6.9 / 3.1 / 1.7 / 1.1·10⁻³ | K_eff 6.22 / 2.76 / 1.55 / 0.99 kJ/m³ (independent of A) | same |
-| ↳ K1 for grains D = 10 nm (Herzer K_eff = K1⁴D⁶/A³, K1 ∝ A^¾) | | 50 … 84 / 41 … 69 / 35 … 59 / 32 … 54 kJ/m³ (at A 10 … 20 pJ/m) | 50 / 41 / 35 / 32 kJ/m³ |
+| ↳ K1 for grains D = 10 nm (Herzer K_eff = K1⁴D⁶/A³, K1 ∝ A^¾) | | 50 … 84 / 41 … 69 / 35 … 59 / 32 … 53 kJ/m³ (at A 10 … 20 pJ/m) | 50 / 41 / 35 / 32 kJ/m³ |
 | r_p, uniform (linear) | 0 … 3 | K_p = r_p K_eff: 0 … 18.7 kJ/m³ (L 12) … 0 … 3.0 kJ/m³ (L 30); residual stress, one uniaxial axis per particle | same |
 | φ, uniform (linear) | 0.55 … 0.69 | packing fraction 55 … 69 % | same |
 
@@ -241,14 +250,14 @@ is an equivalent reading of the cubes.
 | Quantity | Min | Max | Limit / rule |
 |---|---|---|---|
 | mesh dx = 3 l_ex | 10.0 nm (A 10) / 10.0 nm | 14.2 nm (A 20) / 10.0 nm | fixed in reduced units |
-| box edge a | 1.45 µm / 1.04 µm (d/l_ex 212, φ 0.69) | 1.56 µm / 1.56 µm (d/l_ex 300, φ 0.55) | a multiple of 12 l_ex |
+| box edge a | 1.47 µm / 1.04 µm (d/l_ex 212, φ 0.69) | 1.56 µm / 1.56 µm (d/l_ex 300, φ 0.55) | a multiple of 12 l_ex |
 | cells | 1.1 M | 3.8 M | cost ∝ cells |
 | smallest gap between particles | 1.7 cells = 24 nm / 17 nm (d/l_ex 212, φ 0.69) | 10.4 cells = 104 nm (d/l_ex 300, φ 0.55) | ≥ 1 void cell over 26 neighbours (contact rule) |
-| d/L_eff | 7.1 (d/l_ex 212, L 30) | 25 (d/l_ex 300, L 12) | ≥ 7 (D3) |
-| cubes per particle | 185 | 8 200 | residual check vs d/L_eff (D3) |
+| d/L_eff | 7.1 (d/l_ex 212, L 30) | 25 (d/l_ex 300, L 12) | ≥ 7 (decision D3, §7) |
+| cubes per particle | 185 | 8 200 | residual check vs d/L_eff (decision D3, §7) |
 | local wall width L_eff/√(1 + r_p) | 2.0 cells = 20 nm (L 12, r_p 3, A 10) … 28 nm (A 20) / 20 nm | 10 cells = 100 … 142 nm (L 30, r_p 0) / 100 nm | ≥ 2 cells (resolved) |
 | wall width π L_eff | 126 nm | 445 nm / 315 nm | |
-| drive H amplitude (μ ≈ 8) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
+| drive H amplitude (μ ≈ 8, relative permeability of the core) | 0.9 kA/m (9 mT) | 14.9 kA/m (150 mT) | |
 | α | 0.01 (8 centre runs) | 0.1 (main) | model parameter (PROTOKOLL 7.17) |
 
 **Validity of the mesh** (PROTOKOLL 7.28, 7.32): no mesh effect on β
@@ -269,12 +278,13 @@ protocol (9 / 50 / 100 mT, 5 cycles), run without the 12 h job timeout
 (`--job_timeout_h 30`: a dx 1.5 job needs ≈ 21 h); compared: the mesh
 difference at the corner against the one at the base point (mesh300).
 Equal → the effect is physical; different → the difference is the artefact
-share. Expected 95 % CI ±0.13 … 0.21. **Cost (estimates from mesh300
-rates, cost ∝ cells):** K2 ≈ 250 V100-h ≈ 25 $ (≈ 41 h per run, ≈ 3.5 days
-on 4 GPUs), K3 ≈ 80 V100-h ≈ 8 $ (≈ 13 h per run, ≈ 1 day). Run only with a
+share. Expected 95 % CI of the difference of the mesh differences: ±0.13 … 0.21 (in β and in ln w). **Cost (estimates from mesh300
+rates, cost ∝ cells):** K2 ≈ 250 V100-h ≈ 25 $ (≈ 41 V100-h per seed:
+dx 1.5 and dx 3, 3 jobs each; ≈ 3.5 days on 4 GPUs), K3 ≈ 80 V100-h ≈ 8 $
+(≈ 13 V100-h per seed, ≈ 1 day). Run only with a
 separate go after the regression. Without trigger: no check; every effect
-of L_eff, r_p, d/l_ex, φ is reported as a relative effect at dx 3 (mesh
-error up to ≈ 0.3 not excluded, in both directions); every d/l_ex effect on
+of L_eff, r_p, d/l_ex, φ is reported as a relative effect at dx 3 (a mesh
+error of β up to ≈ 0.3 not excluded, in both directions); every d/l_ex effect on
 ln E[w] carries the measured mesh caveat (Δ ln w at 50 mT: +0.26 ± 0.16 at
 d/l_ex 300, −0.06 ± 0.14 at 212, 7.28).
 
@@ -297,8 +307,8 @@ state checkpoint.pt; ≈ 14 states × 38 s CPU per run).
 p, the mean m and the fundamental m₁ from all 256 samples per cycle (no
 aliasing). Reduced on the instance by `acc_reduce.py` → acc.json (sum check
 p_box/p_dis = box mean of p over the measured p_dis, must be 1; R1; shares
-of p and p_fund and the lag in the classes core r/R_p < 0.5 / middle /
-shell r/R_p ≥ 0.8 / texture top 10 % / p top 10 %) and acc_slices.npz.
+of p and p_fund and the lag in the classes core r/R < 0.5 / middle /
+shell r/R ≥ 0.8 / texture top 10 % / p top 10 %) and acc_slices.npz.
 Instance test (d/l_ex 96, 2 amplitudes): sum check 1.000000, R1 0.960 /
 0.206 against 0.956 / 0.207 from the 16-phase snapshots, run time +4 … 5 %,
 loss unchanged.
@@ -341,7 +351,7 @@ logs. Order: K1_0, K2_0, K3_0, K4_0 first (relaxation, time, disk and
 post-processing at the extremes in the first ≈ 4 h), then the other main
 and corner runs in random order (seed 20261006), then the 8 α 0.01 runs.
 `run_queue.py`: a failed job runs once more (it resumes from its
-checkpoint); a relaxation-gate failure (exit code 3, deterministic) runs
+checkpoint, also after a gate retry); a relaxation-gate failure (exit code 3, deterministic) runs
 once more with relax_maxiter 200000 and a fresh start, then it is excluded;
 a NaN state stops a run (exit code 4); job timeout 12 h; failures of 2
 different jobs on one GPU within 10 min pause it 30 min, the 3rd such burst
@@ -354,7 +364,9 @@ status_sobol.json every 5 min. Post-processing runs under a restart loop.
   excluded runs (4.3a) are left out.
 - Main fit: for each of the 7 amplitudes, w of each run is regressed on
   (ln Q_eff, r_p, φ, ln d/l_ex) with a Gamma GLM, linear + quadratic +
-  2-factor interactions (15 terms); ln E[w] at 10 / 50 / 100 mT and β_core
+  2-factor interactions (15 terms); ln E[w] at 10 / 50 / 100 mT (10 mT:
+  linear interpolation in ln B̂ between the predicted means at 9 and 20 mT,
+  as in `analyze.features`) and β_core
   of the windows and over all amplitudes follow from the predicted means; the
   SE and the range effects come from a bootstrap over the runs (the runs are
   the independent samples).
@@ -407,8 +419,8 @@ status_sobol.json every 5 min. Post-processing runs under a restart loop.
   with a known answer during the runs, before any result is looked at.
 
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
-cells, cost ∝ cells, + 4 … 5 % for the accumulators):** per run 1.2 … 4.0
-V100-h, mean ≈ 2.4. Main design 104 runs ≈ 250 V100-h; corners 12 runs
+cells, cost ∝ cells, + 4 … 5 % for the accumulators):** per run 1.2 … 4.2
+V100-h (largest box 4.2), mean ≈ 2.4. Main design 104 runs ≈ 250 V100-h; corners 12 runs
 ≈ 30 V100-h; α 0.01 centre 8 runs ≈ 20 V100-h (per cycle the same rate as
 α 0.1, measured); total ≈ 300 V100-h. Wall time ≈ 3.2 days on 4 GPUs. The
 instance is paid per hour (0.41 $/h), also for idle GPUs at the end of each
@@ -555,8 +567,8 @@ Decision by Chris after step 2.
 
 ## 6. Code work before step 2 (no GPU cost)
 
-1. `jobs.py`: group `freqtest` (step 1) and group `sobol` (design, validity
-   check of every point, seed per point, extension by m).
+1. `sobol_design.py`: Sobol design (validity check of every point, seed
+   per point, extension by N) → jobs/sobol_*.txt (done).
 2. `analyze_design.py` (not written yet; PLAN 4.0: written and tested on
    synthetic data with a known answer during the runs, before any result is
    looked at): per-run features to a CSV, Gamma GLM with bootstrap, fits A

@@ -260,6 +260,8 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                     else:
                         attempts[name] = attempts.get(name, 0) + 1
                         retry = attempts[name] <= retries
+                        # a later retry resumes from the checkpoint, also after a gate retry (same as after a restart)
+                        args = " ".join(shlex.quote(x) for x in shlex.split(args) if x != "--no_resume")
                     print("[FAIL] gpu %s  %s  %.2f h  %s%s" % (gpu, name, h, why, ", again later" if retry else ""),
                           flush=True)
                     save_queue_state(runs / name, {"attempts": attempts.get(name, 0),

@@ -6,7 +6,7 @@ Reduce the per-cell accumulators of one run (run_loops --acc, audit 3 item 9b) t
              (must be 1; the accumulation is exact)
   R1         p_fund / p_dis, p_fund = alpha mu0 Ms / gamma (omega^2 |m1|^2 / 2) per cell (fundamental from all
              samples: no aliasing); 1 - R1 = loss in harmonics and non-periodic motion
-  where      for the classes r/R_p < 0.5, 0.5 ... 0.8, >= 0.8, texture top 10 % (of the cycle-mean state m0,
+  where      for the classes r/R < 0.5, 0.5 ... 0.8, >= 0.8 (r distance to the particle centre, R = d/2), texture top 10 % (of the cycle-mean state m0,
              smoothed 0.5 L_eff, as phase_extra.py), rest, and the 10 % cells with the largest p: volume share,
              share of the local loss p, share of p_fund, mean and spread of the local lag of the fundamental
              along the drive (weighted by |m1_par|^2, relative to the drive fundamental h1)
