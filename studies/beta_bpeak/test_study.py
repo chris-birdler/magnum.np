@@ -331,7 +331,8 @@ def test_run_queue_expected_bytes():
     name, _, args = line.strip().partition(" ")
     d = run_queue.job_args(args)
     N = round(box_edge(float(d["d_lex"][0]), float(d["phi"][0]))[0] / float(d["dx_lex"][0]))
-    assert run_queue.expected_bytes(args) == N ** 3 * (96 * run_queue.B_SNAP_CELL + 2 * run_queue.B_PT_CELL)
+    assert run_queue.expected_bytes(args) == N ** 3 * (96 * run_queue.B_SNAP_CELL + 2 * run_queue.B_PT_CELL
+                                                       + 7 * run_queue.B_ACC_CELL)
     assert run_queue.expected_bytes("--d_lex 300 --phi 0.62 --dx_lex 3") == pytest.approx(
         round(box_edge(300.0, 0.62)[0] / 3) ** 3 * 24.0)
 

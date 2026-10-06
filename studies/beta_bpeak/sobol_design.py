@@ -37,6 +37,7 @@ CORNERS = [("K1", dict(d_lex=212.0, Leff_lex=30.0, r_p=1.5, phi=0.62)),
            ("K3", dict(d_lex=212.0, Leff_lex=18.0, r_p=1.5, phi=0.69)),
            ("K4", dict(d_lex=300.0, Leff_lex=18.0, r_p=1.5, phi=0.55))]
 SNAP = dict(snap_phases=16, snap_cycles=2, snap_mT=[9.0, 50.0, 150.0])   # 2 cycles: periodic vs non-periodic part (audit R1)
+ACC = dict(acc=True)    # per-cell accumulators at all 7 amplitudes, all runs (audit 3 item 9b, Chris 2026-10-06)
 LEX = 3.342e-9
 
 
@@ -86,7 +87,7 @@ def main():
     rows, main_jobs, a001_jobs, corner_jobs = [], [], [], []
 
     def add(name, f, seed, kind, alpha=0.1, snap=True, parent=None):
-        j = dict(T, **f, seed=seed, alpha=alpha)
+        j = dict(T, **f, seed=seed, alpha=alpha, **ACC)
         if snap:
             j.update(SNAP)
         if alpha != 0.1:

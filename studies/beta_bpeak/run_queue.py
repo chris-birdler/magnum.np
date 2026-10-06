@@ -16,7 +16,7 @@ Run a job file on several GPUs of one machine (one job per GPU at a time).
       free disk - (expected bytes still to come of all running jobs) - (expected bytes of the new job) >= G.
   Expected bytes of a job (`expected_bytes`): snapshots (phases x cycles x amplitudes x N^3 x 15 B, measured
   47.7 MB for N = 148 in single precision) + init.pt + checkpoint.pt (2 x N^3 x 12 B). Still to come = expected
-  minus the bytes already in the run folder. Thus the running jobs cannot fill the disk; the queue waits instead.
+  minus the bytes already in the run folder. With --acc: + amplitudes x N^3 x 40 B (accumulators). Thus the running jobs cannot fill the disk; the queue waits instead.
 Unattended operation (audit 3, item 4):
 * a failed job (exit code != 0, timeout, exception) goes once more to the end of the queue (--retries 1); it
   resumes from its checkpoint. Exit code 3 (relaxation gate not met) is deterministic (same seed, same
@@ -46,6 +46,7 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 B_SNAP_CELL = 15.0      # bytes per cell of one snapshot (vti, fp32, measured 47.7 MB / 148^3 on the instance)
 B_PT_CELL = 12.0        # bytes per cell of init.pt / checkpoint.pt (measured 38.9 MB / 148^3)
+B_ACC_CELL = 40.0       # bytes per cell of one acc_*.npz (p 4 + m0 12 + m1 24; particle cells only: upper bound)
 
 
 def job_args(args):
@@ -71,7 +72,8 @@ def expected_bytes(args):
     if phases > 0:
         n_amp = len(d["snap_mT"]) if "snap_mT" in d else len(d.get("b_list", [])) or int(d.get("n_amp", ["7"])[0])
         n_snap = phases * int(d.get("snap_cycles", ["1"])[0]) * n_amp
-    return cells * (n_snap * B_SNAP_CELL + 2 * B_PT_CELL)
+    n_acc = (len(d.get("b_list", [])) or int(d.get("n_amp", ["7"])[0])) if "acc" in d else 0
+    return cells * (n_snap * B_SNAP_CELL + 2 * B_PT_CELL + n_acc * B_ACC_CELL)
 
 
 def folder_bytes(p):

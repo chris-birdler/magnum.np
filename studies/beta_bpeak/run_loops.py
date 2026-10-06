@@ -81,6 +81,7 @@ from units import units, F_REL_DEFAULT, JS_REF, A_REF, MU0   # noqa: E402
 _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed trapz
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
+ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
@@ -188,6 +189,10 @@ def parse_args(argv=None):
                         "ringdown_<i>_<stage>.csv; m and t are restored afterwards (the next stage is not changed)")
     g.add_argument("--ringdown_samples", type=int, default=512, help="samples per period in the ring-down")
     g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
+    g.add_argument("--acc", action="store_true",
+                   help="per-cell accumulators over the cycles >= %d of each measured stage (all samples of a "
+                        "cycle): mean local dissipation p, mean m (m0) and the fundamental m1 = 2/n sum m e^{-i w t}; "
+                        "written to acc_<i>_<stage>.npz (particle cells only; audit 3, item 9b)" % ACC_FROM_CYCLE)
     g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
     g.add_argument("--allow_new_commit", action="store_true",
                    help="resume although the code (git commit) changed since the checkpoint")
@@ -381,6 +386,8 @@ def main(argv=None):
     cos60 = 0.5
 
     @torch.no_grad()
+    last_p = {}                                  # per-cell dissipation of the last diagnostics() call (--acc)
+
     def diagnostics():
         m = state.m
         Mvec = (Ms_t * m).double().mean(dim=(0, 1, 2))
@@ -389,7 +396,9 @@ def main(argv=None):
         Mp = torch.bincount(ids_t, weights=m_par, minlength=5)[1:] / counts
         H = accumulate_h(term.h(state) for term in terms)
         mxH = torch.linalg.cross(m, H)
-        p_dis = float((p_coef * Ms_t * (mxH * mxH).sum(-1, keepdim=True)).double().mean())
+        p_cell = p_coef * Ms_t * (mxH * mxH).sum(-1, keepdim=True)
+        last_p["p"] = p_cell
+        p_dis = float(p_cell.double().mean())
         cmin, n60 = 1.0, 0
         for ax in range(3):
             c = (m * torch.roll(m, 1, dims=ax)).sum(-1)[pair_masks[ax]]
@@ -569,6 +578,12 @@ def main(argv=None):
         if st.get("b_target") is not None:
             rec["b_target"] = st["b_target"]
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
+        if args.acc and st["measure"]:
+            acc = {"p": torch.zeros(state.m.shape[:3], dtype=torch.float64, device=dev),
+                   "m0": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
+                   "re": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
+                   "im": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
+                   "h1": 0j, "p_sum": 0.0, "n": 0}
         fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
 
         ci = 0
@@ -589,6 +604,7 @@ def main(argv=None):
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
 
             sample()
+            acc_on = args.acc and st["measure"] and ci >= ACC_FROM_CYCLE
             snap = args.snap_phases > 0 and st["measure"] and ci >= st["n_cycles"] - args.snap_cycles
             if snap and args.snap_mT and st.get("b_target") is not None:
                 bmT = 1000.0 * st["b_target"] * args.Js
@@ -598,6 +614,18 @@ def main(argv=None):
                 if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):
                     drive.H_amp *= st["decay"]          # AC demagnetization: change at a zero crossing
                 sample()
+                if acc_on:
+                    # audit 3, item 9b: the samples after each step cover one cycle at equal phases
+                    th = 2.0 * math.pi * f_stage * (float(state.t) - drive.t0)
+                    c, sn = math.cos(th), math.sin(th)
+                    md = state.m.double()
+                    acc["p"] += last_p["p"][..., 0].double()
+                    acc["m0"] += md
+                    acc["re"] += md * c
+                    acc["im"] -= md * sn
+                    acc["h1"] += drive.value(float(state.t)) * complex(c, -sn)
+                    acc["p_sum"] += rows[-1][6]
+                    acc["n"] += 1
                 if snap and (k + 1) % (args.samples // args.snap_phases) == 0:
                     deg = round(360.0 * (k + 1) / args.samples)
                     write_vti({"m": state.m}, str(out / ("m_%s_c%d_ph%03d.vti" % (st["name"], ci, deg))), state)
@@ -691,6 +719,22 @@ def main(argv=None):
             rec["ringdown"] = "ringdown_%02d_%s.csv" % (si, st["name"])
             print("[%s] ring-down %.1f periods written" % (st["name"], args.ringdown_periods), flush=True)
 
+        if complete and args.acc and st["measure"] and acc["n"] > 0:
+            n = acc["n"]
+            mask_t = torch.as_tensor(ids >= 0, device=dev)
+            p_box = float(acc["p"].sum()) / n / acc["p"].numel()
+            np_tmp = out / ("acc_%02d_%s.tmp.npz" % (si, st["name"]))
+            np.savez(np_tmp, p=(acc["p"][mask_t] / n).float().cpu().numpy(),
+                     m0=(acc["m0"][mask_t] / n).float().cpu().numpy(),
+                     m1=((acc["re"][mask_t] + 1j * acc["im"][mask_t]) * (2.0 / n)).to(torch.complex64).cpu().numpy(),
+                     h1=np.complex128(acc["h1"] * 2.0 / n), n_samples=n, cycles_from=ACC_FROM_CYCLE,
+                     p_box=p_box, p_dis_samples=acc["p_sum"] / n, freq=f_stage)
+            os.replace(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
+            rec["acc"] = {"file": "acc_%02d_%s.npz" % (si, st["name"]), "n_samples": n,
+                          "p_box_over_p_dis": p_box / max(acc["p_sum"] / n, 1e-300)}
+            print("[%s] accumulators: %d samples, sum check p_box/p_dis = %.6f" %
+                  (st["name"], n, rec["acc"]["p_box_over_p_dis"]), flush=True)
+            del acc
         rec["complete"] = complete
         summary["stages"].append(rec)
         write_atomic(summ_file, json.dumps(summary, indent=1))
