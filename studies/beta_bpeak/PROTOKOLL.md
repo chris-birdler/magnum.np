@@ -175,7 +175,7 @@ Physics background (short):
 | Initial state | **decided: A, virgin state relaxed to convergence with a hard gate (7.13, 7.15).** Original text: open: decided by the initproto test (section 7.4). Candidates: A = virgin state (random m, full relaxation at H = 0 and α = 1: the T = 0 analogue of the anneal and the cooling without field; a real powder is never magnetized before use), B = AC demagnetization (decaying saturating cycles, as in IEC 60404-6), C = 1 saturating cycle (present) | C gave minor loops around a remanent state (offset up to 0.55 at 23 mT) |
 | Protocol | A and B: ascending amplitudes (the classic Rayleigh procedure: every larger loop erases the smaller ones, the loops stay centred). C: descending. 7 cycles each (fixed), cycles 0 and 1 discarded (drive correction) | AC demagnetization. At T = 0 the soft powder does not lock into a periodic cycle (steady test): the mean over cycles is the measurement, not a single steady cycle |
 | Loss per cycle | w = mean of w_loop (∮H dB) over the kept cycles; w_dis (LLG dissipation) as a check (`--w dis`) | w_loop of one cycle contains the change of the stored energy when the cycle is not closed; this part averages out over cycles. w_dis scatters less |
-| Damping | α = 0.1 (main design); α 0.01 subset (PLAN 4.2) | α is a model parameter: α 0.01 vs 0.1 changes β_pow by −0.27 ± 0.08 and P at 100 mT by ×0.49 (7.17, n = 6 vs 11). Older reason (α 0.02 not settled at dx 1.5, 7.2; "−12 %" from unconverged runs) superseded |
+| Damping | α = 0.1 (main design); α 0.01 only at the 8 centre replicates (PLAN 4.0, decision 2026-10-06) | α is a model parameter: α 0.01 vs 0.1 changes β_pow by −0.27 ± 0.08 and P at 100 mT by ×0.49 (7.17, n = 6 vs 11). Older reason (α 0.02 not settled at dx 1.5, 7.2; "−12 %" from unconverged runs) superseded |
 | GPU | any fp32 GPU; choose RTX 3090 or RTX 5090 after the benchmark (cost per cycle) | "V100-h" is only a cost unit |
 
 ## 4. Mesh validity
@@ -1405,7 +1405,8 @@ PLAN 4.0. Files: `sobol_design.py` → jobs/sobol_main.txt (96 Sobol points +
 8 centre replicates, α 0.1), jobs/sobol_corners.txt (4 corners × 3 seeds),
 jobs/sobol_a001.txt (first 32 points + 8 centre replicates at α 0.01,
 9 cycles, from the init.pt of the α 0.1 run), results/sobol_design.csv.
-- All 156 runs pass the checks of the study geometry: smallest gap 1.71
+- (Updated 7.33: the α 0.01 subset is reduced to the 8 centre replicates,
+  124 runs in all.) All runs pass the checks of the study geometry: smallest gap 1.71
   cells (contact rule), smallest local wall width 2.00 cells, smallest
   d/L_eff 7.05; 24 main points per L_eff level; realised d/l_ex 209.7 …
   303.9 (box quantization), r_p 0.02 … 3.00, φ 0.550 … 0.690.
@@ -1415,7 +1416,7 @@ jobs/sobol_a001.txt (first 32 points + 8 centre replicates at α 0.01,
 - `instance_postproc.py`: per finished run phasemap + phase_extra, check,
   md5 log, then deletion of the *.vti only (tested locally: checkpoint and
   results stay). `instance/chain_sobol.sh`: main + corners in random order,
-  then the α 0.01 subset; not installed on the instance yet.
+  then the α 0.01 subset (7.33: the 8 centre runs); not installed on the instance yet.
 - Cost: cost model 232 (main) + 31 (corners) + 283 (α 0.01, the model
   overestimates small α ≈ 2×) V100-h; realistic ≈ 400 V100-h ≈ 40 $,
   ≈ 4 days on 4 V100.
@@ -1469,7 +1470,8 @@ over (sections updated: 0, 7.25, 7.26, 7.27, 7.28, 7.29, 10, 12; PLAN 4.0):
 - Sobol automation (fixed, b437226): 2 snapshot cycles (periodic vs
   non-periodic part, R1); post-processing robust, limited to the Sobol run
   names, a broken run keeps its snapshots (R2, tested); disk guard in
-  run_queue (`--min_free_gb 8`); α 0.01 jobs without the 48 h wait (R3).
+  run_queue (`--min_free_gb 8`, replaced in 7.33 by the guard with
+  reservation, margin 3 GB); α 0.01 jobs without the 48 h wait (R3).
 - Open, decision by Chris: (a) mesh check at the corners K2 (2-cell walls)
   and K3 (1.7-cell gap) after the main run (the auditor considers the
   stopping rule in PLAN 4.0 backwards: large factor effects arise where the
@@ -1537,6 +1539,11 @@ recorded here.
   noted as an open option.
 - 9a. init.pt and checkpoint.pt of all runs (6.15 GB, computed) are fetched
   during the daily fetch before a checkpoint is deleted (Chris: yes).
+- Document corrections (Chris: go): PLAN §1 outputs (β at 10 mT itself is
+  not delivered, lowest window centre ≈ 18 mT), §2 mesh row, corner seeds,
+  box edge 1.45 µm, 4.2 / 4.3 / 4.4 / §7 D1 / §8 updated to 4.0, φ dilution
+  note, POSTPROC_FAILED snapshots manual; PROTOKOLL §3 damping row, §9,
+  7.30, 7.32, §12.
 - 9b. Per-cell accumulators (Chris: option B): run_loops --acc sums per
   cell over the cycles ≥ 2 of each measured stage the local dissipation, m
   and the fundamental m₁ from all 256 samples; acc_reduce.py reduces them on
@@ -1647,9 +1654,12 @@ Consequences:
 ## 9. Production
 
 Sobol design v2 (PLAN 4.0, prepared 7.30): 96 + 8 points at α 0.1 over
-L_eff, r_p, φ and d/l_ex at dx 3, 4 corner groups × 3 seeds, 32 + 8 points
-at α 0.01; outputs β (3-point windows, all), ln P at 10 / 50 / 100 mT, the
-local-response measures from the snapshots; robust regression. The earlier
+L_eff, r_p, φ and d/l_ex at dx 3, 4 corner groups × 3 seeds, 8 centre
+replicates at α 0.01 (124 runs); outputs β_core (3-point windows, all) and
+ln E[w] at 10 / 50 / 100 mT, the local-response measures from the snapshots
+(9 / 50 / 150 mT) and the per-cell accumulators (all amplitudes); main fit
+Gamma GLM on w, OLS and Huber as cross-checks; decision rules fixed before
+the start (PLAN 4.0, PROTOKOLL 7.33). The earlier
 plans (one-factor, factorial, 128 + 8) are replaced.
 
 ## 10. Known limitations
@@ -1687,11 +1697,11 @@ plans (one-factor, factorial, 128 + 8) are replaced.
 ## 12. Open points for Chris
 
 **Status 2026-10-06:** all checks before the Sobol design are done
-(7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0; (2) credit top-up to
-≈ 45 $ (now ≈ 11 $); (3) the α 0.01 staircase runs R300v01_* (paired α
-comparison) are running; their evaluation follows. Decided: α 0.1 main +
-α 0.01 subset (items 3 below superseded); mesh dx 3 with the limits of 7.28
-(item 4 superseded); staircase surface.
+(7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0 (audit 3 handled, 7.33);
+(2) credit top-up to ≈ 45 $ (now ≈ 11 $). Decided: α 0.1 main + 8 centre
+replicates at α 0.01 (items 3 below superseded); mesh dx 3 with the limits
+of 7.28 and the mesh-check rule of PLAN 4.0 (item 4 superseded); staircase
+surface; paired α comparison done (7.31).
 
 **Kept in mind (Chris, 2026-10-04): how does the model reach the high β of
 measured cores?** In the model μ = 8 is fixed by the stray field of the

@@ -11,15 +11,18 @@ Basis: PROTOKOLL.md (model, tests, mesh decision).
 Which parameters control the Steinmetz exponent β of a powder core of 1 µm
 particles at B_peak = 10 … 150 mT, and how can β stay small?
 
-Output: β at 10, 50 and 100 mT and the loss density P (W/cm³ at f = 30 MHz)
-as functions of four factors, with errors; a ranking of the factors.
+Output: β_core of the mean loss curve over all amplitudes and in three
+windows (centres ≈ 18, 50 and 102 mT; the lowest window starts at 9 mT, so
+β at 10 mT itself is not delivered) and the loss density E[w] (P in W/cm³ at
+f = 30 MHz) at 10, 50 and 100 mT as functions of four factors, with errors;
+a classification of the factors (PLAN 4.0, decision rules).
 
 ## 2. Fixed settings (from PROTOKOLL)
 
 | Setting | Value | Reason |
 |---|---|---|
 | model | Herzer cubes (Q_eff, L_eff) + particle-scale stress r_p; FCC cell of 4 spheres | PROTOKOLL §2 |
-| mesh | dx = 3 l_ex (10 nm) | β not mesh-dependent at 1 µm; level known to ≈ 30 % (PROTOKOLL §4) |
+| mesh | dx = 3 l_ex (10 nm) | no mesh effect on β detected at 1 µm (95 % CI ≈ ±0.2 … 0.4); level at dx 3 20 … 80 % above dx 1.5, direction to the converged value unknown (PROTOKOLL 7.28, 7.32) |
 | initial state | virgin state (random m on 6 l_ex blocks, relaxed), ascending amplitudes | PROTOKOLL §7.4 … 7.6 |
 | damping | α = 0.1 | steady cycles (PROTOKOLL §7.2) |
 | precision | fp32, atol 10⁻⁵ | numerical floor test PASS |
@@ -153,7 +156,7 @@ with snapshots): test of |m₁|² ∝ 1/α at one point with 8 seeds (decision
 Chris 2026-10-06, after audit 7.32; the α 0.01 Sobol subset is dropped, a
 later own α study can start from the kept init.pt files).
 **Replicates at 4 corners (added 2026-10-06, Chris):** 3 seeds each at α 0.1
-(seeds 2001 …), to check whether the realisation scatter is the same over
+(seeds 2011 … 2013, 2021 … 2023, 2031 … 2033, 2041 … 2043), to check whether the realisation scatter is the same over
 the factor space (the centre replicates measure it only at the centre):
 
 | Corner | d/l_ex | L_eff/l_ex | r_p | φ | why |
@@ -201,7 +204,7 @@ is an equivalent reading of the cubes.
 | Quantity | Min | Max | Limit / rule |
 |---|---|---|---|
 | mesh dx = 3 l_ex | 10.0 nm (A 10) / 10.0 nm | 14.2 nm (A 20) / 10.0 nm | fixed in reduced units |
-| box edge a | 1.47 µm / 1.04 µm (d/l_ex 212, φ 0.69) | 1.56 µm / 1.56 µm (d/l_ex 300, φ 0.55) | a multiple of 12 l_ex |
+| box edge a | 1.45 µm / 1.04 µm (d/l_ex 212, φ 0.69) | 1.56 µm / 1.56 µm (d/l_ex 300, φ 0.55) | a multiple of 12 l_ex |
 | cells | 1.1 M | 3.8 M | cost ∝ cells |
 | smallest gap between particles | 1.7 cells = 24 nm / 17 nm (d/l_ex 212, φ 0.69) | 10.4 cells = 104 nm (d/l_ex 300, φ 0.55) | ≥ 1 void cell over 26 neighbours (contact rule) |
 | d/L_eff | 7.1 (d/l_ex 212, L 30) | 25 (d/l_ex 300, L 12) | ≥ 7 (D3) |
@@ -282,6 +285,13 @@ bytes still to come of all running jobs minus its own expected bytes is
 ≥ 3 GB. The queue then waits instead of filling the disk (tested on the
 instance 2026-10-06); if checkpoints are not deleted for a day, fewer jobs
 run in parallel near the end.
+
+**Note on φ:** P is per core volume, so the φ effect on ln P contains the
+trivial dilution ln(0.69/0.55) = 0.23; it is reported with and without it.
+**Snapshots of a failed post-processing (POSTPROC_FAILED):** they stay on
+the instance; `cleanup_instance.py` does not delete them (it needs
+dissmap.json, which the Sobol runs do not write); they are removed only by a
+manual step after the failure is understood.
 
 **Analysis (estimand decided Chris 2026-10-06, audit 3 item 7, option C):**
 a core averages ≈ 10⁹ particles, so the target is the mean loss E[w] over
@@ -365,6 +375,8 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
   N = 96 + 8; a subset at α 0.01 with the first 32 Sobol points + 8 centre
   replicates, the same points and seeds; extensible to the full 96 + 8 at
   α 0.01 if needed (decision after the evaluation of the subset).
+  **Superseded 2026-10-06 (Chris):** at α 0.01 only the 8 centre
+  replicates, with snapshots (PLAN 4.0); a later own α study is possible.
 - N points of a scrambled Sobol sequence in 4 dimensions (scipy.stats.qmc,
   fixed design seed). The design must stay extensible (a prefix of the
   sequence is a valid design): the mapping of each point does not depend
@@ -381,7 +393,8 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
   9 mT loops jump from cycle to cycle, PROTOKOLL 7.15).
 - Random order of the runs over the GPUs (no correlation of factor and GPU).
 - 8 replicates at the centre point (L_eff = 18, r_p = 1.5, φ = 0.62,
-  d/l_ex = 252): pure error σ independent of the model, lack-of-fit test.
+  d/l_ex = 252): pure error σ independent of the model (with the corner
+  replicates a check of the scatter model, 4.0).
 - Disk of the instance (40 GB): large files are deleted when no longer needed
   (Chris, 2026-10-04), with `cleanup_instance.py`: dry run first, deletion
   only after the go for the printed list. Snapshots only after domains.json
@@ -403,8 +416,8 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
   significant, −0.07 ± 0.09).
 - Regression of each output on x = (ln Q_eff, r_p, φ, ln d/l_ex): linear,
   quadratic and two-factor interaction terms (15 coefficients), ordinary
-  least squares (the realisation scatter dominates the cycle statistics);
-  residual σ compared with the centre replicates (lack-of-fit F-test).
+  least squares (superseded by 4.0: Gamma GLM on w as main fit, OLS and Huber
+  as cross-checks, scatter model instead of the F-test).
   The centre is not exactly at the coded zero for ln Q_eff (+0.11); the
   regression does not need it there.
 - Ranking: change of the output over the full range of each factor (with
@@ -455,10 +468,10 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 | | Value |
 |---|---|
 | per run (V100, dx = 3), 5 amplitudes | 0.9 h (d/l_ex = 212) … 2.2 h (d/l_ex = 300); mean ≈ 1.42 h (review) |
-| per run, 7 amplitudes, converged relaxation (measured, d/l_ex 300) | 3.4 V100-h (α 0.1); α 0.01 with 9 cycles ≈ 4 V100-h (estimate) |
-| main design 96 + 8 at α 0.1 (decided 2026-10-04) | ≈ 240 … 350 V100-h ≈ 25 … 35 $ (estimate; d/l_ex 212 … 300 is cheaper than 300; exact from jobs.py when built) |
-| subset 32 + 8 at α 0.01 (decided) | ≈ 110 … 160 V100-h ≈ 11 … 16 $ (estimate) |
-| later extension of α 0.01 to 96 + 8 | + ≈ 64 runs ≈ + 20 … 26 $ |
+| per run, 7 amplitudes, converged relaxation (measured, d/l_ex 300) | 3.4 V100-h (α 0.1); α 0.01 per cycle the same rate (measured, audit 3) |
+| main design 96 + 8 + corners 12 at α 0.1 | ≈ 260 V100-h ≈ 26 $ (+ 4 … 5 % for the accumulators) |
+| α 0.01: 8 centre runs (decided 2026-10-06) | ≈ 20 V100-h ≈ 2 $ |
+| a later own α study | separate plan and go |
 | if step 1 needs f / 2 f pairs | × 1.5 |
 
 GPU selection: offers are shown to Chris before rent (low hourly rate).
@@ -486,7 +499,7 @@ Decision by Chris after step 2.
 
 | | Question | Options (cost estimates) |
 |---|---|---|
-| D1 | number of design points | **decided 2026-10-04: 96 + 8 at α 0.1 plus 32 + 8 at α 0.01 (same points), both extensible** (was: 128 + 8, based on σ_β ≈ 0.45 before the converged relaxation) |
+| D1 | number of design points | **decided: 96 + 8 at α 0.1 + 4 corners × 3 seeds, extensible; at α 0.01 only the 8 centre replicates (2026-10-06; the α 0.01 Sobol subset is dropped)** |
 | D2 | amplitudes | **decided: 7 (9 / 20 / 35 / 50 / 70 / 100 / 150 mT)** |
 | D3 | d/l_ex as factor and the cube window | **decided: (a) d/l_ex 212 … 300, d/L_eff ≥ 7; check of the residuals vs d/L_eff (below / above 10) in the analysis** |
 | D4 | frequency test corner | **decided: base point + corner L_eff 30, r_p 3** |
@@ -496,7 +509,7 @@ Decision by Chris after step 2.
 | Risk | Consequence | Measure |
 |---|---|---|
 | large dynamic share at 30 MHz | β measures damping | step 1 first; options for Chris |
-| regression model too simple | biased effects | lack-of-fit test with centre replicates; extend points |
+| regression model too simple | biased effects | residuals vs factors, scatter model, centre and corner replicates; extend points |
 | σ larger at some corners (small d, 9 mT) | larger errors there | weights from the cycle statistics; extension |
-| level bias of dx = 3 (≈ 30 %) | absolute losses uncertain | state as validity limit; optional step 3 |
+| level bias of dx = 3 (20 … 80 %, direction unknown) | absolute losses uncertain; d effect on ln P mesh-confounded | state as validity limit; mesh-check rule (4.0) |
 | d/l_ex = 212 is not "1 µm" for A = 10 pJ/m | — | interpret d/l_ex as exchange at fixed 1 µm (Js fixed) |
