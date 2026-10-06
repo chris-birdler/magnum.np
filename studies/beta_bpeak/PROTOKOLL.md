@@ -1293,6 +1293,42 @@ All mesh evidence with a valid state (newest first):
 - **Small particles (d/l_ex ≲ 100, ≈ 330 nm): dx 3 is not sufficient even
   for the qualitative level** (vortex core carries the process).
 
+### 7.29 Surface roughness with the converged state, α 0.1 (2026-10-06)
+
+`eval_rough.py` → results/rough.md. d/l_ex 300, base point, seeds 921 … 924,
+one job per amplitude, 5 cycles, paired by seed. A = staircase 10 nm
+(M300_dx3), B = staircase 5 nm (M300_dx15), C = smoothed surface 10 nm
+(R300f, `--surface fraction`: surface cells carry Ms, A, K scaled by their
+volume fraction; same volume as A, 7.6 % partial cells; the staircase has
+1.50× the sphere area).
+
+| comparison (paired, n = 4) | Δ ln w 9 mT | Δ ln w 50 mT | Δ ln w 100 mT | Δβ 9→50 | Δβ 50→100 | Δβ 9→100 |
+|---|---|---|---|---|---|---|
+| B − A (finer staircase) | −0.36 ± 0.24 | −0.26 ± 0.16 | −0.19 ± 0.10 | +0.05 ± 0.06 | +0.11 ± 0.10 | +0.06 ± 0.06 |
+| C − A (smoothed surface) | −0.15 ± 0.25 | +0.08 ± 0.17 | **+0.59 ± 0.10** | +0.13 ± 0.16 | **+0.74 ± 0.20** | **+0.30 ± 0.07** |
+
+β 9→100 mT: A 1.82 ± 0.10, B 1.89 ± 0.04, C 2.13 ± 0.10.
+
+- The smoothed surface gives much more loss at 100 mT in all 4 seeds
+  (+0.38 … +0.87 in ln w, balance ≈ 1.0) and a steeper β at 50 → 100 mT
+  (2.44 vs 1.70). At 9 and 50 mT the difference is within the scatter.
+- Refining the staircase (A → B) moves the result in the other direction
+  (−0.19 at 100 mT) and leaves β almost unchanged. Thus C is not the limit
+  of a finer staircase: the two surface models differ at high B, and the
+  difference is not a mesh convergence effect of the staircase.
+- Possible cause (hypothesis, not tested): in the fraction model the partial
+  surface cells carry a reduced Ms AND a reduced exchange A·f; cells with a
+  small f are weakly bound spins that can oscillate strongly at high fields
+  and dissipate. A real surface is a sharp boundary with the full Ms and A.
+  The fraction model is an effective-medium approximation whose dynamics is
+  not validated.
+- Consequence: the surface model is a source of model uncertainty at high B
+  (β above 50 mT). The staircase is kept (it converges with dx: A ≈ B in β).
+  A clean decision between the two models needs the fraction model at
+  dx 1.5 (if it moves towards B, the effect is an artifact of the partial
+  cells; ≈ 150 V100-h) or a test of the fraction model without scaling A.
+- α 0.01 part: running (rough300a).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
