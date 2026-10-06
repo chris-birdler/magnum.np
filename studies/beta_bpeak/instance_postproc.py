@@ -8,10 +8,10 @@ check p_box / p_dis = 1, R1 finite; then the acc_*.npz are deleted like the snap
      domains.json: wall measures, switched volume, l_C of the last cycle per stage, of init.pt and of the
      end state checkpoint.pt)
   2. check: the three JSON files exist and hold the same number of stages as there are snapshot stages
-  3. md5 of the four result files -> postproc.md5 (in the runs folder), then delete the *.vti of this run
-     (ONLY *.vti: init.pt and checkpoint.pt are never touched here)
+  3. md5 of the result files (up to 6) -> postproc.md5 (in the runs folder), then delete the *.vti and the
+     acc_*.npz of this run (ONLY these: init.pt and checkpoint.pt are never touched here)
   4. touch POSTPROC_DONE
-A run whose check fails keeps its snapshots and is listed in postproc_errors.log.
+A run whose check fails keeps its snapshots and accumulator files and is listed in postproc_errors.log.
 Only runs whose name matches --pattern (default: the Sobol runs S###, S###_a001, C#, C#_a001, K#_#) are
 touched. Every error of one run is caught (logged, the run keeps its snapshots); the loop never stops on it.
 Stops when the file --stop exists and no run is left to process.
@@ -121,7 +121,7 @@ def main():
                     for v in list(d.glob("*.vti")) + list(d.glob("acc_*_*.npz")):
                         v.unlink()
                     (d / "POSTPROC_DONE").write_text(time.strftime("%F %T\n"))
-                    print("%s %s: analysed, snapshots deleted" % (time.strftime("%T"), d.name), flush=True)
+                    print("%s %s: analysed, snapshots / accumulator files deleted" % (time.strftime("%T"), d.name), flush=True)
                 except Exception as e:                      # noqa: BLE001
                     with open(runs / "postproc_errors.log", "a") as f:
                         f.write("%s %s: after analysis: %r\n" % (time.strftime("%F %T"), d.name, e))

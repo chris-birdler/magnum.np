@@ -30,6 +30,10 @@ Unattended operation (audit 3, item 4):
 * --status FILE: a JSON status (running, done, failed, waiting, disabled GPUs, disk, reservations, alerts,
   post-processing state) is written every 5 min and at the end.
 * exit code 0 only if all jobs are DONE.
+* the retry state of each job (attempts, gate retry with its args, excluded) is kept in
+  <runs>/<name>/QUEUE_STATE.json, so a restart of the queue (instance restart) does not give a job new
+  attempts (audit 3, C2): an excluded job is skipped; a job in its gate retry resumes with the raised
+  relax_maxiter (without --no_resume). Delete the file by hand to give a job new attempts.
 """
 import argparse
 import json
@@ -106,6 +110,20 @@ def postproc_state(runs):
     return st
 
 
+def load_queue_state(d):
+    try:
+        return json.loads((d / "QUEUE_STATE.json").read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_queue_state(d, st):
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / "QUEUE_STATE.json.tmp"
+    tmp.write_text(json.dumps(st, indent=1))
+    os.replace(tmp, d / "QUEUE_STATE.json")
+
+
 def gate_args(args, maxiter):
     """Job args for the retry after a gate failure: --relax_maxiter raised, --no_resume (the unconverged
     init.pt of the first attempt must not be reused)."""
@@ -125,14 +143,23 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
     q = queue.Queue()
+    attempts, failed, done, disabled, alerts, gate_retried = {}, {}, [], set(), [], set()
     for name, args in jobs:
         if (runs / name / "DONE").exists():
             print("[skip] %s (DONE)" % name, flush=True)
             continue
+        qs = load_queue_state(runs / name)
+        if qs.get("excluded"):
+            failed[name] = "excluded earlier: %s" % qs["excluded"]
+            print("[skip] %s (%s)" % (name, failed[name]), flush=True)
+            continue
+        attempts[name] = int(qs.get("attempts", 0))
+        if qs.get("gate_retried"):
+            gate_retried.add(name)
+            args = " ".join(shlex.quote(x) for x in shlex.split(qs["args"]) if x != "--no_resume")
         q.put((name, args))
     lock = threading.Lock()
     running = {}                                    # name -> (run folder, expected bytes, gpu, start time)
-    attempts, failed, done, disabled, alerts, gate_retried = {}, {}, [], set(), [], set()
     active = {"n": 0}                               # jobs taken from the queue and not finished
     t_start = time.time()
 
@@ -235,6 +262,9 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                         retry = attempts[name] <= retries
                     print("[FAIL] gpu %s  %s  %.2f h  %s%s" % (gpu, name, h, why, ", again later" if retry else ""),
                           flush=True)
+                    save_queue_state(runs / name, {"attempts": attempts.get(name, 0),
+                                                    "gate_retried": name in gate_retried, "args": args,
+                                                    "excluded": None if retry else failed[name]})
                     if retry:
                         q.put((name, args))
                     fails = [(t, n) for t, n in fails if time.time() - t < burst_s] + [(time.time(), name)]

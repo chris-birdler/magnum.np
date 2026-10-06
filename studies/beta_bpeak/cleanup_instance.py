@@ -1,20 +1,23 @@
 #!/usr/bin/env python
 """
-Which large files on the instance can be deleted? (PLAN 4.2, decided 2026-10-04: delete large files
-when they are no longer needed.) Dry run by default: prints the list and the sizes; --apply deletes.
-Run it on the instance in the study folder. Deletion only after Chris's go for the printed list.
+Which large files on the instance can be deleted? (PLAN 4.0: delete large files when they are no longer
+needed.) Dry run by default: prints the list and the sizes; --apply deletes. Run it on the instance in the
+study folder. Deletion: checkpoint.pt of the Sobol runs under the standing decision of Chris 2026-10-06 (PLAN
+4.0), by Claude during the daily fetch, after this dry run; init.pt and everything else only after Chris's go
+for the printed list. (Snapshots and accumulator files of the Sobol runs are deleted by instance_postproc.py.)
 
 A file is deletable only if ALL its conditions hold:
   m_*.vti (snapshots)  the run is DONE, domains.json and dissmap.json exist and are newer than every
                        snapshot of the run, and both JSON files are listed in --local_md5 (fetched and
                        verified on the laptop)
   geometry.vti         as m_*.vti
-  checkpoint.pt,       the run is DONE and its summary.json is listed in --local_md5 (resume is no
-  ckpt_*.pt            longer needed); for a run with snapshots (snap_phases > 0 in config.json, e.g. all
-                       Sobol runs) also: POSTPROC_DONE exists, domains.json holds the end state ("final")
-                       and domains.json is listed in --local_md5 (audit 3, item 3)
-  init.pt              NEVER by default (it is small, 40 MB, and other runs start from it: the alpha 0.01
-                       runs of the Sobol subset and the 50 / 100 mT jobs of mesh300 use --init_from; a
+  checkpoint.pt,       the run is DONE, its summary.json AND the checkpoint file itself (and init.pt, if
+  ckpt_*.pt            the run has one) are listed in --local_md5, i.e. fetched and verified (resume is no
+                       longer needed; PLAN 4.0 fetch rule); for a run with snapshots (snap_phases > 0 in
+                       config.json, e.g. all Sobol runs) also: POSTPROC_DONE exists, domains.json holds the
+                       end state ("final") and domains.json is listed in --local_md5 (audit 3, items 3, C1)
+  init.pt              NEVER by default (it is small, ~25 MB, and other runs start from it: the alpha 0.01
+                       centre runs, a later alpha study and the 50 / 100 mT jobs of mesh300 use --init_from; a
                        job file that is written later cannot be checked now). Only with --include_init,
                        and then only if the run is DONE and every job in jobs/*.txt that uses it is DONE.
 Everything else is never touched.
@@ -45,9 +48,10 @@ def dependents(jobs_dir):
     return dep
 
 
-def checkpoint_ok(d, local):
-    """May checkpoint.pt / ckpt_*.pt of run folder d be deleted? (conditions in the module doc)"""
-    if not (d / "DONE").exists() or ("%s/summary.json" % d.name) not in local:
+def checkpoint_ok(d, local, name="checkpoint.pt"):
+    """May the checkpoint file `name` of run folder d be deleted? (conditions in the module doc)"""
+    need = ["summary.json", name] + (["init.pt"] if (d / "init.pt").exists() else [])
+    if not (d / "DONE").exists() or any(("%s/%s" % (d.name, f)) not in local for f in need):
         return False
     try:
         snap = json.loads((d / "config.json").read_text()).get("snap_phases", 0) > 0
@@ -85,7 +89,7 @@ def main():
                 all("%s/%s" % (d.name, j.name) in local for j in js)
             (todo if ok else keep).extend((v, "snapshot", ok) for v in vtis)
         for ck in list(d.glob("checkpoint.pt")) + list(d.glob("ckpt_*.pt")):
-            ok = checkpoint_ok(d, local)
+            ok = checkpoint_ok(d, local, ck.name)
             (todo if ok else keep).append((ck, "checkpoint", ok))
         ip = d / "init.pt"
         if ip.exists():

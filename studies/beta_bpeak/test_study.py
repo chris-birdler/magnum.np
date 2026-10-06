@@ -377,10 +377,13 @@ def test_cleanup_checkpoint_needs_end_state_analysis(tmp_path):
     c = mk("S003", 16, postproc=True, final=True)        # analysed and fetched
     e = mk("S004", 16, postproc=True, final=False)       # analysed without end state
     f = mk("OLD1", 0)                                    # no snapshots
-    local = {"%s/summary.json" % x for x in ("S001", "S002", "S003", "S004", "OLD1")} | \
-        {"S003/domains.json", "S004/domains.json"}
+    (c / "init.pt").touch()
+    local = {"%s/%s" % (x, f) for x in ("S001", "S002", "S003", "S004", "OLD1") for f in ("summary.json", "checkpoint.pt")} | \
+        {"S003/domains.json", "S004/domains.json", "S003/init.pt"}
     assert [CI.checkpoint_ok(x, local) for x in (a, b, c, e, f)] == [False, False, True, False, True]
     assert not CI.checkpoint_ok(c, local - {"S003/summary.json"})
+    assert not CI.checkpoint_ok(c, local - {"S003/checkpoint.pt"})        # checkpoint itself not fetched (C1)
+    assert not CI.checkpoint_ok(c, local - {"S003/init.pt"})              # init.pt not fetched (C1)
 
 
 def _fake_command(args, out):
@@ -389,6 +392,7 @@ def _fake_command(args, out):
             "fail": "raise SystemExit(1)",
             "gate": "raise SystemExit(3)",
             "gate --relax_maxiter 200000 --no_resume": "open(r'%s/DONE','w').write('ok')" % out,
+            "gate --relax_maxiter 200000": "open(r'%s/DONE','w').write('ok')" % out,
             "gate2": "raise SystemExit(3)",
             "gate2 --relax_maxiter 200000 --no_resume": "raise SystemExit(3)",
             "hang": "import time; time.sleep(30)",
@@ -443,3 +447,20 @@ def test_all_study_scripts_compile():
     import py_compile
     for f in sorted(pathlib.Path(__file__).resolve().parent.glob("*.py")):
         py_compile.compile(str(f), doraise=True)
+
+
+def test_run_queue_state_survives_restart(tmp_path):
+    """run_queue: the retry state is kept in QUEUE_STATE.json (audit 3, C2): an excluded job is not run again
+    after a restart; a job in its gate retry resumes with the raised relax_maxiter, without --no_resume."""
+    import json
+    import run_queue
+    runs = tmp_path / "runs"
+    res = run_queue.run_jobs([("X", "flaky")], ["g0"], runs, retries=0, command=_cmd, burst_n=99)
+    assert res["failed"]["X"] == "exit code 1"
+    res = run_queue.run_jobs([("X", "flaky")], ["g0"], runs, retries=0, command=_cmd, burst_n=99)
+    assert res["failed"]["X"].startswith("excluded earlier") and not (runs / "X" / "DONE").exists()
+    run_queue.save_queue_state(runs / "G", {"attempts": 0, "gate_retried": True, "excluded": None,
+                                            "args": "gate --relax_maxiter 200000 --no_resume"})
+    res = run_queue.run_jobs([("G", "gate")], ["g0"], runs, command=_cmd, burst_n=99)
+    assert res["done"] == ["G"]
+    assert json.loads((runs / "X" / "QUEUE_STATE.json").read_text())["excluded"] == "exit code 1"
