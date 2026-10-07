@@ -621,3 +621,32 @@ def test_demag_pbc_slab_and_zero_mean():
     r = torch.randn(n + (3,), generator=g, dtype=torch.float64)
     state.m = r / torch.linalg.norm(r, dim=-1, keepdim=True)
     assert float(DemagFieldPBC().h(state).mean(dim=(0, 1, 2)).abs().max()) < 1e-9 * Ms
+
+
+def test_stress_term_uses_its_own_parameters():
+    """Physics invariant (PROTOKOLL 7.40): the second uniaxial term of run_loops, UniaxialAnisotropyField(Ku="Kp",
+    Ku_axis="Kp_axis"), acts with K_p along the particle axis and does not fall back to Ku / Ku_axis (else r_p would
+    be a copy of the Herzer term); h = 2 K (m.u) u / (mu0 Ms); easy axis (energy lower for m || u than m _|_ u)."""
+    import torch
+    from magnumnp import Mesh, State, constants
+    from magnumnp.field_terms import UniaxialAnisotropyField
+    n = (2, 2, 2)
+    state = State(Mesh(n, (1e-9, 1e-9, 1e-9)))
+    Ms, K = 1.0e6, 5.0e3
+    u = torch.tensor([0.6, 0.0, 0.8], dtype=torch.float64)
+    v = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float64)            # the Herzer axis, different from u
+    state.material = {"Ms": torch.full(n + (1,), Ms, dtype=torch.float64),
+                      "Ku": torch.zeros(n + (1,), dtype=torch.float64), "Ku_axis": v.expand(n + (3,)).clone(),
+                      "Kp": torch.full(n + (1,), K, dtype=torch.float64), "Kp_axis": u.expand(n + (3,)).clone()}
+    m = torch.tensor([1.0, 0.0, 0.0], dtype=torch.float64)
+    state.m = m.expand(n + (3,)).clone()
+    herzer, stress = UniaxialAnisotropyField(), UniaxialAnisotropyField(Ku="Kp", Ku_axis="Kp_axis")
+    assert float(herzer.h(state).abs().max()) == 0.0                  # Ku = 0: the default term is silent
+    h = stress.h(state)[0, 0, 0]
+    expect = 2 * K / (constants.mu_0 * Ms) * float(m @ u) * u
+    assert torch.allclose(h, expect, rtol=1e-12)
+    state.m = u.expand(n + (3,)).clone()
+    E_par = float(stress.E(state))
+    state.m = v.expand(n + (3,)).clone()
+    E_perp = float(stress.E(state))
+    assert E_par < E_perp                                               # easy axis

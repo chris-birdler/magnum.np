@@ -129,9 +129,11 @@ There are two sources. Both are uniaxial. There is no other anisotropy.
      particle has almost no anisotropy, and only the particle-scale
      anisotropy (item 2) is left. This end is not covered by the cubes.
 2. **Residual stress on the particle scale.** One uniaxial anisotropy
-   K_p = r_p K_eff per particle. The easy axes are deterministic:
-   cos θ = 1/8, 3/8, 5/8, 7/8 to the drive (midpoint rule for an isotropic
-   powder). There is no orientation statistics.
+   K_p = r_p K_eff per particle. The easy axes are deterministic: the 4
+   body diagonals of a cube (isotropic set, ⟨u uᵀ⟩ = I/3), turned so that
+   along the drive ⟨cos²θ⟩ = 1/3 and ⟨cos⁴θ⟩ = 1/5 (cos θ = 0.795 / 0.188 /
+   0.188 / 0.795; since 2026-10-07, 7.37; the earlier set was not isotropic,
+   7.36). There is no orientation statistics.
 
 ### 2.2 Parameters
 
@@ -615,7 +617,8 @@ including the voids, P = W · f; mean ± σ per realisation (SE of the mean)):**
   (the relaxation ends in other states on another mesh or with r_p).
   Evaluation therefore uses group means with Welch errors.
 - Hints for β (d/l_ex = 96, vs base): L_eff 30: Δβ −0.63 ± 0.27, loss ×0.31;
-  r_p = 3: Δβ −0.31 ± 0.22, loss ×0.24. L_eff = 30 at d/l_ex = 96 has
+  r_p = 3: Δβ −0.31 ± 0.22, loss ×0.24 (old, non-isotropic stress axes,
+  7.36: r_p part not valid). L_eff = 30 at d/l_ex = 96 has
   d/L_eff = 3.2 (< 5, outside the valid window): measure this effect at 1 µm.
 - β ≈ 2 between 9 and 50 mT. The dynamic (damping) share at 30 MHz and
   α = 0.1 is not measured; it also gives β = 2. Check with f vs 2 f first.
@@ -623,7 +626,8 @@ including the voids, P = W · f; mean ± σ per realisation (SE of the mean)):**
 ### 7.9 Frequency test (PLAN step 1, 2026-10-02/03): NEGATIVE
 
 d/l_ex = 300, dx = 3, α = 0.1, virgin state, 7 amplitudes; f (30 MHz) and
-2 f, 4 seeds each; base point (L_eff 12, r_p 0) and corner (L_eff 30, r_p 3).
+2 f, 4 seeds each; base point (L_eff 12, r_p 0) and corner (L_eff 30, r_p 3;
+the corner used the old, non-isotropic stress axes, 7.36).
 w_h = 2 w(f) − w(2 f), dynamic share = 1 − w_h/w(f), mean ± SE over the seeds.
 
 | B_peak | dynamic share, base | dynamic share, corner | w(2 f)/w(f) base / corner |
@@ -1116,7 +1120,8 @@ the scripts. Corrections taken over (sections updated): §2, §3, §4, 7.15,
   (L_eff 30 and r_p 3) vs F_base_f, n = 4 + 4, 20 … 150 mT (9 mT not
   valid, unconverged relaxation, two factors changed together):
   Δβ = −0.04 ± 0.06; Δ ln P = +0.09 ± 0.09 / +0.02 ± 0.05 / +0.02 ± 0.04 at
-  20 / 50 / 100 mT. Hint: no anisotropy lever above 20 mT.
+  20 / 50 / 100 mT. Hint: no anisotropy lever above 20 mT. (Old,
+  non-isotropic stress axes, 7.36: the r_p part of this hint is not valid.)
 - β is higher at small B than at 50 mT: paired β(9-35) − β(35-70) =
   +0.24 ± 0.11 (n = 11, p ≈ 0.05); without s921 +0.15 ± 0.07 (p ≈ 0.05).
   A hint; 7.16 "no curvature" came from the quadratic fit.
@@ -1711,6 +1716,19 @@ recomputed and has a test. Status (all tests pass, 46 in total):
 | demag | true periodic, k = 0 removed | periodic slab stack: H = ∓Ms/2 inside / outside; uniform full box: H = 0; box mean of H = 0 for random m (test) | pass |
 | geometry | φ exact, contact rule, box quantum | existing tests | pass |
 
+Added after a review: the stress term of run_loops,
+UniaxialAnisotropyField(Ku="Kp", Ku_axis="Kp_axis"), uses its own parameters
+(test: with Ku = 0 the default term is silent; the Kp term gives
+h = 2 K_p (m·u) u/(μ₀Ms); energy lower for m ∥ u: easy axis). The cube-axis
+test checks the full tensor (diagonal and off-diagonal), not one component.
+Earlier runs with r_p > 0 and the old axes (grep of all config.json, local
+and instance): P2_rp3 (planning pilot 7.8, d/l_ex 96), F_corner_f / _2f
+(frequency-test corner 7.9, L_eff 30, r_p 3) and through them the
+anisotropy hint in 7.24; these passages are marked. All other earlier
+studies have r_p = 0 and are not affected. Known limit (not fixed, no
+trigger now): INIT_KEYS has no axis-set tag, so --init_from would accept
+an old-axes init.pt with r_p > 0 (such files exist only in the local
+archive).
 The initial-state code was moved into `run_loops.virgin_m0` (same random
 stream, no change of the states).
 Instance test with commit 153f29d (d/l_ex 96, L_eff 12, r_p 3, 2 amplitudes,
