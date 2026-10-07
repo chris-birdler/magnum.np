@@ -491,6 +491,8 @@ def _synthetic_recs(shape_of_x, seed=1):
         lnw = lnw + np.log(rng.gamma(k, 1.0 / k, len(lnw)))
         for m, v in zip(AD.AMPS_MT, lnw):
             rec["lnw@%gmT" % m] = float(v)
+        for m, v in zip(AD.AMPS_MT, lnw):
+            rec["lnwdis@%gmT" % m] = float(v)
         rec.update(AD.per_run_outputs(lnw))
         recs.append(rec)
     return recs
@@ -527,3 +529,16 @@ def test_analyze_design_mean_estimand_under_heteroscedastic_scatter():
     assert m["ci95"][0] - 0.02 <= 0.0 <= m["ci95"][1] + 0.02
     assert a["eff"] < -0.05 and abs(m["eff"]) < abs(a["eff"])
     assert res["scatter"]["lnw@50mT"]["significant"]["r_p"]
+
+
+def test_analyze_design_flag_rule_on_archived_runs():
+    """Flag rule (PROTOKOLL 7.39): a run is flagged if |w_dis/w_loop - 1| > 0.20 at any amplitude. On the archived
+    runs of the stopped design (if present) this flags a minority, not all runs as the old rule did."""
+    import analyze_design as AD
+    arch = pathlib.Path(__file__).resolve().parent / "runs" / "_archive_sobol_v2_oldaxes"
+    if not arch.exists():
+        pytest.skip("archive not present")
+    recs, _ = AD.load_runs(arch)
+    n_flag = sum(r["flagged"] for r in recs)
+    assert len(recs) == 20 and 0 < n_flag < len(recs) // 2
+    assert all(all(math.isfinite(r["lnwdis@%gmT" % m]) for m in AD.AMPS_MT) for r in recs)

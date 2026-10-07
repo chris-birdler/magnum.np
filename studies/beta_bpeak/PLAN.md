@@ -373,7 +373,12 @@ status_sobol.json every 5 min. Post-processing runs under a restart loop.
 - Cross-checks, reported next to the main fit: (A) OLS of ln w and of the
   per-run β with HC3 SE (it estimates E[ln w], the typical run); (B) Huber
   fit of the same (the bulk without rare states); the main fit without
-  flagged runs (4.3a). A clear difference between the main fit and fit B
+  flagged runs and the main fit with w_dis instead of w_loop. **Flagged
+  run** (rule fixed 2026-10-07 from the earlier data, PROTOKOLL 7.39):
+  |w_dis/w_loop − 1| > 0.20 at any amplitude, i.e. a state change during the
+  measured cycles (7 of 20 runs of the stopped design, 3 of 8 base-point
+  runs); the flags `c`, `o`, `#`, `!` are reported per run only. A clear
+  difference between the main fit and fit B
   means that the rate of rare states depends on the factors: reported as a
   finding.
 - φ: w is per core volume, so the φ effect on ln E[w] contains the trivial
@@ -426,9 +431,11 @@ analysis). The code since bc6d5bb has the isotropic tetrahedral axes
 (1) Chris's go; (2) on the instance: no Sobol run folder may exist (else
 run_queue skips the old DONE runs); fetch the pinned commit, write
 /root/sobol_commit, copy the chain, add the onstart line, start (see the
-head of instance/chain_sobol.sh); (3) after ≈ 4 h check K1_0 … K4_0. Open
-before the restart: the definition of a "flagged run" for the sensitivity
-fit (the rule "any flag at any amplitude" flagged all 20 runs, 7.36).
+head of instance/chain_sobol.sh); (3) after ≈ 4 h check K1_0 … K4_0.
+Decided before the restart (Chris 2026-10-07): r_p stays relative
+(K_p = r_p K_eff, r_p 0 … 3; the ratio of coherent to random anisotropy is
+the transferable quantity; r_p ≫ 3 is a stated limit, pre-test option);
+flag rule as above (7.39).
 
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
 cells, cost ∝ cells, + 4 … 5 % for the accumulators):** per run 1.2 … 4.2
@@ -545,8 +552,10 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 - Order: one seed of each corner K1 … K4 first (tests relaxation, time,
   disk and post-processing at the extremes in the first ≈ 4 h), then the
   shuffled rest.
-- Flags `#`, `o`, `c`, `*` are reported per run but do not exclude it.
-  A sensitivity analysis repeats the regression without the flagged runs.
+- Flags `#`, `o`, `c`, `*`, `!` are reported per run but do not exclude it.
+  A sensitivity analysis repeats the regression without the flagged runs
+  (flagged: |w_dis/w_loop − 1| > 0.20 at any amplitude, PLAN 4.0) and with
+  w_dis instead of w_loop.
 - Raw data stay local with MANIFEST.md5 (no commit); the per-run feature
   CSV and the regression results are committed.
 - Results go to PROTOKOLL (tables, response plots, recommendation with

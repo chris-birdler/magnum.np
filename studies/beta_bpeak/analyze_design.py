@@ -9,7 +9,9 @@ Estimand: the mean loss E[w] over the realisations (a core averages ~1e9 particl
              over the runs
   fit A      OLS of the per-run ln w and beta with HC3 SE (estimates E[ln w], the typical run)
   fit B      Huber fit of the same (the bulk without rare states)
-  no flags   main fit without the runs with a flag c / o / * / # at any amplitude (PLAN 4.3a)
+  no flags   main fit without the flagged runs: |w_dis/w_loop - 1| > 0.20 at any amplitude (state change in the
+             measured cycles; PROTOKOLL 7.39)
+  w_dis      main fit with w_dis (LLG dissipation) instead of w_loop
 Range effect of a factor = mean over the design points of (output with the factor at its maximum) - (at its minimum).
 Decision rules: primary outputs beta_all and lnw@50mT x 4 factors = 8 tests, Holm 5 %; class "lever" (significant after
 Holm), "not a lever" (90 % CI inside +-0.15), else "not determined"; only hints for the other outputs.
@@ -45,7 +47,8 @@ OUTPUTS = ["beta@9-35mT", "beta@35-70mT", "beta@70-150mT", "beta_all", "lnw@10mT
 PRIMARY = ("beta_all", "lnw@50mT")
 MARGIN = 0.15
 PATTERN = re.compile(r"^(S\d{3}|C\d|K\d_\d)$")
-FLAG_CHARS = set("co*#")
+BAL_EVENT = 0.20      # a run is flagged if |w_dis/w_loop - 1| > BAL_EVENT at any amplitude (state change in the
+#                       measured cycles; rule fixed 2026-10-07 from the earlier data, PROTOKOLL 7.39)
 
 
 # --- data ---------------------------------------------------------------------------------------------------------
@@ -70,10 +73,17 @@ def run_record(d):
     rec = {"name": d.name, "alpha": cfg["alpha"], "seed": cfg["seed"],
            "lnQ": math.log(cfg.get("Q_eff") or 1.0 / Leff ** 2), "r_p": cfg["r_p"], "phi": cfg.get("phi_vox", cfg["phi"]),
            "lnd": math.log(cfg.get("d_lex_used", cfg["d_lex"])), "d_over_L": cfg.get("d_lex_used", cfg["d_lex"]) / Leff,
-           "flagged": any(set(analyze.flags(r)) & FLAG_CHARS for r in rows),
+           "flagged": any(abs(r["balance"] - 1.0) > BAL_EVENT for r in rows),
+           "flags": [analyze.flags(r) for r in rows],
            "w_dis": [r["w_dis"] for r in rows], "b_mT": bm.tolist()}
     for k, mT in enumerate(AMPS_MT):
         rec["lnw@%gmT" % mT] = float(lnw[k])
+    lwd = np.log([r["w_dis"] for r in rows])                 # the same at the nominal amplitudes from w_dis
+    lnwd = np.interp(np.log(AMPS_MT), np.log(bm), lwd)
+    lnwd[0] = lwd[0] + (lwd[1] - lwd[0]) / math.log(bm[1] / bm[0]) * math.log(AMPS_MT[0] / bm[0])
+    lnwd[-1] = lwd[-1] + (lwd[-1] - lwd[-2]) / math.log(bm[-1] / bm[-2]) * math.log(AMPS_MT[-1] / bm[-1])
+    for k, mT in enumerate(AMPS_MT):
+        rec["lnwdis@%gmT" % mT] = float(lnwd[k])
     rec.update(per_run_outputs(lnw))
     return rec
 
@@ -180,10 +190,10 @@ def range_effects_glm(coefs, X):
     return eff
 
 
-def main_fit(recs, n_boot=1000, seed=20261007, weights=None):
+def main_fit(recs, n_boot=1000, seed=20261007, weights=None, key="lnw"):
     X = coded(recs)
     T = terms(X)
-    W = np.exp(np.array([[r["lnw@%gmT" % m] for m in AMPS_MT] for r in recs]))
+    W = np.exp(np.array([[r["%s@%gmT" % (key, m)] for m in AMPS_MT] for r in recs]))
     est = range_effects_glm(glm_coefs(T, W, weights), X)
     rng = np.random.default_rng(seed)
     boots, n_fail = [], 0
@@ -350,8 +360,9 @@ def analyse(recs, n_boot=1000, runs=None):
     fitB = linear_fit(recs, "huber")
     unflagged = [r for r in recs if not r["flagged"]]
     noflag = main_fit(unflagged, max(200, n_boot // 5))[0] if len(unflagged) >= 30 else None
+    wdis = main_fit(recs, max(200, n_boot // 5), key="lnwdis")[0] if all("lnwdis@9mT" in r for r in recs) else None
     res = {"n_runs": len(recs), "n_flagged": len(recs) - len(unflagged), "boot": info, "main": main, "A": fitA,
-           "B": fitB, "noflag": noflag, "scatter": sc, "classes": classify(main), "mesh_trigger": mesh_trigger(main),
+           "B": fitB, "noflag": noflag, "wdis": wdis, "scatter": sc, "classes": classify(main), "mesh_trigger": mesh_trigger(main),
            "d3": d3_check(recs, fitA), "phi_dilution": math.log(RANGES["phi"][1] / RANGES["phi"][0])}
     if runs is not None:
         res["alpha"] = alpha_test(runs)
@@ -372,16 +383,17 @@ def report(res):
             dil = " [%+.3f]" % (m["eff"] - res["phi_dilution"]) if (f == "phi" and o.startswith("lnw")) else ""
             L.append("| %s | %s | %+.3f%s (%+.3f … %+.3f) | %+.3f … %+.3f | %s | %+.3f ± %.3f | %+.3f ± %.3f |" %
                      (o, f, m["eff"], dil, *m["ci95"], *m["ci90"], res["classes"][(o, f)], a["eff"], a["se"], b["eff"], b["se"]))
-    L += ["", "## Secondary outputs (hints only)", "", "| output | factor | main fit (95 % CI) | fit A | fit B | without flagged runs |",
-          "|---|---|---|---|---|---|"]
+    L += ["", "## Secondary outputs (hints only)", "", "| output | factor | main fit (95 % CI) | fit A | fit B | without flagged runs | with w_dis |",
+          "|---|---|---|---|---|---|---|"]
     for o in OUTPUTS:
         if o in PRIMARY:
             continue
         for f in FACTORS:
             m, a, b = res["main"][(o, f)], res["A"][(o, f)], res["B"][(o, f)]
             nf = res["noflag"][(o, f)]["eff"] if res["noflag"] else float("nan")
-            L.append("| %s | %s | %+.3f (%+.3f … %+.3f) | %+.3f ± %.3f | %+.3f ± %.3f | %+.3f |" %
-                     (o, f, m["eff"], *m["ci95"], a["eff"], a["se"], b["eff"], b["se"], nf))
+            wd = res["wdis"][(o, f)]["eff"] if res.get("wdis") else float("nan")
+            L.append("| %s | %s | %+.3f (%+.3f … %+.3f) | %+.3f ± %.3f | %+.3f ± %.3f | %+.3f | %+.3f |" %
+                     (o, f, m["eff"], *m["ci95"], a["eff"], a["se"], b["eff"], b["se"], nf, wd))
     hits, corners = res["mesh_trigger"]
     L += ["", "## Scatter model (fit A residuals, Holm over 4 slopes)", ""]
     for o, s in res["scatter"].items():

@@ -1673,6 +1673,27 @@ runs/_archive_sobol_v2_oldaxes (md5 check of all 400 files OK); the small
 files of the 4 interrupted runs are there too (no .pt / .vti / .npz).
 eval_sobol_partial.py reads the archive. Restart procedure: PLAN 4.0.
 
+### 7.39 Decisions before the restart: r_p relative, flag rule (2026-10-07)
+
+- r_p stays relative (Chris, option A): K_p = r_p K_eff, r_p 0 … 3. The
+  ratio of the coherent particle anisotropy to the random Herzer anisotropy
+  is the transferable quantity (our K_eff of 1 … 6 kJ/m³ is fictitious; real
+  nanocrystalline K_eff is a few J/m³, Herzer; literature value), so the
+  absolute K_p does not transfer anyway. Limit: r_p ≫ 3 (possible in real
+  materials, rough estimate) is not covered at dx 3 (wall < 2 cells at
+  L_eff 12); pre-test option r_p 3 vs 6 at larger L_eff kept.
+- Flag rule (set by Claude from the earlier data, Chris: "aus der
+  Vorerfahrung"): a run is flagged if |w_dis/w_loop − 1| > 0.20 at any
+  amplitude. Data: the median of |w_dis/w_loop − 1| is 0.5 % (140 Sobol
+  stages); > 20 % in 7 of 140 Sobol stages (7 of 20 runs; maximum 9.0 at
+  K4_0 35 mT) and in 5 of 56 base-point stages (3 of 8 runs). Such a stage
+  has a state change during the measured cycles (released stored energy
+  appears in w_dis, not in w_loop); its w is not a stationary loss. The flags
+  `o` (11 of 20 runs), `#` (9), `!` (8) describe the state and are reported
+  only; `c` did not occur. Second sensitivity fit: the main fit with w_dis
+  instead of w_loop. Implemented in analyze_design.py (test on the archive:
+  a minority flagged).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
