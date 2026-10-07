@@ -1738,6 +1738,17 @@ K_eff 6217 J/m³, K_p 18651 J/m³ = 3 K_eff; accumulator sum checks 1.000000;
 post-processing done; test folder deleted. No Sobol run folder on the
 instance.
 
+### 7.41 Sobol design v2 restarted with the isotropic stress axes (2026-10-07 08:53 UTC)
+
+Go by Chris after the checks of 7.37 … 7.40 and a check that no old data
+can interfere (no Sobol run folder, QUEUE_STATE, ALL10_DONE, shuffled job
+file, status or pin on the instance; the 8 α 0.01 jobs start only from the
+new C#/init.pt; locally no Sobol run in runs/). Pinned commit 2da32a8,
+onstart entry, 124 jobs; K1_0 … K4_0 first; the configs show
+cos_theta_p = 0.795 / 0.188 / 0.188 / 0.795. Same seeds as the stopped
+design: the 20 archived points can be compared pairwise (same cubes and
+initial state, only the stress axes differ). Credit 50.37 $.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
