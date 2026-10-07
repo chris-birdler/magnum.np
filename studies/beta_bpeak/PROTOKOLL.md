@@ -1589,6 +1589,24 @@ pinned commit 181b9ff, onstart entry, 124 jobs (104 main + 12 corners, then
 Credit at start 6.16 $ (≈ 14 h at ≈ 0.43 $/h): top-up by Chris needed
 before ≈ 2026-10-07 09:00 UTC.
 
+### 7.35 Analysis code of the Sobol design (2026-10-07, before any result is looked at)
+
+`analyze_design.py` implements PLAN 4.0 (main fit Gamma GLM per nominal
+amplitude with bootstrap over the runs; fits A (OLS, HC3) and B (Huber);
+fit without flagged runs; scatter model; Holm on the 8 primary tests; TOST
+±0.15; mesh-check trigger; D3 check; α 0.01 pair test with
+R = 10 (R1'/R1)(w_dis'/w_dis)). ln w of each run is interpolated to the
+nominal amplitudes (linear in ln B; b is within ≈ 4 % of the target).
+Tests on synthetic data on the real design (known answer):
+(1) constant scatter: all 8 true primary effects in the 95 % CI; exactly the
+2 true levers found (r_p on β_all +0.30, φ on ln E[w] 50 mT +0.40);
+(2) scatter growing with r_p, mean independent of r_p: the main fit finds no
+r_p effect, fit A is biased (E[ln w]), the scatter model finds the r_p slope.
+Loader check on the 13 fetched runs: all parsed, outputs finite (values not
+looked at). Runtime ≈ 0.14 s per bootstrap resample (1000 → ≈ 2.5 min).
+Environment pinned in requirements-analysis.txt (statsmodels 0.15.0: 0.14.4
+does not import with scipy 1.18).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

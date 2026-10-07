@@ -464,3 +464,61 @@ def test_run_queue_state_survives_restart(tmp_path):
     res = run_queue.run_jobs([("G", "gate")], ["g0"], runs, command=_cmd, burst_n=99)
     assert res["done"] == ["G"]
     assert json.loads((runs / "X" / "QUEUE_STATE.json").read_text())["excluded"] == "exit code 1"
+
+
+def _synthetic_recs(shape_of_x, seed=1):
+    """Synthetic runs on the real design (results/sobol_design.csv, alpha 0.1): ln E[w](B) = -9 + beta(x) ln(B/50)
+    + 0.2 x_phi, beta(x) = 1.8 + 0.15 x_rp (coded x); w = E[w] * Gamma(k(x), 1/k(x)) (mean 1) per amplitude."""
+    import csv
+    import analyze_design as AD
+    rows = [r for r in csv.DictReader(open(pathlib.Path(__file__).resolve().parent / "results" / "sobol_design.csv"))
+            if float(r["alpha"]) == 0.1]
+    rng = np.random.default_rng(seed)
+    recs = []
+    for r in rows:
+        rec = {"name": r["name"], "lnQ": math.log(1.0 / float(r["Leff_lex"]) ** 2), "r_p": float(r["r_p"]),
+               "phi": float(r["phi"]), "lnd": math.log(float(r["d_lex"])), "d_over_L": float(r["d_over_L"]),
+               "flagged": False}
+        x = AD.coded([rec])[0]
+        beta = 1.8 + 0.15 * x[1]
+        k = shape_of_x(x)
+        lnw = np.array([-9.0 + beta * math.log(m / 50.0) + 0.2 * x[2] for m in AD.AMPS_MT])
+        lnw = lnw + np.log(rng.gamma(k, 1.0 / k, len(lnw)))
+        for m, v in zip(AD.AMPS_MT, lnw):
+            rec["lnw@%gmT" % m] = float(v)
+        rec.update(AD.per_run_outputs(lnw))
+        recs.append(rec)
+    return recs
+
+
+def test_analyze_design_recovers_known_effects():
+    """analyze_design on synthetic data with a known answer (constant scatter): the true range effects lie in the
+    95 % CI of the main fit; r_p is a lever for beta_all (true +0.30), phi for ln E[w] 50 mT (true +0.40); the
+    other 6 primary tests are not levers."""
+    import json
+    import analyze_design as AD
+    recs = _synthetic_recs(lambda x: 50.0)
+    res = AD.analyse(recs, n_boot=200)
+    truth = {("beta_all", f): (0.30 if f == "r_p" else 0.0) for f in AD.FACTORS}
+    truth.update({("lnw@50mT", f): (0.40 if f == "phi" else 0.0) for f in AD.FACTORS})
+    for k, t in truth.items():
+        lo, hi = res["main"][k]["ci95"]
+        assert lo - 0.02 <= t <= hi + 0.02, (k, t, lo, hi)
+    assert res["classes"][("beta_all", "r_p")] == "lever" and res["classes"][("lnw@50mT", "phi")] == "lever"
+    assert sum(v == "lever" for v in res["classes"].values()) == 2
+    assert res["boot"]["n_fail"] == 0
+    txt, js = AD.report(res), AD.to_json(res)              # the report and the JSON can be written
+    assert "Primary outputs" in txt and "lever" in txt and json.loads(js)["n_runs"] == len(recs)
+
+
+def test_analyze_design_mean_estimand_under_heteroscedastic_scatter():
+    """The scatter grows with r_p (Gamma shape 64 -> 4), the mean E[w] does not depend on r_p. The main fit (mean)
+    finds no r_p effect on ln E[w]; fit A (OLS of ln w, E[ln w]) is biased by -(1/8 - 1/128) ~ -0.12; the scatter
+    model finds the r_p slope."""
+    import analyze_design as AD
+    recs = _synthetic_recs(lambda x: 16.0 * 4.0 ** (-x[1]), seed=2)
+    res = AD.analyse(recs, n_boot=200)
+    m, a = res["main"][("lnw@50mT", "r_p")], res["A"][("lnw@50mT", "r_p")]
+    assert m["ci95"][0] - 0.02 <= 0.0 <= m["ci95"][1] + 0.02
+    assert a["eff"] < -0.05 and abs(m["eff"]) < abs(a["eff"])
+    assert res["scatter"]["lnw@50mT"]["significant"]["r_p"]

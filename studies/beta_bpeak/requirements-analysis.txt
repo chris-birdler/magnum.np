@@ -1,0 +1,7 @@
+# laptop analysis environment of the beta_bpeak study (CPU), pinned 2026-10-07
+numpy==2.5.3
+scipy==1.18.1
+statsmodels==0.15.0
+pandas==3.0.6
+torch==2.14.1  # CPU wheel: pip install torch --index-url https://download.pytorch.org/whl/cpu
+pyvista
