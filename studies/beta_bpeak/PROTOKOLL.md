@@ -1713,6 +1713,12 @@ recomputed and has a test. Status (all tests pass, 46 in total):
 
 The initial-state code was moved into `run_loops.virgin_m0` (same random
 stream, no change of the states).
+Instance test with commit 153f29d (d/l_ex 96, L_eff 12, r_p 3, 2 amplitudes,
+--acc, snapshots): relaxation converged (3000 iterations); config
+cos_theta_p = 0.7947 / 0.1876 / 0.1876 / 0.7947 (the new tetrahedral set),
+K_eff 6217 J/m³, K_p 18651 J/m³ = 3 K_eff; accumulator sum checks 1.000000;
+post-processing done; test folder deleted. No Sobol run folder on the
+instance.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
