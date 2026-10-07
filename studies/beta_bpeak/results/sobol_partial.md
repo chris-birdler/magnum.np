@@ -1,6 +1,6 @@
 # Sobol design v2, stopped: exploratory evaluation of the finished runs
 
-Runs: 20 finished at α 0.1 (C6, K1_0, K2_0, K2_2, K3_0, K3_1, K4_0, S005, S028, S039, S046, S048, S053, S057, S072, S074, S075, S078, S089, S091); not usable: none. Main effects only (n too small for the 15-term model); hints, no decision rules. **The r_p effect contains an unknown part of the non-isotropic stress-axis set** (PROTOKOLL 7.36).
+Runs: 20 finished at α 0.1 (C6, K1_0, K2_0, K2_2, K3_0, K3_1, K4_0, S005, S028, S039, S046, S048, S053, S057, S072, S074, S075, S078, S089, S091); not usable: S035 (not DONE or incomplete); S050 (not DONE or incomplete); S068 (not DONE or incomplete); S082 (not DONE or incomplete). Main effects only (n too small for the 15-term model); hints, no decision rules. **The r_p effect contains an unknown part of the non-isotropic stress-axis set** (PROTOKOLL 7.36).
 
 ## 1. Runs
 
