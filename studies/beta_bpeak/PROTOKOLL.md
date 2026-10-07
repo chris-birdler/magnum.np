@@ -1694,6 +1694,26 @@ eval_sobol_partial.py reads the archive. Restart procedure: PLAN 4.0.
   instead of w_loop. Implemented in analyze_design.py (test on the archive:
   a minority flagged).
 
+### 7.40 Physics invariants of the model inputs checked (2026-10-07)
+
+New rule (lesson of 7.36): every claimed property of a model input is
+recomputed and has a test. Status (all tests pass, 46 in total):
+
+| Input | Claimed property | Check | Result |
+|---|---|---|---|
+| stress axes | isotropic set | ⟨u uᵀ⟩, ⟨cos²⟩, ⟨cos⁴⟩ along the drive, 3 drive directions (test) | I/3, 1/3, 1/5 exactly (7.37) |
+| cube axes | random, isotropic, uniform on the sphere | existing tests (orientation tensor, uniformity, seed dependence, mesh independence) | pass |
+| random initial m | no preferred direction | block mean and ⟨m mᵀ⟩ against their statistical errors (test, 48³ blocks) | pass |
+| relaxed virgin state | demagnetised | \|⟨M⟩\|/(φ Ms) of 31 runs (data) | median 0.002, max 0.006 |
+| drive | pure sine from phase 0 | zero mean over 256 samples, H(T/4) = +H_amp (test) | pass |
+| K_eff, K_p | K_eff = Q_eff K_d, K_p = r_p K_eff (J/m³) | config of 31 runs (data); units test (K_d, l_ex, f_M) | pass |
+| dissipation | LLG Gilbert dissipation | run_loops formula = α μ₀Ms/γ ·\|dm/dt\|² (analysis scripts) = μ₀Ms H·dm/dt (test) | equal to 10⁻⁹; magnum.np γ = 2.21·10⁵ m/(A s) includes μ₀ |
+| demag | true periodic, k = 0 removed | periodic slab stack: H = ∓Ms/2 inside / outside; uniform full box: H = 0; box mean of H = 0 for random m (test) | pass |
+| geometry | φ exact, contact rule, box quantum | existing tests | pass |
+
+The initial-state code was moved into `run_loops.virgin_m0` (same random
+stream, no change of the states).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

@@ -233,6 +233,20 @@ def save_atomic(obj, path):
     os.replace(tmp, path)
 
 
+def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
+    """Random initial m of the virgin state: isotropic unit vectors (normalised Gaussian), constant on blocks of
+    edge init_block l_ex (0: per cell); own random stream [init_seed, 0] (the cube axes use [seed, 1000 + p])."""
+    rng = np.random.default_rng([init_seed, 0])
+    if init_block > 0.0:
+        nb = int(round(a_lex / init_block))
+        tab = rng.standard_normal((nb, nb, nb, 3))
+        ib = np.minimum(np.floor((np.arange(N) + 0.5) * dx_lex / init_block).astype(int), nb - 1)
+        m0 = tab[np.ix_(ib, ib, ib)]
+    else:
+        m0 = rng.standard_normal((N, N, N, 3))
+    return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
+
+
 def is_multiple(x, q, tol=1e-9):
     return abs(x / q - round(x / q)) < tol
 
@@ -473,19 +487,10 @@ def main(argv=None):
         print("[init] m from %s" % src, flush=True)
     else:
         init_seed = args.seed if args.init_seed is None else args.init_seed
-        rng = np.random.default_rng([init_seed, 0])       # own stream (cube axes use [seed, 1000 + p])
-        if args.init_block > 0.0:
-            nb = int(round(a_lex / args.init_block))
-            if not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
-                warnings.warn("init_block %g l_ex is not a multiple of dx and a divisor of a: "
-                              "the initial state depends on the mesh" % args.init_block)
-            tab = rng.standard_normal((nb, nb, nb, 3))
-            ib = np.minimum(np.floor((np.arange(N) + 0.5) * args.dx_lex / args.init_block).astype(int), nb - 1)
-            m0 = tab[np.ix_(ib, ib, ib)]
-        else:
-            m0 = rng.standard_normal((N, N, N, 3))
-        m0 /= np.linalg.norm(m0, axis=-1, keepdims=True)
-        state.m = T(m0)
+        if args.init_block > 0.0 and not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
+            warnings.warn("init_block %g l_ex is not a multiple of dx and a divisor of a: "
+                          "the initial state depends on the mesh" % args.init_block)
+        state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed))
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()

@@ -542,3 +542,82 @@ def test_analyze_design_flag_rule_on_archived_runs():
     n_flag = sum(r["flagged"] for r in recs)
     assert len(recs) == 20 and 0 < n_flag < len(recs) // 2
     assert all(all(math.isfinite(r["lnwdis@%gmT" % m]) for m in AD.AMPS_MT) for r in recs)
+
+
+def test_virgin_m0_isotropic_and_seeded():
+    """Physics invariant (PROTOKOLL 7.40): the random initial state has no preferred direction: the mean over the
+    blocks is ~0 within its statistical error and <m m^T> = I/3 within the error; it depends on the seed; it is
+    constant on the blocks (init_block 6 l_ex at dx 3 = 2 cells)."""
+    from run_loops import virgin_m0
+    N, a, dx, blk = 96, 288.0, 3.0, 6.0
+    m = virgin_m0(N, a, dx, blk, 1001)
+    nb = int(round(a / blk))
+    blocks = m[::2, ::2, ::2].reshape(-1, 3)                 # one value per block
+    assert blocks.shape[0] == nb ** 3
+    assert np.allclose(m[0, 0, 0], m[1, 1, 1])               # constant on a block
+    se = 1.0 / math.sqrt(3 * nb ** 3)
+    assert np.all(np.abs(blocks.mean(0)) < 5 * se)
+    assert np.allclose(blocks.T @ blocks / len(blocks), np.eye(3) / 3, atol=5 * 2 / math.sqrt(45 * nb ** 3) + 1e-3)
+    assert not np.allclose(m, virgin_m0(N, a, dx, blk, 1002))
+
+
+def test_drive_zero_mean_and_phase():
+    """Physics invariant (PROTOKOLL 7.40): the drive is a pure sine starting at phase 0: zero mean over the 256
+    samples of a cycle, H(t0 + T/4) = +H_amp, H(t0 + 3T/4) = -H_amp."""
+    from magnumnp import Mesh, State
+    from field_terms_extra import SinusoidalDrive
+    drv = SinusoidalDrive(State(Mesh((2, 2, 2), (1e-9, 1e-9, 1e-9))), (1.0, 0.0, 0.0))
+    drv.H_amp, drv.freq, drv.t0 = 1.0e4, 30e6, 2e-9
+    T = 1.0 / drv.freq
+    v = np.array([drv.value(drv.t0 + (k + 1) * T / 256) for k in range(256)])
+    assert abs(v.mean()) < 1e-9 * drv.H_amp
+    assert abs(drv.value(drv.t0 + T / 4) - drv.H_amp) < 1e-9 * drv.H_amp
+    assert abs(drv.value(drv.t0 + 3 * T / 4) + drv.H_amp) < 1e-9 * drv.H_amp
+
+
+def test_dissipation_formulas_agree():
+    """Physics invariant (PROTOKOLL 7.40): the dissipation of run_loops, p = alpha gamma mu0 Ms |m x H|^2 / (1 + alpha^2)
+    (magnum.np gamma = 2.21e5 m/(A s), includes mu0), equals alpha mu0 Ms / gamma |dm/dt|^2 of the LLG equation, which
+    phasemap_batch / phase_extra / acc_reduce use (GAMMA = 2.21276157e5), and equals mu0 Ms H . dm/dt (= -dE/dt)."""
+    from magnumnp import constants
+    import acc_reduce
+    rng = np.random.default_rng(3)
+    alpha, Ms = 0.1, 1.5 / constants.mu_0
+    m = rng.standard_normal((50, 3)); m /= np.linalg.norm(m, axis=1, keepdims=True)
+    H = 1e4 * rng.standard_normal((50, 3))
+    g = constants.gamma
+    mxH = np.cross(m, H)
+    dmdt = -g / (1 + alpha ** 2) * (mxH + alpha * np.cross(m, mxH))
+    p_run = alpha * g * constants.mu_0 / (1 + alpha ** 2) * Ms * (mxH ** 2).sum(1)
+    p_llg = alpha * acc_reduce.MU0 * Ms / acc_reduce.GAMMA * (dmdt ** 2).sum(1)
+    p_work = constants.mu_0 * Ms * (H * dmdt).sum(1)          # -dE/dt with dE/dt = -mu0 Ms H . dm/dt
+    assert abs(acc_reduce.GAMMA / g - 1) < 1e-9
+    assert np.allclose(p_run, p_llg, rtol=1e-9) and np.allclose(p_run, p_work, rtol=1e-9)
+
+
+def test_demag_pbc_slab_and_zero_mean():
+    """Physics invariant (PROTOKOLL 7.40): true periodic demag (k = 0 removed). A periodic stack of slabs (half of
+    the box along z, m along z) has H = -Ms/2 inside and +Ms/2 outside (zero mean: an infinite medium has no
+    sample-shape demag); a uniformly magnetised full box has H = 0; for any m the box mean of H is 0."""
+    import torch
+    from magnumnp import Mesh, State
+    from magnumnp.field_terms.demagPBC import DemagFieldPBC
+    n = (8, 8, 8)
+    mesh = Mesh(n, (1e-9, 1e-9, 1e-9))
+    state = State(mesh)
+    Ms = 1.0e6
+    ms = torch.zeros(n + (1,), dtype=torch.float64)
+    ms[:, :, :4] = Ms
+    state.material = {"Ms": ms}
+    m = torch.zeros(n + (3,), dtype=torch.float64)
+    m[..., 2] = 1.0
+    state.m = m
+    h = DemagFieldPBC().h(state)
+    assert torch.allclose(h[:, :, :4, 2], torch.full_like(h[:, :, :4, 2], -Ms / 2), rtol=1e-9, atol=1e-6)
+    assert torch.allclose(h[:, :, 4:, 2], torch.full_like(h[:, :, 4:, 2], Ms / 2), rtol=1e-9, atol=1e-6)
+    state.material = {"Ms": torch.full(n + (1,), Ms, dtype=torch.float64)}
+    assert float(DemagFieldPBC().h(state).abs().max()) < 1e-6 * Ms
+    g = torch.Generator().manual_seed(0)
+    r = torch.randn(n + (3,), generator=g, dtype=torch.float64)
+    state.m = r / torch.linalg.norm(r, dim=-1, keepdim=True)
+    assert float(DemagFieldPBC().h(state).mean(dim=(0, 1, 2)).abs().max()) < 1e-9 * Ms
