@@ -77,11 +77,16 @@ def test_units_defaults():
     assert abs(U["Kd"] - 0.5 * U["Js"] ** 2 / 1.2566370614e-6) < 1e-6 * U["Kd"]
 
 
-def test_particle_axes_isotropic_midpoints():
-    ax = particle_axes((1.0, 0.0, 0.0))
+@pytest.mark.parametrize("drive", [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.3, -0.5, 0.8)])
+def test_particle_axes_isotropic(drive):
+    """The stress axes are an isotropic set (PROTOKOLL 7.36 / 7.37): orientation tensor <u u^T> = I/3 exactly
+    (not only along the drive), and along the drive <cos^2> = 1/3, <cos^4> = 1/5."""
+    ax = particle_axes(drive)
+    e = np.asarray(drive) / np.linalg.norm(drive)
     assert np.allclose(np.linalg.norm(ax, axis=1), 1.0)
-    assert np.allclose(np.sort(np.abs(ax[:, 0])), [1/8, 3/8, 5/8, 7/8])
-    assert abs(np.mean(1 - ax[:, 0] ** 2) - 2/3) < 0.01      # <sin^2 theta> of an isotropic powder
+    assert np.allclose(ax.T @ ax / 4.0, np.eye(3) / 3.0, atol=1e-12)
+    c = ax @ e
+    assert abs(np.mean(c ** 2) - 1 / 3) < 1e-12 and abs(np.mean(c ** 4) - 1 / 5) < 1e-12
 
 
 @pytest.mark.parametrize("d,phi", [(150.0, 0.65), (300.0, 0.55), (300.0, 0.69)])

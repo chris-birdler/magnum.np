@@ -11,7 +11,7 @@ Anisotropy (see anisotropy_model.py): only
   * Herzer residual anisotropy: cubes of edge L_eff with random easy axes,
     Q_eff = K_eff/K_d = (l_ex/L_eff)^2,
   * residual stress on the particle scale: K_p = r_p K_eff per particle,
-    deterministic axes.
+    deterministic axes (an isotropic tetrahedral set, PROTOKOLL 7.37).
 Box edge a is a multiple of 12 l_ex and L_eff a multiple of 6 l_ex, so that
 dx = 3, 2 and 1.5 l_ex see the same cubes. d is adjusted (<= 2.5 %) to keep phi.
 

@@ -17,9 +17,14 @@ Two sources, both uniaxial. There is no other anisotropy.
 
 2. Residual stress on the particle scale
    One uniaxial anisotropy K_p = r_p * K_eff per particle. The axes are
-   deterministic: cos(theta) = 1/8, 3/8, 5/8, 7/8 to the drive (midpoint rule
-   for an isotropic powder), azimuths 0, 90, 180, 270 deg. No orientation
-   statistics.
+   deterministic: the 4 body diagonals of a cube (tetrahedral axes), turned so
+   that the drive lies along [1, t, 0] of the cube frame with t = (sqrt(5) - 1)/2.
+   Then the orientation tensor <u u^T> = I/3 exactly (isotropic in every
+   direction) and along the drive <cos^2 theta> = 1/3, <cos^4 theta> = 1/5
+   exactly (cos theta = 0.188, 0.188, 0.795, 0.795). No orientation statistics.
+   (Changed 2026-10-07, PROTOKOLL 7.36 / 7.37: the earlier set cos theta = 1/8 ...
+   7/8 with azimuths 0 / 90 / 180 / 270 deg had <u u^T> eigenvalues 0.253 / 0.285 /
+   0.461, i.e. a net transverse anisotropy proportional to K_p.)
 
 Mesh independence
    The cubes are defined in physical coordinates relative to the particle
@@ -88,15 +93,23 @@ def cube_axes(ids, dx, a, d, L, seed):
     return axes, n_cubes
 
 
+TETRA_T = (math.sqrt(5.0) - 1.0) / 2.0     # drive along [1, t, 0] of the cube frame: <cos^4 theta> = 1/5
+
+
 def particle_axes(direction):
-    """Deterministic easy axes of the 4 particles: cos(theta) = 1/8, 3/8, 5/8, 7/8
-    to the drive direction, azimuths 0, 90, 180, 270 deg around the drive."""
-    e = np.asarray(direction, float); e /= np.linalg.norm(e)
-    t = np.array([0.0, 0.0, 1.0]) if abs(e[2]) < 0.9 else np.array([1.0, 0.0, 0.0])
-    e1 = np.cross(e, t); e1 /= np.linalg.norm(e1)
-    e2 = np.cross(e, e1)
-    ax = []
-    for c, psi in zip((1/8, 3/8, 5/8, 7/8), (0.0, 0.5 * math.pi, math.pi, 1.5 * math.pi)):
-        s = math.sqrt(1.0 - c * c)
-        ax.append(c * e + s * (math.cos(psi) * e1 + math.sin(psi) * e2))
-    return np.array(ax)
+    """Deterministic easy axes of the 4 particles: the cube body diagonals (tetrahedral set, <u u^T> = I/3),
+    turned so that the drive direction lies along [1, TETRA_T, 0] of the cube frame (<cos^2> = 1/3, <cos^4> = 1/5
+    along the drive)."""
+    e = np.asarray(direction, float)
+    e = e / np.linalg.norm(e)
+    D = np.array([[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]], float) / math.sqrt(3.0)
+    n = np.array([1.0, TETRA_T, 0.0])
+    n /= np.linalg.norm(n)
+    # rotation that maps n onto e (Rodrigues)
+    v, c = np.cross(n, e), float(n @ e)
+    if np.linalg.norm(v) < 1e-12:
+        Rm = np.eye(3) if c > 0 else -np.eye(3)
+    else:
+        K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        Rm = np.eye(3) + K + K @ K * (1.0 / (1.0 + c))
+    return D @ Rm.T

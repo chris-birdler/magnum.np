@@ -1646,6 +1646,20 @@ results/sobol_partial_table.md; main effects only, n = 20, hints):
   (mostly `*`, energy balance > 2 % at one amplitude; the base-point runs
   too): the rule is too wide for a sensitivity analysis; to be redefined.
 
+### 7.37 Stress axes corrected: isotropic tetrahedral set (2026-10-07)
+
+Decision Chris (option B of two): the 4 particle axes are the body diagonals
+of a cube, turned so that the drive lies along [1, t, 0] of the cube frame,
+t = (√5 − 1)/2. Then ⟨u uᵀ⟩ = I/3 exactly, and along the drive ⟨cos²θ⟩ = 1/3
+and ⟨cos⁴θ⟩ = 1/5 exactly; cos θ = 0.795 / 0.188 / 0.188 / 0.795 (2 particles
+each at θ = 37° and 79°). Option A (cos θ = 1/8 … 7/8 with optimised
+azimuths) has no exact solution (3 free azimuths for 4 conditions; best
+eigenvalues 0.328 / 0.335 / 0.337, ⟨cos⁴θ⟩ 0.190). The test now checks the
+full tensor for 3 drive directions (the old test checked only ⟨sin²θ⟩ along
+the drive, which is why the fault passed). Runs before this change keep
+their axes in config.json (cos_theta_p). Nothing is started (decision on the
+continuation open).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
