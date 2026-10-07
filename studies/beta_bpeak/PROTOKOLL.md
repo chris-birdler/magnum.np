@@ -1607,6 +1607,45 @@ looked at). Runtime ≈ 0.14 s per bootstrap resample (1000 → ≈ 2.5 min).
 Environment pinned in requirements-analysis.txt (statsmodels 0.15.0: 0.14.4
 does not import with scipy 1.18).
 
+### 7.36 Stress-axis set not isotropic; Sobol design stopped (2026-10-07)
+
+Finding (after Chris's question how the stress is built in): the 4 fixed
+particle axes (`anisotropy_model.particle_axes`: cos θ = 1/8, 3/8, 5/8, 7/8
+to the drive, azimuths 0 / 90 / 180 / 270°) are not an isotropic set. The
+orientation tensor ⟨u uᵀ⟩ has the eigenvalues 0.253 / 0.285 / 0.461
+(isotropic: 1/3 each) and the off-diagonal xy = 0.091; along the drive
+⟨cos²θ⟩ = 0.328 (correct within 0.005). Cause: the azimuths. With the same
+cos θ and the azimuths 137.5 / 208.9 / 66.8 / 299.0° the tensor is nearly
+isotropic (eigenvalues 0.328 / 0.335 / 0.337, off-diagonal ≤ 0.002).
+Consequence: the r_p effect of the design contains an unknown part of a
+fixed net transverse anisotropy ∝ K_p. Not affected: all earlier studies at
+the base point (r_p = 0). None of the three audits computed this invariant
+(lesson: audits recompute physics invariants of the model inputs).
+Decision Chris: stop the design, evaluate what exists, decide later. Chain
+stopped 2026-10-07 (process group, onstart entry removed). State: 20 runs
+finished and post-processed (fetched, md5-verified, 400 files in
+runs/MANIFEST_sobol.md5); S035, S050, S068, S082 interrupted (checkpoints
+kept on the instance); 4 α 0.01 and the rest not started.
+Exploratory evaluation (`eval_sobol_partial.py` → results/sobol_partial.md,
+results/sobol_partial_table.md; main effects only, n = 20, hints):
+- β all 2.16 ± 0.25 (mean ± sd, n = 20), range 1.65 … 2.62; higher than the
+  base point (β_pow 1.76 ± 0.05, n = 8). Method checked: β all equals the
+  earlier β_pow (S005 1.956 / 1.955; B300 runs 2.11 / 1.74 / 1.74 / 1.64 with
+  the same method). The difference comes from the factor values (most
+  points have r_p > 0, larger L_eff, smaller d/l_ex); not separable at n = 20.
+- No main effect on β all with a 95 % CI excluding 0 (largest: d/l_ex
+  −0.34, CI −0.79 … +0.07; r_p +0.18, CI −0.19 … +0.53). Hints in windows:
+  r_p on β 70-150 mT +0.57 (CI +0.10 … +1.13; contains the axis-set part),
+  L_eff (ln Q) and φ on β 9-35 mT (+0.29 / −0.42, CIs just excluding 0),
+  d/l_ex on ln w 50 mT +0.57 (CI +0.00 … +1.20).
+- Corner replicates: K2 β all 2.31 / 2.47, K3 2.19 / 2.21.
+- Accumulators: R1 0.5 … 0.98 at 9 mT, 0.24 … 0.45 at 150 mT; at 150 mT
+  ≈ 0.4 … 0.56 of the loss in the shell r/R ≥ 0.8 (volume ≈ 0.49) and
+  ≈ 0.67 … 0.79 in the 10 % cells with the largest p.
+- The flag rule of PLAN 4.3a ("any flag at any amplitude") flags all 20 runs
+  (mostly `*`, energy balance > 2 % at one amplitude; the base-point runs
+  too): the rule is too wide for a sensitivity analysis; to be redefined.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
