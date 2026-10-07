@@ -1660,6 +1660,19 @@ the drive, which is why the fault passed). Runs before this change keep
 their axes in config.json (cos_theta_p). Nothing is started (decision on the
 continuation open).
 
+### 7.38 Cleanup for the restart (2026-10-07, Chris: go)
+
+Instance: logs of the stopped design fetched (instance_logs/sobol_v2_oldaxes);
+the 20 finished Sobol runs checked against the local manifest (all 387
+files on the instance present locally with the same md5); the 24 Sobol run
+folders (20 finished, 4 interrupted: S035, S050, S068, S082) deleted, also
+the shuffled job file, status, logs, pin and lock files. Kept: the earlier
+studies at the base point (2.9 GB, r_p = 0, valid). Disk 12 → 4.5 GB of 40.
+Onstart entry removed (7.36). Laptop: the 20 runs and their manifest moved to
+runs/_archive_sobol_v2_oldaxes (md5 check of all 400 files OK); the small
+files of the 4 interrupted runs are there too (no .pt / .vti / .npz).
+eval_sobol_partial.py reads the archive. Restart procedure: PLAN 4.0.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

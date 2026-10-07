@@ -418,6 +418,18 @@ status_sobol.json every 5 min. Post-processing runs under a restart loop.
   Holm, TOST and the scatter model is written and tested on synthetic data
   with a known answer during the runs, before any result is looked at.
 
+**Restart after the stop (PROTOKOLL 7.36 … 7.38).** The first start
+(2026-10-06) used a non-isotropic stress-axis set and was stopped; its 20
+finished runs are archived (runs/_archive_sobol_v2_oldaxes, not used in the
+analysis). The code since bc6d5bb has the isotropic tetrahedral axes
+(7.37). The job files are unchanged (the axes are set in the code). Steps:
+(1) Chris's go; (2) on the instance: no Sobol run folder may exist (else
+run_queue skips the old DONE runs); fetch the pinned commit, write
+/root/sobol_commit, copy the chain, add the onstart line, start (see the
+head of instance/chain_sobol.sh); (3) after ≈ 4 h check K1_0 … K4_0. Open
+before the restart: the definition of a "flagged run" for the sensitivity
+fit (the rule "any flag at any amplitude" flagged all 20 runs, 7.36).
+
 **Cost and time (estimates from the measured 3.4 V100-h per run at 3.2 M
 cells, cost ∝ cells, + 4 … 5 % for the accumulators):** per run 1.2 … 4.2
 V100-h (largest box 4.2), mean ≈ 2.4. Main design 104 runs ≈ 250 V100-h; corners 12 runs

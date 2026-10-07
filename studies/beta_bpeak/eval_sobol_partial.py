@@ -21,7 +21,7 @@ import numpy as np
 import analyze_design as AD
 
 HERE = pathlib.Path(__file__).resolve().parent
-RUNS = HERE / "runs"
+RUNS = HERE / "runs" / "_archive_sobol_v2_oldaxes"     # the stopped design (old stress axes), archived 7.38
 F_HZ = 30e6
 
 
