@@ -1768,6 +1768,31 @@ moves the run into another trajectory. Thus the pairing does not remove the
 realisation scatter: the sd of the pair differences (0.28 for β all) is of
 the size of two independent realisations (σ ≈ 0.2 per run).
 
+### 7.43 Interim look at the restarted design (2026-10-08, 32 runs, hints only)
+
+`eval_sobol_partial.py --runs runs` → results/sobol_interim_20261008.md
+(main effects only, 5 terms, bootstrap; no decision rules; the final
+analysis follows PLAN 4.0 unchanged). n = 32 at α 0.1 (24 Sobol, 7 corner,
+1 centre).
+- β all 2.12 ± 0.26 (mean ± sd), 1.60 … 2.48; 20 of 32 above 2.
+- Main effects on β all (range effect, 95 % CI): d/l_ex −0.43 (−0.73 …
+  −0.19); ln Q_eff +0.20 (+0.02 … +0.40); φ +0.22 (−0.10 … +0.44); r_p +0.10
+  (−0.16 … +0.33). Strongest in the window 35-70 mT: d/l_ex −0.96 (−1.33 …
+  −0.56), ln Q_eff +0.51 (+0.14 … +0.91). Reading at d = 1 µm: higher A
+  (d/l_ex 212, A 20 pJ/m) and stronger Herzer anisotropy (small L_eff) give
+  a higher β. The d/l_ex effect is a mesh-check candidate (K3, PLAN 4.0).
+- Loss level: ln w at 10 mT rises with d/l_ex (+0.68, +0.14 … +1.39); no
+  clear effect at 50 / 100 mT. P(50 mT) 102 … 466 W/cm³ (median 184).
+- Where the loss sits (accumulators, medians): R1 0.82 / 0.50 / 0.40 at 9 /
+  50 / 150 mT; core r/R < 0.5 (12.5 % of the volume) holds 0.37 of the loss
+  at 9 mT and 0.18 at 150 mT; shell r/R ≥ 0.8 (49 % of the volume) 0.23 /
+  0.48; the 10 % cells with the largest p hold 0.72 at 150 mT.
+- Flagged runs (|w_dis/w_loop − 1| > 0.20): 15 of 32 (more than the 1/3 of
+  the earlier data; with 116 runs ≈ 55 flagged, ≥ 30 left for the sensitivity
+  fit).
+(results/sobol_partial.md regenerated with the flag rule of 7.39; the
+numbers are unchanged, only the flag column.)
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

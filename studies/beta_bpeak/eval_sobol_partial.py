@@ -21,20 +21,29 @@ import numpy as np
 import analyze_design as AD
 
 HERE = pathlib.Path(__file__).resolve().parent
-RUNS = HERE / "runs" / "_archive_sobol_v2_oldaxes"     # the stopped design (old stress axes), archived 7.38
+RUNS = HERE / "runs" / "_archive_sobol_v2_oldaxes"     # default: the stopped design (old stress axes), archived 7.38
 F_HZ = 30e6
 
 
 def main():
+    import argparse
     import statsmodels.api as sm
+    global RUNS
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--runs", default=str(RUNS), help="run folder (default: archive of the stopped design)")
+    ap.add_argument("--title", default="Sobol design v2, stopped: exploratory evaluation of the finished runs")
+    ap.add_argument("--axes_note", default="**The r_p effect contains an unknown part of the non-isotropic "
+                    "stress-axis set** (PROTOKOLL 7.36).")
+    a = ap.parse_args()
+    RUNS = pathlib.Path(a.runs)
     recs, skipped = AD.load_runs(RUNS)
     recs.sort(key=lambda r: r["name"])
     n = len(recs)
     kd = {r["name"]: json.loads((RUNS / r["name"] / "config.json").read_text())["units"]["Kd"] for r in recs}
-    print("# Sobol design v2, stopped: exploratory evaluation of the finished runs\n")
+    print("# %s\n" % a.title)
     print("Runs: %d finished at α 0.1 (%s); not usable: %s. Main effects only (n too small for the 15-term "
-          "model); hints, no decision rules. **The r_p effect contains an unknown part of the non-isotropic "
-          "stress-axis set** (PROTOKOLL 7.36).\n" % (n, ", ".join(r["name"] for r in recs), "; ".join(skipped) or "none"))
+          "model); hints, no decision rules. %s\n" % (n, ", ".join(r["name"] for r in recs), "; ".join(skipped) or "none",
+                                                     a.axes_note))
     print("## 1. Runs\n")
     print("| run | d/l_ex | L_eff/l_ex | r_p | φ | d/L_eff | β 9-35 | β 35-70 | β 70-150 | β all | P(50 mT) W/cm³ | flagged |")
     print("|---|---|---|---|---|---|---|---|---|---|---|---|")
