@@ -1749,6 +1749,25 @@ cos_theta_p = 0.795 / 0.188 / 0.188 / 0.795. Same seeds as the stopped
 design: the 20 archived points can be compared pairwise (same cubes and
 initial state, only the stress axes differ). Credit 50.37 $.
 
+### 7.42 Old vs new stress axes, paired (2026-10-08)
+
+`eval_axes_paired.py` → results/axes_paired.md. The 20 points of the stopped
+design recomputed with the isotropic axes (same seeds: same cubes and
+initial m). Difference new − old, mean ± SE, n = 20 pairs: β all
+−0.04 ± 0.06 (p 0.50; 95 % CI −0.18 … +0.09); β 9-35 +0.06 ± 0.09; β 35-70
+−0.14 ± 0.15; β 70-150 −0.07 ± 0.11; ln w 10 / 50 / 100 mT −0.01 ± 0.13 /
+−0.03 ± 0.10 / −0.05 ± 0.04; no slope over r_p (β all −0.04 ± 0.07 per
+unit r_p). **No systematic effect of the old axis set detected; effects on
+β all above ≈ 0.2 are excluded.** The high β (> 2) is not an artefact of
+the old axes (mean β all of the 20 points: 2.16 old, ≈ 2.12 new).
+Control: at r_p < 0.1 (S005, S039, S057; axes nearly irrelevant) the pairs
+still differ by |Δβ all| 0.07 and |Δβ 9-35| 0.17 on average. A run with the
+same seed is reproducible only with exactly the same inputs (7.33 9b: two
+identical runs gave identical results); a small change of the anisotropy
+moves the run into another trajectory. Thus the pairing does not remove the
+realisation scatter: the sd of the pair differences (0.28 for β all) is of
+the size of two independent realisations (σ ≈ 0.2 per run).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
