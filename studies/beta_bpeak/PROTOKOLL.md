@@ -2278,6 +2278,19 @@ results/jumps_time.md; replaces the numbers of 7.51 where they differ):
   can contain state changes. The K3 fill-in jobs (running) have the same
   limit.
 
+Decision Chris 2026-10-11: the steady-tail result is the main result (deck,
+reports). The pre-registered result is shown next to it as a check, and
+the deviation is marked.
+
+Kept cycles per run-amplitude (116 runs, 812 run-amplitudes): 5 / 4 / 3 / 2
+/ 1 / 0 kept cycles in 696 / 55 / 32 / 16 / 9 / 4. Thus 13 run-amplitudes in
+13 runs have fewer than 2 steady cycles: 9 mT S033, S035, S055; 20 mT K4_1,
+S076, S091; 35 mT K4_0, S020, S026, S047, S067; 70 mT S034; 100 mT K1_0.
+Some of them have a late event after clean cycles (e.g. S067 35 mT: only
+cycle 5 is an event; S026 35 mT: cycles 2 and 6). Mesh and K3 jobs (3
+measured cycles): 4 of 60 jobs have fewer than 2 (M300_dx15_s922_b9,
+M300_dx3_s921_b100, M300_dx3_s921_b50, MK3_dx15_s2034_b50).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
