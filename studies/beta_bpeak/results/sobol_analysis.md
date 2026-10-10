@@ -55,5 +55,8 @@ Runs in the fits: 115 (flagged 50); bootstrap 1000 resamples (0 failed). Range e
 - beta_all: n(<10) = 35, Δ = +0.003, p = 0.900
 - lnw@50mT: n(<10) = 35, Δ = +0.001, p = 0.979
 
-## α 0.01 centre test (pairs: 0)
+## α 0.01 centre test (pairs: 8)
 
+- ln(w α0.01 / w α0.1) per amplitude: 9 mT -1.07 ± 0.35, 20 mT -0.29 ± 0.20, 35 mT -0.27 ± 0.17, 50 mT -0.17 ± 0.13, 70 mT -0.38 ± 0.14, 100 mT -0.25 ± 0.09, 150 mT -0.51 ± 0.06
+- lnR@9mT: R = 1.4 (95 % CI 0.9 … 2.1, n = 8): viscous R~1
+- lnR@50mT: R = 1.7 (95 % CI 1.1 … 2.5, n = 8): mixed

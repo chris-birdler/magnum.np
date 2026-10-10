@@ -62,13 +62,11 @@ def run_record(d):
     if len(rows) < len(AMPS_MT):
         return None
     bm = np.array([1000.0 * JS_T * r["b_peak"] for r in rows])
+    miss = np.array([r.get("missing", False) for r in rows])          # steady-tail rule (7.54): no cycle kept
     lw = np.array([math.log(r["w_loop"]) if r["w_loop"] > 0 else np.nan for r in rows])
-    if not np.all(np.isfinite(lw)):
+    if not np.all(np.isfinite(lw[~miss])) or (~miss).sum() < 2:
         return None
-    # ln w at the nominal amplitudes: linear in ln B between the measured amplitudes (b is within ~4 % of the target)
-    lnw = np.interp(np.log(AMPS_MT), np.log(bm), lw)
-    lnw[0] = lw[0] + (lw[1] - lw[0]) / math.log(bm[1] / bm[0]) * math.log(AMPS_MT[0] / bm[0])
-    lnw[-1] = lw[-1] + (lw[-1] - lw[-2]) / math.log(bm[-1] / bm[-2]) * math.log(AMPS_MT[-1] / bm[-1])
+    lnw = to_nominal(bm, lw, miss)
     Leff = cfg["Leff_lex"]
     rec = {"name": d.name, "alpha": cfg["alpha"], "seed": cfg["seed"],
            "lnQ": math.log(cfg.get("Q_eff") or 1.0 / Leff ** 2), "r_p": cfg["r_p"], "phi": cfg.get("phi_vox", cfg["phi"]),
@@ -78,26 +76,50 @@ def run_record(d):
            "w_dis": [r["w_dis"] for r in rows], "b_mT": bm.tolist()}
     for k, mT in enumerate(AMPS_MT):
         rec["lnw@%gmT" % mT] = float(lnw[k])
-    lwd = np.log([r["w_dis"] for r in rows])                 # the same at the nominal amplitudes from w_dis
-    lnwd = np.interp(np.log(AMPS_MT), np.log(bm), lwd)
-    lnwd[0] = lwd[0] + (lwd[1] - lwd[0]) / math.log(bm[1] / bm[0]) * math.log(AMPS_MT[0] / bm[0])
-    lnwd[-1] = lwd[-1] + (lwd[-1] - lwd[-2]) / math.log(bm[-1] / bm[-2]) * math.log(AMPS_MT[-1] / bm[-1])
+    lwd = np.array([math.log(r["w_dis"]) if r["w_dis"] > 0 else np.nan for r in rows])   # the same from w_dis
+    lnwd = to_nominal(bm, lwd, miss | ~np.isfinite(lwd))
     for k, mT in enumerate(AMPS_MT):
         rec["lnwdis@%gmT" % mT] = float(lnwd[k])
+    rec["n_missing"] = int(miss.sum())
+    rec["n_dropped_cycles"] = int(sum(r.get("n_dropped", 0) for r in rows))
     rec.update(per_run_outputs(lnw))
     return rec
 
 
+def to_nominal(bm, lw, miss):
+    """ln w at the nominal amplitudes: linear in ln B between the measured amplitudes (b is within ~4 % of the
+    target), at the two ends the line through the two outer amplitudes. Only the stages that are not missing are
+    used; a missing stage (rows sorted by b, one per nominal amplitude) gives nan at its nominal amplitude."""
+    ok = ~np.asarray(miss)
+    x, y = np.log(bm[ok]), lw[ok]
+    out = np.interp(np.log(AMPS_MT), x, y)
+    out[0] = y[0] + (y[1] - y[0]) / (x[1] - x[0]) * (math.log(AMPS_MT[0]) - x[0])
+    out[-1] = y[-1] + (y[-1] - y[-2]) / (x[-1] - x[-2]) * (math.log(AMPS_MT[-1]) - x[-1])
+    out[~ok] = np.nan
+    return out
+
+
 def per_run_outputs(lnw):
-    """beta of the windows and over all amplitudes, ln w at 10 / 50 / 100 mT from ln w at the nominal amplitudes."""
+    """beta of the windows and over all amplitudes, ln w at 10 / 50 / 100 mT from ln w at the nominal amplitudes.
+    A missing amplitude (nan, steady-tail rule 7.54): the slopes use the other amplitudes (at least 2); ln w at
+    10 / 50 / 100 mT is nan if an amplitude next to it is missing."""
     lb = np.log(AMPS_MT)
+    ok = np.isfinite(lnw)
     out = {}
+
+    def slope(idx):
+        idx = [i for i in idx if ok[i]]
+        return float(np.polyfit(lb[idx], lnw[idx], 1)[0]) if len(idx) >= 2 else float("nan")
     for win in WINDOWS:
-        idx = [AMPS_MT.index(m) for m in win]
-        out["beta@%d-%dmT" % (win[0], win[-1])] = float(np.polyfit(lb[idx], lnw[idx], 1)[0])
-    out["beta_all"] = float(np.polyfit(lb, lnw, 1)[0])
+        out["beta@%d-%dmT" % (win[0], win[-1])] = slope([AMPS_MT.index(m) for m in win])
+    out["beta_all"] = slope(range(len(AMPS_MT)))
     for mT in LNW_MT:
-        out["lnw@%gmT" % mT] = float(np.interp(math.log(mT), lb, lnw))
+        if np.all(ok):
+            out["lnw@%gmT" % mT] = float(np.interp(math.log(mT), lb, lnw))
+            continue
+        w = _OUT_W["lnw@%gmT" % mT]                  # the same linear interpolation as weights over the amplitudes
+        nz = w != 0
+        out["lnw@%gmT" % mT] = float(lnw[nz] @ w[nz]) if np.all(ok[nz]) else float("nan")
     return out
 
 
@@ -148,9 +170,10 @@ def glm_coefs(T, W, weights=None):
     fam = sm.families.Gamma(sm.families.links.Log())
     out = []
     for k in range(W.shape[1]):
+        ok = np.isfinite(W[:, k])                       # a missing amplitude of a run (steady-tail rule 7.54)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            res = sm.GLM(W[:, k], T, family=fam, var_weights=weights).fit()
+            res = sm.GLM(W[ok, k], T[ok], family=fam, var_weights=None if weights is None else weights[ok]).fit()
         out.append(res.params)
     return np.array(out)
 
@@ -225,12 +248,14 @@ def linear_fit(recs, kind="ols", weights=None):
     res = {}
     for o in OUTPUTS:
         y = np.array([r[o] for r in recs])
+        ok = np.isfinite(y)                             # a missing output of a run (steady-tail rule 7.54)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             if kind == "ols":
-                m = (sm.WLS(y, T, weights=weights) if weights is not None else sm.OLS(y, T)).fit(cov_type="HC3")
+                m = (sm.WLS(y[ok], T[ok], weights=weights[ok]) if weights is not None else
+                     sm.OLS(y[ok], T[ok])).fit(cov_type="HC3")
             else:
-                m = sm.RLM(y, T, M=sm.robust.norms.HuberT()).fit()
+                m = sm.RLM(y[ok], T[ok], M=sm.robust.norms.HuberT()).fit()
         cov = np.asarray(m.cov_params())
         for j, f in enumerate(FACTORS):
             Th, Tl = contrast(X, j)
@@ -239,7 +264,9 @@ def linear_fit(recs, kind="ols", weights=None):
             se = float(math.sqrt(c @ cov @ c))
             res[(o, f)] = {"eff": v, "se": se, "ci95": [v - 1.96 * se, v + 1.96 * se],
                            "p": float(2 * stats.norm.sf(abs(v) / se)) if se > 0 else float("nan")}
-        res[(o, "resid")] = (y - m.fittedvalues).tolist()
+        resid = np.full(len(y), np.nan)
+        resid[ok] = y[ok] - m.fittedvalues
+        res[(o, "resid")] = resid.tolist()
     return res
 
 
@@ -251,11 +278,12 @@ def scatter_model(recs, fitA):
     out = {}
     for o in PRIMARY:
         r = np.array(fitA[(o, "resid")])
+        ok = np.isfinite(r)
         z = np.log(r ** 2 + 1e-12)
-        m = sm.OLS(z, D).fit()
+        m = sm.OLS(z[ok], D[ok]).fit()
         p = m.pvalues[1:]
         sig = holm(list(p))
-        w = 1.0 / np.exp(m.fittedvalues)
+        w = 1.0 / np.exp(D @ m.params)               # for all runs (also a run with a missing output)
         out[o] = {"slopes": dict(zip(FACTORS, m.params[1:].tolist())), "p": dict(zip(FACTORS, p.tolist())),
                   "significant": dict(zip(FACTORS, sig)), "any": bool(any(sig)), "weights": (w / w.mean()).tolist()}
     return out
@@ -343,9 +371,11 @@ def d3_check(recs, fitA):
     out = {}
     for o in PRIMARY:
         r = np.array(fitA[(o, "resid")])
-        if small.sum() >= 2 and (~small).sum() >= 2:
-            t = stats.ttest_ind(r[small], r[~small], equal_var=False)
-            out[o] = {"n_small": int(small.sum()), "diff": float(r[small].mean() - r[~small].mean()), "p": float(t.pvalue)}
+        ok = np.isfinite(r)
+        s, b = small & ok, ~small & ok
+        if s.sum() >= 2 and b.sum() >= 2:
+            t = stats.ttest_ind(r[s], r[b], equal_var=False)
+            out[o] = {"n_small": int(s.sum()), "diff": float(r[s].mean() - r[b].mean()), "p": float(t.pvalue)}
     return out
 
 
@@ -376,6 +406,12 @@ def report(res):
          "minus at min, other factors averaged over the design points. φ: the effect on ln E[w] contains the dilution "
          "%.3f (value without it in brackets)." % (res["n_runs"], res["n_flagged"], res["boot"]["n_boot"],
                                                    res["boot"]["n_fail"], res["phi_dilution"]), ""]
+    if res.get("steady_tail"):
+        t = res["steady_tail"]
+        L += ["**Declared deviation (PROTOKOLL 7.54): steady-tail rule.** Only the measured cycles after the last cycle "
+              "with |w_dis / w_loop − 1| > %.2f are used. Dropped: %d of %d measured cycles; amplitudes without a kept "
+              "cycle (missing): %d in %d runs." % (t["tol"], t["n_dropped_cycles"], t["n_cycles"], t["n_missing"],
+                                                   t["runs_with_missing"]), ""]
     L += ["## Primary outputs (8 tests, Holm 5 %)", "", "| output | factor | main fit (95 % CI) | 90 % CI | class | fit A | fit B |",
           "|---|---|---|---|---|---|---|"]
     for o in PRIMARY:
@@ -437,8 +473,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", default=str(HERE / "runs"))
     ap.add_argument("--boot", type=int, default=1000)
-    ap.add_argument("--out", default=str(HERE / "results" / "sobol_analysis"))
+    ap.add_argument("--out", default=None, help="default results/sobol_analysis (with --steady_tail: _steady)")
+    ap.add_argument("--steady_tail", action="store_true",
+                    help="declared deviation (PROTOKOLL 7.54): keep only the measured cycles after the last cycle with "
+                         "|w_dis / w_loop - 1| > BAL_EVENT; an amplitude without such a cycle is missing for that run")
     a = ap.parse_args()
+    if a.steady_tail:
+        analyze.STEADY_TAIL = BAL_EVENT
+    a.out = a.out or str(HERE / "results" / ("sobol_analysis_steady" if a.steady_tail else "sobol_analysis"))
     recs, skipped = load_runs(a.runs)
     print("runs: %d usable, %d skipped%s" % (len(recs), len(skipped), (": " + "; ".join(skipped)) if skipped else ""))
     keys = ["name", "seed", "alpha"] + list(FACTORS) + ["d_over_L", "flagged"] + OUTPUTS
@@ -447,6 +489,11 @@ def main():
         for r in recs:
             f.write(",".join(str(r[k]) for k in keys) + "\n")
     res = analyse(recs, a.boot, a.runs)
+    if a.steady_tail:
+        res["steady_tail"] = {"tol": BAL_EVENT, "n_missing": sum(r["n_missing"] for r in recs),
+                              "runs_with_missing": sum(r["n_missing"] > 0 for r in recs),
+                              "n_dropped_cycles": sum(r["n_dropped_cycles"] for r in recs),
+                              "n_cycles": 5 * len(AMPS_MT) * len(recs)}
     pathlib.Path(a.out + ".md").write_text(report(res))
     pathlib.Path(a.out + ".json").write_text(to_json(res))
     print("written: %s.md / .json / _runs.csv" % a.out)

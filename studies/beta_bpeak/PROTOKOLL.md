@@ -2214,6 +2214,70 @@ Rule:
 - Results are given as loss density P = f K_d w in W/cm³ at 30 MHz (decision
   Chris 2026-10-10); effects on ln P as a factor on P.
 
+Code: `analyze.py` (STEADY_TAIL, steady_tail), `analyze_design.py
+--steady_tail` (to_nominal, missing amplitudes in the GLM and in fit A / B),
+test `test_steady_tail_rule`. Check of the code: without the option the
+analysis gives the stored result again (largest difference 6·10⁻¹³). The
+stored sobol_analysis.md now also holds the α section (8 pairs; it was
+written before the α 0.01 runs were fetched).
+
+Result (results/sobol_analysis_steady.md; 223 of 4060 measured cycles
+dropped; 4 amplitudes missing in 4 runs). S029 now enters: its 9 mT
+cycle with the negative loop area is an event cycle and is dropped, 3
+cycles stay. Without S029 (115 runs) the numbers change by ≤ 0.013 and no
+class changes. Primary tests, range effect (95 % CI), class:
+
+| output × factor | pre-registered (115 runs) | steady tail (116 runs) |
+|---|---|---|
+| β all × L_eff 30 → 12 (lnQ) | +0.103 (+0.012 … +0.208) not determined | **+0.151 (+0.068 … +0.224) lever** |
+| β all × r_p | +0.135 (+0.007 … +0.247) not determined | +0.145 (+0.016 … +0.256) not determined |
+| β all × φ | −0.035 (−0.168 … +0.057) not determined | −0.065 (−0.165 … +0.023) not determined |
+| β all × d/l_ex 212 → 300 | −0.531 (−0.655 … −0.434) lever | −0.572 (−0.669 … −0.476) lever |
+| P 50 mT × L_eff | × 0.96 not determined | × 0.94 not determined |
+| P 50 mT × r_p | × 1.00 not determined | × 1.04 not determined |
+| P 50 mT × φ | × 1.09 not determined | × 1.06 not determined |
+| P 50 mT × d/l_ex | × 1.36 (1.12 … 1.68) lever | × 1.36 (1.10 … 1.66) lever |
+
+- d/l_ex stays the strongest lever; its size does not change within the
+  CI.
+- L_eff becomes a lever for β all: a smaller cube (higher K_eff) gives a
+  higher β. The value moves by +0.05, inside its CI, but now it passes Holm.
+  It is at the margin 0.15. Most of it comes from 70 … 150 mT (β@70-150 ×
+  lnQ +0.31). There the dx 3 mesh is not reliable (7.51, 7.52), and the
+  corner K2 (L_eff, r_p) is triggered but not run. Thus this lever is
+  conditional on the mesh.
+- Check of the rule: with the steady tail, the fit with w_dis agrees with
+  the fit with w_loop (e.g. β@9-35 × lnQ +0.124 vs +0.125; before −0.805 vs
+  0.000). In a steady cycle w_dis = w_loop must hold. Thus the rule removes
+  what broke the energy balance.
+- Cycle-to-cycle scatter of the loss in the steady tail: sd of ln P 2.3 …
+  2.7 % (median per amplitude, 75 % quantile ≤ 5.9 %). The scatter between
+  realisations is 16 … 35 % (centre, 8 seeds). One steady loop is thus
+  enough for the design. Thus a run-amplitude with only 1 … 2 kept cycles is
+  usable.
+
+Time-series measures with the same rule (`eval_jumps_time.py`,
+results/jumps_time.md; replaces the numbers of 7.51 where they differ):
+- A (dx 3): left out 4 / 6 / 11 / 2 / 3 / 3 / 0 run-amplitudes at 9 … 150
+  mT. The RF medians change by ≤ 0.012: 0.040 / 0.133 / 0.218 / 0.230 /
+  0.216 / 0.184 / 0.153. The window at 35 … 70 mT stays.
+- B: changes. Median B_pk 50 mT (42 … 52), before 42 mT. Factor on B_pk
+  for A 20 → 10 pJ/m: × 0.67 (0.51 … 0.88), p 0.004 (before × 0.46).
+  L_eff: × 1.12 (0.85 … 1.49), p 0.42 (before × 1.41, p 0.015). R² 0.07.
+  A thirds 39 / 47 / 54 mT (before 32 / 36 / 56). Thus part of the earlier
+  A dependence came from state changes at 20 … 35 mT, which made a false
+  peak of RF. The jump peak still follows A, but weaker, and not L_eff.
+- C (mesh pairs; the jobs have only 3 measured cycles, so one event cycle
+  removes the pair): pairs used 7 / 5 / 9 at 9 / 50 / 100 mT. Seeds with
+  RF(dx 3) > RF(dx 1.5): 0/7 (p 0.016), 5/5 (p 0.062), 9/9 (p 0.004). The
+  removed cycles are real state changes (per-cycle balance 1.29 … 2.36 with
+  a step in w_loop), not sampling noise. The three levels of 7.51 do not
+  change: shown at 100 mT, indicated at 50 mT, not tested at 20 … 70 mT.
+- Limit: R1 (7.50) comes from the accumulators, which sum all cycles ≥ 2.
+  The event cycles cannot be removed there. Thus the R1 onset (26 vs 41 mT)
+  can contain state changes. The K3 fill-in jobs (running) have the same
+  limit.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

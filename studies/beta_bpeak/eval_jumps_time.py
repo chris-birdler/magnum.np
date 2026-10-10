@@ -4,8 +4,9 @@ Stage 1 test of the regime change near 30 … 50 mT (PROTOKOLL 7.50, 7.51): does
 the amplitude of this change follow A or K_eff? Exploratory. Source: the time series of the α 0.1 Sobol runs
 (samples_*.csv: p_dis(t) and n60(t), 256 samples per cycle) and the mesh pairs MK3_* / M300_* (dx 3 vs dx 1.5 l_ex).
 
-Kept data: the last KEEP_LAST = 3 cycles of each amplitude (the earlier cycles can carry a field-triggered state change,
-PROTOKOLL 7.53: at 9 mT, 23 % of the runs dissipate in cycle 2 more than 1.5 × the later cycles).
+Kept data (steady-tail rule, PROTOKOLL 7.54): a run-amplitude counts only if its last KEEP_LAST = 3 measured cycles
+come after the last event cycle (|w_dis / w_loop − 1| > 0.20: a field-triggered state change, 7.53); then these 3
+cycles are used. The others are left out and counted.
 p_dis comes from the LLG damping term and is ≥ 0. n60 = number of neighbour cell pairs in one particle with an angle
 > 60° (vortex cores, Bloch points, steep walls).
 
@@ -30,6 +31,7 @@ import warnings
 import numpy as np
 from scipy import stats
 
+import analyze
 import analyze_design as AD
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -81,11 +83,11 @@ def measures(P, N60):
     return out
 
 
-def balance(d, k):
-    """|mean w_dis / mean w_loop − 1| over the kept cycles of stage k (energy balance, as AD.BAL_EVENT)."""
-    cyc = json.loads((d / "summary.json").read_text())["stages"][k]["cycles"][-KEEP_LAST:]
-    wl = np.mean([c["w_loop"] for c in cyc])
-    return abs(np.mean([c["w_dis"] for c in cyc]) / wl - 1.0) if wl > 0 else float("inf")
+def steady(d, k):
+    """Steady-tail rule (7.54): the last KEEP_LAST measured cycles of stage k have no event cycle."""
+    st = json.loads((d / "summary.json").read_text())["stages"][k]
+    skip = 2 if "h_amp_initial" in st else 1                   # as analyze.load_run (drive corrected after cycle 0)
+    return len(analyze.steady_tail(st["cycles"][skip:], AD.BAL_EVENT)) >= KEEP_LAST
 
 
 def run_measures(d, n_amp):
@@ -96,7 +98,7 @@ def run_measures(d, n_amp):
         s = series(f)
         m = measures(*s) if s is not None else None
         if m is not None:
-            m["bal_ok"] = balance(d, k) <= AD.BAL_EVENT
+            m["steady"] = steady(d, k)
         out.append(m)
     return out
 
@@ -107,6 +109,8 @@ def peak_lnB(rf):
     i = int(np.nanargmax(rf))
     if i in (0, len(rf) - 1):
         return x[i], True
+    if not np.all(np.isfinite(rf[i - 1:i + 2])):
+        return x[i], False
     c = np.polyfit(x[i - 1:i + 2], rf[i - 1:i + 2], 2)
     return float(np.clip(-c[1] / (2 * c[0]), x[i - 1], x[i + 1])) if c[0] < 0 else x[i], False
 
@@ -126,39 +130,39 @@ def main():
     rng = np.random.default_rng(20261010)
     recs, _ = AD.load_runs(R)
     amps = AD.AMPS_MT
-    M = {r["name"]: run_measures(R / r["name"], len(amps)) for r in recs}
+    M_all = {r["name"]: run_measures(R / r["name"], len(amps)) for r in recs}
+    M = {n: [x if x is not None and x["steady"] else None for x in v] for n, v in M_all.items()}
     rnp = {9: [], 50: [], 150: []}
     for r in recs:
         for st in json.loads((R / r["name"] / "phasemap.json").read_text())["stages"]:
             rnp[min(rnp, key=lambda x: abs(st["B_peak_mT"] / x - 1))].append(st["R_np"])
 
     print("# Stage 1: jumps in the dissipation time series (exploratory)\n")
-    print("n = %d α 0.1 runs (Sobol, centre, corners), last %d cycles per amplitude, 256 samples per cycle. "
-          "Medians over the runs, 95 %% CI of the median by bootstrap over the runs (%d resamples).\n" %
-          (len(recs), KEEP_LAST, N_BOOT))
+    print("n = %d α 0.1 runs (Sobol, centre, corners), the last %d cycles per amplitude if they are steady (7.54), "
+          "256 samples per cycle. Medians over the runs, 95 %% CI of the median by bootstrap over the runs (%d "
+          "resamples).\n" % (len(recs), KEEP_LAST, N_BOOT))
     print("## A. Measures against the amplitude\n")
     print("| B (mT) | RF non-smooth | RN non-repeating | RH sharp repeating | dS5 burst excess | rho event coupling "
-          "(runs > 0) | samples with an n60 change | R_np snapshots | balance off (runs) |")
+          "(runs > 0) | samples with an n60 change | R_np snapshots | left out, not steady (runs) |")
     print("|---|---|---|---|---|---|---|---|---|")
     curves = {key: [] for key in KEYS}
     for k, m in enumerate(amps):
         v = {key: [M[r["name"]][k][key] for r in recs if M[r["name"]][k] is not None] for key in KEYS}
         for key in KEYS:
             curves[key].append(med_ci(v[key], rng))
-        nbad = sum(not M[r["name"]][k]["bal_ok"] for r in recs if M[r["name"]][k] is not None)
+        nbad = sum(M[r["name"]][k] is None for r in recs)
         rho = np.array([x for x in v["rho"] if np.isfinite(x)])
         c = lambda key: "%.3f (%.3f … %.3f)" % curves[key][-1][:3]
         print("| %g | %s | %s | %s | %.3f | %.2f (%.2f … %.2f), %d/%d | %.0f %% | %s | %d |" % (
             m, c("RF"), c("RN"), c("RH"), curves["dS5"][-1][0], *curves["rho"][-1][:3], (rho > 0).sum(), len(rho),
             100 * curves["ev"][-1][0], ("%.3f" % np.median(rnp[m])) if m in rnp else "–", nbad))
-    print("\nbalance off: |w_dis / w_loop − 1| > %.2f over the kept cycles (state still changes, or a jump falls between "
-          "the samples). Check without these run-amplitude pairs:\n" % AD.BAL_EVENT)
-    print("| B (mT) | RF median, all | RF median, balance ok |")
+    print("\nCheck: RF median with the steady rule against all run-amplitudes (the last 3 cycles, also when not steady):\n")
+    print("| B (mT) | RF median, steady | RF median, all |")
     print("|---|---|---|")
     for k, m in enumerate(amps):
-        a_ = [M[r["name"]][k]["RF"] for r in recs if M[r["name"]][k] is not None]
-        b_ = [M[r["name"]][k]["RF"] for r in recs if M[r["name"]][k] is not None and M[r["name"]][k]["bal_ok"]]
-        print("| %g | %.3f (n %d) | %.3f (n %d) |" % (m, np.median(a_), len(a_), np.median(b_), len(b_)))
+        a_ = [M_all[r["name"]][k]["RF"] for r in recs if M_all[r["name"]][k] is not None]
+        b_ = [M[r["name"]][k]["RF"] for r in recs if M[r["name"]][k] is not None]
+        print("| %g | %.3f (n %d) | %.3f (n %d) |" % (m, np.median(b_), len(b_), np.median(a_), len(a_)))
 
     # B. amplitude of the largest RF per run, against the factors
     pk, ends = [], 0
@@ -199,10 +203,11 @@ def main():
 
     # C. mesh pairs
     print("\n## C. Mesh check: the same measures at dx 3 and dx 1.5 l_ex (paired seeds, one job per amplitude)\n")
-    print("Jobs with 5 cycles, the last 3 kept. Medians over the seeds. n60 max = largest number of pairs > 60° in the "
-          "kept cycles. Sign test (two-sided, exact) over the seeds of both points.\n")
+    print("Jobs with 5 cycles, the last 3 used. A pair counts only if both jobs are steady in these 3 cycles (7.54). "
+          "Medians over the seeds. n60 max = largest number of pairs > 60° in the used cycles. Sign test (two-sided, "
+          "exact) over the seeds of both points.\n")
     print("| B (mT) | point | n pairs | RF dx 3 | RF dx 1.5 | seeds with RF(dx 3) > RF(dx 1.5) | RN dx 3 | RN dx 1.5 | "
-          "n60 max dx 3 | n60 max dx 1.5 | balance off dx 3 / dx 1.5 |")
+          "n60 max dx 3 | n60 max dx 1.5 | pairs left out (not steady) |")
     print("|---|---|---|---|---|---|---|---|---|---|---|")
     mesh = {}
     for b in MESH_AMPS:
@@ -216,13 +221,14 @@ def main():
                     for i, d in enumerate((d3, d15)):
                         pairs[-1][i]["n60max"] = int(series(d / "samples_00_amp00.csv")[1].max())
             mesh[(lab, b)] = pairs
-            g = lambda i, key: np.array([p[i][key] for p in pairs])
+            used = [p for p in pairs if p[0]["steady"] and p[1]["steady"]]
+            g = lambda i, key: np.array([p[i][key] for p in used])
             gt = int((g(0, "RF") > g(1, "RF")).sum())
-            n_gt, n_all = n_gt + gt, n_all + len(pairs)
-            print("| %d | %s | %d | %.3f | %.3f | %d/%d | %.3f | %.3f | %.0f | %.0f | %d / %d |" % (
-                b, lab, len(pairs), np.median(g(0, "RF")), np.median(g(1, "RF")), gt, len(pairs),
+            n_gt, n_all = n_gt + gt, n_all + len(used)
+            print("| %d | %s | %d | %.3f | %.3f | %d/%d | %.3f | %.3f | %.0f | %.0f | %d |" % (
+                b, lab, len(used), np.median(g(0, "RF")), np.median(g(1, "RF")), gt, len(used),
                 np.median(g(0, "RN")), np.median(g(1, "RN")), np.median(g(0, "n60max")), np.median(g(1, "n60max")),
-                sum(not p[0]["bal_ok"] for p in pairs), sum(not p[1]["bal_ok"] for p in pairs)))
+                len(pairs) - len(used)))
         print("| %d | both, sign test | %d | | | %d/%d, p = %.3f | | | | | |" % (
             b, n_all, n_gt, n_all, stats.binomtest(n_gt, n_all, 0.5).pvalue))
 
@@ -270,15 +276,15 @@ def fig_out(amps, curves, recs, pk, A, L, mesh):
             xs = np.arange(len(MESH_AMPS)) + (2 * j + i - 1.5) * 0.18
             for x, b in zip(xs, MESH_AMPS):
                 for p in mesh[(lab, b)]:
-                    ax.scatter(x, p[i]["RF"], marker=mk, s=26, color=col if p[i]["bal_ok"] else "none", edgecolors=col,
+                    ax.scatter(x, p[i]["RF"], marker=mk, s=26, color=col if p[i]["steady"] else "none", edgecolors=col,
                                alpha=0.8 if i == 0 else 0.5)
-                ax.hlines(np.median([p[i]["RF"] for p in mesh[(lab, b)]]), x - 0.08, x + 0.08, color=col, lw=2.5)
+                ax.hlines(np.median([p[i]["RF"] for p in mesh[(lab, b)] if p[0]["steady"] and p[1]["steady"]]), x - 0.08, x + 0.08, color=col, lw=2.5)
             ax.scatter([], [], marker=mk, color=col, label="%s, dx %s l_ex" % (lab.split(" (")[0], dx))
     ax.set_xticks(range(len(MESH_AMPS)))
     ax.set_xticklabels(["%d mT" % b for b in MESH_AMPS])
     ax.set_ylabel("non-smooth share RF")
     ax.set_title("Mesh check: dots = seeds, bars = medians")
-    ax.scatter([], [], marker="o", color="none", edgecolors=GREY, label="open: energy balance off")
+    ax.scatter([], [], marker="o", color="none", edgecolors=GREY, label="open: not steady (left out)")
     ax.legend(fontsize=9, loc="upper right")
     fig.tight_layout()
     fig.savefig(HERE / "results" / "jumps_time.png", dpi=200)

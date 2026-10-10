@@ -531,6 +531,45 @@ def test_analyze_design_mean_estimand_under_heteroscedastic_scatter():
     assert res["scatter"]["lnw@50mT"]["significant"]["r_p"]
 
 
+def test_steady_tail_rule():
+    """Steady-tail rule (PROTOKOLL 7.54): only the cycles after the last event cycle (|w_dis/w_loop - 1| > tol or
+    w_loop <= 0) are kept; an event in the last cycle leaves nothing. A missing amplitude gives nan at its nominal
+    amplitude only; the slopes use the other amplitudes; the main fit and fit A run with the gaps and recover the
+    known effects."""
+    import analyze
+    import analyze_design as AD
+    c = lambda wl, wd: {"w_loop": wl, "w_dis": wd}
+    cyc = [c(1, 1.5), c(1, 1.1), c(1, 2.0), c(1, 1.0), c(1, 0.9)]
+    assert analyze.steady_tail(cyc, 0.2) == cyc[3:]
+    assert analyze.steady_tail(cyc[:3], 0.2) == []
+    assert analyze.steady_tail([c(-1, 1), c(1, 1)], 0.2) == [c(1, 1)]
+    assert analyze.steady_tail(cyc[3:], 0.2) == cyc[3:]
+    bm = np.array(AD.AMPS_MT) * 1.02
+    lw = 2.0 * np.log(bm) - 9.0
+    full = AD.to_nominal(bm, lw, np.zeros(7, bool))
+    assert np.allclose(full, 2.0 * np.log(AD.AMPS_MT) - 9.0)
+    miss = np.zeros(7, bool)
+    miss[2] = True
+    gap = AD.to_nominal(bm, lw, miss)
+    assert np.isnan(gap[2]) and np.allclose(np.delete(gap, 2), np.delete(full, 2))
+    o = AD.per_run_outputs(gap)
+    assert abs(o["beta_all"] - 2.0) < 1e-9 and abs(o["beta@9-35mT"] - 2.0) < 1e-9
+    assert math.isfinite(o["lnw@50mT"]) and math.isfinite(o["lnw@10mT"])
+    o = AD.per_run_outputs(np.where(np.arange(7) == 1, np.nan, full))
+    assert math.isnan(o["lnw@10mT"])                        # 10 mT needs 9 and 20 mT
+    recs = _synthetic_recs(lambda x: 50.0, seed=3)
+    rng = np.random.default_rng(4)
+    for r in rng.choice(recs, 6, replace=False):              # 6 gaps at 20 / 35 mT, as in the real data
+        k = int(rng.choice([1, 2]))
+        r["lnw@%gmT" % AD.AMPS_MT[k]] = float("nan")
+        lnw = np.array([r["lnw@%gmT" % m] for m in AD.AMPS_MT])
+        r.update(AD.per_run_outputs(lnw))
+    res = AD.analyse(recs, n_boot=100)
+    lo, hi = res["main"][("beta_all", "r_p")]["ci95"]
+    assert lo - 0.02 <= 0.30 <= hi + 0.02
+    assert res["boot"]["n_fail"] == 0
+
+
 def test_analyze_design_flag_rule_on_archived_runs():
     """Flag rule (PROTOKOLL 7.39): a run is flagged if |w_dis/w_loop - 1| > 0.20 at any amplitude. On the archived
     runs of the stopped design (if present) this flags a minority, not all runs as the old rule did."""

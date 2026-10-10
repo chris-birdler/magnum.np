@@ -117,6 +117,16 @@ class UnconvergedRun(Exception):
 
 
 ALLOW_UNCONVERGED = False
+# steady-tail rule (PROTOKOLL 7.54, declared deviation): None = off (pre-registered); a number = keep only the measured
+# cycles after the last cycle with w_loop <= 0 or |w_dis / w_loop - 1| > STEADY_TAIL (a field-triggered state change,
+# 7.53); no cycle left: the stage is kept with w_loop = nan ("missing")
+STEADY_TAIL = None
+
+
+def steady_tail(cycles, tol):
+    """The cycles after the last event cycle (w_loop <= 0 or |w_dis / w_loop - 1| > tol); may be empty."""
+    ev = [i for i, c in enumerate(cycles) if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > tol]
+    return cycles[ev[-1] + 1:] if ev else cycles
 
 
 def load_run(d):
@@ -135,7 +145,15 @@ def load_run(d):
             continue
         skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP      # drive corrected after cycle 0
         cyc = st["cycles"][skip:] if len(st["cycles"]) > skip else st["cycles"][-1:]
+        n_meas_all = len(cyc)
+        missing = False
+        if STEADY_TAIL is not None:
+            tail = steady_tail(cyc, STEADY_TAIL)
+            missing = not tail
+            cyc = tail or cyc                    # a missing stage keeps its b_peak (sort order), w_loop = nan below
         w = np.array([c[WKEY] for c in cyc])
+        if missing:
+            w = np.full(len(cyc), np.nan)
         if len(w) > 1 and np.all(w > 0):
             lw = np.log(w)
             ss += float(np.sum((lw - lw.mean()) ** 2))
@@ -145,8 +163,9 @@ def load_run(d):
                      "b_peak": float(np.mean([c["b_peak"] for c in cyc])),
                      "w_loop": float(w.mean()),
                      "w_err": float(w.std(ddof=1) / math.sqrt(len(w))) if len(w) > 1 else float("nan"),
-                     "w_dis": float(np.mean([c["w_dis"] for c in cyc])),
+                     "w_dis": float("nan") if missing else float(np.mean([c["w_dis"] for c in cyc])),
                      "w_loop_raw": float(np.mean([c["w_loop"] for c in cyc])),
+                     "missing": missing, "n_dropped": n_meas_all - (0 if missing else len(cyc)),
                      "closure": cyc[-1]["closure"], "dW_rel": cyc[-1].get("dW_rel", float("nan")),
                      "offset": float(np.mean(cycle_offsets(d, si, st["name"], cyc))),
                      "steady": st.get("steady", False), "closed": st.get("closed", True),
