@@ -77,11 +77,43 @@ def cost(a):
     return jobs.cost_h(a, 0.012, 0.75, 3.5, 1.0)
 
 
+def mesh_check_jobs(corner="K3", seeds=None):
+    """Mesh check of a design corner (PLAN 4.0, rule A; go Chris 2026-10-10 for K3): the mesh300 protocol
+    (PROTOKOLL 7.25) at the corner: dx 1.5 and dx 3, 6 seeds, paired; 9 / 50 / 100 mT, one job per amplitude, 5 cycles;
+    the 9 mT job relaxes and writes init.pt, the 50 and 100 mT jobs start from it. Same physics settings as the
+    design corner (template + corner factors). Order: all 9 mT jobs first (dx 1.5 first), then 50 and 100 mT."""
+    f = dict(CORNERS)[corner]
+    base = int(corner[1])
+    seeds = seeds or [2001 + 10 * base + r for r in range(6)]
+    T = template()
+    first, rest = [], []
+    for sd in seeds:
+        for dx in (1.5, 3.0):
+            tag = ("%g" % dx).replace(".", "")
+            M = dict(T, **f, dx_lex=dx, alpha=0.1, n_amp=1, cycles_per_amp=5, max_cycles_per_amp=5, seed=sd)
+            name9 = "M%s_dx%s_s%d_b9" % (corner, tag, sd)
+            first.append((dx, name9, dict(M, b_list=jobs.b_of_mT(9))))
+            for mT in (50, 100):
+                rest.append((dx, "M%s_dx%s_s%d_b%d" % (corner, tag, sd, mT),
+                             dict(M, b_list=jobs.b_of_mT(mT), init_from="%s/init.pt" % name9, init_wait_h=30.0)))
+    first.sort(key=lambda x: x[0])
+    rest.sort(key=lambda x: x[0])
+    return [(n, j) for _, n, j in first + rest]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--n", type=int, default=96)
     ap.add_argument("--n_a001", type=int, default=0)
+    ap.add_argument("--mesh_check", default=None, help="write only jobs/mesh<corner>.txt for this corner (e.g. K3)")
     a = ap.parse_args()
+    if a.mesh_check:
+        js = mesh_check_jobs(a.mesh_check)
+        with open(HERE / "jobs" / ("mesh%s.txt" % a.mesh_check), "w") as fh:
+            for name, j in js:
+                fh.write("%s %s\n" % (name, jobs.to_cli(j)))
+        print("%d jobs written to jobs/mesh%s.txt" % (len(js), a.mesh_check))
+        return
     T = template()
     U = qmc.Sobol(d=4, scramble=True, seed=DESIGN_SEED).random(a.n)
     rows, main_jobs, a001_jobs, corner_jobs = [], [], [], []
