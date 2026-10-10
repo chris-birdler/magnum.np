@@ -142,6 +142,45 @@ def main():
         print("| %d | %s | %s | %s | %s | %s |" % (b, " ".join("%+.2f" % x for x in k), ms(k), " ".join("%+.2f" % x for x in bb),
                                                ms(bb), con))
 
+    # β: mesh error per point (paired seeds) and its contrast K3 − base (the pre-registered comparison, PLAN 4.0)
+    print("\n## β: mesh error β(dx 3) − β(dx 1.5) per seed, mean ± SE (n); contrast K3 − base (Welch)\n")
+    print("| segment | K3 | base | K3 − base (p) |")
+    print("|---|---|---|---|")
+    for seg in SEGS:
+        dd = []
+        for fmt, seeds in SETS.values():
+            v = []
+            for s in seeds:
+                b3, b15 = seed_betas(fmt, s, "3").get(seg), seed_betas(fmt, s, "15").get(seg)
+                if b3 is not None and b15 is not None:
+                    v.append(b3 - b15)
+            dd.append(np.array(v))
+        se = lambda v: v.std(ddof=1) / math.sqrt(len(v))
+        print("| %s | %+.2f ± %.2f (%d) | %+.2f ± %.2f (%d) | %+.2f ± %.2f (%.3f) |" % (
+            seg, dd[0].mean(), se(dd[0]), len(dd[0]), dd[1].mean(), se(dd[1]), len(dd[1]), dd[0].mean() - dd[1].mean(),
+            math.hypot(se(dd[0]), se(dd[1])), stats.ttest_ind(dd[0], dd[1], equal_var=False).pvalue))
+
+    # the factor contrast itself (K3 − base) on each mesh: β and ln w
+    print("\n## K3 − base on each mesh (mean over seeds ± SE, Welch p)\n")
+    print("| quantity | dx 3 | dx 1.5 |")
+    print("|---|---|---|")
+
+    def contrast(a, b):
+        a, b = np.array(a), np.array(b)
+        return "%+.2f ± %.2f (p %.3f)" % (a.mean() - b.mean(), math.hypot(a.std(ddof=1) / math.sqrt(len(a)),
+                                                                           b.std(ddof=1) / math.sqrt(len(b))),
+                                          stats.ttest_ind(a, b, equal_var=False).pvalue)
+    for seg in SEGS:
+        cells = []
+        for dx in ("3", "15"):
+            v = [[x for x in (seed_betas(fmt, s, dx).get(seg) for s in seeds) if x is not None]
+                 for fmt, seeds in SETS.values()]
+            cells.append(contrast(*v))
+        print("| β %s | %s | %s |" % (seg, *cells))
+    for b in AMPS:
+        print("| ln w at %d mT | %s | %s |" % (b, contrast(res[labs[0]]["lnw"][b][0], res[labs[1]]["lnw"][b][0]),
+                                              contrast(res[labs[0]]["lnw"][b][1], res[labs[1]]["lnw"][b][1])))
+
     fig, axs = plt.subplots(1, 2, figsize=(12.5, 4.6))
     ax = axs[0]
     to_P = kd * F_HZ / 1e6
