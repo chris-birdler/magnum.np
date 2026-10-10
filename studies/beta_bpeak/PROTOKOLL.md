@@ -1807,8 +1807,8 @@ uses the weights 1/σ²(x). Flagged runs 50 of 115 (43 %; 65 left).
 |---|---|---|---|---|---|
 | β all | d/l_ex | −0.53 (−0.66 … −0.43) | < 10⁻⁴ | lever | yes (−0.56 / −0.57 / −0.63 / −0.73) |
 | β all | ln Q_eff | +0.10 (+0.01 … +0.21) | 0.04 | not determined | no (w_dis −0.17) |
-| β all | r_p | +0.14 (+0.01 … +0.25) | 0.03 | not determined | no (no flags +0.06, w_dis −0.07) |
-| β all | φ | −0.04 (−0.17 … +0.06) | 0.55 | not determined (90 % CI −0.153 … +0.043, misses "not a lever" by 0.003) | |
+| β all | r_p | +0.13 (+0.01 … +0.25) | 0.03 | not determined | no (no flags +0.06, w_dis −0.07) |
+| β all | φ | −0.03 (−0.17 … +0.06) | 0.55 | not determined (90 % CI −0.153 … +0.043, misses "not a lever" by 0.003) | |
 | ln w 50 mT | d/l_ex | +0.31 (+0.11 … +0.52) | 0.002 | lever | yes (+0.32 / +0.30 / +0.48 / +0.35) |
 | ln w 50 mT | ln Q_eff | −0.04 (−0.24 … +0.13) | 0.65 | not determined | |
 | ln w 50 mT | r_p | +0.00 (−0.21 … +0.24) | 0.98 | not determined | w_dis +0.36 |
@@ -1908,7 +1908,9 @@ runs; bootstrap 1000; hints).
   pivot near 50 … 70 mT.
 - Main fit, range effect of d/l_ex on ln E[w]: +1.01 (9 mT), +1.07 (20),
   +0.69 (35), +0.31 (50), −0.03 (70), −0.21 (100), −0.31 (150 mT); zero at
-  ≈ 68 mT. ln Q_eff and r_p raise the loss only at 150 mT (+0.14 / +0.16, CI
+  ≈ 68 mT (these curves: GLM without the scatter weights; with the weights of
+  the main fit, as in the deck, the zero is at ≈ 69 mT and the β end points
+  are 1.84 / 2.37). ln Q_eff and r_p raise the loss only at 150 mT (+0.14 / +0.16, CI
   excludes 0); r_p changes sign at ≈ 39 mT, ln Q_eff at ≈ 103 mT (both
   small). φ (with the dilution 0.23) has no sign change.
 - Consequence: a low β (large d/l_ex: large particles or small A) lowers the
@@ -1934,6 +1936,17 @@ C0 … C7 at α 0.01 (from the init.pt of the α 0.1 run, 9 cycles) against the
   loss comes from motion that is not at the drive frequency (fast
   precession, jumps), which depends little on α. Hence the loss falls only
   to × 0.6 … 0.85 for 10 × less damping.
+
+### 7.49 Management deck (2026-10-10)
+
+slide_decks/beta_powder_sobol (make_deck.py, .pptx, .pdf, 14 slides): all
+figures and numbers from results/deck_data.json (deck_data.py: the main fit
+with the scatter weights and 1000 bootstrap resamples) and
+results/sobol_analysis.json. Reviewed by a context-free agent (47 findings,
+all taken over): mesh caveat on every result slide, the weighted main fit
+for the A curves, R reported as a squared-amplitude ratio, pooled repeat
+scatter 0.13 (20 repeats at 5 points), exploratory parts marked as hints,
+cost and dates marked as estimates, one word per meaning.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

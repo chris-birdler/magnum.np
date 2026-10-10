@@ -112,7 +112,8 @@ def load_runs(runs, alpha=0.1):
             skipped.append("%s (%s)" % (d.name, e))
             continue
         if r is None:
-            skipped.append("%s (not DONE or incomplete)" % d.name)
+            skipped.append("%s (%s)" % (d.name, "not DONE" if not (d / "DONE").exists() else
+                                        "incomplete or w ≤ 0 at an amplitude (e.g. a negative mean loop area)"))
         elif abs(r["alpha"] - alpha) < 1e-12:
             recs.append(r)
     return recs, skipped

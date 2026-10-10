@@ -27,7 +27,7 @@ import eval_mechanism as EM
 HERE = pathlib.Path(__file__).resolve().parent
 RUNS = HERE / "runs"
 F_HZ = 30e6
-N_BOOT = 500
+N_BOOT = 1000
 LEX_A10 = 3.342                       # nm, l_ex at A = 10 pJ/m and Js = 1.5 T
 
 
@@ -94,14 +94,19 @@ def main():
             res[f] = (Th @ coefs.T - Tl @ coefs.T).mean(0)
         return res
 
-    c0 = AD.glm_coefs(T, W)
+    # the same weights as the pre-registered main fit (scatter model, PLAN 4.0; sobol_analysis.json)
+    SA = json.loads((HERE / "results" / "sobol_analysis.json").read_text())
+    sw = SA["scatter"]["lnw@50mT"]
+    wts = np.array(sw["weights"]) if sw["any"] and len(sw["weights"]) == len(recs) else None
+    out["weights_used"] = wts is not None
+    c0 = AD.glm_coefs(T, W, wts)
     cur0, pa0 = curves(c0), per_amp(c0)
     rng = np.random.default_rng(20261010)
     cb, pb = [], []
     for _ in range(N_BOOT):
         i = rng.integers(0, len(recs), len(recs))
         try:
-            c = AD.glm_coefs(T[i], W[i])
+            c = AD.glm_coefs(T[i], W[i], None if wts is None else wts[i])
         except Exception:                                      # noqa: BLE001
             continue
         cb.append(curves(c))
@@ -111,6 +116,11 @@ def main():
                           "est": cur0[f].tolist(),
                           "lo": np.percentile([b[f] for b in cb], 2.5, axis=0).tolist(),
                           "hi": np.percentile([b[f] for b in cb], 97.5, axis=0).tolist()} for f in AD.FACTORS}
+    # loss relative to the low end of A (coded d/l_ex = +1, the last grid point), interval per bootstrap sample
+    rel = lambda c: c["lnd"][1:] - c["lnd"][1:, -1:]
+    out["partial"]["lnd"]["rel_est"] = rel(cur0).tolist()
+    out["partial"]["lnd"]["rel_lo"] = np.percentile([rel(b) for b in cb], 2.5, axis=0).tolist()
+    out["partial"]["lnd"]["rel_hi"] = np.percentile([rel(b) for b in cb], 97.5, axis=0).tolist()
     out["per_amp"] = {f: {"est": pa0[f].tolist(),
                           "lo": np.percentile([b[f] for b in pb], 2.5, axis=0).tolist(),
                           "hi": np.percentile([b[f] for b in pb], 97.5, axis=0).tolist()} for f in AD.FACTORS}
@@ -144,7 +154,12 @@ def main():
                                              (r["name"].startswith("C") and "_" not in r["name"]))]
         if len(v) >= 2:
             sc[tag] = {"n": len(v), "sd": float(np.std(v, ddof=1)), "mean": float(np.mean(v))}
+    num = sum((v["n"] - 1) * v["sd"] ** 2 for v in sc.values())
+    dof = sum(v["n"] - 1 for v in sc.values())
+    sc["pooled"] = {"sd": math.sqrt(num / dof), "dof": dof, "n": sum(v["n"] for k, v in sc.items() if k != "pooled")}
     out["scatter"] = sc
+    bw = np.array([r["beta_w"] for r in rows])
+    out["beta_windows"] = {"mean": bw.mean(0).tolist(), "se": (bw.std(0, ddof=1) / math.sqrt(len(bw))).tolist()}
 
     # α 0.01 pairs (if present)
     out["alpha"] = AD.alpha_test(RUNS)
@@ -161,6 +176,17 @@ def main():
             r1[tag] = {"mT": [9, 50, 150], "mean": v.mean(0).tolist(), "se": (v.std(0, ddof=1) / math.sqrt(len(v))).tolist(),
                        "n": len(v)}
     out["alpha"]["R1"] = r1
+    db = []
+    for i in range(8):
+        a1, a0 = RUNS / ("C%d_a001" % i), RUNS / ("C%d" % i)
+        if (a1 / "DONE").exists() and (a0 / "DONE").exists():
+            x1, x0 = AD.run_record(a1), AD.run_record(a0)
+            if x1 is not None and x0 is not None:
+                db.append((x1["beta_all"] - x0["beta_all"], x1["beta_all"]))
+    if db:
+        d_ = np.array([x[0] for x in db])
+        out["alpha"]["dbeta"] = {"mean": float(d_.mean()), "se": float(d_.std(ddof=1) / math.sqrt(len(d_))), "n": len(d_),
+                                 "max_pair": float(d_.max()), "beta_max_a001": float(max(x[1] for x in db))}
 
     # checks
     acc_ok = all(all(s["check_ok"] for s in json.loads((RUNS / r["name"] / "acc.json").read_text())["stages"]) for r in recs)
