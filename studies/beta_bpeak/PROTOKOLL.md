@@ -1845,6 +1845,25 @@ stored energy. PLAN 4.3a excludes runs that crash, give NaN or miss an
 amplitude; w ≤ 0 is not covered. 1 of 116 runs; it removes an event-type
 run that the mean estimand is meant to include.
 
+### 7.45 S029 sensitivity; mesh check K3 started (2026-10-10)
+
+`eval_s029.py` → results/s029_sensitivity.md: S029 enters with the
+stationary cycles after the event at 9 mT (cycles 3 … 6, w_loop 6.8·10⁻⁸
+instead of a negative mean), n 115 → 116, bootstrap 1000. The two levers
+are unchanged (d/l_ex on β all −0.53 → −0.56; on ln w 50 mT +0.31 →
++0.32); the hints on ln Q_eff and r_p change by ≤ 0.03; φ on β all moves
+from "not determined" to "not a lever" (90 % CI −0.153 … +0.043 →
+inside ±0.15): this class is borderline and is reported as such. The
+mesh-check corners are the same. Decision (Chris): S029 is not repeated
+with another seed (a replacement would drop event runs from the mean
+estimand; PLAN 4.3a: no replacement points). The rule for w ≤ 0 stays
+open; the pre-registered result (n = 115) is the main result, the S029
+variant a sensitivity check.
+Mesh check K3 (go Chris): jobs/meshK3.txt (36 jobs: seeds 2031 … 2036,
+dx 1.5 and 3, 9 / 50 / 100 mT, 5 cycles, mesh300 protocol at the design
+corner K3), chain instance/chain_k3.sh pinned to be178ae, waits for the end
+of the Sobol chain, job limit 30 h; estimate ≈ 80 V100-h ≈ 8 $, ≈ 20 h.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
