@@ -43,6 +43,69 @@ def w(name):
     return rows[0]["w_loop"] if rows and rows[0]["w_loop"] > 0 else None
 
 
+def wb(name):
+    d = RUNS / name
+    if not (d / "DONE").exists():
+        return None
+    _, rows = analyze.load_run(d)
+    r = rows[0]
+    return (r["w_loop"], 1500.0 * r["b_peak"]) if r["w_loop"] > 0 else None
+
+
+SEGS = ("9 → 50 mT", "50 → 100 mT", "9 → 100 mT (fit)")
+
+
+def seed_betas(fmt, s, dx):
+    """β of one seed and mesh in the 2 segments and over the 3 amplitudes (realised peak flux densities)."""
+    p = {b: wb(fmt % (dx, s, b)) for b in AMPS}
+    out = {}
+    if p[9] and p[50]:
+        out[SEGS[0]] = math.log(p[50][0] / p[9][0]) / math.log(p[50][1] / p[9][1])
+    if p[50] and p[100]:
+        out[SEGS[1]] = math.log(p[100][0] / p[50][0]) / math.log(p[100][1] / p[50][1])
+    if all(p.values()):
+        out[SEGS[2]] = float(np.polyfit(np.log([p[b][1] for b in AMPS]), np.log([p[b][0] for b in AMPS]), 1)[0])
+    return out
+
+
+def fig_beta():
+    """β per seed, coarse vs fine mesh, K3 and base point, 3 panels (segments); lines join the same seed."""
+    fig, axs = plt.subplots(1, 3, figsize=(13.5, 4.6), sharey=True)
+    xpos = {(0, "3"): 0, (0, "15"): 1, (1, "3"): 2.6, (1, "15"): 3.6}
+    for ax, seg in zip(axs, SEGS):
+        for j, (lab, (fmt, seeds)) in enumerate(SETS.items()):
+            col = RED if j == 0 else GREY
+            vals = {dx: [] for dx in ("3", "15")}
+            for sd in seeds:
+                b3, b15 = seed_betas(fmt, sd, "3").get(seg), seed_betas(fmt, sd, "15").get(seg)
+                if b3 is not None:
+                    vals["3"].append(b3)
+                if b15 is not None:
+                    vals["15"].append(b15)
+                if b3 is not None and b15 is not None:
+                    ax.plot([xpos[(j, "3")], xpos[(j, "15")]], [b3, b15], "-", color=col, alpha=0.35, lw=1)
+                for dx, b in (("3", b3), ("15", b15)):
+                    if b is not None:
+                        ax.scatter(xpos[(j, dx)], b, color=col, s=26, alpha=0.75, zorder=3)
+            for dx in ("3", "15"):
+                v = np.array(vals[dx])
+                if len(v) > 1:
+                    ax.errorbar(xpos[(j, dx)] + 0.18, v.mean(), yerr=2 * v.std(ddof=1) / math.sqrt(len(v)), fmt="s",
+                                color=col, ms=8, capsize=4, lw=1.6, zorder=4)
+                    ax.text(xpos[(j, dx)] + 0.3, v.mean(), "%.2f" % v.mean(), fontsize=10, color=col, va="center")
+        ax.set_xticks([0, 1, 2.6, 3.6])
+        ax.set_xticklabels(["K3\ncoarse", "K3\nfine", "base\ncoarse", "base\nfine"])
+        ax.set_xlim(-0.4, 4.3)
+        ax.axhline(2.0, color=GREY, lw=0.8, ls="--")
+        ax.set_title("β " + seg)
+    axs[0].set_ylabel("loss exponent β")
+    fig.text(0.5, 0.005, "coarse = dx 3 l_ex (14 / 10 nm), fine = dx 1.5 l_ex (7 / 5 nm). Dots = seeds, lines join the "
+             "same seed, squares = mean ± 2 standard errors. K3: A 20 pJ/m (small particles), base: A 10 pJ/m.",
+             ha="center", fontsize=10, color=GREY)
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    fig.savefig(HERE / "results" / "k3_beta.png", dpi=200)
+
+
 def main():
     kd = None
     res = {}
@@ -112,6 +175,7 @@ def main():
     ax.legend(fontsize=10, loc="upper right")
     fig.tight_layout()
     fig.savefig(HERE / "results" / "k3_mesh.png", dpi=200)
+    fig_beta()
 
 
 if __name__ == "__main__":
