@@ -1978,8 +1978,9 @@ cost and dates marked as estimates, one word per meaning.
 the p_dis(t) and n60(t) samples (256 per cycle) of the 115 α 0.1 runs at
 dx 3, and the K3 / base mesh pairs (dx 3 vs dx 1.5, 9 / 50 / 100 mT).
 Only the last 3 cycles of each amplitude are used. Reason: in a first
-version with cycles 2 … 6, 23 % of the runs at 9 mT still relaxed in cycle 2
-(p up to 5 × the later cycles). This made false "jumps" at 9 mT.
+version with cycles 2 … 6, 23 % of the runs at 9 mT had a field-triggered
+state change in cycle 2 (p up to 5 × the later cycles; not an incomplete
+relaxation, see 7.53). This made false "jumps" in the steady loop at 9 mT.
 
 Terms. P = p_dis samples, Pm = mean cycle, Ps = smooth part of Pm (Fourier
 k ≤ 6). Non-smooth share RF = Σ|P − Ps| / ΣP. Non-repeating share
@@ -2134,6 +2135,54 @@ with --init_from and --acc, then instance_postproc → acc.json, sum check
 1.000000, acc file deleted, other run not touched. Started 2026-10-10
 22:03 UTC on all 4 GPUs. The init.pt of the 9 mT jobs loaded. Estimate:
 ≈ 13 h, ≈ 5.3 $ at 0.41 $/h. Credit 6.19 $ at 21:44 UTC.
+
+### 7.53 Extra dissipation in the first cycles at 9 mT: a field-triggered state change, not an incomplete relaxation (2026-10-10)
+
+Question of Chris: why is a state not relaxed? Check of the 115 α 0.1
+Sobol runs, first amplitude (9 mT), from stdout.log, summary.json and the
+samples. No GPU.
+
+- The relaxation converged in all 115 runs: 19 500 iterations (median),
+  47 000 (max) of the limit 80 000. Last relative energy change ≤ 9.7·10⁻⁷
+  per chunk of 500 iterations, two times in a row. Last torque
+  |m × H_eff| rms 0.49 A/m (median), 1.53 A/m (max).
+- Upper limit of the energy that this rest torque can release at α 0.1:
+  p = α γ μ0 Ms ⟨|m × H|²⟩ / (1 + α²) → 2.9·10⁻⁹ K_d per cycle (max run).
+  The steady loop loss at 9 mT is ≈ 2·10⁻⁷ K_d per cycle. Thus the rest of
+  the relaxation is ≈ 1 % of the loop loss.
+- Events (w_dis / w_loop of one cycle > 1.2; cycle 0 > 2.2, because the
+  drive ramps there): 187 events in 90 of 115 runs. Per cycle 0 / 1 / 2 / 3
+  / 4 / 5: 61 / 66 / 39 / 14 / 4 / 3. The released energy (w_dis − w_loop)
+  is 8.8 / 2.0 / 0.9 / 0.7 × the steady loop loss (medians). This is 10³
+  × more than the rest torque can release.
+- Phase: in an event cycle the largest p occurs at |H| / H_peak = 0.58
+  (median). In a calm cycle (cycle 6, 40 runs) it occurs at 0.12, near the
+  zero crossing of H, where dH/dt is largest. Thus the events come at a high
+  field.
+- Example S050: relaxation converged (rel dE 2.8·10⁻⁷, torque 1.4 A/m).
+  At 9 mT, w_dis / w_loop = 3.7 / 15 / 144 in cycles 0 / 1 / 2, then
+  1.0 … 1.2. Released in cycle 2: 4·10⁻⁵ K_d, 0.5 % of |E| = 7.5·10⁻³ K_d.
+
+Reading: the relaxation at H = 0 ends in a local energy minimum, one of
+many metastable states. The drive field changes the energy landscape. At a
+critical field a barrier to a lower minimum vanishes, and the
+magnetization jumps (vortex core, wall, Bloch point). The energy
+difference is dissipated. After some cycles the state does not change any
+more under ±H_peak: the steady loop. At T = 0 there is no thermal
+activation, so only the field can cause this. 9 mT is the first field
+after the relaxation, and its loop loss is very small: a change of
+3·10⁻⁴ of |E| is already 9 × the loop loss. The hysteresis literature
+calls this change of the first minor loops "accommodation" (no exact
+reference checked).
+
+Effect on the results: the analysis drops cycles 0 and 1. The flag rule
+(7.39) marks a run with a balance error > 20 % in the measured cycles (50
+of 115 runs flagged). 43 runs have an event in cycle ≥ 2 at 9 mT. The
+d/l_ex lever without the 50 flagged runs (65 runs, sobol_analysis.json,
+key noflag): β all −0.63 (−0.76 … −0.50) against −0.53 in the main fit,
+ln w at 50 mT +0.48 (+0.23 … +0.72) against +0.31. Thus the events do not
+make the main result. The wording "still relaxed" in the first version of
+7.51 was wrong and is corrected.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

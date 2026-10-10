@@ -4,8 +4,8 @@ Stage 1 test of the regime change near 30 … 50 mT (PROTOKOLL 7.50, 7.51): does
 the amplitude of this change follow A or K_eff? Exploratory. Source: the time series of the α 0.1 Sobol runs
 (samples_*.csv: p_dis(t) and n60(t), 256 samples per cycle) and the mesh pairs MK3_* / M300_* (dx 3 vs dx 1.5 l_ex).
 
-Kept data: the last KEEP_LAST = 3 cycles of each amplitude (the earlier cycles still carry the relaxation from the
-previous state: at 9 mT, 23 % of the runs dissipate in cycle 2 more than 1.5 × the later cycles).
+Kept data: the last KEEP_LAST = 3 cycles of each amplitude (the earlier cycles can carry a field-triggered state change,
+PROTOKOLL 7.53: at 9 mT, 23 % of the runs dissipate in cycle 2 more than 1.5 × the later cycles).
 p_dis comes from the LLG damping term and is ≥ 0. n60 = number of neighbour cell pairs in one particle with an angle
 > 60° (vortex cores, Bloch points, steep walls).
 
