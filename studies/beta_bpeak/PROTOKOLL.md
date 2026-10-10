@@ -2317,6 +2317,48 @@ Holm limits at the 4th place: 0.0083 (pre-registered), 0.0100 (steady).
   35 mT, where the dx 3 mesh has errors (7.51, 7.52). Their mesh error is
   not known (corner K2 not run).
 
+### 7.55 Events in the measured cycles: the end of a transient, not steady physics (exploratory, 2026-10-11)
+
+Question of Chris: are the events after apparently steady cycles part of
+the physics, or states that are not yet settled? `eval_events.py` →
+results/events.md. 115 α 0.1 runs × 7 amplitudes, cycles 1 … 6. The stored
+energy changes per cycle by ΔE = W_loop − W_dis. In a steady state with
+intermittent jumps the energy must go down and up again (ΣΔE ≈ 0, uptake as
+often as release). In a transient it only goes down, and the event rate
+falls with the cycle number.
+
+| test | result |
+|---|---|
+| T1 event rate, cycle 1 → 6 | 9 mT: 64 → 36 → 12 → 3.5 → 2.6 → 0 %; 20 … 35 mT: 31 → 13 → 8.7 → 6.1 → 2.6 → 1.7 %; 50 … 150 mT: 7.2 → 3.5 → 2.6 → 1.5 → 0.4 → 0 % |
+| T2 energy sign of the events (cycles 2 … 6) | 171 of 173 release energy, 2 take up energy. ΣΔE over cycles 2 … 6: −0.8 / −2.4 / −1.1 × loop loss with an event, −0.06 / −0.007 / −0.001 without |
+| T3 after an event (one cycle before / after) | loop loss × 0.82 / 0.90 / 0.76 (median), lower in 63 … 78 %; n60 lower in 63 … 73 %, higher in 15 … 17 % (calm reference: lower 30 %, higher 28 %) |
+| T4 closure of the calm cycles | median 7·10⁻⁵ (9 mT), 2·10⁻⁴ (20 … 35 mT), 6·10⁻⁴ (50 … 150 mT); numerical floor 1.5·10⁻⁷ (7.52) |
+| T5 late events (cycle ≥ 4 after 2 calm cycles), n 12 | closure of the 2 calm cycles before: median 1.9·10⁻³, against 3.2·10⁻⁴ in calm run-amplitudes (Mann-Whitney p ≈ 10⁻⁵; approximate, the calm cycles are not independent) |
+| T6 mesh pairs, event rate cycle 1 → 4 | dx 3: 63 → 13 → 7 → 3 %; dx 1.5: 43 → 7 → 7 → 0 %; all events at dx 1.5 release energy (17 of 17) |
+
+Reading:
+- The events are irreversible steps down in energy: the AC field anneals
+  the state. Defects (vortex cores, Bloch points, counted by n60)
+  annihilate, and the loop loss after the step is lower. The rate falls
+  with the cycle number. This is a transient ("accommodation" after the
+  start), not a steady intermittent regime (that would need energy uptake).
+- A late event after apparently calm cycles has a precursor: the state
+  creeps 6 × faster than in calm runs (closure) until a barrier vanishes.
+  Thus these states only looked steady.
+- The relaxation at H = 0 was converged (7.53). The start state is a
+  minimum of the zero-field energy, but not a state that the AC drive keeps.
+- The events also occur at dx 1.5, a bit less often. Thus they are not only
+  a mesh effect.
+- Consequence 1: dropping the event cycles (steady-tail rule, 7.54) is
+  correct for the loss of a core in operation (30 MHz: 3·10⁷ cycles per
+  second, a real core is conditioned).
+- Consequence 2: the calm cycles still creep (closure 10⁻⁴ … 10⁻³, 10³ × the
+  floor), and at 20 … 35 mT 1.7 % of the run-amplitudes still have an
+  event in cycle 6. The measured state can thus be not fully conditioned.
+  After an event the loss is lower. Thus the loss at 9 … 35 mT can be a bit
+  too high for a long-conditioned core. The size is not known; a test with
+  many more cycles at a few points can show it.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
