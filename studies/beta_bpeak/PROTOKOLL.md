@@ -1972,6 +1972,93 @@ cost and dates marked as estimates, one word per meaning.
   check shows the largest mesh error of β above 50 mT (50 → 100 mT): this
   regime needs the finer mesh.
 
+### 7.51 Jumps in the dissipation time series, stage 1 of the test of 7.50 (exploratory, 2026-10-10)
+
+`eval_jumps_time.py` → results/jumps_time.md, jumps_time.png. No GPU. Data:
+the p_dis(t) and n60(t) samples (256 per cycle) of the 115 α 0.1 runs at
+dx 3, and the K3 / base mesh pairs (dx 3 vs dx 1.5, 9 / 50 / 100 mT).
+Only the last 3 cycles of each amplitude are used. Reason: in a first
+version with cycles 2 … 6, 23 % of the runs at 9 mT still relaxed in cycle 2
+(p up to 5 × the later cycles). This made false "jumps" at 9 mT.
+
+Terms. P = p_dis samples, Pm = mean cycle, Ps = smooth part of Pm (Fourier
+k ≤ 6). Non-smooth share RF = Σ|P − Ps| / ΣP. Non-repeating share
+RN = Σ|P − Pm| / ΣP. Sharp repeating share RH = Σ|Pm − Ps| / ΣPm. Event
+coupling ρ = Spearman correlation, at the same phase, between the extra
+dissipation in a sample interval and the extra change of n60 in it.
+
+A. dx 3, medians of 115 runs (95 % CI of the median by bootstrap over runs
+in results/jumps_time.md):
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 | 150 |
+|---|---|---|---|---|---|---|---|
+| RF | 0.041 | 0.139 | 0.230 | 0.231 | 0.217 | 0.185 | 0.153 |
+| RN | 0.006 | 0.022 | 0.109 | 0.122 | 0.117 | 0.119 | 0.101 |
+| RH | 0.031 | 0.119 | 0.172 | 0.181 | 0.165 | 0.139 | 0.109 |
+| ρ (runs with ρ > 0) | 0.01 (69/108) | 0.05 (81/106) | 0.10 (91/114) | 0.13 (100/112) | 0.13 (104/115) | 0.11 (108/115) | 0.07 (109/115) |
+
+- CI half-widths: RF ≤ 0.03, RN ≤ 0.05 (35 mT), ρ ≤ 0.03. The snapshot
+  share R_np is 0.000 / 0.029 / 0.025 at 9 / 50 / 150 mT.
+- Without the run-amplitude pairs with energy balance off (> 20 %, 0 … 8
+  per amplitude) the RF medians change by ≤ 0.010.
+- At dx 3 the jumps form a window: they rise from 9 to 35 mT, stay at
+  35 … 70 mT and fall above. Most of the jump share repeats in each cycle
+  (RH > RN). Above 35 mT an extra change of n60 comes with extra loss
+  (ρ > 0 in 80 … 95 % of the runs).
+
+B. Amplitude B_pk of the largest RF per run (dx 3, n 115): median 42 mT
+(36 … 51). 8 runs have B_pk at 9 or 150 mT. Linear model of ln B_pk on the 4
+coded factors (OLS, HC3, R² 0.21), factor on B_pk from the low to the high
+end, 95 % CI:
+
+| factor | factor on B_pk | p |
+|---|---|---|
+| A 20 → 10 pJ/m (d/l_ex 212 → 300) | 0.46 (0.33 … 0.62) | < 0.001 |
+| L_eff 30 → 12 l_ex (K_eff × 6.25) | 1.41 (1.07 … 1.87) | 0.015 |
+| r_p 0 → 3 | 1.32 (0.91 … 1.93) | 0.15 |
+| φ 0.55 → 0.69 | 0.99 (0.72 … 1.36) | 0.96 |
+
+- A thirds: median B_pk 32 (28 … 39) / 36 (32 … 46) / 56 (51 … 65) mT for
+  low / mid / high A. This agrees with the R1 onset of 7.50 (26 vs 41 mT).
+  In contrast to 7.50, K_eff has a small effect (× 1.41 for × 6.25 in K_eff).
+
+C. Mesh check (one job per amplitude, 5 cycles, last 3 used; medians over
+seeds; sign test over the seeds of both points, two-sided, exact):
+
+| B (mT) | RF dx 3 (K3 / base) | RF dx 1.5 (K3 / base) | seeds with RF(dx 3) > RF(dx 1.5) | n60 max dx 3 / dx 1.5 (medians K3 / base) |
+|---|---|---|---|---|
+| 9 | 0.037 / 0.071 | 0.110 / 0.114 | 1/10, p = 0.021 | 23 / 28 vs 11 / 6 |
+| 50 | 0.246 / 0.230 | 0.119 / 0.114 | 7/9, p = 0.18 | 25 / 22 vs 3 / 2 |
+| 100 | 0.214 / 0.166 | 0.068 / 0.082 | 9/9, p = 0.004 | 25 / 24 vs 2 / 3 |
+
+- K3 dx 1.5 s2036 at 50 / 100 mT was still running (5 K3 and 4 base pairs
+  at 50 / 100 mT). At dx 1.5, 2 of 9 seeds at 50 mT have a state change in
+  the measured cycles (RF 0.88 and 0.62, energy balance off).
+- The dx 3 mesh jobs agree with the dx 3 Sobol runs (RF 0.04 / 0.23 / 0.19).
+  Thus the different history (direct start at the amplitude) does not cause
+  the difference. The mesh causes it.
+- At dx 1.5 the large-angle pairs almost vanish at 50 and 100 mT. The jump
+  share there is half or less of dx 3. At 9 mT it is higher than at dx 3
+  (mostly RH, sharp and repeating).
+
+Reading:
+- At dx 3, the jumps above 35 mT are mostly a discretisation effect:
+  structures that the mesh does not resolve (n60 pairs) move from cell to
+  cell. The time series of dx 3 thus give no evidence for a physical jump
+  regime near 30 … 50 mT.
+- They also do not exclude it: at dx 1.5 only 3 amplitudes exist (no 20, 35,
+  70 mT), and 2 of 9 seeds show a state change at 50 mT.
+- The A dependence of B_pk and of the R1 onset (7.50) is a property of the
+  dx 3 model. It is not shown for the fine mesh. R1 at dx 1.5 is not known
+  (the mesh jobs ran without accumulators).
+- Not affected: the K3 vs base difference of β stays at dx 1.5 (preliminary
+  K3 evaluation, results/k3_mesh.md, 34 of 36 jobs). At K3, β 9 → 50 mT has
+  no mesh error, β 50 → 100 mT has +0.33 ± 0.13. This agrees with the
+  mesh-made jumps above 35 mT found here.
+- Consequence for stage 2 (frequency test f/2, 2f at dx 3): it would test
+  the dx 3 jumps, which are mostly mesh-made. Not started. Options go to
+  Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
