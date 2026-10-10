@@ -1948,6 +1948,30 @@ for the A curves, R reported as a squared-amplitude ratio, pooled repeat
 scatter 0.13 (20 repeats at 5 points), exploratory parts marked as hints,
 cost and dates marked as estimates, one word per meaning.
 
+### 7.50 A regime change near 30 … 50 mT (exploratory, 2026-10-10)
+
+`eval_transition.py` → results/transition.md (115 α 0.1 runs, hints).
+- The share R1 of the loss in the local fundamental falls from 0.87 (9 mT)
+  over 0.72 / 0.56 to 0.49 at 50 mT and then stays at 0.47 … 0.40. The core
+  share falls continuously (0.39 → 0.18); the 10 % cells with the largest p
+  hold 0.69 → 0.76 (flat above 50 mT). Energy-balance events (state changes
+  in the measured cycles, > 20 %) occur mainly at 9 … 35 mT (21 / 13 / 19
+  runs), few above 50 mT. Local β between neighbour amplitudes: 2.13 …
+  2.17 up to 50–70 mT, then 2.01 (70–100) and 1.94 (100–150).
+- The amplitude where R1 falls below 0.6 does not follow the Herzer
+  anisotropy field: 27 … 33 mT for H_K = 1.3 … 8.3 kA/m (L_eff levels), and
+  not r_p or φ (28 … 32 mT). It follows A: 26 mT (low third, A 9.7 … 12.5
+  pJ/m) against 41 mT (high third, 15.8 … 20 pJ/m). The drive field at
+  30 mT is ≈ 3 kA/m (μ_r 8).
+- Reading (hypothesis): near 30 … 50 mT the response changes from mostly
+  linear motion at the drive frequency to a mix with about half the loss in
+  other motion (jumps, faster precession); the onset is set on the
+  particle / exchange scale (d/l_ex), not by the grain anisotropy. A higher A
+  shifts the onset to a higher flux density: the loss stays small longer and
+  then rises faster, so β is higher (consistent with 7.46). The K3 mesh
+  check shows the largest mesh error of β above 50 mT (50 → 100 mT): this
+  regime needs the finer mesh.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
