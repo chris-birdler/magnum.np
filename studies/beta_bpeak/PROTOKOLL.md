@@ -1894,6 +1894,28 @@ acc.json; main effects with HC3; hints, 23 measures × 4 factors).
   whether the switched volume at small B̂ in the smaller particles is a
   discretisation effect.
 
+### 7.47 Absolute loss against β: the curves cross at ≈ 50 … 70 mT (exploratory, 2026-10-10)
+
+`eval_crossover.py` → results/crossover.md, results/crossover.png (115 α 0.1
+runs; bootstrap 1000; hints).
+- Runs in thirds by β all (means 1.82 / 2.12 / 2.38, n 39 / 38 / 38). Mean
+  loss of the high-β third against the low-β third: × 0.35 (0.31 … 0.40) at
+  9 mT, × 0.47 at 20 mT, × 0.65 at 35 mT, × 0.90 (0.78 … 1.02) at 50 mT,
+  × 1.17 (1.05 … 1.31) at 70 mT, × 1.34 at 100 mT, × 1.48 (1.39 … 1.58) at
+  150 mT. **The mean loss curves cross between 50 and 70 mT**: below, the
+  high-β configurations have the lower loss, above, the low-β ones. All
+  three thirds have ≈ 180 … 200 W/cm³ at 50 mT: the curves turn around a
+  pivot near 50 … 70 mT.
+- Main fit, range effect of d/l_ex on ln E[w]: +1.01 (9 mT), +1.07 (20),
+  +0.69 (35), +0.31 (50), −0.03 (70), −0.21 (100), −0.31 (150 mT); zero at
+  ≈ 68 mT. ln Q_eff and r_p raise the loss only at 150 mT (+0.14 / +0.16, CI
+  excludes 0); r_p changes sign at ≈ 39 mT, ln Q_eff at ≈ 103 mT (both
+  small). φ (with the dilution 0.23) has no sign change.
+- Consequence: a low β (large d/l_ex: large particles or small A) lowers the
+  loss only above ≈ 70 mT; below ≈ 50 mT it raises it (up to × 2.7 at
+  9 … 20 mT). The best configuration depends on the operating flux density.
+  The d/l_ex part is subject to the mesh check K3.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
