@@ -1793,6 +1793,58 @@ analysis follows PLAN 4.0 unchanged). n = 32 at α 0.1 (24 Sobol, 7 corner,
 (results/sobol_partial.md regenerated with the flag rule of 7.39; the
 numbers are unchanged, only the flag column.)
 
+### 7.44 Pre-registered analysis of the α 0.1 runs (2026-10-10)
+
+`analyze_design.py --boot 1000` → results/sobol_analysis.md / .json /
+_runs.csv. 116 α 0.1 runs finished (0 failed, 0 retries); 115 usable.
+Main fit Gamma GLM (15 terms), bootstrap 1000 (0 failed). The scatter
+model is significant for ln Q_eff on ln w 50 mT (p 0.006), so the main fit
+uses the weights 1/σ²(x). Flagged runs 50 of 115 (43 %; 65 left).
+
+**Primary tests (range effect, 95 % CI, uncorrected p; Holm 5 % over 8):**
+
+| output | factor | main fit | p | class | robust in fit A / B / no flags / w_dis |
+|---|---|---|---|---|---|
+| β all | d/l_ex | −0.53 (−0.66 … −0.43) | < 10⁻⁴ | lever | yes (−0.56 / −0.57 / −0.63 / −0.73) |
+| β all | ln Q_eff | +0.10 (+0.01 … +0.21) | 0.04 | not determined | no (w_dis −0.17) |
+| β all | r_p | +0.14 (+0.01 … +0.25) | 0.03 | not determined | no (no flags +0.06, w_dis −0.07) |
+| β all | φ | −0.04 (−0.17 … +0.06) | 0.55 | not determined (90 % CI −0.153 … +0.043, misses "not a lever" by 0.003) | |
+| ln w 50 mT | d/l_ex | +0.31 (+0.11 … +0.52) | 0.002 | lever | yes (+0.32 / +0.30 / +0.48 / +0.35) |
+| ln w 50 mT | ln Q_eff | −0.04 (−0.24 … +0.13) | 0.65 | not determined | |
+| ln w 50 mT | r_p | +0.00 (−0.21 … +0.24) | 0.98 | not determined | w_dis +0.36 |
+| ln w 50 mT | φ | +0.09 [−0.14 without dilution] (−0.12 … +0.28) | 0.42 | not determined | |
+
+Two of 8 are "lever"; none reaches "not a lever": the design excludes no
+factor yet. ln Q_eff and r_p on β all have p 0.03 … 0.04 (do not pass Holm)
+and change sign in the w_dis fit: hints that are not robust.
+
+**Mesh caveat (pre-registered, decisive here).** Both levers are d/l_ex
+effects. The earlier mesh test 7.10 (d/l_ex 212 vs 300, dx 3 − dx 1.5, 4
+seeds, before the relaxation fix of 7.13) gave a mesh-induced difference
+212 − 300 of −0.29 ± 0.15 in ln w 50 mT and +0.34 ± 0.30 in β 9 → 50 mT,
+i.e. at dx 3 the mesh alone makes ln w rise and β fall with d/l_ex, with
+the same sign and size as the measured effects (+0.31, −0.53). With 7.28
+(+0.26 ± 0.16 at 300, −0.06 ± 0.14 at 212): +0.32 ± 0.21 in ln w 50 mT.
+Thus the d/l_ex effects cannot be separated from a discretisation
+artefact without the mesh check at K3.
+
+**Mesh-check trigger (rule PLAN 4.0):** K3 (d/l_ex, 8 outputs; φ on ln w
+100 mT) and K2 (ln Q_eff on β 70-150 mT +0.29, one secondary window; −0.03
+without the flagged runs). K3 robust, K2 fragile. Decision by Chris.
+
+**Other results.** Secondary (hints): d/l_ex on ln w 10 mT +0.97 (+0.76 …
++1.29), on β 35-70 mT −0.98; φ on ln w 100 mT +0.17 (contains the dilution
+0.23). D3 check: no residual difference for d/L_eff < 10 (n = 35; Δ 0.003,
+p 0.90). The w_dis fit differs strongly at 9 … 35 mT because w_dis contains
+the energy released by state changes (S029 at 9 mT: w_dis/w_loop ≈ −490).
+
+**Rule gap (to be defined, analysis not changed):** S029 was dropped as a
+whole because its mean w_loop at 9 mT is negative (−3·10⁻⁸; cycles 2 … 6:
+−4.2·10⁻⁷, then ≈ +7·10⁻⁸): a state change in the kept cycles released
+stored energy. PLAN 4.3a excludes runs that crash, give NaN or miss an
+amplitude; w ≤ 0 is not covered. 1 of 116 runs; it removes an event-type
+run that the mean estimand is meant to include.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
