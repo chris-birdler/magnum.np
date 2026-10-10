@@ -2067,6 +2067,73 @@ Reading (three levels):
 - Consequence for stage 2 (frequency test f/2, 2f at dx 3): it would test
   the dx 3 jumps, which are at least partly mesh-made. Not started. Options
   go to Chris.
+- Update with all 36 K3 jobs (2026-10-10 22:10 UTC, results/jumps_time.md):
+  seeds with RF(dx 3) > RF(dx 1.5) 1/10 (p 0.021) at 9 mT, 8/10 (p 0.11) at
+  50 mT, 10/10 (p 0.002) at 100 mT. The three levels above do not change.
+
+### 7.52 Mesh check K3: final result, pre-registered comparison (2026-10-10)
+
+All 36 jobs done (21:57 UTC, 0 failed). The last 2 runs fetched without
+state files, md5 verified (runs/MANIFEST_k3.md5, 180 entries, all OK).
+`eval_k3.py` → results/k3_mesh.md, k3_mesh.png, k3_beta.png. K3: d/l_ex 212
+(A 20 pJ/m), L_eff 18, r_p 1.5, φ 0.69, 6 seeds. Base: d/l_ex 300 (A 10
+pJ/m), L_eff 12, r_p 0, φ 0.65, 4 seeds (mesh300). Errors: SE over seeds,
+Welch tests.
+
+Rule A (PLAN 4.0): the mesh difference at the corner is compared with the
+one at the base point. Equal → the effect is physical. Different → the
+difference is the artefact share. Mesh difference = value at dx 3 − value
+at dx 1.5, paired per seed.
+
+| quantity | mesh difference K3 | mesh difference base | K3 − base (p) | verdict |
+|---|---|---|---|---|
+| β 9 → 50 mT | +0.05 ± 0.05 | −0.05 ± 0.06 | +0.09 ± 0.07 (0.25) | equal: physical |
+| β 50 → 100 mT | +0.36 ± 0.11 | −0.11 ± 0.10 | +0.47 ± 0.15 (0.013) | different |
+| β 9 → 100 mT (fit) | +0.12 ± 0.03 | −0.06 ± 0.06 | +0.18 ± 0.07 (0.046) | different |
+| ln w 9 mT | −0.48 ± 0.09 | +0.36 ± 0.24 | −0.83 ± 0.25 (0.031) | different |
+| ln w 50 mT | −0.38 ± 0.13 | +0.26 ± 0.16 | −0.64 ± 0.21 (0.021) | different |
+| ln w 100 mT | −0.14 ± 0.09 | +0.18 ± 0.10 | −0.32 ± 0.13 (0.046) | different |
+
+The contrast K3 − base itself, on each mesh:
+
+| quantity | dx 3 | dx 1.5 |
+|---|---|---|
+| β 9 → 50 mT | +0.46 ± 0.15 (p 0.030) | +0.37 ± 0.12 (p 0.014) |
+| β 50 → 100 mT | +0.79 ± 0.16 (p 0.002) | +0.32 ± 0.18 (p 0.13) |
+| β 9 → 100 mT (fit) | +0.54 ± 0.11 (p 0.011) | +0.36 ± 0.06 (p 0.001) |
+| ln w 9 mT | −1.03 ± 0.34 (p 0.046) | −0.20 ± 0.18 (p 0.31) |
+| ln w 50 mT | −0.22 ± 0.16 (p 0.21) | +0.42 ± 0.17 (p 0.052) |
+| ln w 100 mT | +0.33 ± 0.11 (p 0.027) | +0.65 ± 0.08 (p < 0.001) |
+
+Reading:
+- β: the higher β at high A (small d/l_ex) is physical. On the fine mesh
+  it is +0.36 ± 0.06 (9 → 100 mT) instead of +0.54 ± 0.11: about one third
+  of the dx 3 effect is a mesh artefact. Below 50 mT the effect does not
+  depend on the mesh. Above 50 mT most of it is mesh-made (+0.79 → +0.32,
+  not different from 0 at dx 1.5). This agrees with the mesh-made jumps at
+  100 mT (7.51).
+- Loss level: the d/l_ex effect on ln w at dx 3 is mostly a mesh artefact.
+  On the fine mesh, the high-A point K3 has about the same loss at 9 mT
+  and a higher loss at 50 mT (× 1.5, p 0.052) and 100 mT (× 1.9) than the
+  base point. Thus on the fine mesh the loss curves cross below 50 mT,
+  not at ≈ 57 … 69 mT as at dx 3 (7.47).
+- Limit: K3 and base also differ in L_eff, r_p and φ. The Sobol fit at dx 3
+  found no lever in these 3 factors (7.44), but their mesh error is not
+  known. The K2 corner (L_eff, r_p) is triggered and not run.
+- Consequence for the Sobol results (7.44, 7.47): the sign and the
+  significance of the d/l_ex effect on β stay. Its size at dx 3 is too
+  large by ≈ 1/3 (estimate from one corner). The d/l_ex effect on
+  ln E[w] at 50 mT (+0.31 at dx 3) and the crossing at ≈ 57 … 69 mT are
+  not supported on the fine mesh.
+
+Fine-mesh fill-in at K3 (go Chris 2026-10-10, option 2 of 7.51): chain
+`instance/chain_k3fill.sh`, commit 816b482, jobs/meshK3fill.txt (35, 20,
+70 mT; dx 1.5 first, then dx 3; 6 seeds; start from the K3 9 mT init.pt;
+with --acc). Local test before the start: a small job (d/l_ex 48, φ 0.55)
+with --init_from and --acc, then instance_postproc → acc.json, sum check
+1.000000, acc file deleted, other run not touched. Started 2026-10-10
+22:03 UTC on all 4 GPUs. The init.pt of the 9 mT jobs loaded. Estimate:
+≈ 13 h, ≈ 5.3 $ at 0.41 $/h. Credit 6.19 $ at 21:44 UTC.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
