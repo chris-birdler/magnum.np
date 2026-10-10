@@ -2184,6 +2184,36 @@ ln w at 50 mT +0.48 (+0.23 … +0.72) against +0.31. Thus the events do not
 make the main result. The wording "still relaxed" in the first version of
 7.51 was wrong and is corrected.
 
+### 7.54 Steady-tail rule: declared deviation from the pre-registered analysis (rule fixed 2026-10-10, before the result)
+
+Decision Chris 2026-10-10 (option 1 of 3): no run is dropped. Only the
+cycles with a state change are dropped. This rule is written down and
+committed before the re-analysis runs. Until then only the numbers of
+cycles were counted (7.53), no estimate was looked at.
+
+Rule:
+- Measured cycles per amplitude: as before (cycles 2 … 6 after the drive
+  correction).
+- Event cycle: w_loop ≤ 0 or |w_dis / w_loop − 1| > 0.20 in this cycle
+  (the threshold of the flag rule 7.39, applied per cycle).
+- Kept cycles ("steady tail"): the measured cycles after the last event
+  cycle. Count (7.53 data): 5 / 4 / 3 / 2 / 1 / 0 kept cycles in 690 / 55 /
+  31 / 16 / 9 / 4 of the 805 run-amplitudes.
+- No cycle kept: the loss at this amplitude of this run is missing. The
+  main fit at this amplitude uses the other runs. The per-run outputs (fit
+  A, B) use the other amplitudes. The run stays in the design.
+- All else as pre-registered (Gamma GLM, scatter-model weights, bootstrap
+  seed and count, Holm, classes, margin 0.15).
+- Report: next to the pre-registered result, as a declared deviation
+  (results/sobol_analysis_steady.md / .json). The pre-registered result
+  stays valid and is reported too.
+- Time-series measures (7.51): the same steady tail. A run-amplitude
+  counts only with ≥ 3 kept cycles (the non-repeating share RN depends on
+  the number of cycles), and then with the last 3. The numbers left out
+  are reported.
+- Results are given as loss density P = f K_d w in W/cm³ at 30 MHz (decision
+  Chris 2026-10-10); effects on ln P as a factor on P.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
