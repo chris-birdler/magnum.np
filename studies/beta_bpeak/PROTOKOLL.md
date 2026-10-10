@@ -1864,6 +1864,36 @@ dx 1.5 and 3, 9 / 50 / 100 mT, 5 cycles, mesh300 protocol at the design
 corner K3), chain instance/chain_k3.sh pinned to be178ae, waits for the end
 of the Sobol chain, job limit 30 h; estimate ≈ 80 V100-h ≈ 8 $, ≈ 20 h.
 
+### 7.46 Where the loss and the d/l_ex effect come from (exploratory, 2026-10-10)
+
+`eval_mechanism.py` → results/mechanism.md (115 α 0.1 runs; domains.json,
+acc.json; main effects with HC3; hints, 23 measures × 4 factors).
+- **Walls exist in most of the design** (unlike the base point, 7.19):
+  F90 of the virgin state median 27 % (3.9 … 79 %), above one vortex per
+  particle (4.3 %) in 114 of 115 runs. F90 grows with L_eff (ln Q_eff
+  −44 %-points over the range; partly by definition, the F90 window scales
+  with L_eff), with smaller d/l_ex (−20) and with r_p (+11). The texture
+  A_w/V (5.7 … 11.7·10⁻³/l_ex) grows with ln Q_eff and r_p, falls with d/l_ex.
+- **The structure does not change with B̂:** A_w/V and F90 at 9 / 50 /
+  150 mT equal the virgin state (as 7.19). The switched volume per half
+  cycle grows ≈ ∝ B̂ (exponent median 0.98, 0.68 … 1.13).
+- **The loss sits in the walls and cores:** the 10 % cells with the largest
+  texture hold 0.61 of the local loss at 9 mT and 0.55 at 150 mT (median);
+  the 10 % cells with the largest p hold 0.69 / 0.73.
+- **The amount of wall does not set β:** adding A_w/V or F90 to the factor
+  model leaves the d/l_ex effect on β all at −0.42 … −0.51 (from −0.57).
+- **β follows how the switched volume grows with B̂:** adding the V_sw
+  exponent shrinks the d/l_ex effect on β all from −0.57 ± 0.07 to
+  −0.08 ± 0.04 (measure p ≈ 10⁻⁸⁹; partly by construction, the loss grows
+  with the rotated volume). The exponent falls with d/l_ex (−0.20 over the
+  range) and rises with ln Q_eff and r_p (+0.11 each). Mechanism of the
+  d/l_ex lever: at large d/l_ex (low A at 1 µm) more volume moves already at
+  9 mT (V_sw 9 mT +0.31 %-points over the range; ln w 10 mT +0.97), so the
+  loss grows slower with B̂ and β is lower.
+- Caveat: these are d/l_ex effects at dx 3; the mesh check K3 decides
+  whether the switched volume at small B̂ in the smaller particles is a
+  discretisation effect.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
