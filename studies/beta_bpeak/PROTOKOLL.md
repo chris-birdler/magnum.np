@@ -1916,6 +1916,25 @@ runs; bootstrap 1000; hints).
   9 … 20 mT). The best configuration depends on the operating flux density.
   The d/l_ex part is subject to the mesh check K3.
 
+### 7.48 α 0.01 centre test (2026-10-10, 8 pairs)
+
+C0 … C7 at α 0.01 (from the init.pt of the α 0.1 run, 9 cycles) against the
+α 0.1 runs of the same seed. Fetched and md5-checked (152 files).
+- Loss ratio α 0.01 / α 0.1 (mean of ln, ± SE): × 0.34 (± 0.35 in ln) at
+  9 mT, × 0.75 / 0.76 / 0.85 at 20 / 35 / 50 mT, × 0.68 / 0.78 / 0.60 at
+  70 / 100 / 150 mT (150 mT: −0.52 ± 0.06). Far from × 0.1 (loss ∝ α).
+  (The base point gave × 0.59 at 50 mT, 7.31; here × 0.85 ± 0.11.)
+- R = |m₁|² ratio (pre-registered test): 9 mT 1.39 (95 % CI 0.93 … 2.09) →
+  "viscous R ≈ 1"; 50 mT 1.67 (1.13 … 2.47) → "mixed" (excludes 1 and 10).
+  No resonance (R ≈ 100 excluded at both).
+- Fundamental share R1 of the loss: α 0.1 0.90 / 0.53 / 0.42, α 0.01
+  0.24 / 0.11 / 0.08 at 9 / 50 / 150 mT.
+- Reading: the motion at the drive frequency is almost the same at both
+  dampings, and its loss scales with α (viscous). At α 0.01 most of the
+  loss comes from motion that is not at the drive frequency (fast
+  precession, jumps), which depends little on α. Hence the loss falls only
+  to × 0.6 … 0.85 for 10 × less damping.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

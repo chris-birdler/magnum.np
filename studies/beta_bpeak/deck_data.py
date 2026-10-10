@@ -148,6 +148,19 @@ def main():
 
     # α 0.01 pairs (if present)
     out["alpha"] = AD.alpha_test(RUNS)
+    r1 = {}
+    for tag, suf in (("0.1", ""), ("0.01", "_a001")):
+        v = []
+        for i in range(8):
+            f = RUNS / ("C%d%s" % (i, suf)) / "acc.json"
+            if f.exists():
+                st = json.loads(f.read_text())["stages"]
+                v.append([min(st, key=lambda s: abs(s["B_peak_mT"] / m - 1))["R1"] for m in (9, 50, 150)])
+        if v:
+            v = np.array(v)
+            r1[tag] = {"mT": [9, 50, 150], "mean": v.mean(0).tolist(), "se": (v.std(0, ddof=1) / math.sqrt(len(v))).tolist(),
+                       "n": len(v)}
+    out["alpha"]["R1"] = r1
 
     # checks
     acc_ok = all(all(s["check_ok"] for s in json.loads((RUNS / r["name"] / "acc.json").read_text())["stages"]) for r in recs)
