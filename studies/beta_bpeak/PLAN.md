@@ -573,6 +573,117 @@ L_eff = 30 there are ≈ 185 cubes per particle (decision D3).
 
 GPU selection: offers are shown to Chris before rent (low hourly rate).
 
+### 4.5 Completion to 2 calm cycles, then the conditioning test (2026-10-11, for approval)
+
+Reason: PROTOKOLL 7.53 … 7.55. The events in the measured cycles are the end
+of a transient. The steady analysis (7.54, main result by decision of
+Chris) keeps only the measured cycles after the last event. Chris wants
+every run-amplitude with at least 2 such cycles, then the conditioning test
+(option 1 of 7.55). Reviewed by a context-free agent (2026-10-11); its
+findings are worked in.
+
+Terms. A **stage** is one amplitude of a run. The **measured cycles** of a
+stage are the cycles from 2 on (cycle 0: drive ramp, cycle 1: drive
+correction). A **calm cycle** has w_loop > 0 and |w_dis / w_loop − 1| ≤ 0.20.
+The **calm tail** of a stage is the number of calm cycles at the end of its
+measured cycles; it equals the number of cycles that the steady analysis
+(7.54) keeps. "Calm" is not the old flag `steady` of run_loops (closure and
+dW rule), which this plan does not use. Energy unit: V100-h (1 GPU on the
+4 × V100 instance).
+
+Is 2 enough? Probability of an event in the next cycle after k calm cycles
+in a row (116 runs, cycles 1 … 6; eval_events.py, numbers in PROTOKOLL
+7.55 / chat 2026-10-11): k = 1 / 2 / 3 / 4: 1.6 / 0.8 / 0.4 / 0.1 % (20 … 35
+mT: 2.6 / 1.7 / 0.7 / 0.3 %). For the value of the loss density, 2 cycles
+are enough: the scatter from cycle to cycle is 2.5 %, the scatter between
+realisations 16 … 35 %. A rule with an extra closure limit (10⁻³) would need
+a rerun of 105 of 116 runs; not proposed. The conditioning test (D)
+measures the remaining drift directly.
+
+A. Code (no GPU).
+   - `run_loops.py`: `--min_calm N` (default 0: off, the old rule) and
+     `--calm_tol 0.20`. With N > 0 a measured stage runs at least
+     `cycles_per_amp` cycles and then continues until its calm tail is ≥ N,
+     at most `max_cycles_per_amp` cycles. With N > 0 this replaces the
+     closure / dW stop rule. `--cycles_last_amp M`: the last stage runs M
+     cycles (for D). Summary: calm tail per stage; a stage that reaches the
+     maximum without N calm cycles is marked.
+   - Analysis: rerun folders have the suffix `_mc2` (min calm 2). Option
+     `--reruns` of analyze_design (with --steady_tail): a `_mc2` run replaces
+     its original. The pre-registered analysis stays on the originals.
+     PATTERN and the post-processing pattern accept the suffix. eval_k3 and
+     eval_jumps_time get the same mapping. eval_k3 also gets the steady-tail
+     rule (the verdict of 7.52 used all measured cycles, events included).
+   - Determinism gate `check_reruns.py`: up to the first extended stage, a
+     `_mc2` run must repeat its original cycle by cycle (w_loop and w_dis
+     equal to 6 significant digits). Same GPU model (Tesla V100-SXM2-16GB)
+     and torch (2.7.1+cu126) as the originals: true, same instance.
+   - Tests: unit test of the stop decision; a small CPU run with N = 2 gives
+     the same cycles 0 … 6 as without the option; mapping test.
+B. Reruns. Arguments as in the original job line, with `--init_from
+   <run>/init.pt` (always explicit), `--min_calm 2`, `--max_cycles_per_amp`
+   replaced (15 for the Sobol runs, 12 for the mesh jobs), all `--snap_*`
+   removed, accumulators on. All init.pt files are on the instance (checked
+   2026-10-11).
+   - 13 Sobol runs with a calm tail < 2 (7.54): S033, S035, S055 (first
+     extended stage 9 mT), K4_1, S076, S091 (20 mT), K4_0, S020, S026, S047,
+     S067 (35 mT), S034 (70 mT), K1_0 (100 mT). They are not a random
+     sample: 11 of 13 have A ≤ 15 pJ/m, 6 of 13 have L_eff 30.
+   - Consequence: an extended stage changes the start state and the drive
+     correction of all later stages of that run. 56 of the 91 stages of the
+     13 runs change, although they were calm before. After an event the
+     loss density is lower (7.55), so the change has a direction. Thus the
+     steady fit is reported with the originals and with the `_mc2` runs
+     (sensitivity row).
+   - The other 103 runs have a calm tail ≥ 2 at all amplitudes, so the rule
+     would stop them at 7 cycles, as run (true by construction). The rerun
+     is the continuation of the original only if the GPU run is
+     deterministic: the gate in A checks this. On a mismatch the chain
+     starts no new job and reports.
+   - 4 mesh / K3 jobs with a calm tail < 2: M300_dx15_s922_b9,
+     M300_dx3_s921_b50, M300_dx3_s921_b100, MK3_dx15_s2034_b50.
+   - K3 fill-in jobs (running): the list of jobs with a calm tail < 2 is
+     made after the fill-in ends. Cap: 15 V100-h.
+   - A stage that reaches the maximum without 2 calm cycles is missing in
+     the steady analysis (the original value is not used) and is listed.
+   - Limits that stay: the accumulators of a `_mc2` run sum all cycles from
+     2 on, more cycles than in the other runs, events included. The
+     snapshot measures of the 13 runs stay from the originals; at 9 mT the
+     snapshots of S033, S035 and S055 lie in event cycles. Both are marked in
+     the mechanism evaluations.
+C. Analysis after B: acceptance = every stage of the steady analysis has a
+   calm tail ≥ 2; every exception is listed. Results: steady analysis with
+   `_mc2` (main), the same with the originals (sensitivity), pre-registered
+   (check). K3 mesh check again with the steady-tail rule. The time-series
+   measures keep their rule (≥ 3 kept cycles) and list the gaps.
+D. Conditioning test (option 1 of 7.55), centre point only, seeds C0 … C5
+   (n 6). History as in the design up to the tested stage, then 30 cycles:
+   per seed 3 runs from init.pt, `--min_calm 2 --cycles_last_amp 30`:
+   (a) 9 mT; (b) 9 → 20 mT; (c) 9 → 20 → 35 mT. Cycles are numbered 0 … 29.
+   - Drift d = ln P (mean of cycles 28 … 29) − ln P (mean of the calm tail
+     of cycles 2 … 6, the design estimator), per seed and amplitude.
+   - Decision per amplitude, mean of d over the 6 seeds, t(5): the design
+     value stands if the 90 % CI lies inside ±0.05 (5 %, 2 × the cycle
+     scatter); systematic error if the 95 % CI excludes 0 and |mean| ≥ 0.05;
+     else not determined. Also β 9 → 20 and 20 → 35 mT from the design
+     estimator and from cycles 28 … 29.
+   - Report d and the number of events per seed (rare late events make the
+     distribution two-peaked; n 6 is enough for a slow continuous drift,
+     not for rare events).
+   - The runs (b) and (c) repeat the 9 / 20 mT stages of the design: an
+     extra check of the determinism against C0 … C5.
+E. Order and cost (estimates; measured cycle times; 0.41 $/h):
+   - fill-in K3 (running, end ≈ 11 UTC 2026-10-11) → one queue: the long
+     mesh job first, then the Sobol reruns, the other mesh jobs, the
+     fill-in reruns, then D.
+   - Sobol reruns: 29.6 V100-h without extension (measured), ≈ 35 with it.
+     Mesh jobs: 16 … 28 V100-h (1.72 / 0.49 / 0.06 h per cycle, 7 … 12
+     cycles; the dx 1.5 job at d/l_ex 300 alone 12 … 21 h). Fill-in reruns:
+     ≤ 15. D: 6 seeds × 111 cycles × 0.038 h ≈ 25 V100-h.
+   - Total ≈ 90 … 105 V100-h, wall ≈ 26 … 30 h, ≈ 11 … 13 $ plus idle time.
+     The credit after the fill-in is ≈ 0.7 $: a top-up of ≈ 20 $ is needed
+     before the start.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
