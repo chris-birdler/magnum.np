@@ -409,9 +409,9 @@ def report(res):
     if res.get("steady_tail"):
         t = res["steady_tail"]
         L += ["**Declared deviation (PROTOKOLL 7.54): steady-tail rule.** Only the measured cycles after the last cycle "
-              "with |w_dis / w_loop − 1| > %.2f are used. Dropped: %d of %d measured cycles; amplitudes without a kept "
-              "cycle (missing): %d in %d runs." % (t["tol"], t["n_dropped_cycles"], t["n_cycles"], t["n_missing"],
-                                                   t["runs_with_missing"]), ""]
+              "with |w_dis / w_loop − 1| > %.2f are used. Dropped: %d of %d measured cycles; amplitudes with fewer than %d "
+              "kept cycles (missing): %d in %d runs." % (t["tol"], t["n_dropped_cycles"], t["n_cycles"], t.get("min", 1),
+                                                         t["n_missing"], t["runs_with_missing"]), ""]
     L += ["## Primary outputs (8 tests, Holm 5 %)", "", "| output | factor | main fit (95 % CI) | 90 % CI | class | fit A | fit B |",
           "|---|---|---|---|---|---|---|"]
     for o in PRIMARY:
@@ -477,10 +477,14 @@ def main():
     ap.add_argument("--steady_tail", action="store_true",
                     help="declared deviation (PROTOKOLL 7.54): keep only the measured cycles after the last cycle with "
                          "|w_dis / w_loop - 1| > BAL_EVENT; an amplitude without such a cycle is missing for that run")
+    ap.add_argument("--steady_min", type=int, default=1,
+                    help="with --steady_tail: an amplitude with fewer kept cycles is missing (7.54: 1; check: 2)")
     a = ap.parse_args()
     if a.steady_tail:
         analyze.STEADY_TAIL = BAL_EVENT
-    a.out = a.out or str(HERE / "results" / ("sobol_analysis_steady" if a.steady_tail else "sobol_analysis"))
+        analyze.STEADY_MIN = a.steady_min
+    a.out = a.out or str(HERE / "results" / ("sobol_analysis_steady%s" % ("" if a.steady_min == 1 else a.steady_min)
+                                             if a.steady_tail else "sobol_analysis"))
     recs, skipped = load_runs(a.runs)
     print("runs: %d usable, %d skipped%s" % (len(recs), len(skipped), (": " + "; ".join(skipped)) if skipped else ""))
     keys = ["name", "seed", "alpha"] + list(FACTORS) + ["d_over_L", "flagged"] + OUTPUTS
@@ -490,7 +494,7 @@ def main():
             f.write(",".join(str(r[k]) for k in keys) + "\n")
     res = analyse(recs, a.boot, a.runs)
     if a.steady_tail:
-        res["steady_tail"] = {"tol": BAL_EVENT, "n_missing": sum(r["n_missing"] for r in recs),
+        res["steady_tail"] = {"tol": BAL_EVENT, "min": a.steady_min, "n_missing": sum(r["n_missing"] for r in recs),
                               "runs_with_missing": sum(r["n_missing"] > 0 for r in recs),
                               "n_dropped_cycles": sum(r["n_dropped_cycles"] for r in recs),
                               "n_cycles": 5 * len(AMPS_MT) * len(recs)}

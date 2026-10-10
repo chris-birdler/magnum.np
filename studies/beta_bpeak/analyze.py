@@ -121,6 +121,7 @@ ALLOW_UNCONVERGED = False
 # cycles after the last cycle with w_loop <= 0 or |w_dis / w_loop - 1| > STEADY_TAIL (a field-triggered state change,
 # 7.53); no cycle left: the stage is kept with w_loop = nan ("missing")
 STEADY_TAIL = None
+STEADY_MIN = 1            # fewer kept cycles than this: the stage is missing (7.54: 1; check with 2)
 
 
 def steady_tail(cycles, tol):
@@ -149,8 +150,8 @@ def load_run(d):
         missing = False
         if STEADY_TAIL is not None:
             tail = steady_tail(cyc, STEADY_TAIL)
-            missing = not tail
-            cyc = tail or cyc                    # a missing stage keeps its b_peak (sort order), w_loop = nan below
+            missing = len(tail) < STEADY_MIN
+            cyc = tail if tail else cyc                    # a missing stage keeps its b_peak (sort order), w_loop = nan below
         w = np.array([c[WKEY] for c in cyc])
         if missing:
             w = np.full(len(cyc), np.nan)

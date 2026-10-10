@@ -2291,6 +2291,32 @@ cycle 5 is an event; S026 35 mT: cycles 2 and 6). Mesh and K3 jobs (3
 measured cycles): 4 of 60 jobs have fewer than 2 (M300_dx15_s922_b9,
 M300_dx3_s921_b100, M300_dx3_s921_b50, MK3_dx15_s2034_b50).
 
+Check with at least 2 kept cycles (go Chris 2026-10-11, option 2;
+`analyze_design.py --steady_tail --steady_min 2` → results/
+sobol_analysis_steady2.md; the variant with 1 is reproduced exactly).
+232 of 4060 cycles dropped, 13 amplitudes missing in 13 runs. Primary
+tests on β all (on P at 50 mT nothing changes: no gap at 50 mT):
+
+| β all × factor | pre-registered | steady, ≥ 1 cycle | steady, ≥ 2 cycles |
+|---|---|---|---|
+| d/l_ex | −0.531, p < 10⁻⁴, lever | −0.572, p < 10⁻⁴, lever | −0.577, p < 10⁻⁴, lever |
+| L_eff (lnQ) | +0.103, p 0.039, not determined | +0.151, p 0.0002, lever | +0.152, p 0.0001, lever |
+| r_p | +0.135, p 0.032, not determined | +0.145, p 0.015, not determined | +0.157, p 0.0069, **lever** |
+| φ | −0.035, not determined | −0.065 (90 % CI −0.152 … +0.007), not determined | −0.058 (90 % CI −0.144 … +0.019), **not a lever** |
+
+Holm limits at the 4th place: 0.0083 (pre-registered), 0.0100 (steady).
+
+- Robust: d/l_ex (all variants). L_eff on β is a lever in both steady
+  variants (p 10⁻⁴); the event cycles hid it in the pre-registered fit
+  (p 0.039).
+- At the decision limit: r_p (p 0.015 vs 0.0069 against the limit 0.010)
+  and φ (90 % CI edge −0.152 vs −0.144 against the margin −0.15). Their
+  class depends on the gap rule. Thus they are reported as "at the
+  decision limit", not as lever or not a lever.
+- The effects of L_eff and r_p on β come mostly from the windows above
+  35 mT, where the dx 3 mesh has errors (7.51, 7.52). Their mesh error is
+  not known (corner K2 not run).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
