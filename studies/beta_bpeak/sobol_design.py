@@ -77,11 +77,14 @@ def cost(a):
     return jobs.cost_h(a, 0.012, 0.75, 3.5, 1.0)
 
 
-def mesh_check_jobs(corner="K3", seeds=None):
+def mesh_check_jobs(corner="K3", seeds=None, fill=None):
     """Mesh check of a design corner (PLAN 4.0, rule A; go Chris 2026-10-10 for K3): the mesh300 protocol
     (PROTOKOLL 7.25) at the corner: dx 1.5 and dx 3, 6 seeds, paired; 9 / 50 / 100 mT, one job per amplitude, 5 cycles;
     the 9 mT job relaxes and writes init.pt, the 50 and 100 mT jobs start from it. Same physics settings as the
-    design corner (template + corner factors). Order: all 9 mT jobs first (dx 1.5 first), then 50 and 100 mT."""
+    design corner (template + corner factors). Order: all 9 mT jobs first (dx 1.5 first), then 50 and 100 mT.
+    fill = amplitudes (mT) in the order of priority: only the jobs of these amplitudes, started from the init.pt of
+    the existing 9 mT jobs, with the per-cell accumulators (--acc, R1); all dx 1.5 jobs first (go Chris 2026-10-10,
+    PROTOKOLL 7.51: 35 / 20 / 70 mT at K3)."""
     f = dict(CORNERS)[corner]
     base = int(corner[1])
     seeds = seeds or [2001 + 10 * base + r for r in range(6)]
@@ -92,6 +95,12 @@ def mesh_check_jobs(corner="K3", seeds=None):
             tag = ("%g" % dx).replace(".", "")
             M = dict(T, **f, dx_lex=dx, alpha=0.1, n_amp=1, cycles_per_amp=5, max_cycles_per_amp=5, seed=sd)
             name9 = "M%s_dx%s_s%d_b9" % (corner, tag, sd)
+            if fill:
+                for k, mT in enumerate(fill):
+                    rest.append(((dx, k), "M%s_dx%s_s%d_b%d" % (corner, tag, sd, mT),
+                                 dict(M, b_list=jobs.b_of_mT(mT), init_from="%s/init.pt" % name9, init_wait_h=30.0,
+                                      **ACC)))
+                continue
             first.append((dx, name9, dict(M, b_list=jobs.b_of_mT(9))))
             for mT in (50, 100):
                 rest.append((dx, "M%s_dx%s_s%d_b%d" % (corner, tag, sd, mT),
@@ -106,13 +115,17 @@ def main():
     ap.add_argument("--n", type=int, default=96)
     ap.add_argument("--n_a001", type=int, default=0)
     ap.add_argument("--mesh_check", default=None, help="write only jobs/mesh<corner>.txt for this corner (e.g. K3)")
+    ap.add_argument("--fill", default=None, help="with --mesh_check: amplitudes in mT, e.g. 35,20,70 (priority order); "
+                    "writes jobs/mesh<corner>fill.txt")
     a = ap.parse_args()
     if a.mesh_check:
-        js = mesh_check_jobs(a.mesh_check)
-        with open(HERE / "jobs" / ("mesh%s.txt" % a.mesh_check), "w") as fh:
+        fill = [int(x) for x in a.fill.split(",")] if a.fill else None
+        out = "mesh%s%s.txt" % (a.mesh_check, "fill" if fill else "")
+        js = mesh_check_jobs(a.mesh_check, fill=fill)
+        with open(HERE / "jobs" / out, "w") as fh:
             for name, j in js:
                 fh.write("%s %s\n" % (name, jobs.to_cli(j)))
-        print("%d jobs written to jobs/mesh%s.txt" % (len(js), a.mesh_check))
+        print("%d jobs written to jobs/%s" % (len(js), out))
         return
     T = template()
     U = qmc.Sobol(d=4, scramble=True, seed=DESIGN_SEED).random(a.n)
