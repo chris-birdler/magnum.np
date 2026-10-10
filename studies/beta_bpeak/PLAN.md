@@ -588,7 +588,7 @@ correction). A **calm cycle** has w_loop > 0 and |w_dis / w_loop − 1| ≤ 0.20
 The **calm tail** of a stage is the number of calm cycles at the end of its
 measured cycles; it equals the number of cycles that the steady analysis
 (7.54) keeps. "Calm" is not the old flag `steady` of run_loops (closure and
-dW rule), which this plan does not use. Energy unit: V100-h (1 GPU on the
+dW rule), which this plan does not use. Cost unit: V100-h (1 GPU on the
 4 × V100 instance).
 
 Is 2 enough? Probability of an event in the next cycle after k calm cycles
