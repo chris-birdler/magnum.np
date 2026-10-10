@@ -2032,32 +2032,41 @@ seeds; sign test over the seeds of both points, two-sided, exact):
 | 100 | 0.214 / 0.166 | 0.068 / 0.082 | 9/9, p = 0.004 | 25 / 24 vs 2 / 3 |
 
 - K3 dx 1.5 s2036 at 50 / 100 mT was still running (5 K3 and 4 base pairs
-  at 50 / 100 mT). At dx 1.5, 2 of 9 seeds at 50 mT have a state change in
-  the measured cycles (RF 0.88 and 0.62, energy balance off).
+  at 50 / 100 mT). At dx 1.5, 2 of 9 seeds at 50 mT have the energy balance
+  off (RF 0.88 and 0.62). This is a state change in the measured cycles or a
+  large jump between the samples. The data do not separate the two.
 - The dx 3 mesh jobs agree with the dx 3 Sobol runs (RF 0.04 / 0.23 / 0.19).
   Thus the different history (direct start at the amplitude) does not cause
   the difference. The mesh causes it.
-- At dx 1.5 the large-angle pairs almost vanish at 50 and 100 mT. The jump
-  share there is half or less of dx 3. At 9 mT it is higher than at dx 3
-  (mostly RH, sharp and repeating).
+- n60 must fall at the finer mesh even for the same structure (the same
+  rotation spreads over twice the number of cells, half the angle per pair).
+  Thus the drop of n60 is descriptive, not a separate proof. A Bloch point
+  would still give pairs > 60° at dx 1.5.
 
-Reading:
-- At dx 3, the jumps above 35 mT are mostly a discretisation effect:
-  structures that the mesh does not resolve (n60 pairs) move from cell to
-  cell. The time series of dx 3 thus give no evidence for a physical jump
-  regime near 30 … 50 mT.
-- They also do not exclude it: at dx 1.5 only 3 amplitudes exist (no 20, 35,
-  70 mT), and 2 of 9 seeds show a state change at 50 mT.
-- The A dependence of B_pk and of the R1 onset (7.50) is a property of the
-  dx 3 model. It is not shown for the fine mesh. R1 at dx 1.5 is not known
-  (the mesh jobs ran without accumulators).
-- Not affected: the K3 vs base difference of β stays at dx 1.5 (preliminary
-  K3 evaluation, results/k3_mesh.md, 34 of 36 jobs). At K3, β 9 → 50 mT has
-  no mesh error, β 50 → 100 mT has +0.33 ± 0.13. This agrees with the
-  mesh-made jumps above 35 mT found here.
+Reading (three levels):
+- Shown at 100 mT: the dx 3 jump share is mostly mesh-made (RF 0.17 … 0.21
+  → 0.07 … 0.08, 9 of 9 seeds, p = 0.004).
+- Indicated at 50 mT: the medians halve (0.23 … 0.25 → 0.11 … 0.12), but
+  7 of 9 seeds, p = 0.18, and 2 seeds go strongly the other way.
+- Not tested at 20, 35 and 70 mT (no dx 1.5 data). The time series thus do
+  not show whether the window at 35 … 50 mT is physical.
+- The A dependence of B_pk and of the R1 onset (7.50) is shown only for dx 3.
+  R1 at dx 1.5 is not known (the mesh jobs ran without accumulators).
+- β difference K3 − base (preliminary K3 evaluation, 34 of 36 jobs, seed
+  means ± SE, n 6 / 4 at dx 3 and 5 / 4 at dx 1.5):
+
+  | segment | dx 3 | dx 1.5 |
+  |---|---|---|
+  | β 9 → 50 mT | +0.46 ± 0.15 | +0.39 ± 0.13 |
+  | β 50 → 100 mT | +0.79 ± 0.16 | +0.28 ± 0.21 |
+  | β 9 → 100 mT (fit) | +0.54 ± 0.11 | +0.36 ± 0.07 |
+
+  The A effect on β below 50 mT does not depend on the mesh. Above 50 mT
+  it shrinks at dx 1.5 to a value that is not different from 0. This agrees
+  with the mesh-made jumps at 100 mT.
 - Consequence for stage 2 (frequency test f/2, 2f at dx 3): it would test
-  the dx 3 jumps, which are mostly mesh-made. Not started. Options go to
-  Chris.
+  the dx 3 jumps, which are at least partly mesh-made. Not started. Options
+  go to Chris.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
