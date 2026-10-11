@@ -2523,6 +2523,22 @@ M300_dx15_s922_b9_mc2 and for the conditioning runs (against C0 … C5). It
 holds for the reruns of jobs that started from init.pt (2 M300 dx 3, 1 K3
 dx 1.5 at 50 mT, 2 fill-in at 35 mT). Decision by Chris needed.
 
+Decision Chris 2026-10-11 (option 1): every rerun takes the start path of
+its original. Done:
+- M300_dx15_s922_b9_mc2 (init.pt path, would run 12 … 21 h) stopped: kill of
+  its own PID (110567, checked by its stdout file), 0.76 h run.
+- S020_mc2 and S026_mc2 (init.pt path) run to their end as a sensitivity
+  record: how much does a start difference of ~10⁻⁶ change the transient?
+- rerun_jobs.py: `--init_from` only when the original had it; conditioning
+  runs without it; `--retire` renames an init.pt variant X_mc2 to
+  X_mc2init before a queue (not used by the analysis). Job files new; 9
+  tests pass. Commit bb7bb15.
+- instance/chain_mc2b.sh installed (/root/mc2b_commit = bb7bb15, onstart
+  line): waits for the first mc2 chain, retires the init.pt variants,
+  removes the stop file once, runs the queue with the same strict gate.
+- Extra cost (estimate): relaxation in the process, ≈ 0.3 h per Sobol and
+  conditioning run, ≈ 3 h for M300_dx15_s922_b9: ≈ +12 V100-h.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
