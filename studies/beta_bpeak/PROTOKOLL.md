@@ -2393,6 +2393,15 @@ Installed on the instance 2026-10-11 ≈ 05:05 UTC: /root/mc2_commit,
 onstart line, the chain waits for the lock of the fill-in chain. Fill-in at
 04:48 UTC: 8 of 36 done, 0 failed. Credit 28.35 $ (top-up by Chris).
 
+CPU test of the stop rule (small run d/l_ex 48, φ 0.55, 9 mT, 32 samples per
+cycle, from the same init.pt, one after another): (a) old rule, 4 cycles;
+(b) `--min_calm 2 --max_cycles_per_amp 8`: stops at 4 cycles (calm tail 2),
+all numbers equal to (a); (c) as (b) with `--cycles_last_amp 6`: 6 cycles,
+the first 4 equal to (a). check_reruns.py on copies (Tmc_mc2 and
+cond_Tmc_b9 against Tmc): 4 cycles equal, exit code 0. A first try with the
+3 runs at the same time was stopped by my own time limit (one cycle took
+44 min with 3 runs on 8 cores); no code fault.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
