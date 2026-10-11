@@ -2760,6 +2760,9 @@ chain mc2b: the mesh check at d/l_ex 212 with a converged relaxation,
 9 / 50 / 100 mT, 4 seeds (PLAN 4.6). A test above d/l_ex 300 (larger
 than 1 µm at A 10 pJ/m) needs more GPU memory than 16 GB for dx 1.5
 (estimate) and stays open.
+Installed 2026-10-11 ≈ 17:50 UTC: /root/chain_size.sh with the pinned
+commit 96faa32 and an onstart line. It waits for runs/MC2B_DONE. The mc2b
+chain (commit bb7bb15, gate watcher, 4 jobs) runs on without change.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
