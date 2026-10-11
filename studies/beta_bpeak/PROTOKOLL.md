@@ -2457,6 +2457,45 @@ Reading (hints, one corner, n 4 … 6, tests not corrected):
 - At K3, dx 3 gives 13 … 40 % less loss density than dx 1.5 at every
   amplitude (P(dx 3) / P(dx 1.5) = 0.60 … 0.87).
 
+### 7.58 β from power-law fits, both meshes (2026-10-11, interim)
+
+Request Chris: β over the whole range and in parts from real power-law
+fits, not from 2 points. Note: the design analysis (7.44, 7.54) already
+uses least-squares fits (β all over 7 amplitudes, windows of 3). The
+2-point values were only the local β of 7.57 and the segments 9 → 50 /
+50 → 100 mT of 7.52. `eval_k3beta.py` → results/k3_beta_fits.md, .png. Fit
+P = k · B^β by least squares of ln P on ln B over all amplitudes of a range
+(realised B), steady-tail rule ≥ 2 calm cycles. β of the mean = fit to the
+arithmetic mean of P over the seeds (the design estimand), 95 % CI by
+bootstrap over the seeds (coarse with ≤ 5 seeds). Paired difference on
+the seeds complete on both meshes.
+
+| point, range (points) | seeds dx 3 / dx 1.5 / both | β of the mean dx 3 | β of the mean dx 1.5 | β per seed dx 3 | β per seed dx 1.5 | dx 3 − dx 1.5 paired (p) |
+|---|---|---|---|---|---|---|
+| K3, 9 … 100 mT (6) | 5 / 5 / 4 | 2.38 (2.33 … 2.43) | 2.25 (2.21 … 2.30) | 2.38 ± 0.03 | 2.27 ± 0.03 | +0.11 ± 0.02 (0.005) |
+| K3, 9 … 35 mT (3) | 5 / 5 / 4 | 2.18 | 2.18 | 2.19 ± 0.08 | 2.17 ± 0.11 | +0.05 ± 0.11 (0.68) |
+| K3, 20 … 50 mT (3) | 5 / 5 / 4 | 2.31 | 2.41 | 2.31 ± 0.07 | 2.39 ± 0.08 | −0.17 ± 0.06 (0.06) |
+| K3, 35 … 70 mT (3) | 5 / 5 / 4 | 2.73 | 2.36 | 2.72 ± 0.09 | 2.43 ± 0.20 | +0.21 ± 0.26 (0.48) |
+| K3, 50 … 100 mT (3) | 6 / 5 / 5 | 2.46 | 2.21 | 2.49 ± 0.15 | 2.27 ± 0.13 | +0.33 ± 0.13 (0.07) |
+| K3, 9 / 50 / 100 mT (3) | 6 / 5 / 5 | 2.37 | 2.21 | 2.37 ± 0.03 | 2.22 ± 0.03 | +0.13 ± 0.03 (0.019) |
+| base, 9 / 50 / 100 mT (3) | 3 / 3 / 2 | 1.73 | 1.87 | 1.73 ± 0.03 | 1.88 ± 0.08 | −0.10 ± 0.02 (0.14) |
+
+(The per-mesh columns use all complete seeds of that mesh, the paired
+column only the common seeds; thus the paired value is not the
+difference of the two columns.)
+
+Reading (interim; 5 jobs wait for their reruns):
+- Over 9 … 100 mT the fine mesh gives a smaller β at K3: 2.25 against 2.38
+  (paired −0.11 ± 0.02, n 4). The difference comes from above 35 mT (35 …
+  70: +0.21, 50 … 100: +0.33 at dx 3); below 35 mT both meshes agree (2.18).
+- Shape on the fine mesh: β ≈ 2.2 at 9 … 35 mT, ≈ 2.4 at 20 … 70 mT, ≈ 2.2
+  at 50 … 100 mT. The 3-point windows overlap and their CIs are wide
+  (± 0.1 … 0.3); the shape is a hint, not a result. dx 3 shows a peak of
+  2.7 at 35 … 70 mT that the fine mesh does not show.
+- A effect on β with the same amplitudes (9 / 50 / 100 mT), K3 − base: dx 3
+  2.37 − 1.73 = +0.64, dx 1.5 2.21 − 1.87 = +0.34 (base n 3; interim). The
+  A effect stays on the fine mesh, at about half of its dx 3 size.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
