@@ -32,50 +32,60 @@ def slope(B, P):
     return float(np.polyfit(np.log(B), np.log(P), 1)[0])
 
 
-def main():
+def compute(seed=20261011):
+    """Rows of the fit table: list of dicts (point, range, per mesh: β of the mean, CI, per-seed values)."""
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
-    rng = np.random.default_rng(20261011)
-    to_P = None
-    print("# β from power-law fits, dx 3 against dx 1.5\n")
-    print("Fit P = k · B^β by least squares of ln P on ln B over all amplitudes of the range (realised B). Steady-tail "
-          "rule (≥ 2 calm cycles). Per range only seeds with all points on both meshes. β of the mean: fit to the "
-          "arithmetic mean of P over the seeds, 95 % CI by bootstrap over the seeds. β per seed: mean ± SE; "
-          "difference dx 3 − dx 1.5 paired per seed (t-test).\n")
-    print("| point | range (points) | seeds dx 3 / dx 1.5 / both | β of the mean, dx 3 | β of the mean, dx 1.5 | β per seed, dx 3 | "
-          "β per seed, dx 1.5 | dx 3 − dx 1.5, paired (p) |")
-    print("|---|---|---|---|---|---|---|---|")
-    res = {}
+    rng = np.random.default_rng(seed)
+    rows = []
     for lab, (fmt, seeds, amps) in POINTS.items():
         L = {(dx, s, b): E.loss(AD.rerun_dir(E.RUNS / (fmt % (dx, s, b))) or E.RUNS / (fmt % (dx, s, b)))
              for dx in ("3", "15") for s in seeds for b in amps}
         ranges = [amps] if len(amps) < 4 else \
             [amps] + [amps[i:i + 3] for i in range(len(amps) - 2)] + [(9, 50, 100)]
         for rg in ranges:
-            row = {}
+            row = {"point": lab, "range": list(rg)}
             for dx in ("3", "15"):
                 ok = [s for s in seeds if all(L[(dx, s, b)] for b in rg)]
                 W = np.array([[L[(dx, s, b)][0] for b in rg] for s in ok])
                 Bm = np.array([[L[(dx, s, b)][1] for b in rg] for s in ok])
-                mean_fit = slope(Bm.mean(0), W.mean(0))
                 boots = []
                 for _ in range(N_BOOT):
                     i = rng.integers(0, len(ok), len(ok))
                     boots.append(slope(Bm[i].mean(0), W[i].mean(0)))
-                per = {s: slope(Bm[k], W[k]) for k, s in enumerate(ok)}
-                row[dx] = {"mean": mean_fit, "ci": np.percentile(boots, [2.5, 97.5]), "per": np.array(list(per.values())),
-                           "per_s": per}
+                row[dx] = {"mean": slope(Bm.mean(0), W.mean(0)), "ci": [float(x) for x in np.percentile(boots, [2.5, 97.5])],
+                           "per_s": {int(s): slope(Bm[k], W[k]) for k, s in enumerate(ok)}}
             both = [s for s in seeds if s in row["3"]["per_s"] and s in row["15"]["per_s"]]
-            d = np.array([row["3"]["per_s"][s] - row["15"]["per_s"][s] for s in both])
-            p = stats.ttest_1samp(d, 0.0).pvalue if len(d) > 1 else float("nan")
-            res[(lab, rg)] = row
-            se = lambda v: v.std(ddof=1) / math.sqrt(len(v)) if len(v) > 1 else float("nan")
-            print("| %s | %s mT (%d) | %d / %d / %d | %.2f (%.2f … %.2f) | %.2f (%.2f … %.2f) | %.2f ± %.2f | %.2f ± %.2f | "
-                  "%+.2f ± %.2f (%.3f) |" % (lab, ("%d … %d" % (rg[0], rg[-1])) if rg != (9, 50, 100) or len(amps) == 3
-                                            else "9 / 50 / 100", len(rg), len(row["3"]["per"]), len(row["15"]["per"]),
-                                            len(both), row["3"]["mean"], *row["3"]["ci"],
-                                            row["15"]["mean"], *row["15"]["ci"], row["3"]["per"].mean(),
-                                            se(row["3"]["per"]), row["15"]["per"].mean(), se(row["15"]["per"]),
-                                            d.mean(), se(d), p))
+            row["diff"] = [row["3"]["per_s"][s] - row["15"]["per_s"][s] for s in both]
+            rows.append(row)
+    return rows
+
+
+def main():
+    print("# β from power-law fits, dx 3 against dx 1.5\n")
+    print("Fit P = k · B^β by least squares of ln P on ln B over all amplitudes of the range (realised B). Steady-tail "
+          "rule (≥ 2 calm cycles). Per mesh the seeds with all points of the range on that mesh; the difference "
+          "between the meshes only on the common seeds (paired). β of the mean: fit to the arithmetic mean of P over the "
+          "seeds, 95 % CI by bootstrap over the seeds. β per seed: mean ± SE; difference dx 3 − dx 1.5 paired per seed "
+          "(t-test).\n")
+    print("| point | range (points) | seeds dx 3 / dx 1.5 / both | β of the mean, dx 3 | β of the mean, dx 1.5 | "
+          "β per seed, dx 3 | β per seed, dx 1.5 | dx 3 − dx 1.5, paired (p) |")
+    print("|---|---|---|---|---|---|---|---|")
+    rows = compute()
+    se = lambda v: np.std(v, ddof=1) / math.sqrt(len(v)) if len(v) > 1 else float("nan")
+    res = {}
+    for row in rows:
+        rg = tuple(row["range"])
+        d = np.array(row["diff"])
+        p = stats.ttest_1samp(d, 0.0).pvalue if len(d) > 1 else float("nan")
+        per = {dx: np.array(list(row[dx]["per_s"].values())) for dx in ("3", "15")}
+        k3 = row["point"].startswith("K3")
+        name = ("%d … %d" % (rg[0], rg[-1])) if rg != (9, 50, 100) or not k3 else "9 / 50 / 100"
+        print("| %s | %s mT (%d) | %d / %d / %d | %.2f (%.2f … %.2f) | %.2f (%.2f … %.2f) | %.2f ± %.2f | %.2f ± %.2f | "
+              "%+.2f ± %.2f (%.3f) |" % (row["point"], name, len(rg), len(per["3"]), len(per["15"]), len(d),
+                                        row["3"]["mean"], *row["3"]["ci"], row["15"]["mean"], *row["15"]["ci"],
+                                        per["3"].mean(), se(per["3"]), per["15"].mean(), se(per["15"]),
+                                        d.mean() if len(d) else float("nan"), se(d), p))
+        res[(row["point"], rg)] = {dx: {"mean": row[dx]["mean"], "ci": row[dx]["ci"]} for dx in ("3", "15")}
     print("\nA seed with a missing job (no 2 calm cycles; rerun pending) is left out of that range only. The windows "
           "overlap, so they are not independent. With 2 … 5 seeds the bootstrap interval is coarse (few distinct "
           "resamples); the SE of the per-seed values is the more honest error.")

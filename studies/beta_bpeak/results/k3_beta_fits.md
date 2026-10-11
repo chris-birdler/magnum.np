@@ -1,6 +1,6 @@
 # β from power-law fits, dx 3 against dx 1.5
 
-Fit P = k · B^β by least squares of ln P on ln B over all amplitudes of the range (realised B). Steady-tail rule (≥ 2 calm cycles). Per range only seeds with all points on both meshes. β of the mean: fit to the arithmetic mean of P over the seeds, 95 % CI by bootstrap over the seeds. β per seed: mean ± SE; difference dx 3 − dx 1.5 paired per seed (t-test).
+Fit P = k · B^β by least squares of ln P on ln B over all amplitudes of the range (realised B). Steady-tail rule (≥ 2 calm cycles). Per mesh the seeds with all points of the range on that mesh; the difference between the meshes only on the common seeds (paired). β of the mean: fit to the arithmetic mean of P over the seeds, 95 % CI by bootstrap over the seeds. β per seed: mean ± SE; difference dx 3 − dx 1.5 paired per seed (t-test).
 
 | point | range (points) | seeds dx 3 / dx 1.5 / both | β of the mean, dx 3 | β of the mean, dx 1.5 | β per seed, dx 3 | β per seed, dx 1.5 | dx 3 − dx 1.5, paired (p) |
 |---|---|---|---|---|---|---|---|
