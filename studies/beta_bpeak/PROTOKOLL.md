@@ -2655,6 +2655,44 @@ repeats on the fine mesh until its rerun is done):
   turns by more than 60° shows it at 50 mT (3.0 % against 0.5 %). The deck
   keeps the two apart and calls the mechanism a hypothesis.
 
+### 7.63 The two meshes start from different states; same-state test started (2026-10-11)
+
+Question of Chris: π·l_ex is normally an accepted cell size, so why does dx 3
+differ so much from dx 1.5? Check of the measuring method (K3 and base, 9 mT
+start jobs):
+- Packing on the grid is the same (φ_vox 0.6899 / 0.6902 at K3, 0.6500 /
+  0.6499 at the base point).
+- The relaxed start states differ: E/K_d −0.00086 … −0.00101 on dx 3 against
+  −0.00114 … −0.00118 on dx 1.5 at K3 (≈ 18 % lower on the fine mesh), base
+  −0.00078 … −0.00088 against −0.00097 … −0.00098; pairs > 60° 15 … 30
+  against 0 … 19.
+- The pairing by seed hardly reduces the scatter: sd of the paired ln P
+  difference at K3 0.21 … 0.44, against 0.25 … 0.50 expected for unpaired
+  runs (base: 0.07 … 0.42 against 0.06 … 0.63).
+Reading: from the same start pattern the two meshes relax into different
+metastable states. The measured "mesh error" contains this difference of
+the states, not only an error of the dynamics. π·l_ex is the wall width
+π√(A/K) at K = K_d; the walls here are 100 … 300 nm wide, the vortex cores
+≈ l_ex.
+
+Same-state test (go Chris): coarse_init.py makes a dx 3 start state as the
+normalised 2 × 2 × 2 mean of the relaxed dx 1.5 state (only fine particle
+cells; the dx 3 grid has half the cells per edge, same box; config and init
+record of the dx 3 template, so --init_from accepts it). Local check at the
+base point: every coarse particle cell has ≥ 4 fine particle cells; mean
+alignment in the blocks 0.9998. On the instance for K3, 6 seeds: alignment
+0.9997, no coarse cell from the template. Jobs jobs/meshK3cg.txt (cg_jobs.py):
+MK3cg_dx3_s2031 … 2036 at 9 / 50 / 100 mT, arguments of MK3_dx3 b9 with
+--init_from MK3cg_init/s<seed>.pt, --min_calm 2, --max_cycles_per_amp 12.
+Started 2026-10-11 ≈ 15:15 UTC as a second queue next to the PLAN 4.5 chain
+(the GPUs are shared), commit d7fd4a4; the initial states loaded. Estimate
+≈ 3 … 5 V100-h, ≈ 1.5 h. Decision rule (fixed now, before the result):
+P(dx 3 from the fine state) against P(dx 1.5), paired per seed and
+amplitude, steady loops: if the mean ln ratio is inside ±0.10 (≈ the loop
+and repeat noise of the pairs) at 9, 50 and 100 mT, the dx 3 dynamics is
+correct and the mesh error comes from the relaxed state; if it equals the
+old dx 3 values, the dynamics itself depends on the mesh.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
