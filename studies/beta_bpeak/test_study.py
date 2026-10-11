@@ -670,6 +670,47 @@ def test_rerun_jobs_and_gate(tmp_path):
     assert n == 6 and why is not None
 
 
+def test_size_jobs_equal_mesh300_except_size_and_seed():
+    """PLAN 4.6: each size-trend line equals its mesh300 template of seed 921 except d_lex, seed, init_from and the
+    steady-rule extension; 50 / 100 mT start from the 9 mT state of the same size, mesh and seed."""
+    import shlex
+    import rerun_jobs as RJ
+    import size_jobs as SJ
+    src = pathlib.Path(__file__).resolve().parent / "jobs" / "mesh300.txt"
+    tmpl = dict(RJ.job_lines(src))
+    out = SJ.lines(src)
+    assert len(out) == 48 and len({n for n, _ in out}) == 48
+    assert [n for n, _ in out[:4]] == ["M212_dx15_s%d_b9" % s for s in range(931, 935)]
+    for name, a in out:
+        size, mesh, s, b = name.split("_")
+        t, r = shlex.split(a), shlex.split(tmpl["M300_%s_s921_%s" % (mesh, b)])
+        assert RJ.get_arg(t, "d_lex") == ["%s.0" % size[1:]] and RJ.get_arg(t, "seed") == [s[1:]]
+        assert RJ.get_arg(t, "min_calm") == ["2"] and RJ.get_arg(t, "max_cycles_per_amp") == ["12"]
+        init = RJ.get_arg(t, "init_from")
+        assert init == (None if b == "b9" else ["%s_%s_%s_b9/init.pt" % (size, mesh, s)])
+        keys = {x[2:] for x in r if x.startswith("--")}
+        for k in keys - set(SJ.CHANGED):
+            assert RJ.get_arg(t, k) == RJ.get_arg(r, k), (name, k)
+        assert {x[2:] for x in t if x.startswith("--")} <= keys | set(SJ.CHANGED)
+
+
+def test_eval_size_trend_label_and_extrapolation():
+    """PLAN 4.6: the trend label needs both steps beyond their SE; the line over (1/d)^k recovers a known limit."""
+    import eval_size as ES
+    assert ES.trend_label([(0.5, 0.05), (0.3, 0.05), (0.1, 0.05)]) == "falls"
+    assert ES.trend_label([(-0.5, 0.05), (0.2, 0.05), (0.1, 0.05)]) == "falls"
+    assert ES.trend_label([(0.5, 0.05), (0.45, 0.05), (0.1, 0.05)]) == "no clear trend"
+    assert ES.trend_label([(0.1, 0.05), (0.3, 0.05), (0.6, 0.05)]) == "rises"
+    assert ES.trend_label([(0.1, 0.05), None, (0.6, 0.05)]).startswith("not determined")
+    rng = np.random.default_rng(1)
+    pts = [(d, 0.2 - 2000.0 / d ** 2 + 1e-3 * rng.standard_normal()) for d in (150.0, 212.0, 300.0) for _ in range(4)]
+    e = ES.extrapolate(pts, 2)
+    assert abs(e[math.inf][0] - 0.2) < 3 * e[math.inf][1] + 1e-9 and e[math.inf][1] < 0.01
+    assert abs(e[600.0][0] - (0.2 - 2000.0 / 600.0 ** 2)) < 0.01
+    s = ES.summary([0.1, 0.2, 0.3])
+    assert abs(s[0] - 0.2) < 1e-12 and s[2] == 3 and abs(s[3] - 2.919986 * 0.1 / math.sqrt(3)) < 1e-5
+
+
 def test_analyze_design_rerun_mapping(tmp_path):
     """PLAN 4.5: with reruns=True a finished X_mc2 replaces X (name = folder used, orig = X); without, the original
     is used; an unfinished rerun is not used."""

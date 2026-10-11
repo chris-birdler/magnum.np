@@ -687,6 +687,90 @@ E. Order and cost (estimates; measured cycle times; 0.41 $/h):
      The credit after the fill-in is ≈ 0.7 $: a top-up of ≈ 20 $ is needed
      before the start.
 
+### 4.6 Size trend of the mesh error (2026-10-11, option 1 of Chris; rules for approval)
+
+Reason: PROTOKOLL 7.63. The dx 3 grid cannot hold the states of dx 1.5 at
+K3. Chris wants to calculate particles larger than 1 µm. At these sizes
+dx 1.5 is too expensive (estimate: ≈ 70 h per job at 2 µm). Question: does
+the mesh error of dx 3 become smaller when the particle becomes larger?
+
+Terms. The **mesh error** of an output is its value at dx 3 minus its
+value at dx 1.5, for the same seed (paired): Δ ln P = ln[P(dx 3) / P(dx
+1.5)] at 9 / 50 / 100 mT, and Δβ = β(dx 3) − β(dx 1.5). β is the slope of
+the power-law fit of ln P over ln B through the 3 amplitudes of one seed.
+P is the loss density from the steady loops (7.54, ≥ 2 calm cycles).
+
+A. Runs (`size_jobs.py` → jobs/meshsize.txt, 48 jobs; test in test_study.py).
+   - Base microstructure of mesh300: L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1,
+     A 10 pJ/m, converged virgin relaxation (7.13).
+   - d/l_ex 212 (0.71 µm, seeds 931 … 934) and 150 (0.49 µm, seeds 941 …
+     944). The point d/l_ex 300 (1.0 µm) is mesh300 (seeds 921 … 924) with
+     its 3 reruns from the running chain mc2b.
+   - dx 1.5 and dx 3 with the same seed, 9 / 50 / 100 mT. The 50 and 100 mT
+     jobs start from the relaxed state of the 9 mT job (as mesh300).
+   - Arguments: the mesh300 line of seed 921, with only the name, d_lex,
+     seed and init_from changed, plus `--min_calm 2 --max_cycles_per_amp 12`
+     (rule of 4.5). No accumulators, no snapshots.
+   - The old runs R212 and P1_d150 are not used (relaxation not converged,
+     7.13).
+B. Analysis (`eval_size.py` → results/size_trend.md; fixed now, before the
+   result).
+   - Per size: mean ± SE of Δ ln P (9 / 50 / 100 mT) and of Δβ over the
+     seeds, with the 90 % CI (t, n − 1).
+   - Trend label per output over 150 → 212 → 300: "falls" if |mean|
+     decreases at both steps by more than the SE of the step (√(SE₁² +
+     SE₂²)); "rises" if it increases at both steps by more than this SE;
+     else "no clear trend". The sign of each mean is also reported, because
+     at the base point the level error has a different sign at 300 (dx 3
+     higher) than at K3 (dx 3 lower).
+   - Estimates for larger particles (marked as estimates, not as
+     measurements): a straight line of the per-seed values over x = (l_ex /
+     d)^k, with k = 1 (share of the surface steps) and with k = 2 (share of
+     the vortex cores), at d/l_ex 600 (2 µm) and d → ∞, with the SE of the
+     fit. If the two models do not agree, the extrapolation is not
+     determined.
+   - K3 (d/l_ex 212, other microstructure) is shown as a reference row. It
+     is not part of the trend.
+   - No automatic decision about dx 3. Chris decides with the trend, the
+     values at 300 and the estimates.
+C. Limits (stated now).
+   - At constant φ the gap between the particles scales with d. The gap at
+     dx 3 is 2.2 / 3.1 / 4.4 cells at d/l_ex 150 / 212 / 300 (K3: 1.7). Thus
+     the trend contains the gap resolution and the particle size together.
+     For larger particles at the same φ, both become better.
+   - dx 1.5 is not shown to be converged at small d/l_ex (at d/l_ex 96, dx 1
+     gave 1.2 … 1.6 × the loss of dx 1.5; old relaxation, 7.28). At 150 the
+     reference dx 1.5 can have its own error. Option (not in the plan): a
+     dx 1 anchor at d/l_ex 150 with 2 seeds × 3 amplitudes, ≈ 35 V100-h ≈
+     4 $ (estimate from C_dx1: 0.29 h per cycle at 144³ cells → ≈ 1.0 h at
+     216³ cells).
+   - One microstructure, 4 seeds per size. Measured SE: Δβ ≈ 0.02 … 0.06,
+     Δ ln P ≈ 0.04 … 0.24. Thus a step smaller than ≈ 0.1 in Δβ, or ≈ 0.1 …
+     0.3 in Δ ln P, is not detected.
+   - The extrapolation to d > 1 µm assumes that no new loss mechanism
+     starts above 1 µm. This is not tested.
+D. Order and cost (V100-h; cycle times measured at d/l_ex 212 (MK3), the
+   values at 150 are estimates from the number of cells; "expected" = 5
+   cycles + 10 % for extensions; "maximum" = 12 cycles in each stage).
+
+   | Group | Jobs | Time per cycle | Relaxation per seed | Expected | Maximum |
+   |---|---|---|---|---|---|
+   | dx 1.5, d/l_ex 212 (9.0 M cells) | 12 | 0.49 h | 1.3 … 1.5 h | ≈ 39 | ≈ 77 |
+   | dx 1.5, d/l_ex 150 (3.0 M cells) | 12 | ≈ 0.16 h | ≈ 0.4 h | ≈ 12 | ≈ 25 |
+   | dx 3, d/l_ex 212 | 12 | 0.023 h | 0.09 h | ≈ 2 | ≈ 4 |
+   | dx 3, d/l_ex 150 | 12 | ≈ 0.01 h | ≈ 0.05 h | ≈ 1 | ≈ 2 |
+   | Total | 48 | | | ≈ 54 | ≈ 108 |
+
+   - Order: dx 1.5 at 212 first (longest), then dx 1.5 at 150, then dx 3.
+   - Wall time on 4 GPUs ≈ 14 h (maximum ≈ 28 h). Rental 0.42 $/h
+     (measured 2026-10-11, with storage): ≈ 6 $ (maximum ≈ 12 $).
+   - Start: `instance/chain_size.sh` waits for the end of chain mc2b
+     (expected 2026-10-12 ≈ 13 … 15 UTC) and pins its own commit. A stop
+     file of the mc2b gate also stops this queue.
+   - Credit: 15.24 $ at 2026-10-11 17:09 UTC. At the end of mc2b ≈ 6 … 7 $
+     are left, which is not enough with a margin. The chain is installed
+     only after a top-up of ≥ 10 $ (≥ 15 $ with the dx 1 anchor).
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
