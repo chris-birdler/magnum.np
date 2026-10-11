@@ -671,7 +671,7 @@ def test_rerun_jobs_and_gate(tmp_path):
 
 
 def test_size_jobs_equal_mesh300_except_size_and_seed():
-    """PLAN 4.6: each size-trend line equals its mesh300 template of seed 921 except d_lex, seed, init_from and the
+    """PLAN 4.6: each line of the d/l_ex 212 mesh check equals its mesh300 template of seed 921 except d_lex, seed, init_from and the
     steady-rule extension; 50 / 100 mT start from the 9 mT state of the same size, mesh and seed."""
     import shlex
     import rerun_jobs as RJ
@@ -679,7 +679,7 @@ def test_size_jobs_equal_mesh300_except_size_and_seed():
     src = pathlib.Path(__file__).resolve().parent / "jobs" / "mesh300.txt"
     tmpl = dict(RJ.job_lines(src))
     out = SJ.lines(src)
-    assert len(out) == 48 and len({n for n, _ in out}) == 48
+    assert len(out) == 24 and len({n for n, _ in out}) == 24
     assert [n for n, _ in out[:4]] == ["M212_dx15_s%d_b9" % s for s in range(931, 935)]
     for name, a in out:
         size, mesh, s, b = name.split("_")
@@ -694,21 +694,30 @@ def test_size_jobs_equal_mesh300_except_size_and_seed():
         assert {x[2:] for x in t if x.startswith("--")} <= keys | set(SJ.CHANGED)
 
 
-def test_eval_size_trend_label_and_extrapolation():
-    """PLAN 4.6: the trend label needs both steps beyond their SE; the line over (1/d)^k recovers a known limit."""
+def test_eval_size_rules():
+    """PLAN 4.6: no statement from fewer than 3 seeds; Welch difference of two summaries; sign change only if both
+    90 % CIs exclude 0; the mesh error of one seed from the stage dicts."""
     import eval_size as ES
-    assert ES.trend_label([(0.5, 0.05), (0.3, 0.05), (0.1, 0.05)]) == "falls"
-    assert ES.trend_label([(-0.5, 0.05), (0.2, 0.05), (0.1, 0.05)]) == "falls"
-    assert ES.trend_label([(0.5, 0.05), (0.45, 0.05), (0.1, 0.05)]) == "no clear trend"
-    assert ES.trend_label([(0.1, 0.05), (0.3, 0.05), (0.6, 0.05)]) == "rises"
-    assert ES.trend_label([(0.1, 0.05), None, (0.6, 0.05)]).startswith("not determined")
-    rng = np.random.default_rng(1)
-    pts = [(d, 0.2 - 2000.0 / d ** 2 + 1e-3 * rng.standard_normal()) for d in (150.0, 212.0, 300.0) for _ in range(4)]
-    e = ES.extrapolate(pts, 2)
-    assert abs(e[math.inf][0] - 0.2) < 3 * e[math.inf][1] + 1e-9 and e[math.inf][1] < 0.01
-    assert abs(e[600.0][0] - (0.2 - 2000.0 / 600.0 ** 2)) < 0.01
+    assert ES.summary([0.1, 0.2]) is None
     s = ES.summary([0.1, 0.2, 0.3])
     assert abs(s[0] - 0.2) < 1e-12 and s[2] == 3 and abs(s[3] - 2.919986 * 0.1 / math.sqrt(3)) < 1e-5
+    a, b = (0.5, 0.1, 4, 0.2), (0.2, 0.1, 4, 0.2)
+    d = ES.difference(a, b)
+    assert abs(d[0] - 0.3) < 1e-12 and abs(d[1] - math.sqrt(0.02)) < 1e-12
+    assert abs(d[2] - stats_t(0.95, 6.0) * math.sqrt(0.02)) < 1e-9          # equal SE and n: dof = 2 (n - 1)
+    assert ES.sign_change((0.5, 0.1, 4, 0.2), (-0.5, 0.1, 4, 0.2))
+    assert not ES.sign_change((0.5, 0.1, 4, 0.2), (-0.1, 0.1, 4, 0.2)) and ES.difference(a, None) is None
+    fine = {9: (1.0, 9.0), 50: (40.0, 50.0), 100: (200.0, 100.0)}
+    coarse = {9: (2.0, 9.0), 50: (40.0, 50.0), 100: (200.0, 100.0)}
+    e = ES.mesh_error(fine, coarse)
+    assert abs(e["lnP 9"] - math.log(2.0)) < 1e-12 and e["lnP 50"] == 0.0
+    assert abs(e["beta 9-50"] + math.log(2.0) / math.log(50.0 / 9.0)) < 1e-12 and e["beta"] < 0
+    assert "lnP 100" not in ES.mesh_error(fine, {9: (2.0, 9.0)}) and "beta" not in ES.mesh_error(fine, {9: (2.0, 9.0)})
+
+
+def stats_t(q, dof):
+    from scipy import stats
+    return stats.t.ppf(q, dof)
 
 
 def test_analyze_design_rerun_mapping(tmp_path):

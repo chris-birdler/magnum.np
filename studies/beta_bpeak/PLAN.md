@@ -687,89 +687,94 @@ E. Order and cost (estimates; measured cycle times; 0.41 $/h):
      The credit after the fill-in is ≈ 0.7 $: a top-up of ≈ 20 $ is needed
      before the start.
 
-### 4.6 Size trend of the mesh error (2026-10-11, option 1 of Chris; rules for approval)
+### 4.6 Mesh check at d/l_ex 212 for the base microstructure (2026-10-11, option 2 of Chris)
 
-Reason: PROTOKOLL 7.63. The dx 3 grid cannot hold the states of dx 1.5 at
-K3. Chris wants to calculate particles larger than 1 µm. At these sizes
-dx 1.5 is too expensive (estimate: ≈ 70 h per job at 2 µm). Question: does
-the mesh error of dx 3 become smaller when the particle becomes larger?
+Reason: PROTOKOLL 7.63 and 7.64. The dx 3 grid cannot hold the states of
+dx 1.5 at K3. For the base microstructure, a mesh pair with a converged
+relaxation exists only at d/l_ex 300 (mesh300). The old pairs at d/l_ex 96
+and 212 have a relaxation that did not converge, only 9 and 50 mT, and an
+SE of 0.1 … 0.7 in ln P (7.64). Decision of Chris (2026-10-11): no new size
+trend now (option 1); this check goes into the queue after the chain mc2b
+(option 2). The chain mc2b is the running queue of PLAN 4.5 (reruns to 2
+calm cycles and the conditioning test).
 
-Terms. The **mesh error** of an output is its value at dx 3 minus its
-value at dx 1.5, for the same seed (paired): Δ ln P = ln[P(dx 3) / P(dx
-1.5)] at 9 / 50 / 100 mT, and Δβ = β(dx 3) − β(dx 1.5). β is the slope of
-the power-law fit of ln P over ln B through the 3 amplitudes of one seed.
-P is the loss density from the steady loops (7.54, ≥ 2 calm cycles).
+Goals: (i) a mesh error of β at d/l_ex 212 with n ≥ 3 and 100 mT; (ii) the
+mesh share of the size lever d/l_ex 212 → 300 at the base microstructure
+(the Sobol factor d/l_ex, which is A at d = 1 µm), as a second
+microstructure next to K3. The check gives no information about particles
+larger than d/l_ex 300.
 
-A. Runs (`size_jobs.py` → jobs/meshsize.txt, 48 jobs; test in test_study.py).
+Terms. dx is in units of the exchange length l_ex (3.34 nm at A = 10 pJ/m;
+all µm values in this section are for this A). The **mesh error** of an
+output is its value at dx 3 minus its value at dx 1.5 for the same seed:
+Δ ln P = ln[P(dx 3) / P(dx 1.5)] at 9 / 50 / 100 mT, and Δβ = β(dx 3) −
+β(dx 1.5). β is the slope of the power-law fit of ln P over ln B through
+the amplitudes of one seed (9 / 50 / 100 mT, and 9 → 50 mT for the
+comparison with the old pairs). P is the loss density from the steady loops
+(7.54, ≥ 2 calm cycles). The **size lever** on one mesh is the mean at
+d/l_ex 300 minus the mean at 212.
+
+A. Runs (`size_jobs.py` → jobs/mesh212.txt, 24 jobs, test in test_study.py).
    - Base microstructure of mesh300: L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1,
      A 10 pJ/m, converged virgin relaxation (7.13).
-   - d/l_ex 212 (0.71 µm, seeds 931 … 934) and 150 (0.49 µm, seeds 941 …
-     944). The point d/l_ex 300 (1.0 µm) is mesh300 (seeds 921 … 924) with
-     its 3 reruns from the running chain mc2b.
-   - dx 1.5 and dx 3 with the same seed, 9 / 50 / 100 mT. The 50 and 100 mT
-     jobs start from the relaxed state of the 9 mT job (as mesh300).
-   - Arguments: the mesh300 line of seed 921, with only the name, d_lex,
-     seed and init_from changed, plus `--min_calm 2 --max_cycles_per_amp 12`
-     (rule of 4.5). No accumulators, no snapshots.
-   - The old runs R212 and P1_d150 are not used (relaxation not converged,
-     7.13).
-B. Analysis (`eval_size.py` → results/size_trend.md; fixed now, before the
-   result).
-   - Per size: mean ± SE of Δ ln P (9 / 50 / 100 mT) and of Δβ over the
-     seeds, with the 90 % CI (t, n − 1).
-   - Trend label per output over 150 → 212 → 300: "falls" if |mean|
-     decreases at both steps by more than the SE of the step (√(SE₁² +
-     SE₂²)); "rises" if it increases at both steps by more than this SE;
-     else "no clear trend". The sign of each mean is also reported, because
-     at the base point the level error has a different sign at 300 (dx 3
-     higher) than at K3 (dx 3 lower).
-   - Estimates for larger particles (marked as estimates, not as
-     measurements): a straight line of the per-seed values over x = (l_ex /
-     d)^k, with k = 1 (share of the surface steps) and with k = 2 (share of
-     the vortex cores), at d/l_ex 600 (2 µm) and d → ∞, with the SE of the
-     fit. If the two models do not agree, the extrapolation is not
-     determined.
-   - K3 (d/l_ex 212, other microstructure) is shown as a reference row. It
-     is not part of the trend.
-   - No automatic decision about dx 3. Chris decides with the trend, the
-     values at 300 and the estimates.
+   - d/l_ex 212 (0.71 µm), seeds 931 … 934, dx 1.5 and dx 3 with the same
+     seed, 9 / 50 / 100 mT. The 50 and 100 mT jobs start from the relaxed
+     state of the 9 mT job of the same seed and mesh (as mesh300).
+   - Arguments: the mesh300 line of seed 921. The script changes only the
+     name, d_lex, seed, init_from and max_cycles_per_amp (5 → 12), and adds
+     `--min_calm 2` (rule of 4.5). No accumulators, no snapshots.
+   - The reference at d/l_ex 300 is mesh300 with its 3 reruns of the chain
+     mc2b. The code changed after mesh300 (commit 3f8c4bd): stress axes (no
+     effect at r_p 0), checks and run control. The determinism gate of the
+     3 reruns compares the new code with mesh300 cycle by cycle.
+B. Analysis (`eval_size.py` → results/mesh212.md; rules fixed now, before
+   the result).
+   - Per group (212, 300, K3 as reference): mean ± SE of Δ ln P and Δβ over
+     the seeds, with the 90 % CI (t, n − 1). With fewer than 3 seeds the
+     script gives no value ("no statement").
+   - Mesh share of the size lever = Δ(300) − Δ(212), with SE √(SE₁² + SE₂²)
+     and the 90 % CI (Welch-Satterthwaite). The script also shows the size
+     lever on each mesh (different seeds, Welch).
+   - Sign change: Δ(212) and Δ(300) have opposite signs and both 90 % CIs
+     exclude 0.
+   - The old pairs (96 and 212) are shown as hints in a separate table.
+   - No automatic decision. Chris decides with these numbers.
 C. Limits (stated now).
-   - At constant φ the gap between the particles scales with d. The gap at
-     dx 3 is 2.2 / 3.1 / 4.4 cells at d/l_ex 150 / 212 / 300 (K3: 1.7). Thus
-     the trend contains the gap resolution and the particle size together.
-     For larger particles at the same φ, both become better.
-   - dx 1.5 is not shown to be converged at small d/l_ex (at d/l_ex 96, dx 1
-     gave 1.2 … 1.6 × the loss of dx 1.5; old relaxation, 7.28). At 150 the
-     reference dx 1.5 can have its own error. Option (not in the plan): a
-     dx 1 anchor at d/l_ex 150 with 2 seeds × 3 amplitudes, ≈ 35 V100-h ≈
-     4 $ (estimate from C_dx1: 0.29 h per cycle at 144³ cells → ≈ 1.0 h at
-     216³ cells).
-   - One microstructure, 4 seeds per size. Measured SE: Δβ ≈ 0.02 … 0.06,
-     Δ ln P ≈ 0.04 … 0.24. Thus a step smaller than ≈ 0.1 in Δβ, or ≈ 0.1 …
-     0.3 in Δ ln P, is not detected.
-   - The extrapolation to d > 1 µm assumes that no new loss mechanism
-     starts above 1 µm. This is not tested.
-D. Order and cost (V100-h; cycle times measured at d/l_ex 212 (MK3), the
-   values at 150 are estimates from the number of cells; "expected" = 5
-   cycles + 10 % for extensions; "maximum" = 12 cycles in each stage).
+   - At constant φ, the gap between the particles scales with d. At dx 3
+     the gap is 3.1 cells at d/l_ex 212 and 4.4 cells at 300 (K3: 1.7).
+     Thus the check contains the gap resolution and the particle size
+     together.
+   - 4 seeds. Measured SE of the mesh error: Δβ 0.03 … 0.10, Δ ln P
+     0.04 … 0.34 (7.28, 7.63, 7.64). A mesh share smaller than ≈ 0.2 in β or
+     ≈ 0.2 … 0.8 in ln P is not detectable.
+   - dx 1.5 is the reference, but nobody showed that it is converged
+     (7.28, 7.64: at d/l_ex 96 dx 1 gave × 1.6 at 50 mT, n 3, hint).
+D. Order and cost (V100-h = hours on one GPU of the 4 × V100 instance;
+   "expected" = 5 cycles + 10 % for extensions; "maximum" = 12 cycles in
+   each stage).
 
    | Group | Jobs | Time per cycle | Relaxation per seed | Expected | Maximum |
    |---|---|---|---|---|---|
-   | dx 1.5, d/l_ex 212 (9.0 M cells) | 12 | 0.49 h | 1.3 … 1.5 h | ≈ 39 | ≈ 77 |
-   | dx 1.5, d/l_ex 150 (3.0 M cells) | 12 | ≈ 0.16 h | ≈ 0.4 h | ≈ 12 | ≈ 25 |
-   | dx 3, d/l_ex 212 | 12 | 0.023 h | 0.09 h | ≈ 2 | ≈ 4 |
-   | dx 3, d/l_ex 150 | 12 | ≈ 0.01 h | ≈ 0.05 h | ≈ 1 | ≈ 2 |
-   | Total | 48 | | | ≈ 54 | ≈ 108 |
+   | dx 1.5 (208³ = 9.0 M cells) | 12 | 0.49 h (MK3, measured) | 1.3 … 3.2 h (estimate) | ≈ 37 … 45 | ≈ 83 |
+   | dx 3 (104³ cells) | 12 | 0.023 h (MK3, measured) | ≈ 0.15 h (estimate) | ≈ 2 | ≈ 4 |
+   | Total | 24 | | | ≈ 39 … 47 | ≈ 87 |
 
-   - Order: dx 1.5 at 212 first (longest), then dx 1.5 at 150, then dx 3.
-   - Wall time on 4 GPUs ≈ 14 h (maximum ≈ 28 h). Rental 0.42 $/h
-     (measured 2026-10-11, with storage): ≈ 6 $ (maximum ≈ 12 $).
-   - Start: `instance/chain_size.sh` waits for the end of chain mc2b
-     (expected 2026-10-12 ≈ 13 … 15 UTC) and pins its own commit. A stop
-     file of the mc2b gate also stops this queue.
-   - Credit: 15.24 $ at 2026-10-11 17:09 UTC. At the end of mc2b ≈ 6 … 7 $
-     are left, which is not enough with a margin. The chain is installed
-     only after a top-up of ≥ 10 $ (≥ 15 $ with the dx 1 anchor).
+   - MK3 is the K3 mesh check (7.52) on the same grid and instance. The
+     relaxation range comes from MK3 (10.5 … 17 k iterations, 1.3 … 2.1 h)
+     and from mesh300 (16 … 25.5 k iterations, which give 2.0 … 3.2 h at
+     0.445 s per iteration on 208³ cells).
+   - Order: dx 1.5 first, then dx 3. Wall time on 4 GPUs ≈ 10 … 12 h
+     (maximum ≈ 25 h). Rental 0.42 $/h (measured 2026-10-11, with storage):
+     ≈ 4 … 5 $ (maximum ≈ 10 $).
+   - Start: `instance/chain_size.sh` waits until the chain mc2b has written
+     runs/MC2B_DONE, then pins its own commit. If mc2b ends with an error,
+     the script waits. A stop file stops this queue before any job starts.
+     After its removal, the chain needs a manual restart.
+   - Credit: 15.24 $ at 2026-10-11 17:09 UTC. The chain mc2b ends at
+     2026-10-12 ≈ 10 … 15 UTC (its long rerun M300_dx15_s922_b9_mc2 reaches
+     the 30 h job limit at ≈ 19:20 UTC in the worst case). At its end ≈ 4 …
+     8 $ remain. Chris tops up ≥ 10 $ before the start, so that the maximum
+     case and the idle time until the fetch are covered.
 
 ## 5. Optional step 3: mesh control (separate go)
 

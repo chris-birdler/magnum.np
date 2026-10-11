@@ -2718,6 +2718,42 @@ are not representable with 3 l_ex cells), and its own states have about
 35 … 40 % less loss at 9 … 50 mT and a β higher by ≈ +0.1 … +0.15. One
 point (K3), 5 … 6 repeats.
 
+### 7.64 Old mesh pairs with the steady rule; decision on the size question (2026-10-11)
+
+Question of Chris: "I want to calculate larger particles. Does the mesh
+problem become smaller for larger particles?" Existing mesh pairs of the
+base microstructure (L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1), evaluated with
+the steady rule (≥ 2 calm cycles). The pairs at d/l_ex 96 (P3_dx*, R_dx15,
+seeds 3 … 5) and 212 (R212_*, seeds 911 … 914) have a relaxation that did
+not converge (7.13) and only 9 and 50 mT. They are read in the audit mode
+(hints only). `eval_size.py` → results/mesh212.md (table "old pairs").
+
+| d/l_ex (d at A 10 pJ/m) | runs | P(dx 3)/P(dx 1.5) 9 mT | 50 mT | 100 mT | Δβ |
+|---|---|---|---|---|---|
+| 96 (0.32 µm) | old, n 2 … 3 | n 2: no statement | × 0.33 (ln −1.12 ± 0.67, n 3) | – | n 2: no statement |
+| 212 (0.71 µm) | old, n 4 | × 0.70 (−0.36 ± 0.34) | × 0.94 (−0.06 ± 0.09) | – | 9 → 50 mT: +0.15 ± 0.23 |
+| 300 (1.0 µm) | mesh300, converged, n 3 | × 1.34 (+0.29 ± 0.24) | × 1.63 (+0.49 ± 0.05) | × 1.32 (+0.28 ± 0.04) | 9 → 50 mT: −0.05 ± 0.06 (n 4, 7.28) |
+
+Also at d/l_ex 96 (old, n 3, 50 mT): dx 1 gives × 1.64 (ln +0.50 ± 0.36) of
+dx 1.5, dx 2 gives × 1.30 (+0.26 ± 0.33). There is no dx 3 run at d/l_ex
+150.
+- Level of P: the mesh error changes sign between 212 and 300. dx 3 gives
+  too little loss for small particles and too much at 1 µm (+30 … 60 %).
+  It does not go to zero with the size in this range. No run shows the
+  behaviour above 1 µm.
+- β: the mesh error is small at 1 µm (−0.05 ± 0.06, n 4). At 212 it is
+  +0.15 ± 0.23 (n 4): not different from 0 and not different from 0.3. A
+  trend of the β error with the size is not shown (corrected in the chat:
+  an earlier statement "the β error falls with the size" used n 2 at 96
+  and 300).
+- dx 1.5 can have its own error at small particles (hint at 96).
+Decision of Chris (2026-10-11): option 1 now (no new size trend; the
+prepared 150 + 212 design is dropped); option 2 into the queue after the
+chain mc2b: the mesh check at d/l_ex 212 with a converged relaxation,
+9 / 50 / 100 mT, 4 seeds (PLAN 4.6). A test above d/l_ex 300 (larger
+than 1 µm at A 10 pJ/m) needs more GPU memory than 16 GB for dx 1.5
+(estimate) and stays open.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
