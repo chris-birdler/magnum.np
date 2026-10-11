@@ -2402,6 +2402,61 @@ cond_Tmc_b9 against Tmc): 4 cycles equal, exit code 0. A first try with the
 3 runs at the same time was stopped by my own time limit (one cycle took
 44 min with 3 runs on 8 cores); no code fault.
 
+### 7.57 Fine mesh at K3 over 6 amplitudes: no jump window, R1 falls on both meshes (2026-10-11, interim)
+
+Fill-in done 2026-10-11 10:19 UTC (36 of 36, 0 failed, post-processing
+exit code 0). Fetched without state files (12 MB), 288 files md5 OK
+(runs/MANIFEST_k3.md5, 468 entries). The chain of PLAN 4.5 started at 10:21
+UTC (b10a7fa, 37 jobs; 2 fill-in jobs at 35 mT with a calm tail < 2 are in
+it: MK3_dx15_s2034_b35, MK3_dx3_s2035_b35). Interim: these 2 jobs are
+missing here until their reruns are done.
+
+`eval_k3fill.py` → results/k3_fine.md, k3_fine.png. K3 (A 20 pJ/m), 6 seeds,
+one job per amplitude from the relaxed state, steady-tail rule with ≥ 2
+calm cycles. Realised B within ±1.5 % of the target in all 72 jobs.
+Measurement note: `B_peak_mT` in acc.json is the largest |B| of all
+samples of the stage, cycle 0 included (before the drive correction). In
+these jobs it is up to 30 % above the amplitude; it is only a label. The
+mapping here uses the job name. In the Sobol runs the label is within the
+correct nearest amplitude (checked: S005, C0), so 7.50 is not affected.
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 |
+|---|---|---|---|---|---|---|
+| P dx 1.5 (W/cm³, geometric mean) | 4.3 | 22.0 | 86.6 | 197 | 503 | 948 |
+| P(dx 3) / P(dx 1.5), paired | × 0.63 | × 0.77 | × 0.60 (n 4) | × 0.69 (n 5) | × 0.67 | × 0.87 |
+| RF dx 3 | 0.030 | 0.129 | 0.177 | 0.261 | 0.274 | 0.221 |
+| RF dx 1.5 | 0.113 | 0.134 | 0.128 | 0.118 | 0.100 | 0.074 |
+| seeds RF(dx 3) > RF(dx 1.5) | 0/5 | 2/6 | 2/4 | 4/4 | 6/6 (p 0.031) | 6/6 (p 0.031) |
+| R1 dx 3 | – | 0.78 ± 0.05 | 0.62 ± 0.11 | – | 0.49 ± 0.02 | – |
+| R1 dx 1.5 | – | 0.71 ± 0.04 | 0.61 ± 0.04 | – | 0.57 ± 0.01 | – |
+
+Local β (per seed, mean ± SE): dx 1.5: 2.05 ± 0.14 / 2.43 ± 0.08 / 2.32 ±
+0.25 / 2.54 ± 0.22 / 1.79 ± 0.24 (9 → 20 / 20 → 35 / 35 → 50 / 50 → 70 / 70 →
+100 mT); dx 3: 2.31 / 1.99 / 2.87 / 2.43 / 2.54. Paired within the seeds on
+dx 1.5: β(20 → 35) − β(9 → 20) = +0.43 ± 0.17 (n 5, p 0.07); β(70 → 100) −
+β(50 → 70) = −0.54 ± 0.24 (n 5, p 0.09); β(70 → 100) − β(20 → 35) = −0.43
+± 0.15 (n 5, p 0.048). β fitted over 9 … 100 mT: 2.30 ± 0.04 (dx 1.5), 2.37
+± 0.02 (dx 3).
+
+Reading (hints, one corner, n 4 … 6, tests not corrected):
+- On the fine mesh there is no jump window at 35 … 50 mT. The non-smooth
+  share stays at 0.11 … 0.13 from 9 to 50 mT and falls to 0.07 at 100 mT.
+  The rise at dx 3 above 35 mT is a mesh effect (6/6 seeds at 70 and 100
+  mT). This settles the open level "not tested at 20 … 70 mT" of 7.51.
+- R1 falls with B on both meshes (dx 1.5: 0.71 → 0.61 → 0.57 at 20 / 35 / 70
+  mT). Thus the loss moves away from the local fundamental also on the fine
+  mesh; this part of 7.50 is physical. On the fine mesh the fall is
+  gradual, mostly between 20 and 35 mT, not a step at 50 mT. Limit: the
+  accumulators sum all cycles from 2 on, events included; the direct start
+  at each amplitude gives a lower R1 than the ascending protocol (Sobol
+  corner runs K3_0 … 2 at dx 3: 0.89 / 0.83 / 0.49 at 20 / 35 / 70 mT).
+- Local β on the fine mesh: about 2.0 below 20 mT, about 2.3 … 2.5 at
+  20 … 70 mT, and lower above 70 mT (1.8). The dx 3 values scatter more and
+  do not show this shape; above 70 mT dx 3 gives +0.75 ± 0.14 too much
+  (7.52).
+- The fine mesh gives 13 … 40 % more loss density than dx 3 at K3 at every
+  amplitude.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
