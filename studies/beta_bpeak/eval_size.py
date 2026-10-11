@@ -11,7 +11,8 @@ Mesh error per seed: Δ ln P = ln[P(dx 3) / P(dx 1.5)] at each amplitude; Δβ =
 of the power-law fit of ln P over ln B (9 / 50 / 100 mT, and 9 → 50 mT for the comparison with the old pairs).
 Per group: mean ± SE over the seeds and the 90 % CI (t, n − 1); fewer than 3 seeds: no statement.
 Mesh share of the size lever (d/l_ex 212 → 300): Δ(300) − Δ(212) with SE √(SE₁² + SE₂²) and the 90 % CI
-(Welch-Satterthwaite degrees of freedom). The size lever on each mesh is shown next to it.
+(Welch-Satterthwaite degrees of freedom). The size lever on each mesh is shown next to it, over the same (paired)
+seeds, so that mesh share = lever at dx 3 − lever at dx 1.5 holds exactly.
 Sign change: Δ(212) and Δ(300) have opposite signs and both 90 % CIs exclude 0.
 
     python eval_size.py > results/mesh212.md
@@ -121,19 +122,26 @@ def fmt(sm, factor=False, n=None):
 
 
 def per_seed(group):
-    seeds = sorted({s for _, s in group})
-    vals = {k: [] for k in OUTPUTS}
-    for s in seeds:
+    """{output: {seed: mesh error}} over the seeds with a value on both meshes."""
+    vals = {k: {} for k in OUTPUTS}
+    for s in sorted({s for _, s in group}):
         for k, v in mesh_error(group[("dx15", s)], group[("dx3", s)]).items():
-            vals[k].append(v)
+            vals[k][s] = v
     return vals
+
+
+def missing(group):
+    """Stages without a steady value, as 'dx15 s921 9 mT'."""
+    out = ["%s s%d %d mT" % (m, s, b) for (m, s), st in sorted(group.items()) for b in AMPS if b not in st]
+    return ["no runs yet"] if len(out) == len(group) * len(AMPS) else out
 
 
 def table(rows, coarse="dx 3"):
     print("| group | P(%s)/P(dx 1.5) 9 mT | 50 mT | 100 mT | Δβ (9 / 50 / 100 mT) | Δβ (9 → 50 mT) |" % coarse)
     print("|---|---|---|---|---|---|")
     for lab, vals in rows:
-        cells = [fmt(summary(vals[k]), k.startswith("lnP"), len(vals[k])) if vals[k] else "–" for k in OUTPUTS]
+        cells = [fmt(summary(vals[k].values()), k.startswith("lnP"), len(vals[k])) if vals[k] else "–"
+                 for k in OUTPUTS]
         print("| %s | %s |" % (lab, " | ".join(cells)))
 
 
@@ -164,9 +172,12 @@ def main():
     vals = {p: per_seed(data[p]) for p, _, _ in GROUPS}
     print("\n## Mesh error (paired per seed)\n")
     table([(lab, vals[p]) for p, lab, _ in GROUPS])
+    print("\nStages without a steady value (≥ 2 calm cycles): " + "; ".join(
+        "%s: %s" % (p, ", ".join(missing(data[p])) or "none") for p, _, _ in GROUPS))
     print("\n## Mesh share of the size lever (d/l_ex 212 → 300, base microstructure)\n")
-    print("Size lever on one mesh: mean ln P (or β) at 300 minus at 212 (different seeds, Welch). Mesh share = lever "
-          "at dx 3 − lever at dx 1.5 = Δ(300) − Δ(212). Sign change: opposite signs, both 90 % CIs exclude 0.\n")
+    print("Size lever on one mesh: mean ln P (or β) at 300 minus at 212, over the seeds with a value on both meshes "
+          "(different seeds at 212 and 300, Welch). Mesh share = lever at dx 3 − lever at dx 1.5 = Δ(300) − Δ(212). "
+          "Sign change of the mesh error: opposite signs and both 90 % CIs exclude 0.\n")
     print("| output | lever at dx 1.5 | lever at dx 3 | mesh share Δ(300) − Δ(212) | sign change |")
     print("|---|---|---|---|---|")
     for k in OUTPUTS:
@@ -174,27 +185,26 @@ def main():
         for mesh in ("dx15", "dx3"):
             v = {}
             for p in ("M212", "M300"):
-                g = data[p]
+                g, seeds = data[p], sorted(vals[p][k])          # the paired seeds of the mesh share
                 if k.startswith("lnP"):
                     b = int(k.split()[1])
-                    v[p] = [math.log(g[(mesh, s)][b][0]) for (m, s) in g if m == mesh and b in g[(mesh, s)]]
+                    v[p] = [math.log(g[(mesh, s)][b][0]) for s in seeds]
                 else:
-                    amps = AMPS if k == "beta" else (9, 50)
-                    v[p] = [x for x in (beta(g[(mesh, s)], amps) for (m, s) in g if m == mesh) if x is not None]
+                    v[p] = [beta(g[(mesh, s)], AMPS if k == "beta" else (9, 50)) for s in seeds]
             lev[mesh] = difference(summary(v["M300"]), summary(v["M212"]))
-        a, b = summary(vals["M300"][k]), summary(vals["M212"][k])
+        a, b = summary(vals["M300"][k].values()), summary(vals["M212"][k].values())
         sh = difference(a, b)
+        sc = "not determined" if a is None or b is None else ("yes" if sign_change(b, a) else "no")
         cell = lambda d: "%+.2f ± %.2f (CI %+.2f … %+.2f)" % (d[0], d[1], d[0] - d[2], d[0] + d[2]) if d else "–"
-        print("| %s | %s | %s | %s | %s |" % (k, cell(lev["dx15"]), cell(lev["dx3"]), cell(sh),
-                                              "yes" if sign_change(b, a) else "no"))
+        print("| %s | %s | %s | %s | %s |" % (k, cell(lev["dx15"]), cell(lev["dx3"]), cell(sh), sc))
     print("\n## Old pairs (relaxation not converged; hints only, PROTOKOLL 7.64)\n")
     analyze.ALLOW_UNCONVERGED = True              # audit mode for the old runs only
     rows = []
     for lab, f_fmt, c_fmt, seeds in OLD:
-        v = {k: [] for k in OUTPUTS}
+        v = {k: {} for k in OUTPUTS}
         for s in seeds:
             for k, x in mesh_error(stages(R / (f_fmt % s)), stages(R / (c_fmt % s))).items():
-                v[k].append(x)
+                v[k][s] = x
         rows.append((lab, v))
     analyze.ALLOW_UNCONVERGED = False
     table(rows, "dx a")

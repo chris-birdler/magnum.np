@@ -21,17 +21,19 @@ Base microstructure: L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1, A 10 pJ/m (l_ex 3.34
 | d/l_ex 300 (1.0 µm) | × 1.34 (ln +0.29 ± 0.24, CI -0.41 … +0.99, n 3) | × 1.63 (ln +0.49 ± 0.05, CI +0.34 … +0.64, n 3) | × 1.32 (ln +0.28 ± 0.04, CI +0.16 … +0.40, n 3) | n 2: no statement | n 2: no statement |
 | K3: d/l_ex 212, φ 0.69, L_eff 18, r_p 1.5 | × 0.63 (ln -0.47 ± 0.09, CI -0.64 … -0.29, n 6) | × 0.69 (ln -0.37 ± 0.16, CI -0.72 … -0.02, n 5) | × 0.87 (ln -0.14 ± 0.09, CI -0.32 … +0.04, n 6) | +0.13 ± 0.03 (CI +0.06 … +0.20, n 5) | +0.07 ± 0.05 (CI -0.04 … +0.18, n 5) |
 
+Stages without a steady value (≥ 2 calm cycles): M212: no runs yet; M300: dx15 s922 9 mT, dx3 s921 50 mT, dx3 s921 100 mT; MK3: dx15 s2034 50 mT
+
 ## Mesh share of the size lever (d/l_ex 212 → 300, base microstructure)
 
-Size lever on one mesh: mean ln P (or β) at 300 minus at 212 (different seeds, Welch). Mesh share = lever at dx 3 − lever at dx 1.5 = Δ(300) − Δ(212). Sign change: opposite signs, both 90 % CIs exclude 0.
+Size lever on one mesh: mean ln P (or β) at 300 minus at 212, over the seeds with a value on both meshes (different seeds at 212 and 300, Welch). Mesh share = lever at dx 3 − lever at dx 1.5 = Δ(300) − Δ(212). Sign change of the mesh error: opposite signs and both 90 % CIs exclude 0.
 
 | output | lever at dx 1.5 | lever at dx 3 | mesh share Δ(300) − Δ(212) | sign change |
 |---|---|---|---|---|
-| lnP 9 | – | – | – | no |
-| lnP 50 | – | – | – | no |
-| lnP 100 | – | – | – | no |
-| beta | – | – | – | no |
-| beta 9-50 | – | – | – | no |
+| lnP 9 | – | – | – | not determined |
+| lnP 50 | – | – | – | not determined |
+| lnP 100 | – | – | – | not determined |
+| beta | – | – | – | not determined |
+| beta 9-50 | – | – | – | not determined |
 
 ## Old pairs (relaxation not converged; hints only, PROTOKOLL 7.64)
 

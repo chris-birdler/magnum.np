@@ -1,22 +1,22 @@
 #!/bin/bash
 # Mesh check at d/l_ex 212 (PLAN 4.6, option 2 of Chris 2026-10-11): jobs/mesh212.txt (24 jobs: base microstructure,
-# dx 1.5 and dx 3, 9 / 50 / 100 mT, no accumulators, no snapshots). Starts only when the mc2b chain has finished
-# (runs/MC2B_DONE exists): it waits for the lock of chain_mc2b.sh and, if MC2B_DONE is missing (mc2b ended with an
-# error, or this script got the lock first after a reboot), waits again. Then it removes the mc2b chain from onstart
-# (else an instance restart would check out the old pinned commit), pins its own commit (/root/size_commit) and runs
-# the queue with a 30 h job limit. A stop file (runs/STOP_NEW_JOBS, e.g. from the mc2b determinism gate) stops this
-# queue before any job starts; after its removal the chain needs a manual restart. Restart safe.
+# dx 1.5 and dx 3, 9 / 50 / 100 mT, no accumulators, no snapshots). Starts only when the mc2b chain has finished:
+# it polls for runs/MC2B_DONE (the last line of chain_mc2b.sh; it does not touch the mc2b lock before, so that a
+# chain_mc2b.sh started by onstart after a reboot always gets its lock). An early exit of chain_mc2b.sh (no commit
+# file, checkout or retire failed) writes no MC2B_DONE: then this script waits. After MC2B_DONE it removes the mc2b
+# chain from onstart (else an instance restart would check out the old pinned commit), then takes and keeps the mc2b
+# lock (it waits for an mc2b chain that a reboot restarted; a later mc2b start exits with "already running", so the
+# two chains never run on two commits at the same time), pins its own commit (/root/size_commit) and runs the queue
+# with a 30 h job limit. A stop file (runs/STOP_NEW_JOBS, e.g. from the mc2b determinism gate) stops this queue
+# before any job starts; after its removal the chain needs a manual restart. Restart safe.
 #   install: echo <commit> > /root/size_commit; cp chain_size.sh /root/; add the onstart line; start with nohup.
 B=/root/magnum.np/studies/beta_bpeak
 exec 7> /root/size_chain.lock
 flock -n 7 || { echo "$(date '+%F %T') size chain already running"; exit 0; }
-exec 8> /root/mc2b_chain.lock
-until [ -f $B/runs/MC2B_DONE ]; do
-    flock 8                              # blocks while the mc2b chain runs
-    flock -u 8
-    [ -f $B/runs/MC2B_DONE ] || sleep 300
-done
+until [ -f $B/runs/MC2B_DONE ]; do sleep 300; done
 sed -i "/chain_mc2b.sh/d" /root/onstart.sh
+exec 8> /root/mc2b_chain.lock
+flock 8                                  # waits for an mc2b chain that a reboot restarted; held until the end
 [ -f /root/size_commit ] || { echo "$(date '+%F %T') no /root/size_commit: stop"; exit 1; }
 C=$(cat /root/size_commit)
 cd /root/magnum.np || exit 1

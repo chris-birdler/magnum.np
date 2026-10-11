@@ -695,14 +695,15 @@ relaxation exists only at d/l_ex 300 (mesh300). The old pairs at d/l_ex 96
 and 212 have a relaxation that did not converge, only 9 and 50 mT, and an
 SE of 0.1 … 0.7 in ln P (7.64). Decision of Chris (2026-10-11): no new size
 trend now (option 1); this check goes into the queue after the chain mc2b
-(option 2). The chain mc2b is the running queue of PLAN 4.5 (reruns to 2
-calm cycles and the conditioning test).
+(option 2). The chain mc2b is the queue of PLAN 4.5 that runs now (reruns to 2
+calm cycles and the conditioning test). It started on 2026-10-11 at 13:20
+UTC.
 
-Goals: (i) a mesh error of β at d/l_ex 212 with n ≥ 3 and 100 mT; (ii) the
-mesh share of the size lever d/l_ex 212 → 300 at the base microstructure
-(the Sobol factor d/l_ex, which is A at d = 1 µm), as a second
-microstructure next to K3. The check gives no information about particles
-larger than d/l_ex 300.
+Goals: (i) a mesh error of P and β at d/l_ex 212 with n ≥ 3 and 100 mT, as
+a second microstructure next to K3; (ii) the mesh share of the size lever
+d/l_ex 212 → 300 at the base microstructure (the Sobol factor d/l_ex, which
+is A at d = 1 µm). The check gives no information about particles larger
+than d/l_ex 300.
 
 Terms. dx is in units of the exchange length l_ex (3.34 nm at A = 10 pJ/m;
 all µm values in this section are for this A). The **mesh error** of an
@@ -734,7 +735,11 @@ B. Analysis (`eval_size.py` → results/mesh212.md; rules fixed now, before
      script gives no value ("no statement").
    - Mesh share of the size lever = Δ(300) − Δ(212), with SE √(SE₁² + SE₂²)
      and the 90 % CI (Welch-Satterthwaite). The script also shows the size
-     lever on each mesh (different seeds, Welch).
+     lever on each mesh, over the same paired seeds, so that the mesh share
+     equals the lever at dx 3 minus the lever at dx 1.5 (Welch, because the
+     seeds at 212 and 300 are different).
+   - The script lists each stage without a steady value. When one size has
+     no statement, the sign-change column shows "not determined".
    - Sign change: Δ(212) and Δ(300) have opposite signs and both 90 % CIs
      exclude 0.
    - The old pairs (96 and 212) are shown as hints in a separate table.
@@ -744,9 +749,15 @@ C. Limits (stated now).
      the gap is 3.1 cells at d/l_ex 212 and 4.4 cells at 300 (K3: 1.7).
      Thus the check contains the gap resolution and the particle size
      together.
-   - 4 seeds. Measured SE of the mesh error: Δβ 0.03 … 0.10, Δ ln P
-     0.04 … 0.34 (7.28, 7.63, 7.64). A mesh share smaller than ≈ 0.2 in β or
-     ≈ 0.2 … 0.8 in ln P is not detectable.
+   - 4 seeds. Measured SE of the mesh error with a converged relaxation
+     (mesh300 and K3; 7.28, 7.63): Δβ 0.03 … 0.06, Δ ln P 0.04 … 0.24. The
+     90 % CI of the mesh share then has a half width of ≈ 0.1 … 0.2 in β and
+     ≈ 0.1 … 0.7 in ln P (t with ≈ 6 degrees of freedom). The check cannot
+     show a smaller mesh share.
+   - If a 9 mT job fails, its 50 and 100 mT jobs keep their GPUs and wait
+     up to 30 h for its init.pt (the retry of the 9 mT job is at the end of
+     the queue). The status file shows this. I check the queue at least
+     once per day.
    - dx 1.5 is the reference, but nobody showed that it is converged
      (7.28, 7.64: at d/l_ex 96 dx 1 gave × 1.6 at 50 mT, n 3, hint).
 D. Order and cost (V100-h = hours on one GPU of the 4 × V100 instance;
@@ -767,14 +778,21 @@ D. Order and cost (V100-h = hours on one GPU of the 4 × V100 instance;
      (maximum ≈ 25 h). Rental 0.42 $/h (measured 2026-10-11, with storage):
      ≈ 4 … 5 $ (maximum ≈ 10 $).
    - Start: `instance/chain_size.sh` waits until the chain mc2b has written
-     runs/MC2B_DONE, then pins its own commit. If mc2b ends with an error,
-     the script waits. A stop file stops this queue before any job starts.
-     After its removal, the chain needs a manual restart.
+     runs/MC2B_DONE (its last line), then takes the mc2b lock and pins its
+     own commit. chain_mc2b.sh writes MC2B_DONE also after a failed job,
+     a failed determinism gate or a failed post-processing. A failed gate
+     leaves the stop file runs/STOP_NEW_JOBS, which stops this queue before
+     any job starts. After its removal, the chain needs a manual restart.
+     Only an early exit of chain_mc2b.sh (commit file, checkout, retire)
+     writes no MC2B_DONE: then the size chain waits.
    - Credit: 15.24 $ at 2026-10-11 17:09 UTC. The chain mc2b ends at
-     2026-10-12 ≈ 10 … 15 UTC (its long rerun M300_dx15_s922_b9_mc2 reaches
-     the 30 h job limit at ≈ 19:20 UTC in the worst case). At its end ≈ 4 …
-     8 $ remain. Chris tops up ≥ 10 $ before the start, so that the maximum
-     case and the idle time until the fetch are covered.
+     2026-10-12 ≈ 10 … 15 UTC (estimate). Its long rerun
+     M300_dx15_s922_b9_mc2 started at 13:20 UTC. If it needs 12 cycles, it
+     reaches the 30 h job limit at ≈ 19:20 UTC on 2026-10-12, and the retry
+     can take up to 30 h more. At the expected end of mc2b ≈ 6 … 8 $
+     remain. The size chain starts automatically. Thus Chris tops up ≥ 10 $
+     before 2026-10-12 ≈ 10 UTC, so that the credit covers the maximum case
+     and the idle time until the fetch.
 
 ## 5. Optional step 3: mesh control (separate go)
 
