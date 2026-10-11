@@ -4,13 +4,16 @@ Job lines of PLAN 4.5 from the original job lines.
 
   --reruns   every finished run of the given job files with a stage whose calm tail is < 2 (calm cycle:
              w_loop > 0 and |w_dis / w_loop - 1| <= 0.20; measured cycles as in analyze.py) gets a rerun X_mc2:
-             the original arguments, --init_from <X>/init.pt (or the original --init_from), --min_calm 2,
+             the original arguments (with the original --init_from, if any; without one, the rerun relaxes in the
+             same process as the original did: the same start path gives the same cycles, PROTOKOLL 7.59), --min_calm 2,
              --max_cycles_per_amp replaced (FILE:MAX), all --snap_* removed. With --cap_vh: jobs in file order
              until the estimated cost (V100-h per cycle of the original × MAX cycles × stages) reaches the cap;
              the others are listed, not written.
   --cond     conditioning test (PLAN 4.5 D): for each given run X three runs cond_X_b9 / _b20 / _b35 with the
              first 1 / 2 / 3 amplitudes of X, --cycles_last_amp 30, --min_calm 2, --max_cycles_per_amp 15,
-             --init_from X/init.pt, no snapshots
+             no --init_from (C0 … C5 relaxed in the process; PROTOKOLL 7.59), no snapshots
+  --retire   before a queue: a folder X_mc2 that started from init.pt while its job line in the queue file has no
+             --init_from is renamed to X_mc2init (kept as a sensitivity record, not used by the analysis)
 
     python rerun_jobs.py --reruns jobs/mesh300.txt:12 jobs/meshK3.txt:12 jobs/sobol_main.txt:15 \
         jobs/sobol_corners.txt:15 --out jobs/rerun_mc2.txt
@@ -107,8 +110,6 @@ def reruns(specs, runs, cap_vh):
                 continue
             cost += est
             tok = strip_snap(tok)
-            if get_arg(tok, "init_from") is None:
-                tok = set_arg(tok, "init_from", ["%s/init.pt" % name])
             tok = set_arg(tok, "max_cycles_per_amp", [mx])
             tok = set_arg(tok, "min_calm", [str(MIN_CALM)])
             lines.append("%s_mc2 %s" % (name, " ".join(tok)))
@@ -128,9 +129,26 @@ def cond(names, source):
             t = set_arg(t, "cycles_last_amp", ["30"])
             t = set_arg(t, "max_cycles_per_amp", ["15"])
             t = set_arg(t, "min_calm", [str(MIN_CALM)])
-            t = set_arg(t, "init_from", ["%s/init.pt" % n])
             lines.append("cond_%s_b%d %s" % (n, mT, " ".join(t)))
     return lines
+
+
+def retire(queue_file, runs):
+    """Rename X_mc2 -> X_mc2init (…init2, …) when the folder started from init.pt but its queue line has none."""
+    out = []
+    for name, args in job_lines(queue_file):
+        d = runs / name
+        if not name.endswith("_mc2") or not (d / "config.json").exists():
+            continue
+        started_from_init = json.loads((d / "config.json").read_text()).get("init_from") is not None
+        if started_from_init and get_arg(shlex.split(args), "init_from") is None:
+            k, new = 1, runs / (name + "init")
+            while new.exists():
+                k += 1
+                new = runs / ("%sinit%d" % (name, k))
+            d.rename(new)
+            out.append("%s -> %s" % (name, new.name))
+    return out
 
 
 def main():
@@ -140,8 +158,13 @@ def main():
     ap.add_argument("--cap_vh", type=float, default=None)
     ap.add_argument("--cond", nargs="*", default=None, help="run names for the conditioning test")
     ap.add_argument("--source", default=None, help="job file of the --cond runs")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--retire", default=None, help="queue file: rename the init.pt variants (see above), then stop")
+    ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    if a.retire:
+        moved = retire(a.retire, pathlib.Path(a.runs))
+        print("retired: %s" % (", ".join(moved) or "none"))
+        return
     lines = []
     if a.reruns:
         lines, skipped, cost = reruns(a.reruns, pathlib.Path(a.runs), a.cap_vh)

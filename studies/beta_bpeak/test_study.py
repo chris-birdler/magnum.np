@@ -634,7 +634,16 @@ def test_rerun_jobs_and_gate(tmp_path):
     assert [x.split()[0] for x in cl] == ["cond_C0_b9", "cond_C0_b20", "cond_C0_b35"]
     t = shlex.split(cl[1].partition(" ")[2])
     assert RJ.get_arg(t, "b_list") == ["0.006", "0.013333"] and RJ.get_arg(t, "cycles_last_amp") == ["30"]
-    assert RJ.get_arg(t, "init_from") == ["C0/init.pt"] and RJ.get_arg(t, "min_calm") == ["2"]
+    assert RJ.get_arg(t, "init_from") is None and RJ.get_arg(t, "min_calm") == ["2"]   # same start path (7.59)
+    runs = tmp_path / "runs"
+    for n, cfg in (("S1_mc2", '{"init_from": "S1/init.pt"}'), ("S2_mc2", '{"init_from": null}'),
+                   ("M1_mc2", '{"init_from": "M1_b9/init.pt"}')):
+        (runs / n).mkdir(parents=True)
+        (runs / n / "config.json").write_text(cfg)
+    qf = tmp_path / "queue.txt"
+    qf.write_text("S1_mc2 --seed 1 --min_calm 2\nS2_mc2 --seed 2\nM1_mc2 --init_from M1_b9/init.pt\n")
+    assert RJ.retire(qf, runs) == ["S1_mc2 -> S1_mc2init"]
+    assert (runs / "S1_mc2init").exists() and (runs / "S2_mc2").exists() and (runs / "M1_mc2").exists()
     assert CR.reference("S033_mc2") == "S033" and CR.reference("cond_C3_b20") == "C3" and CR.reference("S033") is None
     cy = lambda v: {"w_loop": v, "w_dis": v, "b_peak": 0.01}
     ref = [{"name": "amp00", "cycles": [cy(1.0)] * 7}, {"name": "amp01", "cycles": [cy(2.0)] * 7},

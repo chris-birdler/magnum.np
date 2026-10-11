@@ -620,8 +620,10 @@ A. Code (no GPU).
      and torch (2.7.1+cu126) as the originals: true, same instance.
    - Tests: unit test of the stop decision; a small CPU run with N = 2 gives
      the same cycles 0 … 6 as without the option; mapping test.
-B. Reruns. Arguments as in the original job line, with `--init_from`
-   always explicit (the original one, else `<run>/init.pt`), `--min_calm 2`, `--max_cycles_per_amp`
+B. Reruns. Arguments as in the original job line, with the start path of
+   the original (changed 2026-10-11, PROTOKOLL 7.59: `--init_from` only if
+   the original had it; else the rerun relaxes in the process like the
+   original, which gives the same cycles bit for bit), `--min_calm 2`, `--max_cycles_per_amp`
    replaced (15 for the Sobol runs, 12 for the mesh jobs), all `--snap_*`
    removed, accumulators as in the original job (Sobol runs on, mesh jobs
    off). All init.pt files are on the instance (checked
