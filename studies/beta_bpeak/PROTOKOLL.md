@@ -2598,6 +2598,27 @@ Reading:
 - Limit: a local jump without a net change of M (a turn inside a
   particle) is not seen; the time resolution stays 130 ps.
 
+### 7.61 Loss-density slices overflowed in float16; fixed for future runs (2026-10-11)
+
+Finding (while building the dynamics figure of the deck): in acc_slices.npz
+of all runs the slice `<stage>_p` (local loss density in the plane z =
+first cell layer) is inf in every particle cell. Cause: acc_reduce.py
+stored p in W/m³ as float16; p is 10⁵ … 10⁹ W/m³, above the float16
+maximum of 65504. Not affected: acc.json (R1, the "where" shares, the sum
+check) is computed from float32 / float64 arrays before the cast; the slice
+`<stage>_m1sq` (|m1|², small values) is valid. The accumulator files are
+deleted after the reduction, so the old slices cannot be made again.
+
+Fix (go Chris 2026-10-11): `<stage>_p_rel` = p / mean of the particle cells
+of the plane (float16) and `<stage>_p_mean` in W/m³ (float64); helper
+relative_slice, test test_acc_reduce_relative_slice_is_finite. The running
+chain (pinned bb7bb15) still writes the old slice; no evaluation uses it.
+The deck's dynamics figure uses the magnetisation cuts (slices.npz) instead.
+End-to-end check on the CPU (small run d/l_ex 48, φ 0.55, 9 mT, --acc, then
+acc_reduce.py): sum check 1.000000; p_rel finite, mean over the particle
+cells 1.0, maximum 5.9; p_mean 5.2·10⁷ W/m³ (the old float16 slice would
+be inf).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

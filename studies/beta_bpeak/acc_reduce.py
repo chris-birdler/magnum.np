@@ -10,7 +10,9 @@ Reduce the per-cell accumulators of one run (run_loops --acc, audit 3 item 9b) t
              smoothed 0.5 L_eff, as phase_extra.py), rest, and the 10 % cells with the largest p: volume share,
              share of the local loss p, share of p_fund, mean and spread of the local lag of the fundamental
              along the drive (weighted by |m1_par|^2, relative to the drive fundamental h1)
-  slices     p and |m1|^2 in the plane z = first cell layer (float16)
+  slices     in the plane z = first cell layer: <stage>_p_rel = p / (mean p of the particle cells of the plane) as
+             float16 and <stage>_p_mean (W/m³, float64); <stage>_m1sq = |m1|^2 (float16). Before 2026-10-11 p was
+             stored in W/m³ as float16 under <stage>_p: values above 65504 overflow to inf (PROTOKOLL 7.61)
     python acc_reduce.py runs/S001 [...]
 """
 import json
@@ -28,6 +30,14 @@ from phase_extra import wspread
 MU0, GAMMA = 4e-7 * math.pi, 2.21276157e5
 CHECK_TOL = 1e-3
 
+
+
+def relative_slice(plane, inside):
+    """p in a plane as float16 relative to its mean over the particle cells (float16 has a maximum of 65504; p in W/m³
+    reaches 1e9) and that mean in W/m³ as float64."""
+    mean = float(plane[inside].mean()) if inside.any() else 0.0
+    rel = plane / mean if mean > 0 else np.zeros_like(plane)
+    return rel.astype(np.float16), np.float64(mean)
 
 def run(d):
     d = pathlib.Path(d)
@@ -82,7 +92,7 @@ def run(d):
         fp[mask] = p
         fm = np.zeros(ids.shape, np.float32)
         fm[mask] = (np.abs(m1) ** 2).sum(-1)
-        slices[stage + "_p"] = fp[:, :, 0].astype(np.float16)
+        slices[stage + "_p_rel"], slices[stage + "_p_mean"] = relative_slice(fp[:, :, 0], ids[:, :, 0] >= 0)
         slices[stage + "_m1sq"] = fm[:, :, 0].astype(np.float16)
         print("%s %s: check %.6f  R1 %.3f  p share r<0.5 %.2f  r>=0.8 %.2f  texture top10 %.2f  p top10 %.2f" %
               (d.name, stage, check, R1, where["r<0.5"]["p_share"], where["r>=0.8"]["p_share"],

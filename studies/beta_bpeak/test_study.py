@@ -583,6 +583,20 @@ def test_steady_tail_rule():
     assert res["boot"]["n_fail"] == 0
 
 
+def test_acc_reduce_relative_slice_is_finite():
+    """PROTOKOLL 7.61: the loss-density slice is stored relative to its mean (float16 overflowed at 65504 W/m³)."""
+    from acc_reduce import relative_slice
+    plane = np.full((4, 4), 3e8)
+    plane[1, 1] = 9e9
+    inside = np.ones((4, 4), bool)
+    inside[0, 0] = False
+    plane[0, 0] = 0.0
+    rel, mean = relative_slice(plane, inside)
+    assert rel.dtype == np.float16 and np.all(np.isfinite(rel))
+    assert abs(mean - plane[inside].mean()) < 1e-6 * mean
+    assert np.allclose(rel.astype(float) * mean, plane, rtol=2e-3)
+
+
 def test_min_calm_stop_rule():
     """PLAN 4.5: the calm tail counts the calm cycles at the end of the measured cycles (from 2 on after a drive
     correction); it equals the number of cycles that analyze.steady_tail keeps. With --min_calm N > 0 a stage stops
