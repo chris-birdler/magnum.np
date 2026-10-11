@@ -432,6 +432,19 @@ def test_run_queue_retry_gate_timeout_exception(tmp_path):
     assert run_queue.gate_args("--seed 3 --relax_maxiter 80000", 200000) == "--seed 3 --relax_maxiter 200000 --no_resume"
 
 
+def test_run_queue_stop_file(tmp_path):
+    """PLAN 4.5: when the stop file exists, no new job starts; the jobs left are reported as not run."""
+    import run_queue
+    stop = tmp_path / "STOP_NEW_JOBS"
+    stop.write_text("check_reruns: mismatch\n")
+    res = run_queue.run_jobs([("A", "ok"), ("B", "ok")], ["g0"], tmp_path / "runs", command=_cmd, burst_n=99,
+                             stop_file=stop)
+    assert res["done"] == [] and res["failed"] == {"A": "not run (stop file)", "B": "not run (stop file)"}
+    stop.unlink()
+    res = run_queue.run_jobs([("A", "ok")], ["g0"], tmp_path / "runs2", command=_cmd, burst_n=99, stop_file=stop)
+    assert res["done"] == ["A"]
+
+
 def test_run_queue_failure_burst_pauses_then_disables_gpu(tmp_path):
     """run_queue.run_jobs: failures of 2 different jobs within the window pause the GPU; the burst_max-th burst
     disables it (ALERT); with one GPU the rest is reported as not run. One job failing twice is no burst."""
@@ -568,6 +581,90 @@ def test_steady_tail_rule():
     lo, hi = res["main"][("beta_all", "r_p")]["ci95"]
     assert lo - 0.02 <= 0.30 <= hi + 0.02
     assert res["boot"]["n_fail"] == 0
+
+
+def test_min_calm_stop_rule():
+    """PLAN 4.5: the calm tail counts the calm cycles at the end of the measured cycles (from 2 on after a drive
+    correction); it equals the number of cycles that analyze.steady_tail keeps. With --min_calm N > 0 a stage stops
+    when its calm tail is >= N or at the maximum (also when the stage has more cycles than max_cycles_per_amp);
+    with N = 0 the old closure / dW rule holds."""
+    import types
+    import analyze
+    from run_loops import calm_tail, measured_cycles, stop_stage
+    rng = np.random.default_rng(5)
+    for _ in range(200):
+        cyc = [{"w_loop": float(rng.choice([-1.0, 1.0, 1.0, 1.0])), "w_dis": float(rng.choice([0.9, 1.0, 1.5]))}
+               for _ in range(int(rng.integers(0, 9)))]
+        assert calm_tail(cyc, 0.2) == len(analyze.steady_tail(cyc, 0.2))
+    c = lambda wd, cl=0.001, dw=0.01: {"w_loop": 1.0, "w_dis": wd, "closure": cl, "dW_rel": dw}
+    args = types.SimpleNamespace(min_calm=2, calm_tol=0.2, closure_tol=0.02, dW_tol=0.1, max_cycles_per_amp=15)
+    rec = {"h_amp_initial": 1.0, "cycles": [c(5.0), c(5.0), c(1.0), c(1.0), c(1.0), c(1.5), c(1.0)]}
+    assert measured_cycles(rec) == rec["cycles"][2:]
+    stop, info = stop_stage(rec, 7, 7, args)
+    assert not stop and info["calm_tail"] == 1                   # event in cycle 5: one calm cycle
+    rec["cycles"].append(c(1.05))
+    stop, info = stop_stage(rec, 8, 7, args)
+    assert stop and info["calm_ok"] and info["calm_tail"] == 2
+    rec = {"cycles": [c(1.0)] + [c(2.0)] * 14}                    # never calm: stops at the maximum
+    assert not stop_stage(rec, 14, 7, args)[0] and stop_stage(rec, 15, 7, args)[0]
+    assert not stop_stage(rec, 15, 30, args)[0] and stop_stage(rec, 30, 30, args)[0]   # --cycles_last_amp 30
+    old = types.SimpleNamespace(min_calm=0, calm_tol=0.2, closure_tol=0.02, dW_tol=0.1, max_cycles_per_amp=7)
+    rec = {"cycles": [c(2.0, 0.001, 0.01)] * 7}                   # old rule: closed and in scatter -> stop
+    assert stop_stage(rec, 7, 7, old)[0]
+    rec = {"cycles": [c(1.0, 0.05, 0.5)] * 5}
+    assert not stop_stage(rec, 5, 5, old)[0] and stop_stage(rec, 7, 5, old)[0]
+
+
+def test_rerun_jobs_and_gate(tmp_path):
+    """PLAN 4.5: rerun lines keep the original arguments, set --init_from, --min_calm 2 and the maximum, and drop
+    the snapshots; the conditioning lines take the first 1 / 2 / 3 amplitudes. The gate compares cycle by cycle up
+    to the first stage where the numbers of cycles differ."""
+    import shlex
+    import check_reruns as CR
+    import rerun_jobs as RJ
+    line = ("--d_lex 252.0 --cycles_per_amp 7 --max_cycles_per_amp 7 --b_list 0.006 0.013333 0.023333 0.1 --seed 9 "
+            "--acc --snap_phases 16 --snap_cycles 2 --snap_mT 9.0 50.0 150.0")
+    t = RJ.strip_snap(shlex.split(line))
+    assert "--snap_mT" not in t and "--acc" in t and RJ.get_arg(t, "b_list") == ["0.006", "0.013333", "0.023333", "0.1"]
+    t = RJ.set_arg(t, "max_cycles_per_amp", ["15"])
+    assert RJ.get_arg(t, "max_cycles_per_amp") == ["15"] and t.count("--max_cycles_per_amp") == 1
+    src = tmp_path / "jobs.txt"
+    src.write_text("C0 " + line + "\n")
+    cl = RJ.cond(["C0"], str(src))
+    assert [x.split()[0] for x in cl] == ["cond_C0_b9", "cond_C0_b20", "cond_C0_b35"]
+    t = shlex.split(cl[1].partition(" ")[2])
+    assert RJ.get_arg(t, "b_list") == ["0.006", "0.013333"] and RJ.get_arg(t, "cycles_last_amp") == ["30"]
+    assert RJ.get_arg(t, "init_from") == ["C0/init.pt"] and RJ.get_arg(t, "min_calm") == ["2"]
+    assert CR.reference("S033_mc2") == "S033" and CR.reference("cond_C3_b20") == "C3" and CR.reference("S033") is None
+    cy = lambda v: {"w_loop": v, "w_dis": v, "b_peak": 0.01}
+    ref = [{"name": "amp00", "cycles": [cy(1.0)] * 7}, {"name": "amp01", "cycles": [cy(2.0)] * 7},
+           {"name": "amp02", "cycles": [cy(3.0)] * 7}]
+    new = [{"name": "amp00", "cycles": [cy(1.0)] * 7}, {"name": "amp01", "cycles": [cy(2.0)] * 7 + [cy(2.5)] * 3},
+           {"name": "amp02", "cycles": [cy(9.0)] * 7}]
+    assert CR.compare(ref, new) == (14, None)                    # amp02 starts from another state: not compared
+    new[0]["cycles"] = [cy(1.0)] * 6 + [cy(1.0 + 1e-4)]
+    n, why = CR.compare(ref, new)
+    assert n == 6 and why is not None
+
+
+def test_analyze_design_rerun_mapping(tmp_path):
+    """PLAN 4.5: with reruns=True a finished X_mc2 replaces X (name = folder used, orig = X); without, the original
+    is used; an unfinished rerun is not used."""
+    import shutil
+    import analyze_design as AD
+    src = pathlib.Path(__file__).resolve().parent / "runs" / "S005"
+    if not (src / "summary.json").exists():
+        pytest.skip("run S005 not present")
+    for name in ("S005", "S005_mc2", "S006", "S006_mc2"):
+        (tmp_path / name).mkdir()
+        for f in ("config.json", "summary.json"):
+            shutil.copy(src / f, tmp_path / name / f)
+    for name in ("S005", "S005_mc2", "S006"):
+        (tmp_path / name / "DONE").write_text("ok\n")
+    recs, _ = AD.load_runs(tmp_path, reruns=True)
+    assert sorted((r["name"], r["orig"]) for r in recs) == [("S005_mc2", "S005"), ("S006", "S006")]
+    recs, _ = AD.load_runs(tmp_path)
+    assert sorted(r["name"] for r in recs) == ["S005", "S006"]
 
 
 def test_analyze_design_flag_rule_on_archived_runs():

@@ -22,6 +22,11 @@ One run = one parameter set:
      runs at least cycles_per_amp cycles, then more (up to
      max_cycles_per_amp) until the cycle is steady (closure_tol, dW_tol).
      dW_tol = 0.10 is the target scatter of w from cycle to cycle.
+     With --min_calm N > 0 (PLAN 4.5) this stop rule is replaced: after
+     cycles_per_amp cycles a stage continues until its calm tail (calm
+     cycles at the end of the measured cycles; calm: w_loop > 0 and
+     |w_dis / w_loop - 1| <= calm_tol) is >= N, at most max_cycles_per_amp.
+     --cycles_last_amp M: the last measured stage runs M cycles.
      With --b_list the drive of a stage is set from b/h of the stage before
      and corrected once after cycle 0 with b/h of cycle 0 (analyze.py then
      discards cycles 0 and 1).
@@ -82,6 +87,8 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
+NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None}   # added 2026-10-11 (PLAN 4.5): an old config
+#                                                                    without them is equal to these defaults
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
@@ -161,6 +168,11 @@ def parse_args(argv=None):
     g.add_argument("--mu_guess", type=float, default=8.0, help="b/h for the first --b_list stage")
     g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per amplitude (1st = transient)")
     g.add_argument("--max_cycles_per_amp", type=int, default=4)
+    g.add_argument("--min_calm", type=int, default=0,
+                   help="PLAN 4.5: > 0 replaces the closure / dW stop rule: a measured stage continues after "
+                        "cycles_per_amp cycles until its calm tail is >= min_calm (at most max_cycles_per_amp)")
+    g.add_argument("--calm_tol", type=float, default=0.20, help="calm cycle: w_loop > 0, |w_dis/w_loop - 1| <= calm_tol")
+    g.add_argument("--cycles_last_amp", type=int, default=None, help="cycles of the last measured stage (PLAN 4.5 D)")
     g.add_argument("--closure_tol", type=float, default=0.02)
     g.add_argument("--dW_tol", type=float, default=0.10,
                    help="target scatter of w per cycle (relative); the next cycle runs if |dW|/W is larger")
@@ -245,6 +257,36 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
     else:
         m0 = rng.standard_normal((N, N, N, 3))
     return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
+
+
+def calm_tail(cycles, tol):
+    """Number of calm cycles at the end of cycles (calm: w_loop > 0 and |w_dis / w_loop - 1| <= tol; PLAN 4.5).
+    Equal to the number of cycles that the steady-tail rule of analyze.py keeps (PROTOKOLL 7.54)."""
+    n = 0
+    for c in reversed(cycles):
+        if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > tol:
+            break
+        n += 1
+    return n
+
+
+def measured_cycles(rec):
+    """The cycles that analyze.py measures: from 2 on after a drive correction, else from 1 on."""
+    return rec["cycles"][2:] if "h_amp_initial" in rec else rec["cycles"][1:]
+
+
+def stop_stage(rec, ci, n_cycles, args):
+    """Stop decision of a measured stage after ci cycles (ci >= n_cycles). Returns (stop, info)."""
+    cyc = rec["cycles"][-1]
+    closed = cyc["closure"] < args.closure_tol
+    in_scatter = cyc.get("dW_rel", 1.0) < args.dW_tol
+    info = {"steady": bool(closed and in_scatter), "closed": bool(closed), "in_scatter": bool(in_scatter)}
+    max_cyc = max(args.max_cycles_per_amp, n_cycles)
+    if args.min_calm > 0:
+        ct = calm_tail(measured_cycles(rec), args.calm_tol)
+        info.update(calm_tail=ct, calm_ok=bool(ct >= args.min_calm))
+        return ct >= args.min_calm or ci >= max_cyc, info
+    return info["steady"] or ci >= args.max_cycles_per_amp, info
 
 
 def is_multiple(x, q, tol=1e-9):
@@ -422,6 +464,8 @@ def main(argv=None):
 
     # --- config ------------------------------------------------------------
     stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
+    if args.cycles_last_amp:
+        [s for s in stages if s["measure"]][-1]["n_cycles"] = args.cycles_last_amp
     config = dict(vars(args))
     config.update({"units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
                    "a_lex": a_lex, "d_lex_used": d_lex, "d": d, "dx": dx, "a": geo["a"],
@@ -437,7 +481,7 @@ def main(argv=None):
     resume = ckpt.exists() and summ_file.exists() and not args.no_resume
     if resume and cfg_file.exists():
         old = json.loads(cfg_file.read_text())
-        diff = [k for k in vars(args) if k not in RUN_CONTROL and old.get(k) != config[k]]
+        diff = [k for k in vars(args) if k not in RUN_CONTROL and old.get(k, NEW_KEYS.get(k)) != config[k]]
         if diff:
             sys.exit("ERROR: resume with other arguments than the checkpoint run: %s. "
                      "Use --no_resume or another --out." % ", ".join("%s %r -> %r" % (k, old.get(k), config[k]) for k in diff))
@@ -691,13 +735,9 @@ def main(argv=None):
                 if not st["measure"]:
                     complete = True
                     break
-                closed = cyc["closure"] < args.closure_tol
-                in_scatter = cyc.get("dW_rel", 1.0) < args.dW_tol
-                steady = closed and in_scatter
-                if steady or ci >= args.max_cycles_per_amp:
-                    rec["steady"] = bool(steady)
-                    rec["closed"] = bool(closed)
-                    rec["in_scatter"] = bool(in_scatter)
+                stop, info = stop_stage(rec, ci, st["n_cycles"], args)
+                if stop:
+                    rec.update(info)
                     complete = True
                     break
         fcsv.close()

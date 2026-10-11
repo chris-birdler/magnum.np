@@ -138,7 +138,8 @@ def gate_args(args, maxiter):
 
 
 def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
-             burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0, gate_maxiter=200000):
+             burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0, gate_maxiter=200000,
+             stop_file=None):
     """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
@@ -229,6 +230,10 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
     def worker(gpu):
         fails, bursts = [], 0                       # fails: (time, job name) on this GPU
         while True:
+            if stop_file is not None and pathlib.Path(stop_file).exists():
+                # PLAN 4.5: a failed check (check_reruns.py) stops new jobs; the running jobs end normally
+                print("[stop] gpu %s: %s exists, no new job" % (gpu, stop_file), flush=True)
+                return
             try:
                 name, args = q.get(timeout=5)
             except queue.Empty:
@@ -306,8 +311,9 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
     left = []
     while not q.empty():
         left.append(q.get()[0])
+    why = "not run (stop file)" if stop_file is not None and pathlib.Path(stop_file).exists() else "not run (no GPU left)"
     for n in left:
-        failed.setdefault(n, "not run (no GPU left)")
+        failed.setdefault(n, why)
     write_status(final=True)
     return {"done": done, "failed": {n: w for n, w in failed.items() if n not in done}}
 
@@ -324,6 +330,7 @@ def main():
     ap.add_argument("--retries", type=int, default=1, help="extra attempts of a failed job (not for exit code 3)")
     ap.add_argument("--job_timeout_h", type=float, default=0.0, help="kill a job after this time (0 = off)")
     ap.add_argument("--status", default=None, help="JSON status file, written every 5 min")
+    ap.add_argument("--stop_file", default=None, help="if this file exists, no new job starts (PLAN 4.5)")
     ap.add_argument("--gate_maxiter", type=int, default=200000,
                     help="relax_maxiter of the one retry after a gate failure (exit code 3); 0 = no retry")
     a = ap.parse_args()
@@ -341,7 +348,7 @@ def main():
             print("CUDA_DEVICE=%s %s" % (gpus[0], " ".join(default_command(args, pathlib.Path(a.runs) / name))))
         return
     res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status,
-                   gate_maxiter=a.gate_maxiter)
+                   gate_maxiter=a.gate_maxiter, stop_file=a.stop_file)
     print("[end] done %d, failed %d: %s" % (len(res["done"]), len(res["failed"]),
                                            ", ".join("%s (%s)" % kv for kv in sorted(res["failed"].items()))), flush=True)
     sys.exit(0 if not res["failed"] else 1)

@@ -123,11 +123,23 @@ def per_run_outputs(lnw):
     return out
 
 
-def load_runs(runs, alpha=0.1):
+RERUN = "_mc2"          # PLAN 4.5: rerun with --min_calm 2
+
+
+def rerun_dir(d):
+    """The finished rerun of run folder d (PLAN 4.5), else None."""
+    r = d.parent / (d.name + RERUN)
+    return r if (r / "DONE").exists() else None
+
+
+def load_runs(runs, alpha=0.1, reruns=False):
+    """Records of the design runs. reruns=True (PLAN 4.5, steady analysis only): a finished X_mc2 replaces X;
+    rec["name"] is then the folder used (X_mc2), rec["orig"] the design name X."""
     recs, skipped = [], []
-    for d in sorted(pathlib.Path(runs).iterdir()):
-        if not d.is_dir() or not PATTERN.match(d.name):
+    for d0 in sorted(pathlib.Path(runs).iterdir()):
+        if not d0.is_dir() or not PATTERN.match(d0.name):
             continue
+        d = (rerun_dir(d0) or d0) if reruns else d0
         try:
             r = run_record(d)
         except Exception as e:                      # noqa: BLE001 - report, do not stop
@@ -137,6 +149,7 @@ def load_runs(runs, alpha=0.1):
             skipped.append("%s (%s)" % (d.name, "not DONE" if not (d / "DONE").exists() else
                                         "incomplete or w ≤ 0 at an amplitude (e.g. a negative mean loop area)"))
         elif abs(r["alpha"] - alpha) < 1e-12:
+            r["orig"] = d0.name
             recs.append(r)
     return recs, skipped
 
@@ -477,15 +490,22 @@ def main():
     ap.add_argument("--steady_tail", action="store_true",
                     help="declared deviation (PROTOKOLL 7.54): keep only the measured cycles after the last cycle with "
                          "|w_dis / w_loop - 1| > BAL_EVENT; an amplitude without such a cycle is missing for that run")
+    ap.add_argument("--reruns", action="store_true",
+                    help="with --steady_tail: a finished X_mc2 rerun (PLAN 4.5) replaces X; output name gets _mc2")
     ap.add_argument("--steady_min", type=int, default=1,
                     help="with --steady_tail: an amplitude with fewer kept cycles is missing (7.54: 1; check: 2)")
     a = ap.parse_args()
     if a.steady_tail:
         analyze.STEADY_TAIL = BAL_EVENT
         analyze.STEADY_MIN = a.steady_min
-    a.out = a.out or str(HERE / "results" / ("sobol_analysis_steady%s" % ("" if a.steady_min == 1 else a.steady_min)
+    if a.reruns and not a.steady_tail:
+        ap.error("--reruns only with --steady_tail (the pre-registered analysis stays on the original runs)")
+    a.out = a.out or str(HERE / "results" / ("sobol_analysis_steady%s%s" % ("" if a.steady_min == 1 else a.steady_min,
+                                                                           RERUN if a.reruns else "")
                                              if a.steady_tail else "sobol_analysis"))
-    recs, skipped = load_runs(a.runs)
+    recs, skipped = load_runs(a.runs, reruns=a.reruns)
+    if a.reruns:
+        print("reruns used: %s" % (", ".join(r["name"] for r in recs if r["name"] != r["orig"]) or "none"))
     print("runs: %d usable, %d skipped%s" % (len(recs), len(skipped), (": " + "; ".join(skipped)) if skipped else ""))
     keys = ["name", "seed", "alpha"] + list(FACTORS) + ["d_over_L", "flagged"] + OUTPUTS
     with open(a.out + "_runs.csv", "w") as f:

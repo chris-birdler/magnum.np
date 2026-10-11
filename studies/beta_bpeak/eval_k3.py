@@ -7,7 +7,10 @@ Mesh check at the design corner K3 (PLAN 4.0 rule A) against the base point (mes
 Outputs: per seed Δ ln w = ln w(dx 3) − ln w(dx 1.5), mean ± SE, the contrast K3 − base (Welch), the mean loss curves
 of both meshes, and the figure results/k3_mesh.png. Works with incomplete data (pairs that exist).
 
-    python eval_k3.py > results/k3_mesh.md
+    python eval_k3.py > results/k3_mesh.md                      # steady-tail rule (≥ 2 calm cycles) and reruns
+    python eval_k3.py --rule all --no_reruns > results/k3_mesh_allcycles.md     # the evaluation of PROTOKOLL 7.52
+Rule (PLAN 4.5 C): by default only the measured cycles after the last event cycle count (PROTOKOLL 7.54, at least 2,
+else the job is missing), and a finished rerun X_mc2 replaces X.
 """
 import json
 import math
@@ -21,6 +24,8 @@ from matplotlib import font_manager                                # noqa: E402
 from scipy import stats                                            # noqa: E402
 
 import analyze                                                     # noqa: E402
+import argparse                                                    # noqa: E402
+import analyze_design as AD                                        # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 RUNS = HERE / "runs"
@@ -35,8 +40,16 @@ plt.rcParams.update({"font.family": "Carlito", "font.size": 12, "axes.spines.top
 RED, BLUE, GREY = "#9B111E", "#1F4E79", "#666666"
 
 
-def w(name):
+RERUNS = True
+
+
+def folder(name):
     d = RUNS / name
+    return (AD.rerun_dir(d) or d) if RERUNS else d
+
+
+def w(name):
+    d = folder(name)
     if not (d / "DONE").exists():
         return None
     _, rows = analyze.load_run(d)
@@ -44,7 +57,7 @@ def w(name):
 
 
 def wb(name):
-    d = RUNS / name
+    d = folder(name)
     if not (d / "DONE").exists():
         return None
     _, rows = analyze.load_run(d)
@@ -107,6 +120,14 @@ def fig_beta():
 
 
 def main():
+    global RERUNS
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--rule", choices=("steady", "all"), default="steady")
+    ap.add_argument("--no_reruns", action="store_true")
+    opt = ap.parse_args()
+    RERUNS = not opt.no_reruns
+    if opt.rule == "steady":
+        analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     kd = None
     res = {}
     for lab, (fmt, seeds) in SETS.items():
@@ -129,6 +150,10 @@ def main():
             kd = cfg["units"]["Kd"]
     labs = list(SETS)
     print("# Mesh check K3 against the base point (dx 3 vs dx 1.5)\n")
+    print("Cycles: %s. Reruns (PLAN 4.5): %s.\n" % (
+        "steady tail, at least 2 calm cycles (PROTOKOLL 7.54)" if opt.rule == "steady" else "all measured cycles (7.52)",
+        ", ".join(sorted(d.name for d in RUNS.glob("M*_mc2") if (d / "DONE").exists())) if RERUNS and
+        any(RUNS.glob("M*_mc2")) else "none"))
     print("Δ ln w = ln w(dx 3) − ln w(dx 1.5) per seed, mean ± standard error; contrast K3 − base with Welch.\n")
     print("| B (mT) | K3: per seed | K3 mean ± SE (n) | base: per seed | base mean ± SE (n) | K3 − base (p) |")
     print("|---|---|---|---|---|---|")

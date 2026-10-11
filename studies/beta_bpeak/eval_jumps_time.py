@@ -128,12 +128,14 @@ def a_pjm(r):
 def main():
     import statsmodels.api as sm
     rng = np.random.default_rng(20261010)
-    recs, _ = AD.load_runs(R)
+    recs, _ = AD.load_runs(R, reruns=True)            # PLAN 4.5: a finished X_mc2 replaces X
     amps = AD.AMPS_MT
     M_all = {r["name"]: run_measures(R / r["name"], len(amps)) for r in recs}
     M = {n: [x if x is not None and x["steady"] else None for x in v] for n, v in M_all.items()}
     rnp = {9: [], 50: [], 150: []}
     for r in recs:
+        if not (R / r["name"] / "phasemap.json").exists():          # reruns have no snapshots (PLAN 4.5)
+            continue
         for st in json.loads((R / r["name"] / "phasemap.json").read_text())["stages"]:
             rnp[min(rnp, key=lambda x: abs(st["B_peak_mT"] / x - 1))].append(st["R_np"])
 
@@ -215,7 +217,7 @@ def main():
         for lab, (fmt, seeds) in MESH.items():
             pairs = []
             for s in seeds:
-                d3, d15 = R / (fmt % ("3", s, b)), R / (fmt % ("15", s, b))
+                d3, d15 = (AD.rerun_dir(x) or x for x in (R / (fmt % ("3", s, b)), R / (fmt % ("15", s, b))))
                 if (d3 / "DONE").exists() and (d15 / "DONE").exists():
                     pairs.append([run_measures(d3, 1)[0], run_measures(d15, 1)[0]])
                     for i, d in enumerate((d3, d15)):
