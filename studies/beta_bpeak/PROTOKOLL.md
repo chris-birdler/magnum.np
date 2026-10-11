@@ -2693,7 +2693,7 @@ and repeat noise of the pairs) at 9, 50 and 100 mT, the dx 3 dynamics is
 correct and the mesh error comes from the relaxed state; if it equals the
 old dx 3 values, the dynamics itself depends on the mesh.
 
-Result (2026-10-11 ≈ 16:30 UTC, 17 of 18 jobs; s2036 at 100 mT still running;
+Result (2026-10-11, all 18 jobs;
 eval_cg.py → results/k3_same_state.md). Loss density (geometric mean, steady
 loops) and paired ratios per repeat (mean ln ± SE):
 
@@ -2701,15 +2701,15 @@ loops) and paired ratios per repeat (mean ln ± SE):
 |---|---|---|---|---|---|
 | 9 | 4.3 W/cm³ | 2.6 | 2.7 | × 0.61 (−0.49 ± 0.16, n 6) | × 0.98 (−0.03 ± 0.09) |
 | 50 | 197 | 119 | 148 | × 0.63 (−0.47 ± 0.10, n 5) | × 0.80 (−0.22 ± 0.16) |
-| 100 | 948 | 761 | 826 | × 0.80 (−0.23 ± 0.09, n 5) | × 0.96 (−0.04 ± 0.07) |
+| 100 | 948 | 733 | 826 | × 0.77 (−0.26 ± 0.08, n 6) | × 0.89 (−0.12 ± 0.10) |
 
-β over 9 / 50 / 100 mT: 2.22 ± 0.03 (dx 1.5), 2.32 ± 0.04 (dx 3 from the
+β over 9 / 50 / 100 mT: 2.22 ± 0.03 (dx 1.5), 2.32 ± 0.03 (dx 3 from the
 fine state), 2.37 ± 0.03 (dx 3 own state).
 - Decision rule: not met at any amplitude. dx 3 from the fine state gives
   the dx 3 values, not the dx 1.5 values.
 - In the first loop the coarse-grained state releases a large energy:
   w_dis / w_loop of loop 0 = 3300 … 6800 at 9 mT, 70 … 120 at 50 mT, 18 …
-  26 at 100 mT (own dx 3 state: 0.8 … 19). The fine state is not an
+  29 at 100 mT (own dx 3 state: 0.8 … 19). The fine state is not an
   equilibrium on the dx 3 grid; within one loop it falls into a dx 3 state,
   and from then on the loss is that of dx 3.
 Reading: the mesh error at K3 is not a matter of the relaxation path. The
