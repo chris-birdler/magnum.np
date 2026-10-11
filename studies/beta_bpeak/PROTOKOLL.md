@@ -2454,8 +2454,8 @@ Reading (hints, one corner, n 4 … 6, tests not corrected):
   20 … 70 mT, and lower above 70 mT (1.8). The dx 3 values scatter more and
   do not show this shape; above 70 mT dx 3 gives +0.75 ± 0.14 too much
   (7.52).
-- The fine mesh gives 13 … 40 % more loss density than dx 3 at K3 at every
-  amplitude.
+- At K3, dx 3 gives 13 … 40 % less loss density than dx 1.5 at every
+  amplitude (P(dx 3) / P(dx 1.5) = 0.60 … 0.87).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
