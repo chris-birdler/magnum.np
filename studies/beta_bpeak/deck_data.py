@@ -219,6 +219,14 @@ def main():
                 it.append(int(line.split("after ")[1].split()[0]))
     out["checks"] = {"acc_sum_ok": acc_ok, "relax_iter_max": max(it), "relax_limit": 80000,
                      "n_flagged": int(sum(r["flagged"] for r in recs))}
+    sdl = []                                                  # loop-to-loop scatter of ln w in the steady tail (≥ 3)
+    for r in recs:
+        for st in json.loads((RUNS / r["name"] / "summary.json").read_text())["stages"]:
+            skip = 2 if "h_amp_initial" in st else 1
+            tail = analyze.steady_tail(st["cycles"][skip:], AD.BAL_EVENT)
+            if len(tail) >= 3:
+                sdl.append(float(np.std(np.log([c["w_loop"] for c in tail]), ddof=1)))
+    out["loop_scatter"] = {"median": float(np.median(sdl)), "n": len(sdl)}
     out["mesh"] = mesh_block(to_P)
     out["jumps"] = jumps_block(recs)
     out["events"] = events_block(recs, to_P)

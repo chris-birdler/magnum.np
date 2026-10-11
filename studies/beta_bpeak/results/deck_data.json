@@ -7863,6 +7863,10 @@
   "relax_limit": 80000,
   "n_flagged": 0
  },
+ "loop_scatter": {
+  "median": 0.02506072262193892,
+  "n": 783
+ },
  "mesh": {
   "K3": {
    "amps": [

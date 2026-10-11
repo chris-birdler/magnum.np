@@ -2619,6 +2619,42 @@ acc_reduce.py): sum check 1.000000; p_rel finite, mean over the particle
 cells 1.0, maximum 5.9; p_mean 5.2·10⁷ W/m³ (the old float16 slice would
 be inf).
 
+### 7.62 Deck rebuilt; corrections from its review (2026-10-11, interim)
+
+Deck slide_decks/beta_powder_sobol (18 slides, levers in physical units,
+main result = steady loops with ≥ 2 steady loops, dynamics cuts of the
+corners K4 / K3). Reviewed by a context-free agent; all "must fix" points
+are worked in. Corrections of the study record and of my earlier
+statements (steady-loop rule, interim: the base point has 3 complete
+repeats on the fine mesh until its rerun is done):
+- The A effect on β below 50 mT does depend on the mesh. β(A = 20) −
+  β(A = 10) for 9 → 50 mT: +0.59 ± 0.09 coarse, +0.33 ± 0.14 fine; 50 →
+  100 mT: +0.82 ± 0.17 coarse, +0.38 ± 0.16 fine (SE, 5 … 6 and 3 … 4
+  repeats). The statement "below 50 mT the effect does not depend on the
+  mesh" (7.52, 7.58) came from the evaluation with all measured cycles and
+  does not hold with the steady loops. On the fine mesh the A effect is
+  about half in both segments.
+- Loss density, fine mesh, P(A = 20) / P(A = 10): × 0.81 at 9 mT (Welch p
+  0.36, 6 and 3 repeats), × 1.48 at 50 mT (p 0.09, 5 and 4), × 1.91 at 100
+  mT (p < 0.001, 6 and 4). Thus only 100 mT is resolved, 50 mT is a hint.
+  Coarse mesh: the curves cross at ≈ 75 mT for this pair and at ≈ 69 mT
+  for all simulations (7.47).
+- β of the mean (7.58) against the mean of the per-repeat fits: the deck
+  uses the per-repeat means ± SE (A = 20 − A = 10 over 9 / 50 / 100 mT:
+  +0.64 ± 0.05 coarse, +0.34 ± 0.08 fine). The fine-mesh A effect on β all
+  in the deck, +0.31, is an estimate (coarse effect × the fine / coarse
+  ratio of this pair).
+- Events with S029 included (116 simulations × 7 amplitudes): 175 events in
+  the measured cycles, 173 release energy, 2 take up energy (7.55 had 171
+  of 173 for 115 simulations).
+- Damping test, all measured cycles: β(α 0.01) − β(α 0.1) = +0.17 ± 0.11
+  (SE, n 8), one pair +0.85: not resolved.
+- Two different "switched" measures: the switched volume V_sw (7.14, angle
+  weighted) shows the A difference at 9 mT (K4 0.67 … 0.82 %, K3 0.46 …
+  0.58 % of the particle volume, 3 repeats each), the share of a cut that
+  turns by more than 60° shows it at 50 mT (3.0 % against 0.5 %). The deck
+  keeps the two apart and calls the mechanism a hypothesis.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
