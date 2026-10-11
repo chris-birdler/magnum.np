@@ -1,0 +1,25 @@
+# Same-state mesh test at K3 (A 20 pJ/m, d/l_ex 212)
+
+Loss density P (W/cm³, geometric mean over the repeats), steady loops (≥ 2). n = repeats with a value.
+
+| B (mT) | dx 1.5, own state | dx 3, fine state | dx 3, own state |
+|---|---|---|---|
+| 9 | 4.3 (n 6) | 2.6 (n 6) | 2.7 (n 6) |
+| 50 | 197.2 (n 5) | 119.4 (n 6) | 148.4 (n 6) |
+| 100 | 947.5 (n 6) | 761.1 (n 5) | 826.2 (n 6) |
+
+Paired ratios per repeat (mean of ln ratio ± SE, as a factor; Welch-free paired t-test p):
+
+| B (mT) | dx 3 fine state / dx 1.5 | dx 3 own state / dx 1.5 | dx 3 fine state / dx 3 own state |
+|---|---|---|---|
+| 9 | × 0.61 (ln -0.49 ± 0.16, n 6, p 0.027) | × 0.63 (ln -0.47 ± 0.09, n 6, p 0.003) | × 0.98 (ln -0.03 ± 0.09, n 6, p 0.783) |
+| 50 | × 0.63 (ln -0.47 ± 0.10, n 5, p 0.011) | × 0.69 (ln -0.37 ± 0.16, n 5, p 0.088) | × 0.80 (ln -0.22 ± 0.16, n 6, p 0.239) |
+| 100 | × 0.80 (ln -0.23 ± 0.09, n 5, p 0.072) | × 0.87 (ln -0.14 ± 0.09, n 6, p 0.189) | × 0.96 (ln -0.04 ± 0.07, n 5, p 0.651) |
+
+β over 9 / 50 / 100 mT (power-law fit per repeat, mean ± SE):
+
+- dx 1.5, own state: β 2.22 ± 0.03 (n 5)
+- dx 3, fine state: β 2.32 ± 0.04 (n 5)
+- dx 3, own state: β 2.37 ± 0.03 (n 6)
+
+Decision rule (7.63): |mean ln ratio| ≤ 0.10 at all 3 amplitudes for dx 3 (fine state) / dx 1.5: not met ([np.False_, np.False_, np.False_])
