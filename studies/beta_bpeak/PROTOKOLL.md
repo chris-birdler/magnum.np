@@ -2496,6 +2496,33 @@ Reading (interim; 5 jobs wait for their reruns):
   2.37 − 1.73 = +0.64, dx 1.5 2.21 − 1.87 = +0.34 (base n 3; interim). The
   A effect stays on the fine mesh, at about half of its dx 3 size.
 
+### 7.59 Determinism gate stopped the queue: the start path differs (2026-10-11 11:01 UTC)
+
+Finding: check_reruns.py found a mismatch in S026_mc2, stage 0 (9 mT),
+cycle 0: w_loop 2.71872144e-07 against 2.71871676e-07 in the original
+(relative 1.7·10⁻⁶), w_dis 6·10⁻⁶, b_peak 3·10⁻⁷; the corrected drive h
+differs by 3·10⁻⁷. Up to cycle 6 the differences stay ≤ 10⁻⁴ (cycle scatter
+2.5 %). Same GPU model and torch as the original. runs/STOP_NEW_JOBS
+exists; no new job starts. Running: M300_dx15_s922_b9_mc2,
+MK3_dx15_s2034_b50_mc2, S020_mc2, S026_mc2. Done: M300_dx3_s921_b50_mc2
+and _b100_mc2, both equal to their originals in all 5 cycles.
+
+Cause: the start path. The originals of S026 (all 13 Sobol runs, C0 … C5
+and M300_dx15_s922_b9) relaxed in the same process and then drove the
+cycles with the same LLG solver object (run_loops.py: the relaxation steps
+with llg._solver at α = 1). The adaptive RKF45 solver keeps its step size
+from the relaxation. A rerun with --init_from loads the same m, but its
+solver starts with a fresh step size. Thus the step sequence differs and
+gives differences at the level of the solver tolerance. Evidence: the
+reruns whose originals also started from init.pt (M300_dx3_s921_b50 /
+b100) are bit for bit equal.
+
+Consequence: the precondition of PLAN 4.5 B (the rerun is the continuation
+of the original) does not hold for the 13 Sobol reruns, for
+M300_dx15_s922_b9_mc2 and for the conditioning runs (against C0 … C5). It
+holds for the reruns of jobs that started from init.pt (2 M300 dx 3, 1 K3
+dx 1.5 at 50 mT, 2 fill-in at 35 mT). Decision by Chris needed.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
