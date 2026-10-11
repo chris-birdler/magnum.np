@@ -2359,6 +2359,40 @@ Reading:
   too high for a long-conditioned core. The size is not known; a test with
   many more cycles at a few points can show it.
 
+### 7.56 PLAN 4.5 started: completion to 2 calm cycles and conditioning test (go Chris 2026-10-11)
+
+Is 2 calm cycles enough (asked by Chris)? Event in the next cycle after k
+calm cycles in a row: 1.6 / 0.8 / 0.4 / 0.1 % for k = 1 … 4 (20 … 35 mT: 2.6
+/ 1.7 / 0.7 / 0.3 %). A closure limit (10⁻³) would need 105 of 116 reruns.
+Decision: 2 calm cycles, then the conditioning test measures the remaining
+drift. The plan was checked by a context-free agent; its findings (56
+stages of the 13 runs change, determinism gate, rerun mapping only in the
+steady analysis, defined history and decision rule of the conditioning
+test, missing init.pt and costs) are worked into PLAN 4.5.
+
+Code (commit b10a7fa; 52 tests pass):
+- run_loops.py: `--min_calm N` (stop when the calm tail ≥ N, at most
+  max_cycles_per_amp; replaces the closure / dW rule when N > 0),
+  `--calm_tol`, `--cycles_last_amp`. An old config without these keys counts
+  as the defaults (resume).
+- run_queue.py: `--stop_file`: no new job when the file exists.
+- check_reruns.py: determinism gate (rerun against reference, cycle by
+  cycle, w_loop / w_dis / b_peak to 10⁻⁶, up to the first stage with
+  another number of cycles).
+- rerun_jobs.py → jobs/rerun_mc2.txt (17 reruns: 13 Sobol, 4 mesh / K3) and
+  jobs/cond.txt (18 runs cond_C0 … C5_b9 / b20 / b35). The fill-in reruns
+  are made by the chain after the fill-in ends (cap 15 V100-h).
+- analyze_design.py `--reruns` (only with `--steady_tail`), eval_k3.py
+  `--rule steady|all` and `--no_reruns` (`--rule all --no_reruns` gives the
+  tables of 7.52 again, checked), eval_jumps_time.py uses reruns.
+- instance/chain_mc2.sh: waits for the fill-in chain, pins b10a7fa, one
+  queue (the long mesh job first), the gate runs every 10 min, then the
+  post-processing of the accumulators.
+
+Installed on the instance 2026-10-11 ≈ 05:05 UTC: /root/mc2_commit,
+onstart line, the chain waits for the lock of the fill-in chain. Fill-in at
+04:48 UTC: 8 of 36 done, 0 failed. Credit 28.35 $ (top-up by Chris).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
