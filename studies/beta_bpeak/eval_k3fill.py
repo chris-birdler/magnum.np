@@ -97,8 +97,8 @@ def main():
 
     print("\n## Jumps (only jobs with 3 calm cycles) and R1\n")
     print("| B (mT) | RF dx 3 | RF dx 1.5 | seeds RF(dx 3) > RF(dx 1.5) (sign test p) | RN dx 3 | RN dx 1.5 | R1 dx 3 | "
-          "R1 dx 1.5 | R1 Sobol K3_0 … 2 (dx 3, ascending) |")
-    print("|---|---|---|---|---|---|---|---|---|")
+          "R1 dx 1.5 | R1 Sobol K3_0 … 2 (dx 3, ascending) | BF dx 3 | BF dx 1.5 | seeds BF(dx 3) > BF(dx 1.5) (p) |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|")
     k3 = {}
     for n in ("K3_0", "K3_1", "K3_2"):
         st = json.loads((RUNS / n / "acc.json").read_text())["stages"]
@@ -117,6 +117,7 @@ def main():
                         M[dx][s] = m
         pair = [s for s in SEEDS if s in M["3"] and s in M["15"]]
         gt = sum(M["3"][s]["RF"] > M["15"][s]["RF"] for s in pair)
+        gtb = sum(M["3"][s]["BF"] > M["15"][s]["BF"] for s in pair)
         r1 = {}
         for dx, _ in MESH:
             v = []
@@ -126,11 +127,13 @@ def main():
                     v.append(json.loads(f.read_text())["stages"][0]["R1"])
             r1[dx] = ms(v) if v else "–"
         rf[b] = {dx: [M[dx][s]["RF"] for s in M[dx]] for dx, _ in MESH}
-        print("| %d | %s | %s | %d/%d (%s) | %s | %s | %s | %s | %s |" % (
+        print("| %d | %s | %s | %d/%d (%s) | %s | %s | %s | %s | %s | %s | %s | %d/%d (%s) |" % (
             b, ms(rf[b]["3"], "%.3f"), ms(rf[b]["15"], "%.3f"), gt, len(pair),
             "%.3f" % stats.binomtest(gt, len(pair), 0.5).pvalue if pair else "–",
             ms([M["3"][s]["RN"] for s in M["3"]], "%.3f"), ms([M["15"][s]["RN"] for s in M["15"]], "%.3f"),
-            r1["3"], r1["15"], ms(k3.get(float(b), []))))
+            r1["3"], r1["15"], ms(k3.get(float(b), [])),
+            ms([M["3"][s]["BF"] for s in M["3"]], "%.3f"), ms([M["15"][s]["BF"] for s in M["15"]], "%.3f"), gtb,
+            len(pair), "%.3f" % stats.binomtest(gtb, len(pair), 0.5).pvalue if pair else "–"))
 
     fig_out(curves, beta, rf, to_P, L)
 

@@ -2549,6 +2549,55 @@ density of the steady tail is 120 W/cm³, against 159 W/cm³ in the mean of
 cycles 2 … 6 of the original (event cycle included). Thus the events are
 deterministic at this level, not chaotic; one run only.
 
+### 7.60 Barkhausen analogue from ΔM: jumps of the magnetisation (2026-10-11, exploratory)
+
+Reason (question of Chris): RF uses p_dis as an instantaneous value at 256
+samples per cycle; a jump shorter than 130 ps between two samples can be
+missed. M is a state: a jump between two samples is fully in their
+difference. Measure (eval_jumps_time.py, eval_k3fill.py): V = ΔM_par per
+sample interval (∝ dM/dt, the induced voltage of a pick-up coil without
+the smooth μ0 dH/dt); the same steps as RF: BF = Σ|V − Vs| / Σ|V|, BN =
+non-repeating, BH = sharp repeating (Vs = Fourier part k ≤ 6 of the mean
+cycle). A smooth loop gives BF = 0. Same runs and rule (last 3 calm
+cycles). This works on all old runs; the integral of p per interval would
+need new runs.
+
+Sobol runs, dx 3, medians (95 % CI of the median), n 104 … 115:
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 | 150 |
+|---|---|---|---|---|---|---|---|
+| BF | 0.001 | 0.004 | 0.007 | 0.009 | 0.010 | 0.011 | 0.012 |
+| BN | 0.000 | 0.001 | 0.003 | 0.004 | 0.005 | 0.007 | 0.007 |
+
+CI half-widths ≤ 0.001. RF against BF over all run-amplitudes: Spearman
+0.53 (n 776).
+
+K3, 6 seeds (mean ± SE), BF dx 3 / dx 1.5 and seeds with BF(dx 3) >
+BF(dx 1.5): 9 mT 0.001 / 0.007, 0/5; 20 mT 0.005 / 0.010, 0/6 (p 0.031);
+35 mT 0.008 / 0.013, 0/4; 50 mT 0.013 / 0.016, 1/4; 70 mT 0.018 / 0.017,
+3/6; 100 mT 0.019 / 0.015, 6/6 (p 0.031). Mesh pairs K3 and base: 9 mT
+0/7 (p 0.016), 100 mT 9/9 (p 0.004).
+
+Reading:
+- In the magnetisation the response is 98 … 99.9 % smooth. The non-smooth
+  part grows steadily with B (fine mesh at K3: 0.7 % at 9 mT, 1.6 … 1.7 % at
+  50 … 70 mT, 1.5 % at 100 mT). There is no window at 35 … 50 mT, on either
+  mesh. The statement of 7.57 (no jump window on the fine mesh) holds with
+  this measure too.
+- The RF window at dx 3 (35 … 70 mT) is not in BF at dx 3: it is a window
+  of dissipation spikes without a matching jump of M (cores that hop from
+  cell to cell dissipate but move little magnetisation).
+- The mesh error of the jumps goes both ways: below 50 mT dx 3 has fewer
+  magnetisation jumps than dx 1.5 (grid pinning: structures stick to the
+  cells until a higher field), at 100 mT more. This fits the loss density
+  at K3 (dx 3 × 0.63 at 9 mT, 7.57).
+- The jumps are a small part of the magnetisation change (≈ 1 … 2 %) but a
+  larger part of the dissipation (RF 7 … 13 % on the fine mesh). Both shares
+  are L1 shares of different quantities; the ratio is a hint, not a
+  measured energy share.
+- Limit: a local jump without a net change of M (a turn inside a
+  particle) is not seen; the time resolution stays 130 ps.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

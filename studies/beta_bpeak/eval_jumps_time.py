@@ -18,6 +18,11 @@ Measures per run and amplitude (P = p_dis samples of the kept cycles, Pm = mean 
   rho   event coupling     Spearman correlation, within the same phase, between the extra dissipation in a sample
                            interval (P − its mean over the cycles at that phase) and the extra change of n60 in that
                            interval; independent of how often n60 changes; > 0: an extra defect event carries extra loss
+  BF    Barkhausen analogue (PROTOKOLL 7.60): the same as RF for V = ΔM_par per sample interval (∝ dM/dt, the induced
+        voltage of a pick-up coil without the smooth μ0 dH/dt). M is a state, so a jump between two samples is fully
+        in the difference: nothing is lost between the samples (p_dis is an instantaneous value and can miss a short
+        jump). BF = Σ|V − Vs| / Σ|V|, BN = Σ|V − Vm| / Σ|V| (non-repeating), BH = Σ|Vm − Vs| / Σ|Vm| (sharp
+        repeating); Vm mean cycle, Vs its Fourier part k ≤ 6. A smooth loop (odd harmonics ≤ 5) gives BF = 0.
   R_np  non-periodic share of the 16-phase snapshots (phasemap.json, 9 / 50 / 150 mT, last 2 cycles)
   B_pk  per run: the amplitude of the largest RF (parabola in ln B through the largest value and its neighbours)
 
@@ -44,18 +49,20 @@ LEX_A10 = 3.342                       # nm, l_ex at A = 10 pJ/m and Js = 1.5 T
 MESH = {"K3 (A 20 pJ/m)": ("MK3_dx%s_s%d_b%d", range(2031, 2037)),
         "base (A 10 pJ/m)": ("M300_dx%s_s%d_b%d", range(921, 925))}
 MESH_AMPS = (9, 50, 100)
-KEYS = ("RF", "RN", "RH", "dS5", "rho", "ev")
+KEYS = ("RF", "RN", "RH", "dS5", "rho", "ev", "BF", "BN", "BH")
 
 
 def series(path):
-    """p_dis and n60 of the last KEEP_LAST complete cycles (first row of each cycle = end of the previous one)."""
+    """p_dis, n60 and ΔM_par per sample interval of the last KEEP_LAST complete cycles (the first row of each cycle is
+    the end of the previous one: 257 rows give 256 samples and 256 differences)."""
     a = np.loadtxt(path, delimiter=",", comments="#")
     cyc = a[:, 0].astype(int)
-    keep = [a[cyc == c][1:] for c in sorted(set(cyc))]
-    keep = [x for x in keep if len(x) == N_SAMPLES][-KEEP_LAST:]
+    keep = [a[cyc == c] for c in sorted(set(cyc))]
+    keep = [x for x in keep if len(x) == N_SAMPLES + 1][-KEEP_LAST:]
     if len(keep) < KEEP_LAST:
         return None
-    return np.array([x[:, 8] for x in keep]), np.array([x[:, -1] for x in keep])
+    return (np.array([x[1:, 8] for x in keep]), np.array([x[1:, -1] for x in keep]),
+            np.array([np.diff(x[:, 3]) for x in keep]))
 
 
 def top5(x):
@@ -63,7 +70,13 @@ def top5(x):
     return s[: len(s) // 20].sum() / s.sum()
 
 
-def measures(P, N60):
+def smooth(Xm):
+    F = np.fft.rfft(Xm)
+    F[K_SMOOTH + 1:] = 0
+    return np.fft.irfft(F, n=N_SAMPLES)
+
+
+def measures(P, N60, dM=None):
     n = len(P)
     Pm = P.mean(0)
     F = np.fft.rfft(Pm)
@@ -80,6 +93,12 @@ def measures(P, N60):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         out["rho"] = float(stats.spearmanr(r, d)[0]) if d.std() > 0 and r.std() > 0 else float("nan")
+    if dM is not None:
+        Vm = dM.mean(0)
+        Vs = smooth(Vm)
+        tot = np.abs(dM).sum()
+        out.update(BF=float(np.abs(dM - Vs).sum() / tot), BN=float(np.abs(dM - Vm).sum() / tot),
+                   BH=float(np.abs(Vm - Vs).sum() / np.abs(Vm).sum()))
     return out
 
 
@@ -166,6 +185,19 @@ def main():
         b_ = [M[r["name"]][k]["RF"] for r in recs if M[r["name"]][k] is not None]
         print("| %g | %.3f (n %d) | %.3f (n %d) |" % (m, np.median(b_), len(b_), np.median(a_), len(a_)))
 
+    print("\n## A2. Barkhausen analogue from ΔM (nothing lost between the samples; same runs and rule)\n")
+    print("| B (mT) | BF non-smooth | BN non-repeating | BH sharp repeating | n |")
+    print("|---|---|---|---|---|")
+    for k, m in enumerate(amps):
+        v = {key: [M[r["name"]][k][key] for r in recs if M[r["name"]][k] is not None] for key in ("BF", "BN", "BH")}
+        c = {key: med_ci(v[key], rng) for key in v}
+        print("| %g | %.3f (%.3f … %.3f) | %.3f (%.3f … %.3f) | %.3f (%.3f … %.3f) | %d |" % (
+            m, *c["BF"][:3], *c["BN"][:3], *c["BH"][:3], c["BF"][3]))
+    pr = [(M[r["name"]][k]["RF"], M[r["name"]][k]["BF"]) for r in recs for k in range(len(amps)) if M[r["name"]][k]]
+    pr = np.array(pr)
+    print("\nRF (from p) against BF (from ΔM) over all run-amplitudes: Spearman %.2f (n %d).\n"
+          % (stats.spearmanr(pr[:, 0], pr[:, 1])[0], len(pr)))
+
     # B. amplitude of the largest RF per run, against the factors
     pk, ends = [], 0
     for r in recs:
@@ -209,11 +241,11 @@ def main():
           "Medians over the seeds. n60 max = largest number of pairs > 60° in the used cycles. Sign test (two-sided, "
           "exact) over the seeds of both points.\n")
     print("| B (mT) | point | n pairs | RF dx 3 | RF dx 1.5 | seeds with RF(dx 3) > RF(dx 1.5) | RN dx 3 | RN dx 1.5 | "
-          "n60 max dx 3 | n60 max dx 1.5 | pairs left out (not steady) |")
-    print("|---|---|---|---|---|---|---|---|---|---|---|")
+          "n60 max dx 3 | n60 max dx 1.5 | pairs left out (not steady) | BF dx 3 | BF dx 1.5 | seeds BF(dx 3) > BF(dx 1.5) |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     mesh = {}
     for b in MESH_AMPS:
-        n_gt, n_all = 0, 0
+        n_gt, n_gtb, n_all = 0, 0, 0
         for lab, (fmt, seeds) in MESH.items():
             pairs = []
             for s in seeds:
@@ -226,13 +258,16 @@ def main():
             used = [p for p in pairs if p[0]["steady"] and p[1]["steady"]]
             g = lambda i, key: np.array([p[i][key] for p in used])
             gt = int((g(0, "RF") > g(1, "RF")).sum())
+            gtb = int((g(0, "BF") > g(1, "BF")).sum())
             n_gt, n_all = n_gt + gt, n_all + len(used)
-            print("| %d | %s | %d | %.3f | %.3f | %d/%d | %.3f | %.3f | %.0f | %.0f | %d |" % (
+            n_gtb += gtb
+            print("| %d | %s | %d | %.3f | %.3f | %d/%d | %.3f | %.3f | %.0f | %.0f | %d | %.3f | %.3f | %d/%d |" % (
                 b, lab, len(used), np.median(g(0, "RF")), np.median(g(1, "RF")), gt, len(used),
                 np.median(g(0, "RN")), np.median(g(1, "RN")), np.median(g(0, "n60max")), np.median(g(1, "n60max")),
-                len(pairs) - len(used)))
-        print("| %d | both, sign test | %d | | | %d/%d, p = %.3f | | | | | |" % (
-            b, n_all, n_gt, n_all, stats.binomtest(n_gt, n_all, 0.5).pvalue))
+                len(pairs) - len(used), np.median(g(0, "BF")), np.median(g(1, "BF")), gtb, len(used)))
+        print("| %d | both, sign test | %d | | | %d/%d, p = %.3f | | | | | | | | %d/%d, p = %.3f |" % (
+            b, n_all, n_gt, n_all, stats.binomtest(n_gt, n_all, 0.5).pvalue, n_gtb, n_all,
+            stats.binomtest(n_gtb, n_all, 0.5).pvalue))
 
     fig_out(amps, curves, recs, pk, A, L, mesh)
 
