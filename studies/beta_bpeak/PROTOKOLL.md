@@ -2539,7 +2539,7 @@ its original. Done:
 - Extra cost (estimate): relaxation in the process, ≈ 0.3 h per Sobol and
   conditioning run, ≈ 3 h for M300_dx15_s922_b9: ≈ +12 V100-h.
 
-Sensitivity record S026_mc2 (init.pt variant, done 12:3x UTC, n 1): the
+Sensitivity record S026_mc2 (init.pt variant, done ≈ 12:00 UTC, n 1): the
 start difference of ~10⁻⁶ does not change the transient. In the stages 9 /
 20 / 35 mT the per-cycle balance is the same to 2 decimals (35 mT: 1.11
 1.11 8.31 1.16 1.08 1.07 1.41, the events in the same cycles); the rule
