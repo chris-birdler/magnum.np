@@ -274,6 +274,8 @@ def cond_curves(coefs, X, grid):
         rows = [_outputs_at(coefs, X, lnd=g, lnQ=kq) for g in grid]
         for k in keys:
             out["A|%+.0f|%s" % (kq, k)] = [r[k] for r in rows]
+        for k in ("lnw@10mT", "lnw@50mT", "lnw@100mT"):   # relative to d/l_ex 300 (A 10 pJ/m, d 1 µm): last point
+            out["Arel|%+.0f|%s" % (kq, k)] = [r[k] - rows[-1][k] for r in rows]
     for ka in A_LEVELS:
         rows = [_outputs_at(coefs, X, lnQ=g, lnd=ka) for g in grid]
         for k in keys:
@@ -287,6 +289,15 @@ def cond_curves(coefs, X, grid):
         path.append(_outputs_at(coefs, X, lnd=2 * (lnd - lo_d) / (hi_d - lo_d) - 1, lnQ=2 * (lnq - lo_q) / (hi_q - lo_q) - 1))
     for k in ("beta_all", "lnw@10mT", "lnw@50mT", "lnw@100mT"):
         out["alloy|%s" % k] = [r[k] for r in path]
+    # conditional range effects on β all (physical direction): A 10 → 20 pJ/m = coded ln d/l_ex +1 → −1;
+    # K_eff low → high = coded ln Q −1 → +1; the real-alloy path end − start
+    for kq in K_LEVELS:
+        b_ = out["A|%+.0f|beta_all" % kq]
+        out["dA|%+.0f" % kq] = b_[0] - b_[-1]
+    for ka in A_LEVELS:
+        b_ = out["K|%+.0f|beta_all" % ka]
+        out["dK|%+.0f" % ka] = b_[-1] - b_[0]
+    out["dalloy"] = path[-1]["beta_all"] - path[0]["beta_all"]
     return out
 
 
