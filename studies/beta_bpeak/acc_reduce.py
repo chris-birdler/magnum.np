@@ -39,6 +39,13 @@ def relative_slice(plane, inside):
     rel = plane / mean if mean > 0 else np.zeros_like(plane)
     return rel.astype(np.float16), np.float64(mean)
 
+def harmonic_loss(mk2, alpha, Ms, w):
+    """Loss density of the local motion at k w per cell (W/m³), k = 1 … K: p_k = alpha mu0 Ms / gamma (k w)^2
+    |m_k|^2 / 2 (the same coefficient as pf; Gilbert damping: p = alpha mu0 Ms / gamma |dm/dt|^2). mk2: (cells, K)."""
+    k = np.arange(1, mk2.shape[1] + 1, dtype=np.float64)
+    return alpha * MU0 * Ms / GAMMA * w * w * k[None, :] ** 2 * mk2.astype(np.float64) / 2.0
+
+
 def run(d):
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
@@ -76,24 +83,45 @@ def run(d):
         ptop = p >= np.quantile(p, 0.9)
         classes = {"r<0.5": r < 0.5, "0.5<=r<0.8": (r >= 0.5) & (r < 0.8), "r>=0.8": r >= 0.8,
                    "texture top 10%": hi, "rest of texture": ~hi, "p top 10%": ptop}
+        harm = None
+        if "mk2" in z.files:                                 # run_loops --acc_harm (PROTOKOLL 7.72), calm cycles only
+            pk = harmonic_loss(z["mk2"], alpha, Ms, w)
+            ph, prest = pk[:, 1:].sum(1), p - pk.sum(1)        # harmonics k = 2 … K, rest (> K w, non-repeating)
+            ratio = pk.sum(1)[p > 0] / p[p > 0]               # Bessel: sum_k p_k <= p in each cell
+            harm = {"K": int(pk.shape[1]), "R_k": (pk.sum(0) / p.sum()).tolist(),
+                    "R_rest": float(prest.sum() / p.sum()), "bessel_max": float(ratio.max()),
+                    "bessel_frac_over_1e-3": float((ratio > 1.001).mean()),
+                    "cycles_kept": [int(c) for c in z["cycles_kept"]], "cycles_acc": int(z["cycles_acc"])}
         where = {}
         for k, sel in classes.items():
             mean_lag, spread = wspread(lag[sel], wgt[sel])
             where[k] = {"vol_share": float(sel.mean()), "p_share": float(p[sel].sum() / p.sum()),
                         "p_fund_share": float(pf[sel].sum() / pf.sum()),
                         "lag_mean_deg": math.degrees(mean_lag), "lag_spread_deg": math.degrees(spread)}
+            if harm is not None:
+                where[k]["p_harm_share"] = float(ph[sel].sum() / ph.sum())
+                where[k]["p_rest_share"] = float(prest[sel].sum() / prest.sum())
         B = 1000.0 * np.abs(np.loadtxt(next(d.glob("samples_*_%s.csv" % stage)), delimiter=",", comments="#")[:, 7]).max()
         out["stages"].append({"stage": stage, "B_peak_mT": float(B), "n_samples": int(z["n_samples"]),
                               "cycles_from": int(z["cycles_from"]), "check_p_box_over_p_dis": check,
                               "check_ok": abs(check - 1.0) < CHECK_TOL, "R1": R1,
                               "lag_drive_deg": math.degrees(float(np.angle(a1.sum() / h1))) if abs(h1) > 0 else None,
-                              "where": where})
+                              "where": where, **({"harm": harm} if harm is not None else {})})
         fp = np.zeros(ids.shape, np.float32)
         fp[mask] = p
         fm = np.zeros(ids.shape, np.float32)
         fm[mask] = (np.abs(m1) ** 2).sum(-1)
         slices[stage + "_p_rel"], slices[stage + "_p_mean"] = relative_slice(fp[:, :, 0], ids[:, :, 0] >= 0)
         slices[stage + "_m1sq"] = fm[:, :, 0].astype(np.float16)
+        if harm is not None:
+            for key, v in (("harm", ph), ("rest", prest)):
+                fh = np.zeros(ids.shape, np.float64)
+                fh[mask] = v
+                slices[stage + "_%s_rel" % key], slices[stage + "_%s_mean" % key] = relative_slice(fh[:, :, 0],
+                                                                                                 ids[:, :, 0] >= 0)
+            print("%s %s: R_k %s  rest %.3f  Bessel max %.4f  calm cycles %s of %d" % (
+                d.name, stage, " ".join("%.3f" % x for x in harm["R_k"]), harm["R_rest"], harm["bessel_max"],
+                harm["cycles_kept"], harm["cycles_acc"]), flush=True)
         print("%s %s: check %.6f  R1 %.3f  p share r<0.5 %.2f  r>=0.8 %.2f  texture top10 %.2f  p top10 %.2f" %
               (d.name, stage, check, R1, where["r<0.5"]["p_share"], where["r>=0.8"]["p_share"],
                where["texture top 10%"]["p_share"], where["p top 10%"]["p_share"]), flush=True)

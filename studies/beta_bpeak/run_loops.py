@@ -87,8 +87,9 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
-NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None}   # added 2026-10-11 (PLAN 4.5): an old config
-#                                                                    without them is equal to these defaults
+NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
+            "acc_harm": 0}                                         # without them is equal to these defaults
+#                                                                    (acc_harm: 2026-10-12, PROTOKOLL 7.72)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
@@ -205,6 +206,11 @@ def parse_args(argv=None):
                    help="per-cell accumulators over the cycles >= %d of each measured stage (all samples of a "
                         "cycle): mean local dissipation p, mean m (m0) and the fundamental m1 = 2/n sum m e^{-i w t}; "
                         "written to acc_<i>_<stage>.npz (particle cells only; audit 3, item 9b)" % ACC_FROM_CYCLE)
+    g.add_argument("--acc_harm", type=int, default=0,
+                   help="with --acc (PROTOKOLL 7.72): K >= 2 adds per cell |m_k|^2 of the harmonics k = 1 … K "
+                        "(per cycle, summed over the components, averaged over the kept cycles), and only calm "
+                        "cycles (w_loop > 0, |w_dis / w_loop - 1| <= --calm_tol) enter all accumulators; per cycle "
+                        "the box sums go to the cycle record. 0 (default): the accumulators as before")
     g.add_argument("--no_resume", action="store_true", help="start again: delete the old outputs in --out")
     g.add_argument("--allow_new_commit", action="store_true",
                    help="resume although the code (git commit) changed since the checkpoint")
@@ -259,15 +265,98 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
     return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
 
 
+def is_calm(c, tol):
+    """Calm cycle: w_loop > 0 and |w_dis / w_loop - 1| <= tol (PLAN 4.5; the opposite of an event, PROTOKOLL 7.53)."""
+    return c["w_loop"] > 0 and abs(c["w_dis"] / c["w_loop"] - 1.0) <= tol
+
+
 def calm_tail(cycles, tol):
     """Number of calm cycles at the end of cycles (calm: w_loop > 0 and |w_dis / w_loop - 1| <= tol; PLAN 4.5).
     Equal to the number of cycles that the steady-tail rule of analyze.py keeps (PROTOKOLL 7.54)."""
     n = 0
     for c in reversed(cycles):
-        if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > tol:
+        if not is_calm(c, tol):
             break
         n += 1
     return n
+
+
+class HarmAcc:
+    """Per-cell accumulators with harmonics (--acc --acc_harm K, PROTOKOLL 7.72). All tensors are allocated once at
+    the start of the job (the GPU memory is claimed before the queue places the next job).
+    Per cycle: sums of the local dissipation p, of m, of m e^{-i k w t} (k = 1 in float64 as before, k = 2 … K in
+    float32), of h e^{-i w t} and of p_dis. At the end of a cycle: |m_k|^2 = |2/n sum m e^{-i k w t}|^2 summed over
+    the components (k = 1 … K) and the box sums over the particle cells (to the cycle record). Only a calm cycle is
+    added to the stage sums; the stage sums of p, m0, m1, h1, p_dis are then those of acc_reduce.py over the calm
+    cycles, and mk2 is the mean of |m_k|^2 over the calm cycles."""
+
+    def __init__(self, shape, K, device, mask):
+        import torch
+        assert K >= 2
+        self.K, self.mask = K, mask
+        f64, f32 = dict(dtype=torch.float64, device=device), dict(dtype=torch.float32, device=device)
+        self.c = {"p": torch.zeros(shape[:3], **f64), "m0": torch.zeros(shape, **f64),
+                  "re": torch.zeros(shape, **f64), "im": torch.zeros(shape, **f64)}
+        self.c_re = torch.zeros((K - 1,) + tuple(shape), **f32)
+        self.c_im = torch.zeros((K - 1,) + tuple(shape), **f32)
+        self.s = {"p": torch.zeros(shape[:3], **f64), "m0": torch.zeros(shape, **f64),
+                  "re": torch.zeros(shape, **f64), "im": torch.zeros(shape, **f64)}
+        self.s_mk2 = torch.zeros((K,) + tuple(shape[:3]), **f32)
+        self.new_cycle()
+        self.new_stage()
+
+    def new_cycle(self):
+        for v in list(self.c.values()) + [self.c_re, self.c_im]:
+            v.zero_()
+        self.c_h1, self.c_psum, self.c_n = 0j, 0.0, 0
+
+    def new_stage(self):
+        for v in list(self.s.values()) + [self.s_mk2]:
+            v.zero_()
+        self.s_h1, self.s_psum, self.s_n, self.kept, self.n_cycles = 0j, 0.0, 0, [], 0
+
+    def add(self, m, p_cell, th, h, p_dis):
+        """One sample: m (float64), p_cell (float64), drive phase th = w (t - t0), drive value h, box p_dis."""
+        c, s = math.cos(th), math.sin(th)
+        self.c["p"] += p_cell
+        self.c["m0"] += m
+        self.c["re"].add_(m, alpha=c)
+        self.c["im"].add_(m, alpha=-s)
+        m32 = m.float()
+        for j, k in enumerate(range(2, self.K + 1)):
+            self.c_re[j].add_(m32, alpha=math.cos(k * th))
+            self.c_im[j].add_(m32, alpha=-math.sin(k * th))
+        self.c_h1 += h * complex(c, -s)
+        self.c_psum += p_dis
+        self.c_n += 1
+
+    def cycle_mk2(self):
+        """|m_k|^2 of the current cycle, k = 1 … K, shape (K, N, N, N), float32."""
+        import torch
+        g = (2.0 / self.c_n) ** 2
+        out = torch.empty_like(self.s_mk2)
+        out[0] = ((self.c["re"] ** 2 + self.c["im"] ** 2).sum(-1) * g).float()
+        for j in range(self.K - 1):
+            out[j + 1] = (self.c_re[j] ** 2 + self.c_im[j] ** 2).sum(-1) * g
+        return out
+
+    def end_cycle(self, calm, ci):
+        """Close the cycle: box sums for the cycle record; a calm cycle goes into the stage sums."""
+        mk2 = self.cycle_mk2()
+        n = self.c_n
+        box = {"calm": bool(calm), "n": n, "p_cells": float(self.c["p"][self.mask].sum()) / n,
+               "mk2_cells": [float(mk2[k][self.mask].double().sum()) for k in range(self.K)]}
+        self.n_cycles += 1
+        if calm:
+            for key in self.s:
+                self.s[key] += self.c[key]
+            self.s_mk2 += mk2
+            self.s_h1 += self.c_h1
+            self.s_psum += self.c_psum
+            self.s_n += n
+            self.kept.append(int(ci))
+        self.new_cycle()
+        return box
 
 
 def measured_cycles(rec):
@@ -442,6 +531,8 @@ def main(argv=None):
     cos60 = 0.5
 
     last_p = {}                                  # per-cell dissipation of the last diagnostics() call (--acc)
+    harm = (HarmAcc((N, N, N, 3), args.acc_harm, dev, torch.as_tensor(ids >= 0, device=dev))
+            if args.acc and args.acc_harm > 0 else None)     # --acc_harm (PROTOKOLL 7.72): allocated once
 
     @torch.no_grad()
     def diagnostics():
@@ -627,7 +718,10 @@ def main(argv=None):
         if st.get("b_target") is not None:
             rec["b_target"] = st["b_target"]
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
-        if args.acc and st["measure"]:
+        if harm is not None and st["measure"]:
+            harm.new_stage()
+            harm.new_cycle()
+        elif args.acc and st["measure"]:
             acc = {"p": torch.zeros(state.m.shape[:3], dtype=torch.float64, device=dev),
                    "m0": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
                    "re": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
@@ -663,7 +757,11 @@ def main(argv=None):
                 if st.get("decay") and (k + 1 == args.samples // 2 or k + 1 == args.samples):
                     drive.H_amp *= st["decay"]          # AC demagnetization: change at a zero crossing
                 sample()
-                if acc_on:
+                if acc_on and harm is not None:
+                    th = 2.0 * math.pi * f_stage * (float(state.t) - drive.t0)
+                    harm.add(state.m.double(), last_p["p"][..., 0].double(), th, drive.value(float(state.t)),
+                             rows[-1][6])
+                elif acc_on:
                     # audit 3, item 9b: the samples after each step cover one cycle at equal phases
                     th = 2.0 * math.pi * f_stage * (float(state.t) - drive.t0)
                     c, sn = math.cos(th), math.sin(th)
@@ -707,6 +805,8 @@ def main(argv=None):
                 W_prev = rec["cycles"][-1]["W_loop"]
                 cyc["dW_rel"] = float(abs(W_loop - W_prev) / max(abs(W_loop), 1e-300))
             rec["cycles"].append(cyc)
+            if acc_on and harm is not None:
+                cyc["acc"] = harm.end_cycle(is_calm(cyc, args.calm_tol), ci)
             for r in rows:
                 fcsv.write("%d," % ci + ",".join("%.9e" % v for v in (*r[:3], *r[3:6], MU0 * (r[1] + r[2]), *r[6:])) + "\n")
             fcsv.flush()
@@ -764,7 +864,31 @@ def main(argv=None):
             rec["ringdown"] = "ringdown_%02d_%s.csv" % (si, st["name"])
             print("[%s] ring-down %.1f periods written" % (st["name"], args.ringdown_periods), flush=True)
 
-        if complete and args.acc and st["measure"] and acc["n"] > 0:
+        if complete and harm is not None and st["measure"]:
+            n = harm.s_n
+            info = {"n_samples": n, "cycles_kept": harm.kept, "cycles_acc": harm.n_cycles, "harm_K": harm.K}
+            if n > 0:
+                mask_t = harm.mask
+                p_box = float(harm.s["p"].sum()) / n / harm.s["p"].numel()
+                np_tmp = out / ("acc_%02d_%s.tmp.npz" % (si, st["name"]))
+                np.savez(np_tmp, p=(harm.s["p"][mask_t] / n).float().cpu().numpy(),
+                         m0=(harm.s["m0"][mask_t] / n).float().cpu().numpy(),
+                         m1=((harm.s["re"][mask_t] + 1j * harm.s["im"][mask_t]) * (2.0 / n)).to(torch.complex64)
+                         .cpu().numpy(),
+                         h1=np.complex128(harm.s_h1 * 2.0 / n), n_samples=n, cycles_from=ACC_FROM_CYCLE,
+                         p_box=p_box, p_dis_samples=harm.s_psum / n, freq=f_stage,
+                         mk2=(harm.s_mk2[:, mask_t] / len(harm.kept)).T.contiguous().cpu().numpy(),
+                         cycles_kept=np.array(harm.kept), cycles_acc=harm.n_cycles)
+                os.replace(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
+                info.update(file="acc_%02d_%s.npz" % (si, st["name"]),
+                            p_box_over_p_dis=p_box / max(harm.s_psum / n, 1e-300))
+            else:
+                info["file"] = None                   # no calm cycle: no accumulator file for this stage
+            rec["acc"] = info
+            print("[%s] accumulators: %d calm of %d cycles, %d samples%s" % (
+                st["name"], len(harm.kept), harm.n_cycles, n,
+                (", sum check p_box/p_dis = %.6f" % info["p_box_over_p_dis"]) if n > 0 else ""), flush=True)
+        elif complete and args.acc and st["measure"] and acc["n"] > 0:
             n = acc["n"]
             mask_t = torch.as_tensor(ids >= 0, device=dev)
             p_box = float(acc["p"].sum()) / n / acc["p"].numel()

@@ -51,6 +51,9 @@ def acc_stages(d):
     sm = {s["name"]: s for s in json.loads((d / "summary.json").read_text())["stages"]}
     out = []
     for a in sorted(acc, key=lambda s: s["B_peak_mT"]):
+        if "harm" in a:                       # run_loops --acc_harm: only calm cycles were accumulated (7.72)
+            out.append(dict(a, calm=True))
+            continue
         c0, n = a["cycles_from"], a["n_samples"] // EJ.N_SAMPLES
         cyc = [c for c in sm[a["stage"]]["cycles"] if c0 <= c["cycle"] < c0 + n]
         assert len(cyc) == n, (d.name, a["stage"], c0, n)

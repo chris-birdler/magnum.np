@@ -916,3 +916,66 @@ def test_stress_term_uses_its_own_parameters():
     state.m = v.expand(n + (3,)).clone()
     E_perp = float(stress.E(state))
     assert E_par < E_perp                                               # easy axis
+
+
+def _harm_signal(theta, amps):
+    """m(theta) of shape (2, 2, 2, 3): a constant plus harmonics (k, component, amplitude, phase); the same in all
+    cells. Returns m and dm/dtheta."""
+    m = np.zeros((2, 2, 2, 3)) + np.array([0.1, -0.2, 0.3])
+    dm = np.zeros_like(m)
+    for k, comp, a, ph in amps:
+        m[..., comp] += a * np.cos(k * theta + ph)
+        dm[..., comp] += -a * k * np.sin(k * theta + ph)
+    return m, dm
+
+
+def test_harmacc_recovers_harmonics_and_skips_event_cycles():
+    """run_loops.HarmAcc (--acc_harm, PROTOKOLL 7.72): |m_k|^2 of known harmonics, no leak into other k, an event
+    cycle does not enter the stage sums, the samples after each step (theta = 2 pi (j + 1) / n) as in run_loops."""
+    torch = pytest.importorskip("torch")
+    import run_loops
+    K, n = 7, 256
+    amps = [(1, 0, 0.30, 0.2), (3, 1, 0.05, -1.0), (5, 2, 0.02, 0.5), (7, 0, 0.01, 2.0)]
+    h = run_loops.HarmAcc((2, 2, 2, 3), K, "cpu", torch.ones((2, 2, 2), dtype=torch.bool))
+    h.new_stage()
+    for cyc, calm in enumerate((True, False, True)):
+        for j in range(n):
+            th = 2 * math.pi * (cyc + (j + 1) / n)
+            amp = amps if calm else [(1, 0, 0.9, 0.0)]           # the event cycle has another motion
+            m, _ = _harm_signal(th, amp)
+            h.add(torch.as_tensor(m), torch.ones((2, 2, 2), dtype=torch.float64), th, 1.0, 1.0)
+        box = h.end_cycle(calm, cyc)
+        assert box["calm"] == calm and box["n"] == n
+    assert h.kept == [0, 2] and h.n_cycles == 3 and h.s_n == 2 * n
+    mk2 = (h.s_mk2 / len(h.kept)).numpy()[:, 0, 0, 0]
+    want = np.zeros(K)
+    for k, comp, a, ph in amps:
+        want[k - 1] += a * a
+    assert np.allclose(mk2, want, atol=1e-6)
+    assert float(h.s["p"][0, 0, 0]) == 2 * n
+
+
+def test_harmonic_loss_parseval():
+    """acc_reduce.harmonic_loss on |m_k|^2 from HarmAcc equals the mean Gilbert loss alpha mu0 Ms / gamma |dm/dt|^2
+    of a motion with harmonics up to K only (Parseval); the rest is 0."""
+    torch = pytest.importorskip("torch")
+    import run_loops
+    import acc_reduce
+    K, n, f, alpha, Ms = 7, 256, 3.0e7, 0.1, 1.5 / acc_reduce.MU0
+    w = 2 * math.pi * f
+    amps = [(1, 0, 0.30, 0.2), (2, 1, 0.04, 0.3), (3, 1, 0.05, -1.0), (7, 2, 0.01, 2.0)]
+    h = run_loops.HarmAcc((2, 2, 2, 3), K, "cpu", torch.ones((2, 2, 2), dtype=torch.bool))
+    h.new_stage()
+    p_mean = 0.0
+    for j in range(n):
+        th = 2 * math.pi * (j + 1) / n
+        m, dm = _harm_signal(th, amps)
+        p = alpha * acc_reduce.MU0 * Ms / acc_reduce.GAMMA * w * w * (dm[0, 0, 0] ** 2).sum()
+        p_mean += p / n
+        h.add(torch.as_tensor(m), torch.full((2, 2, 2), p, dtype=torch.float64), th, 1.0, p)
+    h.end_cycle(True, 0)
+    mk2 = (h.s_mk2 / len(h.kept)).numpy().reshape(K, -1).T
+    pk = acc_reduce.harmonic_loss(mk2, alpha, Ms, w)
+    assert abs(pk[0].sum() / p_mean - 1) < 1e-5
+    p_cell = float(h.s["p"][0, 0, 0]) / h.s_n
+    assert abs(p_cell / p_mean - 1) < 1e-12
