@@ -3441,6 +3441,53 @@ option (checked).
    sentences per plot, no explanation in titles, axis labels and legends).
    A list of changes goes to Chris before any change.
 
+### 7.74 Mesh check at d/l_ex 212, base microstructure: result (2026-10-12, PLAN 4.6)
+
+Chain M212 finished 2026-10-12 22:27 UTC: 24 of 24 jobs, none failed, all
+stages steady (≥ 2 calm cycles). Results fetched without *.pt (120 files,
+7.2 MB, md5 equal to the instance; runs/MANIFEST_m212.md5, local).
+eval_size.py → results/mesh212.md (rules of PLAN 4.6 B, fixed before the
+result). Base microstructure: L_eff 12 l_ex (K_eff 6.2 kJ/m³), r_p 0,
+φ 0.65, α 0.1, A 10 pJ/m. n 4 seeds per size and mesh; ± SE, 90 % CI (t).
+
+Mesh error P(dx 3) / P(dx 1.5), paired per seed:
+
+| size | 9 mT | 50 mT | 100 mT | Δβ (9 / 50 / 100 mT) |
+|---|---|---|---|---|
+| d/l_ex 212 (0.71 µm) | × 0.43 (CI 0.28 … 0.67) | × 0.91 (0.68 … 1.22) | × 1.54 (1.06 … 2.23) | +0.51 ± 0.13 (CI +0.20 … +0.81) |
+| d/l_ex 300 (1.0 µm) | × 1.48 (0.92 … 2.36) | × 1.40 (0.97 … 2.03) | × 1.25 (1.07 … 1.45) | −0.06 ± 0.05 (−0.19 … +0.07) |
+| K3 (d/l_ex 212, other microstructure) | × 0.63 | × 0.70 | × 0.87 | +0.12 ± 0.03 |
+
+Size lever 212 → 300 (value at 1 µm minus value at 0.71 µm, Welch):
+
+| output | fine mesh dx 1.5 | coarse mesh dx 3 | mesh share |
+|---|---|---|---|
+| β (9 / 50 / 100 mT) | −0.09 ± 0.12 (CI −0.35 … +0.17) | −0.65 ± 0.13 (−0.91 … −0.40) | −0.56 ± 0.14 (−0.86 … −0.26) |
+| ln P 9 mT | −0.23 ± 0.22 (−0.69 … +0.23) | +1.00 ± 0.30 (+0.34 … +1.67) | +1.24 ± 0.27 (+0.70 … +1.77) |
+| ln P 50 mT | −0.53 ± 0.09 | −0.09 ± 0.17 | +0.44 ± 0.20 |
+| ln P 100 mT | −0.38 ± 0.12 | −0.59 ± 0.11 | −0.21 ± 0.17 (n.s.) |
+
+Facts (no decision; PLAN 4.6: Chris decides):
+- At this microstructure the coarse mesh makes the size effect on β
+  larger: smaller particles raise β by 0.65 on dx 3, by 0.09 ± 0.12 (not
+  different from 0) on dx 1.5. The mesh share −0.56 has a 90 % CI that
+  excludes 0.
+- At 9 mT the coarse mesh gives the small particles × 0.43 of the fine-mesh
+  loss and the large ones × 1.48. On dx 3 the large particles lose × 2.7
+  more at 9 mT (ln +1.00), on dx 1.5 about the same (ln −0.23 ± 0.22).
+- The mesh error at 212 depends on the microstructure: Δβ +0.51 here,
+  +0.12 at K3 (L_eff 18, r_p 1.5, φ 0.69).
+- Limits (PLAN 4.6 C): one microstructure at high K_eff and without stress;
+  the gap (3.1 cells at 212, 4.4 at 300 on dx 3) changes together with the
+  size; dx 1.5 is not shown to be converged; 4 seeds.
+- Statements that this touches (coarse mesh): the A / size lever on β (main
+  result +0.57; fine-mesh estimate "≈ 67 %" from the confounded pair K3 /
+  base, 7.63), "at 9 mT small particles lose least" and the switch of the
+  best material with B (deck slides 2, 11 … 13, 16 … 19, 25). The main fit
+  gives the smallest A effect at high K_eff (+0.16 at 6.2 kJ/m³, averaged
+  over stress and packing); the large effect at low K_eff (+0.93) has no
+  fine-mesh check.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
