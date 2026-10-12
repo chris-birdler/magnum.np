@@ -51,12 +51,24 @@ seeds; CI = confidence interval.
 - Thus β − 2 = d ln(sin δ) / d ln B exactly (δ = loss angle, 0.33 …
   0.48°; confirms 7.22 / 7.24). Every lever on β acts through the growth
   of the loss angle with B.
-- Where the loss is (dx 3, hints): the 10 % of the cells with the largest
-  loss carry 69 … 76 % of P. The particle centre (r/R < 0.5, 12.5 % of the
-  volume) carries 38 % of P at 9 mT and 18 % at 150 mT; the particle rim
-  (r/R ≥ 0.8, 49 % of the volume) 22 % at 9 mT and 50 % at 150 mT
-  (confirms 7.23, 7.50). Thus at 150 mT the loss spreads over the whole
-  particle. The particles do not touch (gap ≥ 1.7 cells).
+- Where the loss is (dx 3, calm accumulator windows, 7.69): the 10 % of
+  the cells with the largest loss carry 69 … 76 % of P (each run ≥ 50 %).
+  The particle centre (r/R < 0.5, 12.5 % of the volume) carries 41 % of P
+  at 9 mT and 18 % at 150 mT. The particle rim (r/R ≥ 0.8, 49 % of the
+  volume) carries 21 % at 9 mT and 50 % at 150 mT. Thus the loss stays in
+  a few zones at every B, and with rising B the weight moves from the
+  centre to the rim. The zones lie mostly where 𝐦 is non-uniform (61 … 69 %
+  of P up to 70 mT, 55 % at 150 mT). The particles do not touch (gap ≥ 1.7
+  cells).
+- Loss channels (dx 3, α 0.1, 7.70, 7.71): the share of the cell loss
+  from the local motion at f falls from 0.88 at 9 mT to 0.40 at 150 mT.
+  Motion at other frequencies takes over (0.08 → 0.52). Jumps carry ≤ 12 %
+  on average (fine mesh ≤ 7 %). Exactly β = β_f + shift: the fall of the
+  share at f adds 0.25 … 0.33 to β, and the A effect on β (+0.41 ± 0.09)
+  sits mostly in β_f, the growth of the loss at f (+0.33 ± 0.07). At
+  α 0.01 the share at f is only ≈ 0.1 at all B: the split depends strongly
+  on the damping. The nature of the other frequencies (harmonics, local
+  precession, slow drift) is open; option O2 (7.71) measures it.
 - The switched volume per half cycle grows about ∝ B (0.65 % at 9 mT,
   9.8 % at 150 mT) and follows β (r = 0.91; partly by construction, 7.46).
 - Events (energy release in the first measured cycles) are the end of a
@@ -3074,7 +3086,8 @@ fit: geometric mean over the design points (stress and packing averaged),
 **Where the loss is** (median of all runs, per volume of particle
 material): particle centre (r < R/2) 19.8 W/cm³ at 9 mT and 3831 W/cm³ at
 150 mT; rim (r > 0.8 R) 3.3 and 2654 W/cm³; whole particle 7.0 and 2634
-W/cm³. Centre / rim: × 6 at 9 mT, × 1.4 at 150 mT.
+W/cm³. Centre / rim: × 6 at 9 mT, × 1.4 at 150 mT. The loss does not
+spread evenly at high B (correction in 7.69).
 
 **Loss angle by A** (thirds, median): high A sin δ 0.0036 → 0.0096 (9 →
 150 mT, × 2.7); low A 0.0078 → 0.0068.
@@ -3096,6 +3109,231 @@ particle volume): axis at 37° to the drive 7.4 / 3608 W/cm³, at 79° 5.5 /
 A 10 pJ/m, K_eff 6.2 kJ/m³ to A 18.3 pJ/m, K_eff 1.0 kJ/m³): β 2.15 → 2.42,
 Δβ +0.27 (+0.15 … +0.41). The value +0.40 for A × 2 (7.66) needs an
 extrapolation beyond the design.
+
+### 7.69 Where the loss is: a few zones at every B (2026-10-12, correction of 7.68 and §0)
+
+Chris saw on slide 8 that the maps do not show "first in the vortex core,
+at high B everywhere". Single zones dominate, and at 9 mT a hot zone sits
+at the rim of a neighbour particle. Check with the cell loss of all 116
+runs (acc.json, calm accumulator windows only, see 7.70; n 70 / 102 / 114
+runs at 9 / 50 / 150 mT; coarse mesh; median and quartiles):
+
+| share of the loss | volume | 9 mT | 50 mT | 150 mT |
+|---|---|---|---|---|
+| 10 % of the cells with the highest loss | 10 % | 69 % (63 … 72) | 76 % (72 … 78) | 73 % (70 … 74) |
+| 10 % with the largest texture | 10 % | 61 % (55 … 64) | 69 % (65 … 72) | 55 % (51 … 60) |
+| centre, r < R/2 | 12.5 % | 41 % (36 … 46) | 28 % (24 … 32) | 18 % (16 … 20) |
+| rim, r ≥ 0.8 R | 48.8 % | 21 % (18 … 24) | 39 % (33 … 42) | 50 % (46 … 52) |
+
+- Texture = |∇⟨𝐦⟩| of the loop-mean 𝐦, smoothed inside each particle
+  with σ = L_eff / 2 (acc_reduce.py).
+- Each run has ≥ 50 % of its loss in its hottest 10 % (minimum at 9 mT).
+- The centre has a higher loss density than the rim in 96 … 100 % of the
+  runs at each B (the hottest 10 % have a higher density by definition).
+- Loss of the motion at f only (p_fund_share, what the snapshot maps
+  show): rim 20 / 30 / 38 % at 9 / 50 / 150 mT against 21 / 39 / 50 % of
+  the full loss. Thus the loss at other frequencies (7.70) lies more at the
+  rim.
+- Map simulation: K1_2 has the least concentrated loss of the runs with
+  a calm window at 9 and 20 mT (50 % in its hottest 10 %, rank 1 of 70 and
+  of 98). The deck now uses
+  S041 (A 12 pJ/m, K_eff 2.8 kJ/m³, K_σ 0.9 K_eff, packing 66 %), close
+  to the median curve of the concentration, on slides 7, 8 and 10.
+- Cut of S041: 74 / 62 / 48 % of the 10 % cut cells with the highest q lie
+  in the 10 % with the largest texture of the cut at 9 / 50 / 150 mT (10 %
+  if there were no link). In K1_2 the values were 74 / 71 / 49 %. The hot
+  zone of K1_2 at 9 mT, bottom left, lies on the line where the
+  out-of-plane component of the loop-mean 𝐦 changes its sign. Its type
+  (vortex core or wall) is not determined.
+- Method of the maps: q = Σ |Δ𝐦|² over 16 snapshots. q agrees with |𝐦₁|²,
+  the loss of the motion at f (correlation 0.93 … 1.00 in the cut of S041,
+  0.95 … 1.00 for K1_2). In S041 this motion carries 92 / 46 / 45 % of the
+  loss at 9 / 50 / 150 mT. The real cell-loss slices of the old runs
+  overflowed in float16 (old format, fixed in 7.61). The runs K1A10
+  (queue) give real loss maps.
+- Colour scale of the maps: before this entry, 0 … 4 with white at 2 ×
+  the mean, so cells with 1 … 2 × the mean showed blue and the text "blue
+  = less than the mean" was wrong. Now white = the mean (TwoSlopeNorm).
+- Correction: "at 150 mT the loss spreads over the whole particle" (§0,
+  7.68) is wrong. 7.23 says that out of the textured regions the bulk
+  rotation takes over. This reading is also corrected here: the loss
+  stays in a few zones at every B. With rising B the weight moves from
+  the centre to the rim. Cause of the error: the conclusion came from rim
+  share = volume share, without the concentration number in the same
+  paragraph.
+- Deck: slide 8 new (maps with the border of the texture zones, shares
+  against B with quartiles, terms defined, statements reduced to the
+  numbers), slide 25 (conclusion) with the measured result in its own
+  bullet. A context-free review (2026-10-12) found 15 points. All points
+  on slides 8 and 25 and in this record are done. Its point on slide 10
+  (turn angle) is done: one sentence links the two slides.
+
+### 7.70 Loss channels: with rising B the loss moves to other frequencies (2026-10-12)
+
+Question of Chris: does the loss start at the drive frequency f and go
+more and more into harmonics? Go for options A + B + C (local, no cost).
+
+**Method correction first (calm windows).** acc_reduce.py sums all
+cycles from cycle 2 on (5 … 10 cycles per stage). The steady rule for P
+uses calm cycles only. Windows with an event cycle (eval_events, 7.53):
+46 / 18 / 25 / 14 / 4 / 7 / 2 of 116 at 9 / 20 / 35 / 50 / 70 / 100 /
+150 mT. In these windows R1 is lower (median 0.71 against 0.91 at 9 mT).
+- Fix (deck_data.py, acc_stages): all values from acc.json (R1, loss
+  shares, region densities) use calm windows only. Individual cycles
+  cannot be removed from the sums afterwards. Future runs should store the
+  accumulators per cycle.
+- R1, median, calm windows: 0.91 / 0.75 / 0.59 / 0.50 / 0.47 / 0.44 / 0.40
+  (all windows: 0.86 / 0.72 / 0.56 / 0.50 / 0.47 / 0.44 / 0.40). The fall
+  stays.
+- jumps_block read acc.json of 13 reruns from the old folder (orig). It
+  now reads the folder of the steady analysis.
+
+**Channels.** Per run and amplitude (deck_data.py, channels_block):
+- f: R1 = share of the cell loss from the local motion at f (calm window).
+- jumps: A = energy of the box dissipation p_dis(t) above its smooth
+  periodic curve Ps (mean cycle, Fourier k ≤ 6), last 3 calm cycles,
+  256 samples per cycle. A = RF / 2 exactly, because P − Ps sums to zero.
+  It counts bursts shorter than ≈ T / 13 ≈ 2.6 ns.
+- other: 1 − R1 − A = smooth local motion at other frequencies (harmonics
+  3f, 5f …, slow drift). Harmonics and slow drift are not separated.
+- C = RN / 2 = energy that differs from cycle to cycle. C is part of A
+  (P − Ps contains P − Pm). Also smooth motion at 5f and above gives
+  components of p(t) above k = 6 and goes into A. A comes from the box
+  sum, where bursts of different cells partly cancel: a lower limit of the
+  local jump energy. "other" is the rest, so the 3 shares add to 1 by
+  construction (minimum of "other" in a run: 0.014).
+- B: energy share Eev and time share ev of the sample intervals in which
+  n60 changes (neighbour pairs > 60°: vortex cores, Bloch points, steep
+  walls).
+
+Mean channel shares (runs with both values valid; n 70 / 102 / 114 at
+9 / 50 / 150 mT):
+
+| group | channel | 9 mT | 50 mT | 150 mT |
+|---|---|---|---|---|
+| all | f | 88 % | 52 % | 40 % |
+| all | other | 8 % | 37 % | 52 % |
+| all | jumps | 3 % | 12 % | 8 % |
+| low A (9.7 … 12.5 pJ/m) | f / other / jumps | 86 / 10 / 4 % | 51 / 39 / 10 % | 40 / 53 / 7 % |
+| high A (15.8 … 20.4 pJ/m) | f / other / jumps | 90 / 7 / 3 % | 52 / 35 / 13 % | 39 / 52 / 9 % |
+
+Growth exponent of the loss density in each channel (fit 9 … 150 mT,
+mean ± SE, runs with all 7 amplitudes valid):
+
+| group | n | f | other | jumps | all (β) |
+|---|---|---|---|---|---|
+| all | 39 | 1.85 ± 0.03 | 2.89 ± 0.08 | 2.76 ± 0.11 | 2.14 ± 0.04 |
+| low A | 11 | 1.68 ± 0.06 | 2.52 ± 0.13 | 2.22 ± 0.17 | 1.92 ± 0.08 |
+| high A | 17 | 2.00 ± 0.03 | 3.22 ± 0.10 | 3.24 ± 0.13 | 2.33 ± 0.04 |
+
+The β of these subsets agrees with the β of the full thirds (1.94 / 2.34).
+
+- Jumps carry ≤ 12 % on average (≤ 13 % in the high-A third), single
+  runs up to 23 %. C is ≤ 7 % on average.
+- B: n60 changes in 17 … 80 % of the sample intervals (9 → 150 mT).
+  These intervals carry 18 … 82 % of the loss, about the same as their
+  time share (ratio 1.08 … 1.11 at 9 mT). B gives no useful limit: on the
+  coarse mesh n60 changes also when a core moves smoothly by one cell.
+- Spearman correlation of β with ln(R1(150) / R1(9)), calm windows:
+  ρ = −0.62 (p 1·10⁻⁸, n 70). Partly by construction, because
+  β = β_f − d ln R1 / d ln B (7.71).
+- Mesh (K3, n 5 … 6 per mesh and B): R1 at 20 / 70 mT 0.78 / 0.48 (dx 3),
+  0.70 / 0.57 (dx 1.5). Jumps (RF / 2) on the fine mesh 4 … 7 % at all B,
+  on the coarse mesh up to 15 % at 50 … 70 mT. Thus the jump peak is
+  mostly an effect of the mesh. The fall of R1 exists on both meshes and
+  is smaller on the fine mesh.
+- The source delivers power only at f (H is a sine). Inside the particles
+  a growing share of this power dissipates through local motion at other
+  frequencies. The statement "its rising share lifts β above 2" was too
+  strong: see 7.71 (β = β_f + shift).
+- Answer to Chris: yes in the direction, with "harmonics" → "motion at
+  other frequencies (not separated)". Jumps are a small channel.
+- Deck: new slide 9 (channel shares for the low-A and high-A thirds,
+  exponent table). Slide 21 (regime) now shows the jump share as the
+  energy share RF / 2 with the same name as slide 9 (before: RF, labelled
+  "jump share of the dissipation"). Glossary: "loss channel".
+- Open: slides 9 and 21 overlap (R1 and jumps). Decision for Chris: merge,
+  or keep slide 21 as the mesh check. The direct per-cell split of the
+  other channel into harmonics and slow drift needs per-cell accumulators
+  at 3f, 5f … (option D, not started).
+
+### 7.71 Loss channels: local checks O1, second review, pause before C′ (2026-10-12)
+
+Chris asked how secure the channel split of 7.70 is. Go for O1 (local
+checks now), and for O2 (extended per-cell accumulators) before C′, with a
+pause of the C′ chain. Script: eval_channels.py → results/loss_channels_o1.md.
+
+**Identity β = β_f + shift.** P_f = R1 · P, thus d ln P / d ln B =
+d ln P_f / d ln B − d ln R1 / d ln B exactly (check: residual 10⁻¹⁵).
+Runs with all 7 amplitudes calm, mean ± SE:
+
+| group | n | β | β_f | shift |
+|---|---|---|---|---|
+| all | 39 | 2.14 ± 0.04 | 1.85 ± 0.03 | 0.29 ± 0.01 |
+| low A | 11 | 1.92 ± 0.08 | 1.68 ± 0.06 | 0.25 ± 0.02 |
+| high A | 17 | 2.33 ± 0.04 | 2.00 ± 0.03 | 0.33 ± 0.01 |
+| high − low (Welch SE) | | +0.41 ± 0.09 | +0.33 ± 0.07 | +0.08 ± 0.03 |
+
+- The fall of the share at f adds 0.25 … 0.33 to β in all materials.
+- The A effect on β sits mostly (≈ 80 %) in β_f, the growth of the loss
+  of the motion at f. High A: β_f ≈ 2.0, a constant loss angle of the
+  local motion at f. Low A: β_f ≈ 1.7, this loss angle falls with B.
+- Factor effects (OLS, HC3, range effect, n 39): A on β_f +0.42 ± 0.08,
+  on the shift +0.10 ± 0.03. K_eff on β_f +0.14 ± 0.06, on the shift
+  +0.08 ± 0.03. The A × K_eff term acts on β_f (+0.41 ± 0.11).
+
+**Where the rest 1 − R1 sits** (share of the non-f loss per zone, median,
+calm windows; in brackets the share of the loss at f):
+- 10 % cells with the highest loss: 73 … 88 % (55 … 68 %).
+- 10 % with the largest texture: 63 … 84 % (43 … 60 %).
+- Rim (49 % of the volume): 28 % at 9 mT → 57 % at 150 mT (20 → 38 %).
+- Thus the loss at other frequencies is more concentrated than the loss at
+  f, in the zones of non-uniform 𝐦 and with rising B at the rim.
+
+**Damping** (centre C0 … C7, same microstructures, last 3 cycles):
+
+| B (mT) | 10 | 21 | 51 | 101 | 151 |
+|---|---|---|---|---|---|
+| R1, α 0.1 (median, calm n 6 … 8) | 0.94 | 0.74 | 0.53 | 0.46 | 0.43 |
+| R1, α 0.01 (median of 8, all windows) | 0.17 | 0.10 | 0.11 | 0.09 | 0.08 |
+| jumps A, α 0.1 / α 0.01 | 0.012 / 0.13 | 0.08 / 0.12 | 0.11 / 0.12 | 0.09 / 0.09 | 0.07 / 0.09 |
+
+- At α 0.01 only 0 … 4 of 8 windows are steady (calm R1 0.09 … 0.12,
+  n 1 … 3). Jumps and loop-to-loop changes are ≈ 10 %. Thus ≈ 80 % of the
+  loss at α 0.01 is smooth motion at other frequencies, already at 20 mT.
+- Hypothesis: at small damping the local motion rings at its own GHz
+  frequencies (precession), and this energy is lost to the source whatever
+  α is. This agrees with P falling only × 0.6 … 0.7 for α × 0.1 (7.68).
+  Not shown: the data cannot separate harmonics of f from precession.
+
+**Second context-free review** (21 points) of slides 7 … 10, 21, 25, 27
+and of 7.69 / 7.70. Done:
+- Slide 9: the statement "the rising share of other frequencies lifts β
+  above 2" replaced by the identity table (low A, high A, difference).
+  Jumps defined as "energy of the total loss above its smooth periodic
+  curve: fast bursts and loop-to-loop changes, a lower limit". Other
+  frequencies "harmonics, local precession, slow drift: not separated".
+  Cycle sets, n per B, single-run maximum (23 %), mesh effect on the jump
+  peak, α 0.01 limit stated. Table without the red highlight (red = jumps).
+  n60 and Spearman bullets removed from the slide.
+- Slide 8: subtitle "all samples of loops 2 … 6, windows with an event
+  left out". "The pattern of q agrees with the loss at f" (q also contains
+  3f and 5f).
+- Slide 21: "share of the loss at f" (axis), (a) rest = other frequencies
+  and jumps, (b) the same jump definition as slide 9.
+- Slide 7: caption for S041 (core in the centre particle, corner particles
+  with 𝐦 mostly out of the cut plane).
+- Slide 25: measured result with α 0.1 and the identity. Slide 2: new row
+  "Loss mechanism" (the cells do not respond linearly; depends on the
+  damping). Glossary: "loss channel" with the jump definition.
+- Not done: slide 8 title keeps "mostly where 𝐦 is non-uniform" (55 % at
+  150 mT is still the larger part; the numbers are on the slide).
+
+**Pause before C′.** /root/chain_freq.sh now waits for runs/PAIR_DONE and
+for runs/FREQ_GO (instance/chain_freq.sh). The old waiting process was
+stopped by its PID. Its child sleep held the lock and was also stopped
+by its PID. The new process (20:57 UTC) waits. FREQ_GO is written only
+after O2 is tested and /root/freq_commit points to the O2 commit.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

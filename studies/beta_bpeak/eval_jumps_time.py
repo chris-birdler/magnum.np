@@ -89,6 +89,7 @@ def measures(P, N60, dM=None):
     pint = 0.5 * (pf + np.concatenate([pf[:1], pf[:-1]])).reshape(n, -1)
     dn = np.abs(np.diff(nf, prepend=nf[0])).reshape(n, -1)
     out["ev"] = float((dn > 0).mean())
+    out["Eev"] = float(P[dn > 0].sum() / tot)               # energy share of these intervals (compare with ev)
     r, d = (pint - pint.mean(0)).ravel(), (dn - dn.mean(0)).ravel()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")

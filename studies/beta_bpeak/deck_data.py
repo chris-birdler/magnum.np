@@ -42,6 +42,27 @@ N_BOOT = 1000
 LEX_A10 = 3.342                       # nm, l_ex at A = 10 pJ/m and Js = 1.5 T
 
 
+def acc_stages(d):
+    """acc.json stages of run folder d, sorted by B, each with "calm": True if no cycle of the accumulator window
+    (cycles_from … cycles_from + n_samples / 256 − 1) is an event cycle (eval_events.is_event, PROTOKOLL 7.53).
+    acc_reduce.py sums all cycles of the window, so a window with an event cycle mixes the event into R1 and into the
+    loss shares; the steady rule for P uses calm cycles only. Thus only calm windows are used (PROTOKOLL 7.70)."""
+    acc = json.loads((d / "acc.json").read_text())["stages"]
+    sm = {s["name"]: s for s in json.loads((d / "summary.json").read_text())["stages"]}
+    out = []
+    for a in sorted(acc, key=lambda s: s["B_peak_mT"]):
+        c0, n = a["cycles_from"], a["n_samples"] // EJ.N_SAMPLES
+        cyc = [c for c in sm[a["stage"]]["cycles"] if c0 <= c["cycle"] < c0 + n]
+        assert len(cyc) == n, (d.name, a["stage"], c0, n)
+        out.append(dict(a, calm=not any(EV.is_event(c) for c in cyc)))
+    return out
+
+
+def acc_calm(recs, value):
+    """[run, amplitude] array of value(stage) from the calm accumulator windows, NaN for the others."""
+    return np.array([[value(s) if s["calm"] else np.nan for s in acc_stages(RUNS / r["name"])] for r in recs])
+
+
 def real(r):
     """Real units at d = 1 µm (reading 1 of PLAN 4.0): A from d/l_ex, cube edge L_eff in nm."""
     dl = math.exp(r["lnd"])
@@ -249,6 +270,7 @@ def main():
     out["events"] = events_block(recs, to_P)
     out["beta_fits"] = beta_fits_block(recs)
     out["physics"] = physics_block(recs)
+    out["channels"] = channels_block(recs, to_P)
     out["alpha_steady"] = alpha_block(to_P)
     out["conditioning"] = cond_block()
     (HERE / "results" / "deck_data.json").write_text(json.dumps(out, indent=1))
@@ -388,18 +410,27 @@ def physics_block(recs):
         out["groups"][lab] = {"n": int(sel.sum()), "A": [float(A[sel].min()), float(A[sel].max())],
                               "mu": np.median(mu[sel], 0).tolist(), "sin": np.median(sd[sel], 0).tolist(),
                               "sin_q": [np.percentile(sd[sel], 25, 0).tolist(), np.percentile(sd[sel], 75, 0).tolist()]}
-    sh = {k: [] for k in ("r<0.5", "r>=0.8", "p top 10%")}
-    for r in recs:
-        acc = sorted(json.loads((RUNS / r["name"] / "acc.json").read_text())["stages"], key=lambda s: s["B_peak_mT"])
-        for k in sh:
-            sh[k].append([s["where"][k]["p_share"] for s in acc])
-    out["where"] = {k: np.median(np.array(v), 0).tolist() for k, v in sh.items()}
+    keys = ("r<0.5", "r>=0.8", "p top 10%", "texture top 10%")
+    sh = {k: acc_calm(recs, lambda s, k=k: s["where"][k]["p_share"]) for k in keys}       # calm windows only
+    vs = {k: acc_calm(recs, lambda s, k=k: s["where"][k]["vol_share"]) for k in keys}
+    out["where_n"] = np.sum(np.isfinite(sh["r<0.5"]), 0).tolist()
+    out["where"] = {k: np.nanmedian(v, 0).tolist() for k, v in sh.items()}
+    out["where_q"] = {k: [np.nanpercentile(v, 25, 0).tolist(), np.nanpercentile(v, 75, 0).tolist()] for k, v in sh.items()}
+    out["where_min"] = {k: np.nanmin(v, 0).tolist() for k, v in sh.items()}
+    # share of the loss of the motion at f (fundamental) in each zone: what the snapshot maps show
+    out["where_fund"] = {k: np.nanmedian(acc_calm(recs, lambda s, k=k: s["where"][k]["p_fund_share"]), 0).tolist()
+                         for k in keys}
     out["where_volume"] = {"r<0.5": 0.125, "r>=0.8": 0.488}   # volume shares of a sphere: 0.5³ and 1 − 0.8³
+    out["where_volume_cells"] = {k: float(np.nanmedian(v)) for k, v in vs.items()}   # the same on the cell grid
+    # fraction of the runs in which the centre has a higher loss density than the rim, per amplitude
+    ok = np.isfinite(sh["r<0.5"])
+    out["centre_gt_rim"] = [float(np.mean((sh["r<0.5"][:, j] / 0.125 > sh["r>=0.8"][:, j] / 0.488)[ok[:, j]]))
+                            for j in range(ok.shape[1])]
     # loss density in a region, per volume of particle material (W/cm³): share × P(core volume) / (φ × volume share)
     Pcore = np.array([[s["W_loop"] * F_HZ / 1e6 for s in x["stages"]] for x in R])
     phi = np.array([x["cfg"]["phi_vox"] for x in R])
     out["P_particle_median"] = np.median(Pcore / phi[:, None], 0).tolist()
-    out["region_density"] = {k: np.median(np.array(sh[k]) * Pcore / (phi[:, None] * out["where_volume"][k]), 0).tolist()
+    out["region_density"] = {k: np.nanmedian(sh[k] * Pcore / (phi[:, None] * out["where_volume"][k]), 0).tolist()
                              for k in ("r<0.5", "r>=0.8")}
     q = []
     for x in R:
@@ -498,14 +529,10 @@ def jumps_block(recs):
         for key in ("RF", "BF"):
             v = [M[r["name"]][k][key] for r in recs if M[r["name"]][k] is not None and M[r["name"]][k]["steady"]]
             out["sobol"][key].append([float(np.median(v)), float(np.percentile(v, 25)), float(np.percentile(v, 75)), len(v)])
-    r1 = []
-    for r in recs:
-        f = RUNS / r["orig"] / "acc.json"
-        st = sorted(json.loads(f.read_text())["stages"], key=lambda x: x["B_peak_mT"])
-        r1.append([x["R1"] for x in st])
-    r1 = np.array(r1)
-    out["sobol"]["R1"] = [[float(np.median(r1[:, k])), float(np.percentile(r1[:, k], 25)), float(np.percentile(r1[:, k], 75)),
-                           len(r1)] for k in range(r1.shape[1])]
+    r1 = acc_calm(recs, lambda s: s["R1"])                    # folder of the steady analysis, calm windows (7.70)
+    out["sobol"]["R1"] = [[float(np.nanmedian(r1[:, k])), float(np.nanpercentile(r1[:, k], 25)),
+                           float(np.nanpercentile(r1[:, k], 75)), int(np.isfinite(r1[:, k]).sum())]
+                          for k in range(r1.shape[1])]
     for b in KF.AMPS:
         e = {}
         for dx in ("3", "15"):
@@ -518,9 +545,91 @@ def jumps_block(recs):
                         rf.append(m["RF"])
                         bf.append(m["BF"])
                 if (d / "acc.json").exists():
-                    r1v.append(json.loads((d / "acc.json").read_text())["stages"][0]["R1"])
+                    s0 = acc_stages(d)[0]
+                    if s0["calm"]:
+                        r1v.append(s0["R1"])
             e[dx] = {"RF": rf, "BF": bf, "R1": r1v}
         out["K3"][str(b)] = e
+    return out
+
+
+def channels_block(recs, to_P):
+    """Loss channels per run and amplitude (PROTOKOLL 7.70; Chris 2026-10-12, options A + B + C):
+      f      R1 = share of the cell loss from the local motion at the drive frequency (acc.json, calm windows only)
+      jumps  A = energy above the smooth periodic curve of the box dissipation p_dis(t) = RF / 2 (exact: P − Ps sums
+             to zero over the kept cycles, Ps = mean cycle with Fourier k ≤ 6); bursts shorter than ≈ T / 13
+      other  1 − R1 − A: smooth local motion at other frequencies (harmonics, slow non-periodic motion)
+      C      non-repeating energy (cycle to cycle) = RN / 2, part of the jumps and of the slow non-periodic motion
+      B      energy share Eev and time share ev of the sample intervals in which n60 (neighbour pairs > 60°: vortex
+             cores, Bloch points, steep walls) changes
+    A, B, C from the last 3 calm cycles (eval_jumps_time.py, steady-tail rule), R1 from the calm accumulator window.
+    Means over the runs (the three channels add to 1 in each run), SE, quartiles; per A third (as physics_block).
+    Exponents: power-law fit 9 … 150 mT of the loss density in each channel, runs with all 7 amplitudes valid."""
+    from scipy import stats
+    n = len(AD.AMPS_MT)
+    M = {r["name"]: EJ.run_measures(RUNS / r["name"], n) for r in recs}
+    get = lambda key: np.array([[m[key] if m is not None and m["steady"] else np.nan for m in M[r["name"]]] for r in recs])
+    R1 = acc_calm(recs, lambda s: s["R1"])
+    J = get("RF") / 2.0
+    C = get("RN") / 2.0
+    ch = {"f": R1, "jumps": J, "other": 1.0 - R1 - J, "C": C, "Eev": get("Eev"), "ev": get("ev")}
+    A = np.array([real(r)["A_pJm"] for r in recs])
+    q1, q2 = np.quantile(A, [1 / 3, 2 / 3])
+    P = np.array([[math.exp(r["lnw@%gmT" % m]) * to_P for m in AD.AMPS_MT] for r in recs])
+    lnB = np.log(AD.AMPS_MT)
+    beta = np.array([np.polyfit(lnB, np.log(p), 1)[0] for p in P])
+    out = {"amps": list(AD.AMPS_MT), "groups": {}}
+    for lab, sel in (("all", A > 0), ("low A", A <= q1), ("high A", A > q2)):
+        g = {}
+        for k, v in ch.items():
+            x = v[sel]
+            ok = np.isfinite(x)
+            g[k] = {"mean": np.nanmean(x, 0).tolist(), "median": np.nanmedian(x, 0).tolist(),
+                    "se": (np.nanstd(x, 0, ddof=1) / np.sqrt(ok.sum(0))).tolist(),
+                    "q": [np.nanpercentile(x, 25, 0).tolist(), np.nanpercentile(x, 75, 0).tolist()],
+                    "n": ok.sum(0).tolist()}
+        # mean channel shares on the runs with all three channels valid at that amplitude (they add to 1)
+        both = np.isfinite(R1[sel]) & np.isfinite(J[sel])
+        g["stack"] = {k: [float(ch[k][sel][both[:, j], j].mean()) for j in range(n)] for k in ("f", "other", "jumps")}
+        g["stack_n"] = both.sum(0).tolist()
+        full = both.all(1)
+        ex = {}
+        for k in ("f", "other", "jumps"):
+            e = np.array([np.polyfit(lnB, np.log(np.clip(ch[k][sel][i], 1e-6, None) * P[sel][i]), 1)[0]
+                          for i in np.where(full)[0]])
+            ex[k] = {"mean": float(e.mean()), "se": float(e.std(ddof=1) / math.sqrt(len(e))), "n": int(len(e))}
+        ex["total"] = {"mean": float(beta[sel][full].mean()), "se": float(beta[sel][full].std(ddof=1) / math.sqrt(full.sum())),
+                       "n": int(full.sum())}
+        g["exponent"] = ex
+        g["n_runs"] = int(sel.sum())
+        out["groups"][lab] = g
+    ok = np.isfinite(R1[:, 0]) & np.isfinite(R1[:, -1])
+    rho, pv = stats.spearmanr(beta[ok], np.log(R1[ok, -1] / R1[ok, 0]))
+    out["beta_vs_R1drop"] = {"rho": float(rho), "p": float(pv), "n": int(ok.sum())}   # partly by construction (7.71)
+    # identity β = β_f + shift, β_f = exponent of R1 · P, shift = −d ln R1 / d ln B (PROTOKOLL 7.71)
+    full = np.isfinite(R1).all(1)
+    bf = np.array([np.polyfit(lnB, np.log(R1[i] * P[i]), 1)[0] if full[i] else np.nan for i in range(len(recs))])
+    sh = np.array([-np.polyfit(lnB, np.log(R1[i]), 1)[0] if full[i] else np.nan for i in range(len(recs))])
+    ms = lambda v: {"mean": float(np.mean(v)), "se": float(np.std(v, ddof=1) / math.sqrt(len(v))), "n": int(len(v))}
+    dec = {}
+    for lab, sel in (("all", A > 0), ("low A", A <= q1), ("high A", A > q2)):
+        s = sel & full
+        dec[lab] = {"beta": ms(beta[s]), "beta_f": ms(bf[s]), "shift": ms(sh[s])}
+    lo, hi = (A <= q1) & full, (A > q2) & full
+    dec["diff"] = {k: [float(np.mean(v[hi]) - np.mean(v[lo])),
+                       float(math.sqrt(np.var(v[hi], ddof=1) / hi.sum() + np.var(v[lo], ddof=1) / lo.sum()))]
+                   for k, v in (("beta", beta), ("beta_f", bf), ("shift", sh))}
+    out["decomp"] = dec
+    jr = (J[np.isfinite(J)])
+    out["jumps_single_max"] = float(jr.max())
+    # damping: centre C0 … C7 at α 0.01, R1 of all windows (few calm windows), median per amplitude
+    r1a = []
+    for i in range(8):
+        d = RUNS / ("C%d_a001" % i)
+        if (d / "acc.json").exists():
+            r1a.append([s["R1"] for s in acc_stages(d)])
+    r1a = np.array(r1a)
+    out["alpha001_R1"] = {"median": np.median(r1a, 0).tolist(), "n": int(len(r1a))}
     return out
 
 

@@ -4,11 +4,14 @@
 # (polls for runs/PAIR_DONE; chain_pair.sh writes it only after a queue exit code 0, else this script waits). Then it
 # removes the pair chain from onstart, takes and keeps the pair lock, pins its own commit (/root/freq_commit), runs the
 # queue and the post-processing of the accumulators. A stop file (runs/STOP_NEW_JOBS) stops the queue before any job.
+# Pause (Chris 2026-10-12, PROTOKOLL 7.70): it also waits for runs/FREQ_GO, written by hand after the extended
+# accumulators (option O2) are tested and /root/freq_commit points to that commit.
 #   install: echo <commit> > /root/freq_commit; cp chain_freq.sh /root/; add the onstart line; start with nohup.
 B=/root/magnum.np/studies/beta_bpeak
 exec 3> /root/freq_chain.lock
 flock -n 3 || { echo "$(date '+%F %T') freq chain already running"; exit 0; }
 until [ -f $B/runs/PAIR_DONE ]; do sleep 300; done
+until [ -f $B/runs/FREQ_GO ]; do sleep 300; done
 sed -i "/chain_pair.sh/d" /root/onstart.sh
 exec 4> /root/pair_chain.lock
 flock 4                                  # waits for a pair chain that a reboot restarted; held until the end
