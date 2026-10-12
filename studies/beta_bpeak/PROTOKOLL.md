@@ -3014,6 +3014,81 @@ Queue on the instance (2026-10-12 ≈ 19:40 UTC): mesh check d/l_ex 212 →
 damping runs at 9 / 20 mT (PLAN 4.7) → pair K1A10 (PLAN 4.8) → frequency
 test C′ (PLAN 4.8); every chain waits for the DONE file of the previous one.
 
+### 7.68 Results computed for the deck: loss densities, best material, field cuts (2026-10-12)
+
+Source: deck_data.py → results/deck_data.json (commits c4f2ec8 … d1b7c8f);
+main fit (Gamma GLM, 15 terms, steady loops with reruns), coarse mesh, P per
+core volume in W/cm³ at 30 MHz. "Small particles" = A 20 pJ/m at d = 1 µm
+(= 0.71 µm at A 10 pJ/m), "large" = A 10 pJ/m at 1 µm. Curves of the main
+fit: geometric mean over the design points (stress and packing averaged),
+95 % intervals by bootstrap over the runs.
+
+**A low β does not mean a low loss density.**
+- Four materials (corners of A and K_eff):
+
+| material | β (9 … 150 mT) | P at 9 mT | P at 50 mT | P at 150 mT |
+|---|---|---|---|---|
+| small particles, K_eff 1.0 kJ/m³ | 2.55 | 2.0 | 137 | 2259 |
+| small particles, K_eff 6.2 kJ/m³ | 2.30 | 3.0 | 140 | 1750 |
+| large particles, K_eff 1.0 kJ/m³ | 1.61 | 11.9 | 201 | 1170 |
+| large particles, K_eff 6.2 kJ/m³ | 2.15 | 4.2 | 174 | 2060 |
+
+- β alone does not rank the materials: small particles with high K_eff
+  (β 2.30) lose less than large particles with high K_eff (β 2.15) at all B.
+- Simulations in thirds by β (geometric means): low-β third (β 1.82) 7.7 /
+  193 / 1363 W/cm³, high-β third (β 2.38) 2.8 / 168 / 2005 W/cm³ at 9 / 50 /
+  150 mT; ratio high / low × 0.36 / 0.87 / 1.47; crossing ≈ 59 mT.
+
+**The best material depends on B_max** (lowest P on the A × K_eff grid):
+
+| B_max | best A | best K_eff | β | P | worst / best | fine-mesh pair A 20 / A 10 (K3 / base) |
+|---|---|---|---|---|---|---|
+| 9 mT | 19.9 pJ/m | 1.0 kJ/m³ | 2.55 | 2.0 W/cm³ | × 6.0 | × 0.82 (n.s.) |
+| 50 mT | 19.9 pJ/m | 2.2 kJ/m³ | 2.38 | 134 W/cm³ | × 1.7 | × 1.59 (hint, reversed) |
+| 100 mT | 9.9 pJ/m | 1.5 kJ/m³ | 1.69 | 591 W/cm³ | × 1.6 | × 1.91 |
+| 150 mT | 9.9 pJ/m | 1.0 kJ/m³ | 1.61 | 1170 W/cm³ | × 1.9 | not checked |
+
+- The optimum lies at the edge of the studied range in every case.
+- The mesh error acts also on the ratios between particle sizes: the
+  switch point of the best material is ≈ 70 … 100 mT on the coarse mesh and
+  below 50 mT for the only fine-mesh pair (which also differs in K_eff,
+  stress and packing).
+
+**Loss densities along the levers (W/cm³).**
+- A 10 → 20 pJ/m (ends, others averaged): 7.5 → 2.4 at 9 mT, 1423 → 1874
+  at 150 mT. Particle size 1 → 0.71 µm at K_eff 2.5 kJ/m³: 9.0 → 3.1 at
+  10 mT, 609 → 725 at 100 mT.
+- Packing 55 → 69 %: 3.9 → 5.3 at 9 mT (× 1.08 without the dilution), 1630
+  → 1831 at 150 mT.
+- Damping (centre, steady loops ≥ 2): α 0.1 → 0.01: 173 → 127 at 50 mT,
+  1456 → 898 at 150 mT.
+
+**Where the loss is** (median of all runs, per volume of particle
+material): particle centre (r < R/2) 19.8 W/cm³ at 9 mT and 3831 W/cm³ at
+150 mT; rim (r > 0.8 R) 3.3 and 2654 W/cm³; whole particle 7.0 and 2634
+W/cm³. Centre / rim: × 6 at 9 mT, × 1.4 at 150 mT.
+
+**Loss angle by A** (thirds, median): high A sin δ 0.0036 → 0.0096 (9 →
+150 mT, × 2.7); low A 0.0078 → 0.0068.
+
+**Turn angle of the magnetisation** θ = arccos(𝐦(t₊) · 𝐦(t₋)) between the
+positive and the negative field peak (𝐦 = unit vector of the
+magnetisation).
+- Cut of K1_2 (A 19 pJ/m, K_eff 1.0 kJ/m³): mean 2° / 12° / 32° at 9 / 50 /
+  150 mT; 25 % of the cut turns by more than 30° at 150 mT.
+- Mean over the particles with 𝐦 averaged over one Herzer cell (= 180° ×
+  V_sw / V), median of all runs: 1.2° / 6.0° / 17.7°; low-A third 1.3° /
+  6.0° / 16.5°, high-A third 1.0° / 5.9° / 19.6°.
+
+**Per particle, stress axis** (runs with K_σ > 0.5 K_eff, median, per
+particle volume): axis at 37° to the drive 7.4 / 3608 W/cm³, at 79° 5.5 /
+1882 W/cm³ at 9 / 150 mT (× 1.34 / × 1.92). Hint (no run without stress).
+
+**Real alloy within the design** (K_eff ∝ A⁻³ at a fixed grain size, from
+A 10 pJ/m, K_eff 6.2 kJ/m³ to A 18.3 pJ/m, K_eff 1.0 kJ/m³): β 2.15 → 2.42,
+Δβ +0.27 (+0.15 … +0.41). The value +0.40 for A × 2 (7.66) needs an
+extrapolation beyond the design.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
