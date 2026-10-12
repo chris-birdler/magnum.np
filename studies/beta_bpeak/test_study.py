@@ -715,6 +715,21 @@ def test_eval_size_rules():
     assert "lnP 100" not in ES.mesh_error(fine, {9: (2.0, 9.0)}) and "beta" not in ES.mesh_error(fine, {9: (2.0, 9.0)})
 
 
+def test_eval_cond_decision_rule():
+    """PLAN 4.5 D: design value stands if the 90 % CI of the mean drift lies inside ±0.05; systematic error if the
+    95 % CI excludes 0 and |mean| >= 0.05; else not determined; fewer than 3 seeds: not determined."""
+    import eval_cond as EC
+    assert EC.decide([0.01, -0.01, 0.0, 0.005, -0.005, 0.0])[-1] == "design value stands"
+    assert EC.decide([0.10, 0.11, 0.09, 0.10, 0.12, 0.08])[-1] == "systematic error"
+    assert EC.decide([0.10, -0.08, 0.15, -0.02, 0.0, 0.05])[-1] == "not determined"
+    assert EC.decide([0.0, 0.0])[-1].startswith("not determined")
+    cy = [{"cycle": i, "w_loop": 1.0, "w_dis": 1.0, "b_peak": 0.006} for i in range(30)]
+    cy[3]["w_dis"] = 2.0
+    cy[28]["w_loop"] = cy[28]["w_dis"] = 1.2
+    design, late, B, ev = EC.values({"h_amp_initial": 0.1, "cycles": cy})
+    assert design == 1.0 and abs(late - 1.1) < 1e-12 and ev == [3] and abs(B - 9.0) < 1e-9
+
+
 def stats_t(q, dof):
     from scipy import stats
     return stats.t.ppf(q, dof)

@@ -1,6 +1,6 @@
 # Fine mesh at K3 over 6 amplitudes (dx 3 vs dx 1.5)
 
-K3: A 20 pJ/m at d = 1 µm (d/l_ex 212), L_eff 18, r_p 1.5, φ 0.69; 6 seeds. Steady-tail rule with at least 2 calm cycles; reruns used: none. Missing jobs are left out (n per cell). Errors: SE over the seeds.
+K3: A 20 pJ/m at d = 1 µm (d/l_ex 212), L_eff 18, r_p 1.5, φ 0.69; 6 seeds. Steady-tail rule with at least 2 calm cycles; reruns used: MK3_dx15_s2034_b35_mc2, MK3_dx15_s2034_b50_mc2, MK3_dx3_s2035_b35_mc2. Missing jobs are left out (n per cell). Errors: SE over the seeds.
 
 ## Loss density P (W/cm³, 30 MHz)
 
@@ -8,8 +8,8 @@ K3: A 20 pJ/m at d = 1 µm (d/l_ex 212), L_eff 18, r_p 1.5, φ 0.69; 6 seeds. St
 |---|---|---|---|---|
 | 9 | 2.7 | 4.3 | × 0.63 (± 9 %, n 6) | 0 / 0 |
 | 20 | 17.0 | 22.0 | × 0.77 (± 13 %, n 6) | 0 / 0 |
-| 35 | 53.0 | 86.6 | × 0.60 (± 22 %, n 4) | 1 / 1 |
-| 50 | 148.4 | 197.2 | × 0.69 (± 16 %, n 5) | 0 / 1 |
+| 35 | 51.0 | 84.4 | × 0.60 (± 17 %, n 6) | 0 / 0 |
+| 50 | 148.4 | 213.1 | × 0.70 (± 13 %, n 6) | 0 / 0 |
 | 70 | 335.1 | 503.0 | × 0.67 (± 5 %, n 6) | 0 / 0 |
 | 100 | 826.2 | 947.5 | × 0.87 (± 9 %, n 6) | 0 / 0 |
 
@@ -18,9 +18,9 @@ K3: A 20 pJ/m at d = 1 µm (d/l_ex 212), L_eff 18, r_p 1.5, φ 0.69; 6 seeds. St
 | segment | β dx 3 | β dx 1.5 | difference dx 3 − dx 1.5, paired |
 |---|---|---|---|
 | 9 → 20 mT | 2.31 ± 0.12 (6) | 2.05 ± 0.14 (6) | +0.26 ± +0.13 (6) |
-| 20 → 35 mT | 1.99 ± 0.05 (5) | 2.43 ± 0.08 (5) | -0.42 ± +0.16 (4) |
-| 35 → 50 mT | 2.87 ± 0.20 (5) | 2.32 ± 0.25 (5) | +0.29 ± +0.26 (4) |
-| 50 → 70 mT | 2.43 ± 0.20 (6) | 2.54 ± 0.22 (5) | -0.05 ± +0.36 (5) |
+| 20 → 35 mT | 1.96 ± 0.05 (6) | 2.41 ± 0.07 (6) | -0.45 ± +0.11 (6) |
+| 35 → 50 mT | 2.98 ± 0.20 (6) | 2.62 ± 0.36 (6) | +0.36 ± +0.38 (6) |
+| 50 → 70 mT | 2.43 ± 0.20 (6) | 2.51 ± 0.18 (6) | -0.08 ± +0.29 (6) |
 | 70 → 100 mT | 2.54 ± 0.24 (6) | 1.79 ± 0.24 (6) | +0.75 ± +0.14 (6) |
 
 ## Jumps (only jobs with 3 calm cycles) and R1

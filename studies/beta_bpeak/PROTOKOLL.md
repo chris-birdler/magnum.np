@@ -2733,21 +2733,22 @@ pairs"). Errors: mean ± SE over the seeds; 90 % CI with t(n − 1).
 |---|---|---|---|---|---|
 | 96 (0.32 µm) | old, n 2 … 3 | n 2: no statement | × 0.33 (ln −1.12 ± 0.67, n 3) | – | n 2: no statement |
 | 212 (0.71 µm) | old, n 4 | × 0.70 (−0.36 ± 0.34) | × 0.94 (−0.06 ± 0.09) | – | 9 → 50 mT: +0.15 ± 0.23 |
-| 300 (1.0 µm) | mesh300, converged, n 3 | × 1.34 (+0.29 ± 0.24) | × 1.63 (+0.49 ± 0.05) | × 1.32 (+0.28 ± 0.04) | steady rule: n 2, no statement; all cycles (old rule, 7.28): −0.05 ± 0.06 (n 4) |
+| 300 (1.0 µm) | mesh300 with the reruns of mc2b (7.65), converged, n 4 | × 1.48 (+0.39 ± 0.20) | × 1.40 (+0.34 ± 0.16) | × 1.25 (+0.22 ± 0.06) | 9 / 50 / 100 mT: −0.06 ± 0.05; 9 → 50 mT: −0.02 ± 0.03 |
 
 Also at d/l_ex 96 (old, n 3, 50 mT): dx 1 gives × 1.64 (ln +0.50 ± 0.36) of
 dx 1.5, dx 2 gives × 1.30 (+0.26 ± 0.33). There is no dx 3 run at d/l_ex
 150.
-- Level of P: at 1 µm dx 3 gives more loss (× 1.63 and × 1.32 at 50 and
-  100 mT, 90 % CI excludes 0). At 212 and 96 the means are below 1
+- Level of P: at 1 µm dx 3 gives more loss (× 1.25 at 100 mT, 90 % CI
+  excludes 0; × 1.48 and × 1.40 at 9 and 50 mT, 90 % CI touches 0; values
+  updated with the reruns, 7.65). At 212 and 96 the means are below 1
   (dx 3 lower), but all 90 % CIs include 0 (212: −1.15 … +0.43 at 9 mT,
   −0.28 … +0.16 at 50 mT; 96: −3.06 … +0.82). A sign change is thus not
   shown for the base microstructure; dx 3 lower at d/l_ex 212 is shown
   only for K3 (7.63). The level error at 1 µm (+30 … 60 %) does not go to
   zero. No run shows the behaviour above 1 µm.
-- β: with the old rule (all cycles) the mesh error at 1 µm is small
-  (−0.05 ± 0.06, n 4, 7.28); with the steady rule only 2 seeds have all
-  stages until the reruns of mc2b end. At 212 it is +0.15 ± 0.23 (n 4):
+- β: the mesh error at 1 µm is small: −0.06 ± 0.05 (9 / 50 / 100 mT,
+  90 % CI −0.19 … +0.07, n 4, steady rule with the reruns, 7.65). At 212 it
+  is +0.15 ± 0.23 (n 4, 9 → 50 mT, old pairs):
   not different from 0 and not different from 0.3. A trend of the β error
   with the size is not shown.
 - Corrections of the chat answers of 2026-10-11: "the β error falls with
@@ -2763,6 +2764,73 @@ than 1 µm at A 10 pJ/m) needs more GPU memory than 16 GB for dx 1.5
 Installed 2026-10-11 ≈ 17:50 UTC: /root/chain_size.sh with the pinned
 commit 96faa32 and an onstart line. It waits for runs/MC2B_DONE. The mc2b
 chain (commit bb7bb15, gate watcher, 4 jobs) runs on without change.
+
+### 7.65 PLAN 4.5 done: acceptance, main result with the reruns, conditioning test (2026-10-12)
+
+Chain mc2b: 37 jobs (19 reruns X_mc2, 18 conditioning runs), 2026-10-11
+13:20 … 2026-10-12 12:53 UTC, commit bb7bb15. Exit codes: queue 0,
+determinism gate 0, post-processing 0. The 3 jobs M300_dx3_s921_b50_mc2,
+M300_dx3_s921_b100_mc2 and MK3_dx15_s2034_b50_mc2 were already done in the
+first chain mc2. The long rerun M300_dx15_s922_b9_mc2 needed 19.97 h
+(20.5 k relaxation iterations, 6 cycles); its cycles 0 … 4 are identical to
+the original. Fetched without .pt (75 MB); logs in runs/mc2b_logs/.
+
+**C. Acceptance: met.** Every stage of the steady analysis has a calm tail
+≥ 2: 116 design runs (13 reruns used), mesh300 24 (3), K3 36 (1), K3
+fill-in 36 (2), same-state test 18 (0). Exception (outside PLAN 4.5): the 8
+runs at α 0.01 (C0_a001 … C7_a001) have 23 stages with a calm tail < 2;
+the damping test keeps all measured cycles for them (7.62).
+
+**Main result (steady rule, ≥ 2 calm cycles, reruns;
+results/sobol_analysis_steady2_mc2.md).** Missing stages 13 → 0.
+
+| output × factor | without reruns (7.54 check) | with reruns (main result) |
+|---|---|---|
+| β_all × ln Q_eff | +0.152, p 0.0001, lever | +0.150, p 0.0002, lever |
+| β_all × r_p | +0.157, p 0.0069, lever | +0.145, p 0.0145, not determined |
+| β_all × φ | −0.058, 90 % CI −0.144 … +0.019, not a lever | −0.064, 90 % CI −0.150 … +0.008, not determined |
+| β_all × ln d/l_ex | −0.577, lever | −0.572, lever |
+| ln w 50 mT × ln d/l_ex | +0.308, p 0.0022, lever | +0.308, p 0.0022, lever |
+| ln w 50 mT × ln Q_eff, r_p, φ | not determined | not determined |
+
+- The reruns move each effect by ≤ 0.012. r_p and φ on β lie on the
+  decision limits (Holm 5 % over 8 tests: r_p needs p < 0.010 at its rank;
+  the margin ±0.15 for φ). Their class changes with this small shift. Thus
+  the design cannot decide r_p and φ on β. K_eff and d/l_ex on β and
+  d/l_ex on the loss level are robust levers.
+- The α 0.01 block of this analysis gives nan (no steady stages); the
+  damping test stays with all cycles (7.62).
+
+**K3 mesh check with the reruns (results/k3_mesh.md, k3_beta_fits.md,
+k3_fine.md).** n now 6 / 6 / 6 at K3 and 4 / 4 / 4 at the base point.
+- β over 9 … 100 mT (6 amplitudes) at K3: dx 3 2.37 ± 0.02, dx 1.5
+  2.30 ± 0.04, Δβ +0.07 ± 0.03 (p 0.057; before +0.11 ± 0.02).
+- β 9 / 50 / 100 mT at K3: Δβ +0.12 ± 0.03 (p 0.010).
+- Base point d/l_ex 300 (n 4): Δβ −0.06 ± 0.05 (p 0.38); ln P ratio
+  dx 3 / dx 1.5 +0.39 ± 0.20 / +0.34 ± 0.16 / +0.22 ± 0.06 at 9 / 50 /
+  100 mT.
+- A effect on β (K3 − base, 9 → 100 mT fit): +0.54 ± 0.11 at dx 3,
+  +0.36 ± 0.07 at dx 1.5 (unchanged).
+- Jump measures (results/jumps_time.md): changes ≤ 0.01 in the shares.
+
+**D. Conditioning test: the design values stand at all 3 amplitudes**
+(eval_cond.py → results/conditioning.md; rule of PLAN 4.5 D; n 6).
+
+| B | mean drift d ± SE | 90 % CI | P(cycles 28 … 29) / P(design) | decision |
+|---|---|---|---|---|
+| 9 mT | +0.001 ± 0.013 | −0.024 … +0.027 | × 1.001 | design value stands |
+| 20 mT | −0.001 ± 0.005 | −0.012 … +0.009 | × 0.999 | design value stands |
+| 35 mT | −0.004 ± 0.009 | −0.022 … +0.014 | × 0.996 | design value stands |
+
+- β 9 → 20 mT: design 2.127 ± 0.159, late 2.124 ± 0.156, difference
+  −0.003 ± 0.018; β 20 → 35 mT: −0.004 ± 0.021 (n 6).
+- Events: 6 in 18 runs, all in the cycles 2 … 4 (C1 9 mT: 2, 3; C5 9 mT:
+  2; C5 20 mT: 3, 4; C2 35 mT: 4). No event in the cycles 5 … 29 (450
+  cycles). The single-seed drifts are ≤ 0.051 in ln P.
+- Reading: after the calm tail, 23 more cycles do not change the loss
+  density by more than ≈ 3 % (90 % CI) and β by more than ≈ 0.04. The
+  events are the end of a transient (7.55), not a slow drift. 2 calm
+  cycles are enough for the design values.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
