@@ -1,6 +1,6 @@
 #!/bin/bash
-# Frequency test C′ (decision Chris 2026-10-12, PLAN 4.8): jobs/freq_K1pair.txt (12 jobs: the pair K1 (A 20 pJ/m) and
-# K1A10 (A 10 pJ/m) at f/2 and 2 f, 3 seeds, accumulators, no snapshots). Starts only when the pair chain has finished
+# Frequency test C′ (decision Chris 2026-10-12, PLAN 4.8): jobs/freq_K1pair.txt (15 jobs: the pair K1 (A 20 pJ/m) and
+# K1A10 (A 10 pJ/m) at f/2 and 2 f, and K1 at f (f1), 3 seeds, accumulators with harmonics (7.72, 7.73), no snapshots). Starts only when the pair chain has finished
 # (polls for runs/PAIR_DONE; chain_pair.sh writes it only after a queue exit code 0, else this script waits). Then it
 # removes the pair chain from onstart, takes and keeps the pair lock, pins its own commit (/root/freq_commit), runs the
 # queue and the post-processing of the accumulators. A stop file (runs/STOP_NEW_JOBS) stops the queue before any job.
@@ -31,7 +31,7 @@ rc=$?; echo "$(date '+%F %T') freq queue exit code $rc" >> $L
 touch runs/FREQ_QUEUE_DONE
 for i in 1 2 3; do                       # a killed worker (BrokenProcessPool) ends the script: restart it
     python instance_postproc.py --runs runs --stop runs/FREQ_QUEUE_DONE --workers 4 \
-        --pattern '^K1(A10)?_\d_f(half|2)$' >> $L 2>&1
+        --pattern '^K1(A10)?_\d_f(half|1|2)$' >> $L 2>&1
     p=$?; echo "$(date '+%F %T') freq post-processing exit code $p" >> $L
     [ $p -eq 0 ] && break
 done

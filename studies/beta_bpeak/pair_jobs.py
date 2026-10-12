@@ -14,7 +14,7 @@ import shlex
 from rerun_jobs import job_lines, set_arg
 
 F_REL_30MHZ = 0.0007136497332286743            # f / f_M at 30 MHz, Js = 1.5 T (run_loops default)
-FREQS = (("fhalf", 0.5), ("f2", 2.0))
+FREQS = (("fhalf", 0.5), ("f1", 1.0), ("f2", 2.0))     # f1: only K1 (K1A10 at f = the pair runs), 7.73
 
 
 def pair_lines():
@@ -24,6 +24,7 @@ def pair_lines():
     for k in range(3):
         tok = set_arg(shlex.split(src["K1_%d" % k]), "d_lex", ["300.0"])
         tok = set_arg(set_arg(tok, "max_cycles_per_amp", ["12"]), "min_calm", ["2"])
+        tok = set_arg(tok, "acc_harm", ["7"])             # harmonics 2f … 7f per cell (option O2, PROTOKOLL 7.72)
         out.append(("K1A10_%d" % k, tok))
     return out
 
@@ -39,10 +40,14 @@ def freq_lines():
     out = []
     for tag, fac in FREQS:
         for name, tok in base:
-            t = set_arg(strip_snap(list(tok)), "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
+            if fac == 1.0 and name.startswith("K1A10"):
+                continue                                    # K1A10 at f: the pair runs (pair_lines, with O2)
+            t = strip_snap(list(tok))
+            if fac != 1.0:                                  # f1 keeps the default f of the K1 runs
+                t = set_arg(t, "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
             t = set_arg(t, "acc_harm", ["7"])               # harmonics 2f … 7f per cell (option O2, PROTOKOLL 7.72)
             out.append((fac, "%s_%s" % (name, tag), t))
-    out.sort(key=lambda x: (x[0] != 0.5, not x[1].startswith("K1A10")))     # f/2 of the large box first
+    out.sort(key=lambda x: (x[0] != 0.5, x[0], not x[1].startswith("K1A10")))   # f/2 of the large box first
     return [(n, t) for _, n, t in out]
 
 

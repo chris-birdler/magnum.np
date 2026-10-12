@@ -3397,6 +3397,22 @@ If one criterion fails: no FREQ_GO, report.
 regenerated jobs/freq_K1pair.txt is equal to the old one apart from this
 option (checked).
 
+### 7.73 Decisions of Chris: O2 also at f, slide 21 kept, check of all slides (2026-10-12)
+
+1. The pair runs K1A10_0 … 2 (at f) also get --acc_harm 7, and 3 runs
+   K1_0 … 2 at f with --acc_harm 7 go into the C′ queue as K1_k_f1 (the
+   same job lines as K1_k with the steady rule, no snapshots). Then the
+   split into f, harmonics and rest exists at f/2, f and 2 f for both A.
+   Cost estimate: ≈ 1 $ more. pair_jobs.py writes both job files; the
+   old lines are unchanged apart from --acc_harm 7 (checked by diff). The
+   C′ chain post-processes the names K1(A10)_k_f(half|1|2). The pair chain
+   reads /root/pair_commit only after ALPHA_DONE: both commit files are set
+   after the O2 test (7.72) has passed.
+2. Slide 21 (regime) stays as the mesh check of slide 9.
+3. All slides are checked against the rule for reading guides (1 … 2
+   sentences per plot, no explanation in titles, axis labels and legends).
+   A list of changes goes to Chris before any change.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
