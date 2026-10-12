@@ -8,41 +8,133 @@ Rules: documents in ASD-STE100 Simplified Technical English, SI units only.
 matrix or the budget, give him the options with pros, cons, chances and risks,
 and wait. Engineering fixes (bugs, logging, speed) need no decision, but tell him.
 
-## 0. Current state (2026-10-06)
+## 0. Current state (2026-10-12)
 
-Key findings with a valid (converged) virgin state, d/l_ex 300 (1 µm),
-dx 3, base point, f = 30 MHz (details in the sections given):
-- β (power law 9 … 150 mT) = 1.76 ± 0.05 at α 0.1 (n = 8, 7.17). Local β
-  (3-point windows, all valid α 0.1 runs, n = 11, results/beta_windows.md):
-  1.87 (9-20-35 mT) → 1.77 (20-35-50) → 1.64 (35-50-70) → 1.61 (50-70-100)
-  → 1.72 (70-100-150 mT). The fall from small B to ≈ 50 mT is a hint
-  (paired +0.24 ± 0.11, p ≈ 0.05, 7.24).
-- α acts on the loss level: α 0.01 lowers the loss at 50 mT by a factor
-  0.59 (paired n = 4, p = 0.002, 7.31) and at 100 mT by ≈ 0.5 (unpaired);
-  at 9 mT no α dependence was detected. **The α effect on β is not
-  established:** pooled with spliced runs −0.27 ± 0.08 (n = 6 vs 11), clean
-  unpaired −0.34 ± 0.14 (p = 0.10), clean paired −0.09 ± 0.17 (n = 4,
-  p = 0.65, 95 % CI −0.64 … +0.46) (7.17, 7.31).
-- The core response is linear (μ ≈ 8, set mainly by the geometry; it
-  depends on the discretisation by 3 … 6 %: 8.00 at dx 3, 7.80 at dx 1.5,
-  8.48 with the smoothed surface, 7.32). **Hypotheses (n = 2 seeds, one base
-  point):** at small B the loss sits at the vortex-core region, the dissipation
-  goes on after the drive stops (ring-down 10 … 20 ns, 7.26, 7.27). The loss
-  per cycle is higher at 2 f than at f/2 in 3 of 3 seeds; per seed it changes
-  by × 0.5 … × 11 between neighbouring frequencies (metastable states), so a
-  single exponent (f^1.1 … 1.3) is not supported (7.32).
-- No distinct 180° walls at 1 µm; every particle holds a vortex-like state
-  (7.18, 7.19, 7.27).
-- Mesh (n = 4 paired, 7.25, 7.28, 7.32): **no mesh effect on β detected**
-  between dx 3 and dx 1.5 (Δβ −0.05 … −0.11); the 95 % CI allows effects up
-  to ≈ 0.2 … 0.4. The loss level at dx 3 is higher than at dx 1.5 in 3 of 4
-  seeds (+0.19 … +0.36 in ln w, not significant, p ≈ 0.16 … 0.23); the
-  direction to the converged value is not known. dx 3 is the coarsest mesh
-  the model rules allow.
-- Surface: the staircase stays; the volume-fraction model is not usable at
-  dx 3 for high fields (7.29).
-- Next: Sobol design v2 (PLAN 4.0), prepared and tested (7.30), waiting for
-  Chris's go and a credit top-up.
+Only the latest valid results. Sources: 7.65 (main result, conditioning
+test), 7.66 and audit_20261012/REPORT.md (independent audit), 7.63 / 7.64
+(mesh), PLAN 4.6 (running).
+
+**Terms.** l_ex = exchange length (3.34 nm at A = 10 pJ/m); K_d = μ0 Ms² / 2
+= 895 kJ/m³; w = loop work in units of K_d; P = f · K_d · w = loss density
+in W/cm³ per volume of magnetic material at f = 30 MHz. L_eff = edge of the
+Herzer cell (random-anisotropy cell), K_eff = K_d (l_ex / L_eff)². K_σ =
+r_p · K_eff = stress anisotropy per particle. Range effect = change of an
+output from the low to the high end of one factor, the other factors
+averaged over the design points. Lever = a range effect that is significant
+after the Holm correction over the 8 main tests (5 %). Event cycle: w_loop ≤
+0 or |w_dis / w_loop − 1| > 0.20.
+
+**Basis.** Fictitious nanocrystalline powder, d ≈ 1 µm, α = 0.1, B_peak
+9 … 150 mT, mesh dx = 3 l_ex (production). Converged virgin relaxation;
+steady rule: a stage keeps the measured cycles after its last event cycle,
+at least 2 (7.54); finished reruns replace their original. Data: 116
+design runs (96 Sobol, 8 centre, 12 corner), mesh pairs dx 3 / dx 1.5 at
+the base point (d/l_ex 300, n 4) and at K3 (d/l_ex 212, n 6), 18
+conditioning runs. The audit checked 275 run folders (256 current, 19
+replaced by reruns): complete, converged, consistent; ≥ 2 calm cycles in
+every stage except the 8 runs at α 0.01. Errors: mean ± SE over independent
+seeds; CI = confidence interval.
+
+**1. β of the loss curve (power-law fit per run, dx 3, n 116).**
+- 9 … 150 mT: β = 2.12 ± 0.02 (sd 0.25, range 1.59 … 2.60); β > 2 in 77
+  of 116 runs (fit over the nominal B, as the design analysis; 78 with the
+  realised B).
+- Local β (3-amplitude windows): 2.15 at 9 … 70 mT, 2.07 at 50 … 100 mT,
+  1.98 at 70 … 150 mT; β(70 … 150) − β(9 … 35) = −0.17 ± 0.04.
+- One power law gives the trend, not the detail (rms 0.13 in ln P against
+  ≈ 1 % cycle error). There is no common break point.
+
+**2. Mechanism.**
+- The response of the powder is linear: μ_r = 6.9 (quartiles 5.9 … 8.2),
+  constant in B to 0.1 %, set by φ; harmonics < 10⁻³ of the fundamental.
+- Thus β − 2 = d ln(sin δ) / d ln B exactly (δ = loss angle, 0.33 …
+  0.48°; confirms 7.22 / 7.24). Every lever on β acts through the growth
+  of the loss angle with B.
+- Where the loss is (dx 3, hints): the 10 % of the cells with the largest
+  loss carry 69 … 76 % of P. The particle centre (r/R < 0.5, 12.5 % of the
+  volume) carries 38 % of P at 9 mT and 18 % at 150 mT; the particle rim
+  (r/R ≥ 0.8, 49 % of the volume) 22 % at 9 mT and 50 % at 150 mT
+  (confirms 7.23, 7.50).
+- The switched volume per half cycle grows about ∝ B (0.65 % at 9 mT,
+  9.8 % at 150 mT) and follows β (r = 0.91; partly by construction, 7.46).
+- Events (energy release in the first measured cycles) are the end of a
+  transient, not a slow drift (7.55, 7.65).
+
+**3. Levers on β, 9 … 150 mT (dx 3, main result, range effects with 95 %
+CI, results/sobol_analysis_steady2_mc2.md).**
+
+| Factor (low → high) | Δβ | Class |
+|---|---|---|
+| A 10 → 20 pJ/m at d = 1 µm (= d 1.0 → 0.71 µm at A 10 pJ/m) | +0.57 (+0.48 … +0.67) | lever |
+| K_eff 1.0 → 6.2 kJ/m³ (L_eff 30 → 12 l_ex) | +0.15 (+0.07 … +0.22) | lever |
+| stress, r_p 0 → 3 | +0.14 (+0.02 … +0.26) | at the decision limit |
+| packing φ 0.55 → 0.69 | −0.06 (−0.16 … +0.03) | not determined |
+| damping α 0.1 → 0.01 (centre, n 8) | sign depends on the rule | not determined |
+
+- A and K_eff interact strongly (audit bootstrap, sobol_extra.md). A
+  effect: +0.93 (+0.80 … +1.05) at K_eff 1.0 kJ/m³, +0.55 at 2.8, +0.16
+  (n.s.) at 6.2 kJ/m³. K_eff effect: +0.53 (+0.38 … +0.66) at A 10 pJ/m,
+  −0.24 (−0.40 … −0.09) at A 20 pJ/m. Lowest β ≈ 1.6 at low A and low
+  K_eff; highest ≈ 2.5 at high A and low K_eff. Reading (hypothesis): weak
+  anisotropy lets exchange and stray field set the state, so the size in
+  units of l_ex acts strongly.
+- Real alloy (Herzer coupling K_eff ∝ A⁻³): A × 2 gives Δβ +0.40
+  (+0.28 … +0.53); an extrapolation (the design covers K_eff × 6.25, the
+  coupling needs × 8).
+- By range (secondary outputs, hints): A acts most at 35 … 70 mT (+1.00),
+  K_eff at 70 … 150 mT (+0.31); stress at 35 … 70 mT (+0.29, p 0.035
+  without a multiplicity correction).
+
+**4. Effects on P (dx 3).** Lever (primary output): A at 50 mT. Effects:
+A 10 → 20 pJ/m × 0.33 at 10 mT, × 0.73 at 50 mT, × 1.21 at 100 mT, × 1.32
+at 150 mT (crossing at ≈ 70 mT on dx 3); K_eff 1.0 → 6.2 kJ/m³ × 0.73 at
+10 mT, × 1.17 at 150 mT; φ 0.55 → 0.69 × 1.34 at 10 mT (× 1.07 without the
+dilution).
+
+**5. Mesh: dx 3 against dx 1.5 (mesh error = dx 3 − dx 1.5, same seed).**
+
+| Output | dx 1.5 needed? | Error to assume with dx 3 |
+|---|---|---|
+| P level | yes | ± 0.5 in ln P (× 0.6 … 1.6) at 9 … 70 mT, ± 0.25 at 100 mT (estimate). The sign differs between the 2 tested points (base × 1.48 / 1.40 / 1.25, K3 × 0.63 / 0.70 / 0.87 at 9 / 50 / 100 mT); cause open (PLAN 4.6) |
+| β, 9 / 50 / 100 mT | no, with an error bar | base −0.06 ± 0.05, K3 +0.12 ± 0.03; K3 − base +0.18 ± 0.06 (p 0.039). Assume ± 0.2 (estimate). 100 … 150 mT not checked |
+| β, 9 … 35 mT and 9 → 50 mT | no | K3 9 … 35 mT −0.01 ± 0.11 (not resolved); 9 → 50 mT base −0.02 ± 0.03, K3 +0.05 ± 0.05; K3 20 … 50 mT −0.16 ± 0.10 |
+| β above 50 mT | yes | K3 +0.35 ± 0.11 (50 … 100 mT); base 50 → 100 mT −0.17 ± 0.15 (other sign, n.s.) |
+| A effect on β | partly | fine mesh ≈ +0.38 ± 0.11 instead of +0.57 (estimate from one pair that also changes L_eff, r_p, φ) |
+| A effect on P at 50 mT | yes (hint) | × 0.79 (dx 3) against × 1.59 (dx 1.5, p 0.034, one uncorrected test, confounded pair) |
+| K_eff and stress effects | not known | no fine-mesh check (K2 not run); they come from > 35 mT, where the β mesh error reaches ± 0.35 |
+
+- At K3 (1 point, n 6) the dx 3 grid cannot hold the states of dx 1.5
+  (7.63). dx 1.5 itself is not shown to be converged.
+- Pending: the mesh check at d/l_ex 212 for the base microstructure
+  (PLAN 4.6, running, end ≈ 2026-10-12 23 UTC, estimate). It shows whether
+  the sign of the level error follows the size or the microstructure.
+
+**6. Convergence.** 30-cycle test at the centre point only (n 6): the
+design values stand at 9 / 20 / 35 mT (drift of P ≤ 3 %, 90 % CI; Δβ
+−0.003 ± 0.018 and −0.004 ± 0.021). Reruns are bit-identical to their
+originals up to the first extended stage.
+
+**7. Damping (centre, n 8; rule: all measured cycles, 7.48 / 7.62).** With
+all cycles α 0.01 gives × 0.60 … 0.84 of P at 20 … 150 mT. Audit finding
+(7.66): at 9 mT the α 0.01 loops do not settle (loop areas partly
+negative), so the 9 mT ratio is not interpretable; with calm cycles only
+(≥ 1) the ratio is × 0.63 … 0.82 at 35 … 150 mT (n 7) and there is no value
+at 9 and 20 mT. Decision of Chris on the rule is open. The effect on β is
+not determined.
+
+**8. Limits.** One frequency (30 MHz); d/l_ex 212 … 300 only; P levels from
+dx 3 carry the error of item 5; the mesh share of the K_eff and stress
+effects is unknown. Hint (REPORT D.4.6): for r_p > 0.5, particles with the
+stress axis at 37° to the drive have × 1.45 … 1.84 the loss per volume of
+those at 79° (n 100 runs); no further growth with r_p above ≈ 0.3; at r_p
+0.02 … 0.26 the ratio is already × 1.27 … 1.40 (n 9). No r_p = 0 reference
+run exists.
+
+**9. Open (decisions of Chris; cost estimates).** Stress step test r_p 0 /
+0.1 / 0.3 / 1 (≈ 3 $); fine-mesh pair at L_eff 30 (≈ 23 $); K2 mesh check
+(≈ 25 $); α 0.01 with ≥ 30 cycles at 9 … 20 mT (≈ 0.5 $); dx 1.5
+convergence with one dx 1 seed at d/l_ex 212 (≈ 100 V100-h ≈ 10 $). Deck
+rebuild after the mesh check at d/l_ex 212.
 
 ## 1. Goal
 
@@ -2831,6 +2923,51 @@ k3_fine.md).** n now 6 / 6 / 6 at K3 and 4 / 4 / 4 at the base point.
   density by more than ≈ 3 % (90 % CI) and β by more than ≈ 0.04. The
   events are the end of a transient (7.55), not a slow drift. 2 calm
   cycles are enough for the design values.
+
+### 7.66 Independent audit of all local data (2026-10-12)
+
+A context-free agent checked all local runs, the analysis code, the result
+files and the deck (request of Chris). Report: audit_20261012/REPORT.md,
+scripts and tables in the same folder (commit 8e4025c). The main session
+re-checked the A × K_eff interaction (own OLS: A lever +0.96 / +0.51 /
++0.15 at L_eff 30 / 18 / 12; K_eff lever +0.54 at A 10, −0.27 at A 20
+pJ/m; the same as the OLS table in audit_20261012/beta_fits.md: lnd
+−0.555, lnQ +0.134, lnd × lnQ +0.409) and the α 0.01 loops at 9 mT: both
+hold.
+- Data: 275 run folders (256 current, 19 replaced) complete and consistent (DONE, converged
+  relaxation, job line = config, stdout = summary, loop integrals from the
+  time curves = summary to 10⁻⁷); every stage has ≥ 2 calm cycles except
+  the 8 runs at α 0.01 (exempt); 19 reruns bit-identical up to the first
+  extended stage. 112 folders withdrawn (7.13). 63 folders had no md5
+  manifest: runs/MANIFEST_mc2b.md5 (506 files, verified).
+- Main analysis reproduced to 4 digits with an own Gamma GLM. r_p and φ on
+  β lie inside the bootstrap Monte-Carlo noise of their decision limits
+  (p(r_p) 0.011 … 0.019 against 0.010; φ 90 % edge −0.150 … −0.161).
+- New: A × K_eff interaction on β (§0 item 3); stress-angle hint (REPORT
+  D.4.6). Confirmed: the loss-angle identity β − 2 = d ln sin δ / d ln B
+  (7.22, 7.24); the loss moves from the particle centre to the rim with B
+  (7.23, 7.50).
+- Corrections:
+  - 7.48 (finding, decision of Chris open): at α 0.01 and 9 mT, 6 of 8
+    seeds have no calm loop; loop areas are negative in 5 of 8 (w_dis /
+    w_loop −180 … +194). Thus the ratio × 0.34 at 9 mT and R(9 mT) are not
+    interpretable. Proposal: withdraw them.
+  - 7.63: numbers before the rerun MK3_dx15_s2034_b50_mc2. Current: ln P
+    (dx 3 from the fine state / dx 1.5) −0.49 ± 0.16 / −0.58 ± 0.14 /
+    −0.26 ± 0.08; (fine state / own dx 3 state) −0.03 ± 0.09 / −0.22 ±
+    0.16 / −0.12 ± 0.10 at 9 / 50 / 100 mT; P(dx 1.5, 50 mT) 213 W/cm³
+    (n 6); β(dx 1.5, 9 / 50 / 100 mT) 2.25 ± 0.04; the own dx 3 states have
+    ≈ 30 … 37 % less loss at 9 … 50 mT (results/k3_same_state.md, updated).
+    The conclusion holds.
+  - Deck: "higher K_eff raises β" holds only at low A; "61 % of P from 10 %
+    of the volume" is the most textured 10 % (the most lossy 10 % carry
+    69 %); 36 of 41 items are stale (list in REPORT.md C).
+  - Code labels: in the steady mode the column "without flagged runs" of
+    analyze_design.py is an unweighted refit (no run is flagged); the α
+    test prints "mixed" for nan; make_deck.disp_class cannot show "at the
+    decision limit" with the _mc2 analysis. No numbers change.
+- No error found in: the steady rule, the rerun mapping, GLM / bootstrap /
+  Holm / TOST, eval_k3*, eval_cond, the unit chain, the loop integrals.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
