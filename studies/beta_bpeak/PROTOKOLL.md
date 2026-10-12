@@ -94,6 +94,14 @@ at 150 mT (crossing at ≈ 70 mT on dx 3); K_eff 1.0 → 6.2 kJ/m³ × 0.73 at
 10 mT, × 1.17 at 150 mT; φ 0.55 → 0.69 × 1.34 at 10 mT (× 1.07 without the
 dilution).
 
+**4a. A low β does not mean a low loss (7.68, coarse mesh).** The best
+material depends on B_max: at 9 mT small particles with low K_eff (β 2.55,
+2.0 W/cm³, × 6 below the worst), at 150 mT large particles with low K_eff
+(β 1.61, 1170 W/cm³). The switch point is ≈ 70 … 100 mT on the coarse mesh
+and below 50 mT for the only fine-mesh pair. β alone does not rank
+materials. The loss densities in W/cm³ of all levers, the loss location,
+the turn angles and the real-alloy path are in 7.68.
+
 **5. Mesh: dx 3 against dx 1.5 (mesh error = dx 3 − dx 1.5, same seed).**
 
 | Output | dx 1.5 needed? | Error to assume with dx 3 |
