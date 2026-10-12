@@ -15,8 +15,9 @@ test), 7.66 and audit_20261012/REPORT.md (independent audit), 7.63 / 7.64
 (mesh), PLAN 4.6 (running).
 
 **Terms.** l_ex = exchange length (3.34 nm at A = 10 pJ/m); K_d = μ0 Ms² / 2
-= 895 kJ/m³; w = loop work in units of K_d; P = f · K_d · w = loss density
-in W/cm³ per volume of magnetic material at f = 30 MHz. L_eff = edge of the
+= 895 kJ/m³; w = loop work in units of K_d per volume of the powder core
+(voids included); P = f · K_d · w = loss density in W/cm³ per core volume
+at f = 30 MHz. L_eff = edge of the
 Herzer cell (random-anisotropy cell), K_eff = K_d (l_ex / L_eff)². K_σ =
 r_p · K_eff = stress anisotropy per particle. Range effect = change of an
 output from the low to the high end of one factor, the other factors
@@ -54,7 +55,8 @@ seeds; CI = confidence interval.
   loss carry 69 … 76 % of P. The particle centre (r/R < 0.5, 12.5 % of the
   volume) carries 38 % of P at 9 mT and 18 % at 150 mT; the particle rim
   (r/R ≥ 0.8, 49 % of the volume) 22 % at 9 mT and 50 % at 150 mT
-  (confirms 7.23, 7.50).
+  (confirms 7.23, 7.50). Thus at 150 mT the loss spreads over the whole
+  particle. The particles do not touch (gap ≥ 1.7 cells).
 - The switched volume per half cycle grows about ∝ B (0.65 % at 9 mT,
   9.8 % at 150 mT) and follows β (r = 0.91; partly by construction, 7.46).
 - Events (energy release in the first measured cycles) are the end of a
@@ -68,12 +70,13 @@ CI, results/sobol_analysis_steady2_mc2.md).**
 | A 10 → 20 pJ/m at d = 1 µm (= d 1.0 → 0.71 µm at A 10 pJ/m) | +0.57 (+0.48 … +0.67) | lever |
 | K_eff 1.0 → 6.2 kJ/m³ (L_eff 30 → 12 l_ex) | +0.15 (+0.07 … +0.22) | lever |
 | stress, r_p 0 → 3 | +0.14 (+0.02 … +0.26) | at the decision limit |
-| packing φ 0.55 → 0.69 | −0.06 (−0.16 … +0.03) | not determined |
+| packing φ 0.55 → 0.69 | −0.06 (−0.16 … +0.03) | at the decision limit (not a lever without the reruns, 7.65) |
 | damping α 0.1 → 0.01 (centre, n 8) | sign depends on the rule | not determined |
 
 - A and K_eff interact strongly (audit bootstrap, sobol_extra.md). A
-  effect: +0.93 (+0.80 … +1.05) at K_eff 1.0 kJ/m³, +0.55 at 2.8, +0.16
-  (n.s.) at 6.2 kJ/m³. K_eff effect: +0.53 (+0.38 … +0.66) at A 10 pJ/m,
+  effect: +0.93 (+0.80 … +1.05) at K_eff 1.0 kJ/m³, +0.55 at 2.5, +0.16
+  (n.s.) at 6.2 kJ/m³ (deck bootstrap: +0.93 (+0.80 … +1.08), +0.55
+  (+0.44 … +0.64), +0.16 (−0.02 … +0.33)). K_eff effect: +0.53 (+0.38 … +0.66) at A 10 pJ/m,
   −0.24 (−0.40 … −0.09) at A 20 pJ/m. Lowest β ≈ 1.6 at low A and low
   K_eff; highest ≈ 2.5 at high A and low K_eff. Reading (hypothesis): weak
   anisotropy lets exchange and stray field set the state, so the size in
@@ -86,7 +89,7 @@ CI, results/sobol_analysis_steady2_mc2.md).**
   without a multiplicity correction).
 
 **4. Effects on P (dx 3).** Lever (primary output): A at 50 mT. Effects:
-A 10 → 20 pJ/m × 0.33 at 10 mT, × 0.73 at 50 mT, × 1.21 at 100 mT, × 1.32
+A 10 → 20 pJ/m × 0.33 at 10 mT, × 0.74 at 50 mT, × 1.21 at 100 mT, × 1.32
 at 150 mT (crossing at ≈ 70 mT on dx 3); K_eff 1.0 → 6.2 kJ/m³ × 0.73 at
 10 mT, × 1.17 at 150 mT; φ 0.55 → 0.69 × 1.34 at 10 mT (× 1.07 without the
 dilution).
@@ -116,9 +119,10 @@ originals up to the first extended stage.
 
 **7. Damping (centre; rule since 2026-10-12: steady loops ≥ 2, decision
 Chris, 7.66).** α 0.01 gives × 0.62 … 0.81 of P at 35 … 150 mT (n 4 … 6
-seeds with ≥ 2 calm cycles at both α). At 9 and 20 mT there is no value
-(the α 0.01 loops do not settle within 9 cycles); 30-cycle runs at 9 and
-20 mT follow (PLAN 4.7). The effect on β is not determined.
+seeds with ≥ 2 calm cycles at both α). At 9 mT no seed has 2 calm cycles
+at α 0.01; at 20 mT only 3 of 8, with a too wide interval (× 0.80, SE 0.61
+in ln P). 30-cycle runs at 9 and 20 mT follow (PLAN 4.7). Most of the loss
+does not scale with α (hypothesis: irreversible jumps set it). The effect on β is not determined.
 
 **8. Limits.** One frequency (30 MHz); d/l_ex 212 … 300 only; P levels from
 dx 3 carry the error of item 5; the mesh share of the K_eff and stress
@@ -130,7 +134,7 @@ run exists.
 
 **9. Open (decisions of Chris; cost estimates).** Stress step test r_p 0 /
 0.1 / 0.3 / 1 (≈ 3 $); fine-mesh pair at L_eff 30 (≈ 23 $); K2 mesh check
-(≈ 25 $); α 0.01 with ≥ 30 cycles at 9 … 20 mT (≈ 0.5 $); dx 1.5
+(≈ 25 $); α 0.01 with ≥ 30 cycles at 9 … 20 mT (queued, ≈ 2.5 $); dx 1.5
 convergence with one dx 1 seed at d/l_ex 212 (≈ 100 V100-h ≈ 10 $). Deck
 rebuild after the mesh check at d/l_ex 212.
 
