@@ -3335,6 +3335,68 @@ stopped by its PID. Its child sleep held the lock and was also stopped
 by its PID. The new process (20:57 UTC) waits. FREQ_GO is written only
 after O2 is tested and /root/freq_commit points to the O2 commit.
 
+### 7.72 Option O2: per-cell harmonics in the accumulators (2026-10-12, method fixed before the result)
+
+Go of Chris: pause before C′, then O2 first, then C′ with O2. Question of
+Chris: "das wäre ja kein Risiko, oder?". Answer: three small risks, each
+covered before FREQ_GO: an error in the new accumulators (it would cost
+the 12 C′ runs, ≈ 3.5 $) → test run with fixed criteria; disk → only
+|m_k|² per cell; GPU memory → all buffers at the start of the job.
+
+**Method** (run_loops.py --acc --acc_harm K, class HarmAcc; acc_reduce.py
+harmonic_loss; commit dc95322):
+- Per cycle and cell: sums of p, m, m e^{−iωt} (float64, as before) and
+  m e^{−ikωt} for k = 2 … K (float32), over the 256 samples of the cycle.
+- At the end of each cycle: |m_k|² = |2/n Σ m e^{−ikωt}|², summed over
+  the 3 components, k = 1 … K. Box sums over the particle cells go into the
+  cycle record (cyc["acc"]: calm, n, p_cells, mk2_cells).
+- Only a calm cycle (w_loop > 0, |w_dis / w_loop − 1| ≤ 0.20, the same
+  rule as min_calm and the event rule of 7.53) enters the stage sums.
+  This is "calm cycles", not the steady-tail rule: a calm cycle before a
+  later event is kept. A stage with no calm cycle writes no acc file.
+- Saved per stage: p, m0, m1 (coherent over the kept cycles, as before),
+  mk2 = mean of |m_k|² over the kept cycles (float32, cells × K),
+  cycles_kept, cycles_acc.
+- p_k = α μ0 Ms / γ (kω)² |m_k|² / 2 per cell: the same coefficient as R1
+  (Gilbert damping: p = α μ0 Ms / γ |dm/dt|²). R_k = Σ p_k / Σ p, rest
+  R_rest = 1 − Σ_{k ≤ K} R_k = motion above Kω plus motion that does not
+  repeat within a cycle. Zone shares of the harmonic sum (k ≥ 2) and of the
+  rest; slices relative to their plane mean (7.61).
+- Without --acc_harm the code path is the old one (unchanged lines).
+- Unit tests (test_study.py): known harmonics are recovered without leak
+  into other k, an event cycle is not added, Parseval: Σ p_k equals the
+  mean Gilbert loss of a motion with harmonics ≤ K (to 10⁻⁵). All 60 study
+  tests pass (CPU).
+
+**Reading rule (fixed now):**
+- Large rest → fast or non-repeating local motion (for example precession
+  at GHz frequencies; it lies above the Nyquist frequency 128 f and is
+  folded: O2 cannot give its frequency).
+- Small rest → the "other frequencies" of 7.70 are low harmonics (k ≤ 7).
+- C′ (f/2, 2 f): if R_k depend on B only, the response is a static
+  nonlinearity; if they move with f, a rate effect.
+
+**Test on the instance before FREQ_GO** (production job line of K1_0_fhalf,
+own worktree /root/o2test at dc95322, outputs /root/o2test_runs, one run
+with and one without --acc_harm 7, start from runs/K1_0/init.pt, 9 and
+50 mT, 5 cycles each). Criteria:
+1. exit code 0 for both runs;
+2. the samples files of both runs are equal (the accumulators only read);
+3. p_box / p_dis = 1.000 (CHECK_TOL 10⁻³) over the kept cycles;
+4. when all accumulated cycles are calm: p, m0, m1 and R1 of both runs
+   agree (relative 10⁻⁵);
+5. Bessel: Σ_k R_k ≤ 1, and the share of cells with Σ_k p_k > 1.001 p
+   below 1 % (a cycle is not exactly periodic, so a small excess in single
+   cells is possible);
+6. GPU memory and wall time per cycle against the run without harmonics;
+7. acc_reduce.py and the post-processing run without error on the test
+   folder.
+If one criterion fails: no FREQ_GO, report.
+
+**Production change:** pair_jobs.py freq_lines adds --acc_harm 7; the
+regenerated jobs/freq_K1pair.txt is equal to the old one apart from this
+option (checked).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

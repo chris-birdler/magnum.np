@@ -30,7 +30,7 @@ def pair_lines():
 
 def freq_lines():
     """Option C′ (Chris 2026-10-12): the pair K1 (A 20 pJ/m) and K1A10 (A 10 pJ/m) at f/2 and 2 f (15 and 60 MHz), the
-    same seeds, no snapshots, accumulators kept, steady rule. Longest jobs first."""
+    same seeds, no snapshots, accumulators with the harmonics k ≤ 7 (O2), steady rule. Longest jobs first."""
     from rerun_jobs import strip_snap
     src = dict(job_lines("jobs/sobol_corners.txt"))
     base = [("K1A10_%d" % k, tok) for k, tok in [(k, t) for k, (_, t) in enumerate(pair_lines())]]
@@ -40,6 +40,7 @@ def freq_lines():
     for tag, fac in FREQS:
         for name, tok in base:
             t = set_arg(strip_snap(list(tok)), "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
+            t = set_arg(t, "acc_harm", ["7"])               # harmonics 2f … 7f per cell (option O2, PROTOKOLL 7.72)
             out.append((fac, "%s_%s" % (name, tag), t))
     out.sort(key=lambda x: (x[0] != 0.5, not x[1].startswith("K1A10")))     # f/2 of the large box first
     return [(n, t) for _, n, t in out]
