@@ -119,9 +119,9 @@ def main():
     wts = np.array(sw["weights"]) if sw["any"] and len(sw["weights"]) == len(recs) else None
     out["weights_used"] = wts is not None
     c0 = AD.glm_coefs(T, W, wts)
-    cur0, pa0, cc0 = curves(c0), per_amp(c0), cond_curves(c0, X, grid)
+    cur0, pa0, cc0, lc0 = curves(c0), per_amp(c0), cond_curves(c0, X, grid), loss_curves(c0, X)
     rng = np.random.default_rng(20261010)
-    cb, pb, ccb = [], [], []
+    cb, pb, ccb, lcb = [], [], [], []
     for _ in range(N_BOOT):
         i = rng.integers(0, len(recs), len(recs))
         try:
@@ -131,6 +131,7 @@ def main():
         cb.append(curves(c))
         pb.append(per_amp(c))
         ccb.append(cond_curves(c, X, grid))
+        lcb.append(loss_curves(c, X))
     lo_hi = {f: (RANGES_REAL(f, grid)) for f in AD.FACTORS}
     out["partial"] = {f: {"x_coded": grid.tolist(), "x_real": lo_hi[f],
                           "est": cur0[f].tolist(),
@@ -152,6 +153,11 @@ def main():
         out["cond"][k] = {"est": np.asarray(cc0[k]).tolist(), "lo": np.percentile(arr, 2.5, axis=0).tolist(),
                           "hi": np.percentile(arr, 97.5, axis=0).tolist()}
     out["map"] = map_grid(c0, X)
+    out["loss_curves"] = {"amps": list(AD.AMPS_MT), "to_P": to_P}
+    for k in lc0:                                            # geometric mean of E[w] over the design points
+        arr = np.array([b[k] for b in lcb])
+        out["loss_curves"][k] = {"est": lc0[k].tolist(), "lo": np.percentile(arr, 2.5, axis=0).tolist(),
+                                 "hi": np.percentile(arr, 97.5, axis=0).tolist()}
 
     # thirds by β all
     b = np.array([r["beta_all"] for r in recs])
@@ -301,6 +307,28 @@ def cond_curves(coefs, X, grid):
     return out
 
 
+def _mean_curve(coefs, X, **coded):
+    """Mean over the design points of ln E[w] at the 7 amplitudes (geometric mean, the same averaging as the range
+    effects), some factors set (coded)."""
+    Xg = X.copy()
+    for f, v in coded.items():
+        Xg[:, IL[f]] = v
+    return (AD.terms(Xg) @ coefs.T).mean(0)
+
+
+def loss_curves(coefs, X):
+    """Mean loss curves (W/cm³ after × to_P): each factor at its low and high end ('ends|f|-1/+1'), and the 4 corners of
+    A × K_eff ('corner|lnd|lnQ'), the other factors at the design points."""
+    out = {}
+    for f in AD.FACTORS:
+        for v in (-1.0, 1.0):
+            out["ends|%s|%+.0f" % (f, v)] = _mean_curve(coefs, X, **{f: v})
+    for xd in (-1.0, 1.0):
+        for xq in (-1.0, 1.0):
+            out["corner|%+.0f|%+.0f" % (xd, xq)] = _mean_curve(coefs, X, lnd=xd, lnQ=xq)
+    return out
+
+
 def map_grid(coefs, X, n=31):
     """β all and ln E[w] at 10 / 100 mT on a grid of A (ln d/l_ex) × K_eff (ln Q), r_p and φ at the design points."""
     g = np.linspace(-1, 1, n)
@@ -310,7 +338,11 @@ def map_grid(coefs, X, n=31):
             o = _outputs_at(coefs, X, lnd=xd, lnQ=xq)
             for k in res:
                 res[k][j, i] = o[k]
-    return {"A_real": RANGES_REAL("lnd", g), "Leff_real": RANGES_REAL("lnQ", g),
+    lnw7 = np.zeros((len(AD.AMPS_MT), n, n))
+    for i, xd in enumerate(g):
+        for j, xq in enumerate(g):
+            lnw7[:, j, i] = _mean_curve(coefs, X, lnd=xd, lnQ=xq)
+    return {"A_real": RANGES_REAL("lnd", g), "Leff_real": RANGES_REAL("lnQ", g), "lnw7_meancurve": lnw7.tolist(),
             **{k: v.tolist() for k, v in res.items()}}
 
 
@@ -362,6 +394,12 @@ def physics_block(recs):
             sh[k].append([s["where"][k]["p_share"] for s in acc])
     out["where"] = {k: np.median(np.array(v), 0).tolist() for k, v in sh.items()}
     out["where_volume"] = {"r<0.5": 0.125, "r>=0.8": 0.488}   # volume shares of a sphere: 0.5³ and 1 − 0.8³
+    # loss density in a region, per volume of particle material (W/cm³): share × P(core volume) / (φ × volume share)
+    Pcore = np.array([[s["W_loop"] * F_HZ / 1e6 for s in x["stages"]] for x in R])
+    phi = np.array([x["cfg"]["phi_vox"] for x in R])
+    out["P_particle_median"] = np.median(Pcore / phi[:, None], 0).tolist()
+    out["region_density"] = {k: np.median(np.array(sh[k]) * Pcore / (phi[:, None] * out["where_volume"][k]), 0).tolist()
+                             for k in ("r<0.5", "r>=0.8")}
     q = []
     for x in R:
         if x["cfg"]["r_p"] < 0.5:
@@ -373,6 +411,16 @@ def physics_block(recs):
     q = np.array(q)
     out["angle_ratio"] = {"n": int(len(q)), "mean": np.nanmean(q, 0).tolist(),
                           "se": (np.nanstd(q, 0, ddof=1) / np.sqrt(np.sum(np.isfinite(q), 0))).tolist()}
+    p37, p79 = [], []                                           # per particle volume, W/cm³ (w_part in J/m³ per loop)
+    for x in R:
+        if x["cfg"]["r_p"] < 0.5:
+            continue
+        cp = x["cos_p"]
+        hi, lo = np.abs(cp) > 0.5, np.abs(cp) < 0.5
+        p37.append([s["w_part"][hi].mean() * F_HZ / 1e6 for s in x["stages"]])
+        p79.append([s["w_part"][lo].mean() * F_HZ / 1e6 for s in x["stages"]])
+    out["angle_P"] = {"37": np.median(p37, 0).tolist(), "79": np.median(p79, 0).tolist(),
+                      "37_q": np.percentile(p37, [25, 75], axis=0).tolist(), "79_q": np.percentile(p79, [25, 75], axis=0).tolist()}
     return out
 
 
@@ -380,7 +428,7 @@ def alpha_block(to_P):
     """Damping test with the steady rule (≥ 2 calm cycles, decision Chris 2026-10-12): ln P(α 0.01) − ln P(α 0.1) per
     seed and amplitude (C0 … C7); amplitudes with fewer than 3 seeds have no value."""
     out = {"amps": list(AD.AMPS_MT), "mean": [], "se": [], "n": []}
-    rows = []
+    rows, abs_rows = [], []
     for i in range(8):
         a1, a0 = RUNS / ("C%d_a001" % i), RUNS / ("C%d" % i)
         if not ((a1 / "DONE").exists() and (a0 / "DONE").exists()):
@@ -389,7 +437,13 @@ def alpha_block(to_P):
         if x1 is None or x0 is None:
             continue
         rows.append([x1["lnw@%gmT" % m] - x0["lnw@%gmT" % m] for m in AD.AMPS_MT])
+        abs_rows.append(([x0["lnw@%gmT" % m] for m in AD.AMPS_MT], [x1["lnw@%gmT" % m] for m in AD.AMPS_MT]))
     v = np.array(rows, float)
+    out["P_a01"], out["P_a001"] = [], []
+    for k in range(len(AD.AMPS_MT)):
+        ok = [r for r in abs_rows if np.isfinite(r[0][k]) and np.isfinite(r[1][k])]
+        out["P_a01"].append(float(np.exp(np.mean([r[0][k] for r in ok]))) * to_P if len(ok) >= 3 else None)
+        out["P_a001"].append(float(np.exp(np.mean([r[1][k] for r in ok]))) * to_P if len(ok) >= 3 else None)
     for k in range(len(AD.AMPS_MT)):
         c = v[:, k][np.isfinite(v[:, k])] if len(v) else np.array([])
         out["n"].append(int(len(c)))
@@ -409,6 +463,9 @@ def cond_block():
         out["drift"][str(b)] = {"per_seed": d, "n": n, "mean": m, "se": se, "ci90": c90, "decision": cls}
     for (s, b), v in V.items():
         out["events_cycles"] += v[3]
+    kd = json.loads((EC.R / "cond_C0_b9" / "config.json").read_text())["units"]["Kd"]
+    out["P_loops"] = {str(b): {str(s): [c["w_loop"] * kd * F_HZ / 1e6 for c in EC.tested_stage("cond_C%d_b%d" % (s, b))["cycles"]]
+                               for s in EC.SEEDS if (s, b) in V} for b in EC.AMPS}
     return out
 
 
