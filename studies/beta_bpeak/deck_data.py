@@ -165,17 +165,18 @@ def main():
     q1, q2 = np.quantile(b, [1 / 3, 2 / 3])
     groups = {"low": b <= q1, "mid": (b > q1) & (b <= q2), "high": b > q2}
     th = {}
+    gm = lambda x: np.exp(np.log(x).mean(0))                # geometric mean, as the other loss curves of the deck
     for k, g in groups.items():
         idx = np.where(g)[0]
-        bs = [P[rng.choice(idx, len(idx))].mean(0) for _ in range(1000)]
-        th[k] = {"n": int(g.sum()), "beta_mean": float(b[g].mean()), "P": P[g].mean(0).tolist(),
+        bs = [gm(P[rng.choice(idx, len(idx))]) for _ in range(1000)]
+        th[k] = {"n": int(g.sum()), "beta_mean": float(b[g].mean()), "P": gm(P[g]).tolist(),
                  "lo": np.percentile(bs, 2.5, axis=0).tolist(), "hi": np.percentile(bs, 97.5, axis=0).tolist()}
     rb = []
     for _ in range(1000):
         il = rng.choice(np.where(groups["low"])[0], groups["low"].sum())
         ih = rng.choice(np.where(groups["high"])[0], groups["high"].sum())
-        rb.append(P[ih].mean(0) / P[il].mean(0))
-    th["ratio"] = {"est": (P[groups["high"]].mean(0) / P[groups["low"]].mean(0)).tolist(),
+        rb.append(gm(P[ih]) / gm(P[il]))
+    th["ratio"] = {"est": (gm(P[groups["high"]]) / gm(P[groups["low"]])).tolist(),
                    "lo": np.percentile(rb, 2.5, axis=0).tolist(), "hi": np.percentile(rb, 97.5, axis=0).tolist()}
     th["limits"] = [float(q1), float(q2)]
     out["thirds"] = th
