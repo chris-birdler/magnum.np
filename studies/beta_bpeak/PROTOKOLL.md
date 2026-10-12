@@ -3536,6 +3536,31 @@ the K1 runs of the design).
   4bb1900; changed are the samples of the C′ jobs and the analysis scripts).
   /root/pair_commit stays 4bb1900. FREQ_GO is set.
 
+### 7.76 Decisions of Chris (2026-10-12, night) and a finding of the 30-loop test
+
+- Mesh question (7.74): decision tomorrow.
+- The instance keeps running after C′.
+- The test folders /root/o2test (git worktree at dc95322) and
+  /root/o2test_runs were deleted (go of Chris). Before that, the small
+  files (JSON, logs, samples files, acc_slices; no *.pt, no raw accumulators)
+  were saved to runs/o2test/ (24 files, 2.5 MB, md5 equal to the instance,
+  runs/o2test/MANIFEST.md5, local).
+- The pair runs K1A10_0 … 2 get 512 samples per cycle (decision of Chris):
+  in C′ they are the f point of K1A10, and C′ uses the interval T(f) / 512
+  (7.75). The field images keep their 16 phases. The partner runs K1_0 … 2
+  of the design have 256 samples; test B showed small changes with 4 × the
+  samples (R1 + 0.011 at 9 mT). pair_jobs.py; jobs/pair_K1A10.txt differs
+  from the old one only in --samples (diff). 61 study tests pass.
+- Finding (record only, decision of Chris): in the 30-loop test of the
+  centre point (results/conditioning.md, 6 repeats at 9 / 20 / 35 mT), 3 of
+  18 lines have a loss that repeats only every few loops, without an event:
+  20 mT repeat 2: every 3rd loop + 5.8 % (exactly the same value); 35 mT
+  repeat 4: every 4th loop + 9.0 %; 35 mT repeat 0: about every 5th loop
+  + 7.5 … 9.1 %. The other 15 lines stay within ± 5 % of their late median
+  from loop 6 on. A value from 2 calm loops can then be off by a few percent
+  (within the drift limit ± 5 % of the conditioning test). To look at again
+  after C′ with the per-cycle data of O2.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

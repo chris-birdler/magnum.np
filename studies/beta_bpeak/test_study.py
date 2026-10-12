@@ -706,7 +706,8 @@ def test_pair_and_freq_jobs():
         assert RJ.get_arg(t, "d_lex") == ["300.0"] and RJ.get_arg(t, "seed") == RJ.get_arg(r, "seed")
         assert RJ.get_arg(t, "snap_phases") == ["16"] and RJ.get_arg(t, "min_calm") == ["2"]
     for n, t in pl:
-        assert RJ.get_arg(t, "acc_harm") == ["7"] and RJ.get_arg(t, "samples") == ["256"]   # O2 (7.73), as K1
+        assert RJ.get_arg(t, "acc_harm") == ["7"] and RJ.get_arg(t, "samples") == ["512"]   # O2 (7.73), T / 512 (7.76)
+        assert 512 % int(RJ.get_arg(t, "snap_phases")[0]) == 0
     # C′: the pair at f/2 and 2 f, K1 also at f (7.73); harmonics; the same sample interval T(f) / 512 (7.75)
     assert len(fl) == 15 and fl[0][0] == "K1A10_0_fhalf"
     assert sorted(n for n, _ in fl if n.endswith("_f1")) == ["K1_0_f1", "K1_1_f1", "K1_2_f1"]

@@ -25,6 +25,7 @@ def pair_lines():
         tok = set_arg(shlex.split(src["K1_%d" % k]), "d_lex", ["300.0"])
         tok = set_arg(set_arg(tok, "max_cycles_per_amp", ["12"]), "min_calm", ["2"])
         tok = set_arg(tok, "acc_harm", ["7"])             # harmonics 2f … 7f per cell (option O2, PROTOKOLL 7.72)
+        tok = set_arg(tok, "samples", ["512"])            # the C′ sample interval T / 512 at f (decision Chris, 7.76)
         out.append(("K1A10_%d" % k, tok))
     return out
 
