@@ -3003,7 +3003,16 @@ depinning). 116 runs, steady loops, coarse mesh.
   explain it.
 - Conclusion: the 30 MHz loss curves alone cannot separate the mechanisms. A
   second axis is needed: the rate dependence (frequency) or the
-  rate-independent part (quasi-static loops). Decision of Chris open.
+  rate-independent part (quasi-static loops). Decision of Chris
+  (2026-10-12): frequency test C′ on the K1 pair (PLAN 4.8). The old test 7.9
+  stays valid only at 20 … 150 mT at the base point (7.13): w(2 f) / w(f) =
+  1.02 / 1.44 / 1.83 / 2.06 / 2.09 at 20 / 35 / 50 / 100 / 150 mT; its corner
+  used the old stress axes (7.36). Rate-dependent (∝ f) but not ∝ α (7.48,
+  7.66): the loss above ≈ 50 mT is dynamic, not a plain Gilbert loss of a
+  linear response.
+Queue on the instance (2026-10-12 ≈ 19:40 UTC): mesh check d/l_ex 212 →
+damping runs at 9 / 20 mT (PLAN 4.7) → pair K1A10 (PLAN 4.8) → frequency
+test C′ (PLAN 4.8); every chain waits for the DONE file of the previous one.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
