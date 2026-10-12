@@ -705,11 +705,17 @@ def test_pair_and_freq_jobs():
         r = shlex.split(src["K1_" + n[-1]])
         assert RJ.get_arg(t, "d_lex") == ["300.0"] and RJ.get_arg(t, "seed") == RJ.get_arg(r, "seed")
         assert RJ.get_arg(t, "snap_phases") == ["16"] and RJ.get_arg(t, "min_calm") == ["2"]
-    assert len(fl) == 12 and fl[0][0] == "K1A10_0_fhalf"
+    for n, t in pl:
+        assert RJ.get_arg(t, "acc_harm") == ["7"] and RJ.get_arg(t, "samples") == ["256"]   # O2 (7.73), as K1
+    # C′: the pair at f/2 and 2 f, K1 also at f (7.73); harmonics; the same sample interval T(f) / 512 (7.75)
+    assert len(fl) == 15 and fl[0][0] == "K1A10_0_fhalf"
+    assert sorted(n for n, _ in fl if n.endswith("_f1")) == ["K1_0_f1", "K1_1_f1", "K1_2_f1"]
     for n, t in fl:
-        f = float(RJ.get_arg(t, "f_rel")[0]) / PJ.F_REL_30MHZ
-        assert abs(f - (0.5 if n.endswith("fhalf") else 2.0)) < 1e-6 and "--snap_phases" not in t
+        fac = 0.5 if n.endswith("fhalf") else (1.0 if n.endswith("_f1") else 2.0)
+        f = float(RJ.get_arg(t, "f_rel")[0]) / PJ.F_REL_30MHZ if "--f_rel" in t else 1.0
+        assert abs(f - fac) < 1e-6 and "--snap_phases" not in t
         assert RJ.get_arg(t, "d_lex") == (["300.0"] if n.startswith("K1A10") else ["212.0"])
+        assert RJ.get_arg(t, "acc_harm") == ["7"] and RJ.get_arg(t, "samples") == [str(int(512 / fac))]
 
 
 def test_size_jobs_equal_mesh300_except_size_and_seed():
@@ -979,3 +985,21 @@ def test_harmonic_loss_parseval():
     assert abs(pk[0].sum() / p_mean - 1) < 1e-5
     p_cell = float(h.s["p"][0, 0, 0]) / h.s_n
     assert abs(p_cell / p_mean - 1) < 1e-12
+
+
+def test_jump_measures_any_samples_per_cycle(tmp_path):
+    """eval_jumps_time reads the samples per cycle from the file (C′ runs with 256 … 1024 samples, 7.75): a smooth
+    periodic dissipation gives RF = RN = 0 for 512 samples per cycle."""
+    import eval_jumps_time as EJ
+    n, cyc = 512, 4
+    rows = []
+    for c in range(cyc):
+        for j in range(n + 1):
+            th = 2 * math.pi * j / n
+            rows.append([c, 0, 0, np.cos(th), 0, 0, 0, 0, 1.0 + 0.5 * np.cos(2 * th), 0, 0, 0, 0, 10])
+    f = tmp_path / "samples_00_amp00.csv"
+    np.savetxt(f, np.array(rows), delimiter=",", header="cycle,...")
+    P, N60, dM = EJ.series(f)
+    assert P.shape == (EJ.KEEP_LAST, n)
+    m = EJ.measures(P, N60, dM)
+    assert m["RF"] < 1e-9 and m["RN"] < 1e-9

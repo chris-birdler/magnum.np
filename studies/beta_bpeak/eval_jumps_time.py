@@ -43,7 +43,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 R = HERE / "runs"
 KEEP_LAST = 3
 K_SMOOTH = 6
-N_SAMPLES = 256
+N_SAMPLES = 256          # default; series() reads the samples per cycle from the file (C′ runs: 256 … 1024, 7.75)
 N_BOOT = 2000
 LEX_A10 = 3.342                       # nm, l_ex at A = 10 pJ/m and Js = 1.5 T
 MESH = {"K3 (A 20 pJ/m)": ("MK3_dx%s_s%d_b%d", range(2031, 2037)),
@@ -58,7 +58,8 @@ def series(path):
     a = np.loadtxt(path, delimiter=",", comments="#")
     cyc = a[:, 0].astype(int)
     keep = [a[cyc == c] for c in sorted(set(cyc))]
-    keep = [x for x in keep if len(x) == N_SAMPLES + 1][-KEEP_LAST:]
+    n = int(np.bincount([len(x) for x in keep]).argmax()) - 1          # samples per cycle of this run
+    keep = [x for x in keep if len(x) == n + 1][-KEEP_LAST:]
     if len(keep) < KEEP_LAST:
         return None
     return (np.array([x[1:, 8] for x in keep]), np.array([x[1:, -1] for x in keep]),
@@ -73,7 +74,7 @@ def top5(x):
 def smooth(Xm):
     F = np.fft.rfft(Xm)
     F[K_SMOOTH + 1:] = 0
-    return np.fft.irfft(F, n=N_SAMPLES)
+    return np.fft.irfft(F, n=len(Xm))
 
 
 def measures(P, N60, dM=None):
@@ -81,7 +82,7 @@ def measures(P, N60, dM=None):
     Pm = P.mean(0)
     F = np.fft.rfft(Pm)
     F[K_SMOOTH + 1:] = 0
-    Ps = np.fft.irfft(F, n=N_SAMPLES)
+    Ps = np.fft.irfft(F, n=P.shape[1])
     tot = P.sum()
     out = {"RF": np.abs(P - Ps).sum() / tot, "RN": np.abs(P - Pm).sum() / tot, "RH": np.abs(Pm - Ps).sum() / Pm.sum(),
            "dS5": top5(P) - top5(np.tile(np.clip(Ps, 0, None), n))}

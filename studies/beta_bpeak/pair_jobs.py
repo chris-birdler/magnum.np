@@ -46,6 +46,7 @@ def freq_lines():
             if fac != 1.0:                                  # f1 keeps the default f of the K1 runs
                 t = set_arg(t, "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
             t = set_arg(t, "acc_harm", ["7"])               # harmonics 2f … 7f per cell (option O2, PROTOKOLL 7.72)
+            t = set_arg(t, "samples", [str(int(round(512 / fac)))])   # the same sample interval T/512 at f (7.75)
             out.append((fac, "%s_%s" % (name, tag), t))
     out.sort(key=lambda x: (x[0] != 0.5, x[0], not x[1].startswith("K1A10")))   # f/2 of the large box first
     return [(n, t) for _, n, t in out]

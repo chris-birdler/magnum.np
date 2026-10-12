@@ -3501,6 +3501,25 @@ Facts (no decision; PLAN 4.6: Chris decides):
   over stress and packing); the large effect at low K_eff (+0.93) has no
   fine-mesh check.
 
+### 7.75 C′ with the same sample interval at all frequencies (2026-10-12, decision of Chris)
+
+With 256 samples per cycle the sample interval is 0.26 / 0.13 / 0.065 ns at
+f/2 / f / 2 f (Nyquist 1.9 / 3.8 / 7.7 GHz). Fast local precession would be
+caught differently at the three frequencies and could fake a frequency
+dependence of the rest channel of O2. Decision of Chris: more samples and the
+same interval T(f) / 512: 1024 samples at f/2, 512 at f, 256 at 2 f
+(pair_jobs.py; the regenerated jobs/freq_K1pair.txt differs from the old one
+only in --samples, checked by diff). The pair runs keep 256 (comparison with
+the K1 runs of the design).
+- eval_jumps_time.series reads the samples per cycle from the file, and
+  deck_data.acc_stages from config.json (both assumed 256). New test
+  test_jump_measures_any_samples_per_cycle.
+- The test test_pair_and_freq_jobs still expected the 12 jobs before 7.73
+  (I did not run the full test file at commit 439c878). It now checks 15
+  jobs, O2 and the samples. All 61 study tests pass.
+- Test B (7.72: 9 mT, f/2, 1024 samples) is also the production test of this
+  setting. /root/freq_commit is changed only after it passes.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
