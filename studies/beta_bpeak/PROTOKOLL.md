@@ -3480,6 +3480,19 @@ Facts (no decision; PLAN 4.6: Chris decides):
 - Limits (PLAN 4.6 C): one microstructure at high K_eff and without stress;
   the gap (3.1 cells at 212, 4.4 at 300 on dx 3) changes together with the
   size; dx 1.5 is not shown to be converged; 4 seeds.
+- Post hoc (request of Chris, not pre-registered; eval_size_no9.py →
+  results/mesh_no9.md): β from 50 → 100 mT only. Δβ (coarse − fine, paired):
+  base 0.71 µm +0.73 ± 0.20 (CI +0.27 … +1.19, n 4), base 1 µm −0.10 ± 0.11
+  (n.s.), K3 0.71 µm +0.36 ± 0.11 (n 6; over 20 … 100 mT +0.05 ± 0.07,
+  n.s.). Size lever 50 → 100 mT: fine +0.15 ± 0.13 (n.s.), coarse
+  −0.68 ± 0.16, mesh share −0.83 ± 0.23 (CI −1.29 … −0.37). Thus the mesh
+  effect at the base point does not come from the 9 mT point alone: at
+  0.71 µm the coarse mesh also gives too much loss at 100 mT (× 1.54). My
+  first statement to Chris ("almost all at 9 mT") was wrong. Pattern over
+  the 3 points: the β error sits at 0.71 µm between 50 and 100 mT (K3 and
+  base), not at 1 µm. Hypothesis (not shown): jumps that the coarse grid
+  makes at high B (jump peak only on dx 3, slide 21; 21 … 32 neighbour pairs
+  > 60° on dx 3 against 2 on dx 1.5 at 100 mT).
 - Statements that this touches (coarse mesh): the A / size lever on β (main
   result +0.57; fine-mesh estimate "≈ 67 %" from the confounded pair K3 /
   base, 7.63), "at 9 mT small particles lose least" and the switch of the
