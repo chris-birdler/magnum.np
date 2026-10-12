@@ -114,13 +114,11 @@ design values stand at 9 / 20 / 35 mT (drift of P ≤ 3 %, 90 % CI; Δβ
 −0.003 ± 0.018 and −0.004 ± 0.021). Reruns are bit-identical to their
 originals up to the first extended stage.
 
-**7. Damping (centre, n 8; rule: all measured cycles, 7.48 / 7.62).** With
-all cycles α 0.01 gives × 0.60 … 0.84 of P at 20 … 150 mT. Audit finding
-(7.66): at 9 mT the α 0.01 loops do not settle (loop areas partly
-negative), so the 9 mT ratio is not interpretable; with calm cycles only
-(≥ 1) the ratio is × 0.63 … 0.82 at 35 … 150 mT (n 7) and there is no value
-at 9 and 20 mT. Decision of Chris on the rule is open. The effect on β is
-not determined.
+**7. Damping (centre; rule since 2026-10-12: steady loops ≥ 2, decision
+Chris, 7.66).** α 0.01 gives × 0.62 … 0.81 of P at 35 … 150 mT (n 4 … 6
+seeds with ≥ 2 calm cycles at both α). At 9 and 20 mT there is no value
+(the α 0.01 loops do not settle within 9 cycles); 30-cycle runs at 9 and
+20 mT follow (PLAN 4.7). The effect on β is not determined.
 
 **8. Limits.** One frequency (30 MHz); d/l_ex 212 … 300 only; P levels from
 dx 3 carry the error of item 5; the mesh share of the K_eff and stress
@@ -2948,10 +2946,15 @@ hold.
   (7.22, 7.24); the loss moves from the particle centre to the rim with B
   (7.23, 7.50).
 - Corrections:
-  - 7.48 (finding, decision of Chris open): at α 0.01 and 9 mT, 6 of 8
-    seeds have no calm loop; loop areas are negative in 5 of 8 (w_dis /
-    w_loop −180 … +194). Thus the ratio × 0.34 at 9 mT and R(9 mT) are not
-    interpretable. Proposal: withdraw them.
+  - 7.48: at α 0.01 and 9 mT, 6 of 8 seeds have no calm loop; loop areas
+    are negative in 5 of 8 (w_dis / w_loop −180 … +194). Decision Chris
+    (2026-10-12): the damping test uses the steady rule (≥ 2 calm cycles)
+    like all other results; the ratio × 0.34 at 9 mT and R(9 mT) are
+    withdrawn; 30-cycle runs at α 0.01 for 9 and 20 mT (PLAN 4.7, ≈ 23
+    V100-h ≈ 2.5 $, estimate; first offered as ≈ 0.5 $, corrected with the
+    measured 147 s per cycle). With the new rule: × 0.79 / 0.73 / 0.75 /
+    0.81 / 0.62 at 35 / 50 / 70 / 100 / 150 mT (n 5 / 5 / 6 / 6 / 4); with
+    all cycles (old rule) × 0.60 … 0.84 at 20 … 150 mT (n 8).
   - 7.63: numbers before the rerun MK3_dx15_s2034_b50_mc2. Current: ln P
     (dx 3 from the fine state / dx 1.5) −0.49 ± 0.16 / −0.58 ± 0.14 /
     −0.26 ± 0.08; (fine state / own dx 3 state) −0.03 ± 0.09 / −0.22 ±

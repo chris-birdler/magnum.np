@@ -116,18 +116,20 @@ def reruns(specs, runs, cap_vh):
     return lines, skipped, cost
 
 
-def cond(names, source):
+def cond(names, source, amps=(9, 20, 35), max_prev=15):
+    """Conditioning runs: the design history up to each tested amplitude, then 30 cycles at it. max_prev caps the
+    earlier stages (15 at α 0.1, PLAN 4.5; 9 = the design length at α 0.01, decision Chris 2026-10-12)."""
     src = dict(job_lines(source))
     lines = []
     for n in names:
         tok = shlex.split(src[n])
         bl = get_arg(tok, "b_list")
-        for k, mT in enumerate((9, 20, 35)):
+        for k, mT in enumerate(amps):
             t = strip_snap(list(tok))
             t = set_arg(t, "b_list", bl[:k + 1])
             t = set_arg(t, "n_amp", [str(k + 1)])
             t = set_arg(t, "cycles_last_amp", ["30"])
-            t = set_arg(t, "max_cycles_per_amp", ["15"])
+            t = set_arg(t, "max_cycles_per_amp", [str(max_prev)])
             t = set_arg(t, "min_calm", [str(MIN_CALM)])
             lines.append("cond_%s_b%d %s" % (n, mT, " ".join(t)))
     return lines
@@ -158,6 +160,8 @@ def main():
     ap.add_argument("--cap_vh", type=float, default=None)
     ap.add_argument("--cond", nargs="*", default=None, help="run names for the conditioning test")
     ap.add_argument("--source", default=None, help="job file of the --cond runs")
+    ap.add_argument("--cond_amps", nargs="*", type=int, default=[9, 20, 35], help="tested amplitudes (mT)")
+    ap.add_argument("--cond_max_prev", type=int, default=15, help="cycle cap of the earlier stages")
     ap.add_argument("--retire", default=None, help="queue file: rename the init.pt variants (see above), then stop")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
@@ -171,8 +175,8 @@ def main():
         print("%d reruns, upper bound %.1f V100-h (all stages at the maximum)%s" % (len(lines), cost, ("; not written (cap): " + "; ".join(skipped))
                                                       if skipped else ""))
     if a.cond:
-        lines += cond(a.cond, a.source)
-        print("%d conditioning runs" % (3 * len(a.cond)))
+        lines += cond(a.cond, a.source, tuple(a.cond_amps), a.cond_max_prev)
+        print("%d conditioning runs" % (len(a.cond_amps) * len(a.cond)))
     pathlib.Path(a.out).write_text("".join(l + "\n" for l in lines))
     print("written %s (%d lines)" % (a.out, len(lines)))
 

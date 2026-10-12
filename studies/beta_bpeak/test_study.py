@@ -670,6 +670,22 @@ def test_rerun_jobs_and_gate(tmp_path):
     assert n == 6 and why is not None
 
 
+def test_cond_jobs_alpha001_keep_design_history():
+    """Decision Chris 2026-10-12: α 0.01 long runs at 9 and 20 mT; the earlier stage keeps the design length (9 cycles),
+    the start state stays C<k>/init.pt, no snapshots; the gate maps cond_C0_a001_b20 to C0_a001."""
+    import shlex
+    import check_reruns as CR
+    import rerun_jobs as RJ
+    src = pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_a001.txt"
+    lines = RJ.cond(["C0_a001"], str(src), (9, 20), 9)
+    assert [x.split()[0] for x in lines] == ["cond_C0_a001_b9", "cond_C0_a001_b20"]
+    t = shlex.split(lines[1].partition(" ")[2])
+    assert RJ.get_arg(t, "b_list") == ["0.006", "0.013333"] and RJ.get_arg(t, "max_cycles_per_amp") == ["9"]
+    assert RJ.get_arg(t, "cycles_last_amp") == ["30"] and RJ.get_arg(t, "init_from") == ["C0/init.pt"]
+    assert RJ.get_arg(t, "alpha") == ["0.01"] and "--snap_phases" not in t
+    assert CR.reference("cond_C0_a001_b20") == "C0_a001"
+
+
 def test_size_jobs_equal_mesh300_except_size_and_seed():
     """PLAN 4.6: each line of the d/l_ex 212 mesh check equals its mesh300 template of seed 921 except d_lex, seed, init_from and the
     steady-rule extension; 50 / 100 mT start from the 9 mT state of the same size, mesh and seed."""

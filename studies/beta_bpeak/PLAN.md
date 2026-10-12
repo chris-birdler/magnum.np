@@ -794,6 +794,24 @@ D. Order and cost (V100-h = hours on one GPU of the 4 × V100 instance;
      before 2026-10-12 ≈ 10 UTC, so that the credit covers the maximum case
      and the idle time until the fetch.
 
+### 4.7 Damping test at small B (2026-10-12, decision of Chris)
+
+Reason: PROTOKOLL 7.66. At α 0.01 the loops at 9 and 20 mT do not settle
+within the 9 design cycles. Decision of Chris: the damping test uses the
+steady rule (≥ 2 calm cycles) like all other results, and 30-cycle runs at
+9 and 20 mT give the missing values.
+- Jobs: jobs/cond_a001.txt (rerun_jobs.py --cond C0_a001 … C7_a001 --source
+  jobs/sobol_a001.txt --cond_amps 9 20 --cond_max_prev 9): per seed the
+  design history up to the tested amplitude (earlier stage capped at the 9
+  design cycles), then 30 cycles; start from C<k>/init.pt as the design.
+- Analysis: the eval_cond.py estimators; P ratio α 0.01 / α 0.1 at 9 and
+  20 mT from the calm tail (≥ 2) of the 30 cycles against the design value
+  at α 0.1; n ≥ 3 seeds, else no value.
+- Gate: the first cycles must repeat C<k>_a001 bit for bit (check_reruns.py).
+- Cost (estimate, 147 s per cycle measured): 8 × (30 + 39) cycles ≈ 23
+  V100-h, ≈ 6 h on 4 GPUs, ≈ 2.5 $. Start: instance/chain_alpha.sh after
+  the d/l_ex 212 mesh check (runs/SIZE_DONE).
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
