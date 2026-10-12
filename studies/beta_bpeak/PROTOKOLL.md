@@ -3397,6 +3397,34 @@ If one criterion fails: no FREQ_GO, report.
 regenerated jobs/freq_K1pair.txt is equal to the old one apart from this
 option (checked).
 
+**Test result (2026-10-12, 22:20 UTC, o2_check.py):**
+- Pass: 1 (exit 0), 2 (samples files equal byte for byte), 3 (p_box / p_dis
+  = 1.000000), 4 (p, m0 equal, m1 to 4·10⁻¹⁴, R1 0.898664 / 0.588929 in
+  both runs), 6 (wall per cycle × 0.94 / 0.97 against the run without
+  harmonics; GPU memory + ≈ 0.3 GB), 7 (acc_reduce clean).
+- Fail: 5 at 9 mT. Cells with Σ_k p_k > 1.001 p: 8.4 % (limit 1 %), max
+  ratio 2.22. At 50 mT 0.01 % (max 1.002): pass.
+- Cause analysis: the run without O2 (old R1 method, coherent m1) shows the
+  same: 4.4 % of the cells with p_f > 1.001 p at 9 mT, max 2.21, none at
+  50 mT. The excess is not in the harmonics (p_2 … p_7 = 0.2 … 0.3 % of p in
+  these cells) but in k = 1. The cells lie mostly in the vortex-core region
+  (33 % of them in r < R/2, 12 % of the volume). Energetically the excess
+  is Σ max(p_f − p, 0) / Σ p = 0.0003: R1 at 9 mT is biased by ≤ 0.0003.
+  The energy balance of the calm cycles at 9 mT is w_dis / w_loop = 1.08 …
+  1.10 (at 50 mT 1.00): the state still releases stored energy after the
+  start. Hypothesis: fast local motion between the samples (256 per cycle)
+  that the sampled p misses. Not shown.
+- Values at 50 mT (K1_0 at f/2, one run): R1 0.589, R_2 … R_7 0.027 / 0.103
+  / 0.028 / 0.026 / 0.012 / 0.015 (sum 0.21), rest 0.20.
+- Decision Chris (option A, recommendation): O2 is released although
+  criterion 5 failed, because the failure is not in the new code (the same
+  in the old method) and is energetically 0.03 %. At 9 mT the per-cell
+  values in the core region are read with this caveat. In parallel option
+  B: a test at 9 mT with 1024 samples per cycle (same job line otherwise).
+  Reading rule: if the share of cells with p_f > 1.001 p falls clearly
+  (below 1 %), the cause is fast motion between the samples; if not, it is
+  the slow release of energy after the start.
+
 ### 7.73 Decisions of Chris: O2 also at f, slide 21 kept, check of all slides (2026-10-12)
 
 1. The pair runs K1A10_0 … 2 (at f) also get --acc_harm 7, and 3 runs
