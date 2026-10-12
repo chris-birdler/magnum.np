@@ -3519,6 +3519,22 @@ the K1 runs of the design).
   jobs, O2 and the samples. All 61 study tests pass.
 - Test B (7.72: 9 mT, f/2, 1024 samples) is also the production test of this
   setting. /root/freq_commit is changed only after it passes.
+- Test B result (2026-10-12, 23:20 UTC; K1_0 at f/2, 9 mT, the same start
+  state as the 256-sample run): exit 0, p_box / p_dis = 1.000000, cycles
+  2 … 4 calm. Cells with p_f > 1.001 p: 3.1 % (256 samples: 4.4 %); with
+  Σ_k p_k > 1.001 p: 4.8 % (8.4 %); max ratio 1.18 (2.22). R1 0.910 (0.899),
+  R_2 … R_7 unchanged (0.006 / 0.015 / 0.001 / 0.001 / 0.000 / 0.000).
+  w_dis / w_loop of the calm cycles 1.07 … 1.08 (1.08 … 1.10). Steps per
+  cycle + 7 %, wall per cycle + 27 % (the GPU was shared with another job in
+  both runs).
+- Reading (rule of 7.72): the excess falls but stays above 1 %. Thus the
+  sampling explains a part (the extreme cells: max ratio 2.22 → 1.18; R1 at
+  256 samples is ≈ 0.01 too low at 9 mT), and a part remains, which agrees
+  with the slow release of energy after the start (w_dis / w_loop > 1).
+- Production: the wall time rises by less than 30 % (the limit given to
+  Chris), so /root/freq_commit = 67cdc74 (run code equal to the tested
+  4bb1900; changed are the samples of the C′ jobs and the analysis scripts).
+  /root/pair_commit stays 4bb1900. FREQ_GO is set.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
