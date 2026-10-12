@@ -2976,6 +2976,35 @@ hold.
 - No error found in: the steady rule, the rerun mapping, GLM / bootstrap /
   Holm / TOST, eval_k3*, eval_cond, the unit chain, the loop integrals.
 
+### 7.67 Loss decomposition B¹ + B² + B³: no mechanism (2026-10-12, option A of Chris)
+
+Question of Chris: why does β change, what is the physical background? Test
+of a three-term model per design run, method fixed before the result
+(eval_decomp.py → results/loss_decomposition.md): P = a1 x + a2 x² + a3 x³,
+x = B / 50 mT, a_j ≥ 0, fit of the relative residual; hypotheses: x¹
+switching events, x² linear viscous loss (∝ α), x³ Rayleigh (progressive
+depinning). 116 runs, steady loops, coarse mesh.
+
+- Fit quality: rms of the ln P residual 0.137 (median) with 3 terms against
+  0.134 with one power law (2 parameters). The decomposition does not
+  describe the curves better. Determined (a_j > 2 SE): x¹ in 17, x² in 91,
+  x³ in 38 of 116 runs.
+- Structural reason: with a_j ≥ 0 the local β of the model can only rise
+  with B. The measured loss curves bend down (mean curvature −0.08 ± 0.02,
+  β 2.15 → 1.98 above 70 mT, 7.66). Thus fixed-exponent terms cannot
+  describe them. A saturating mechanism is needed.
+- Damping check (centre, 4 seeds with ≥ 4 amplitudes at both α): a2 × 0.76
+  for α × 0.1, not × 0.1. The x² term is not a viscous Gilbert loss. The
+  fits are unstable between seeds (n 4): no further reading.
+- The only robust pattern restates β: the share of the steep x³ term grows
+  with A (high-A third 0.11 / 0.43 / 0.70 at 9 / 50 / 150 mT, low-A third ≈ 0;
+  range effect of A on the x³ share at 150 mT +0.66 ± 0.07, with a strong
+  A × K_eff term). This describes the higher β of high A; it does not
+  explain it.
+- Conclusion: the 30 MHz loss curves alone cannot separate the mechanisms. A
+  second axis is needed: the rate dependence (frequency) or the
+  rate-independent part (quasi-static loops). Decision of Chris open.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
