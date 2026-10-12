@@ -812,6 +812,28 @@ steady rule (≥ 2 calm cycles) like all other results, and 30-cycle runs at
   V100-h, ≈ 6 h on 4 GPUs, ≈ 2.5 $. Start: instance/chain_alpha.sh after
   the d/l_ex 212 mesh check (runs/SIZE_DONE).
 
+### 4.8 Paired field images and frequency test C′ (2026-10-12, decisions of Chris)
+
+Reason: the field cuts of single simulations cannot show the A effect (other
+microstructures), and the loss decomposition (PROTOKOLL 7.67) cannot
+separate the mechanisms. The old frequency test (7.9) is valid only at
+20 … 150 mT at the base point, with a start state that did not converge.
+- Pair: jobs/pair_K1A10.txt (pair_jobs.py): the corner K1 (A 20 pJ/m at
+  1 µm, K_eff 1.0 kJ/m³, K_σ 1.5 K_eff, φ 0.62) again with d/l_ex 300
+  (A 10 pJ/m), seeds 2011 … 2013, snapshots at 9 / 50 / 150 mT, steady rule
+  (--min_calm 2, ≤ 12 cycles). The pair shares seed, stress axes, packing
+  and history; the Herzer cells scale with the box, so the cell-by-cell
+  microstructure is not the same. Chain instance/chain_pair.sh after the
+  damping runs. ≈ 10 V100-h, ≈ 3.5 h, ≈ 1.5 $ (estimate).
+- Frequency test C′: jobs/freq_K1pair.txt (pair_jobs.py --freq): the same 6
+  simulations at f/2 (15 MHz) and 2 f (60 MHz), no snapshots, steady rule.
+  Analysis (fixed now): per seed and amplitude w(2 f) / w(f) and
+  w(f/2) / w(f) (w = loss per cycle) for A 10 and A 20 pJ/m; rate-independent
+  share w_h = 2 w(f) − w(2 f) as in 7.9; β at each frequency and the A
+  effect on β at each frequency (paired by seed, n 3). Question: does the A
+  effect on β come from the rate-dependent part? Chain instance/chain_freq.sh
+  after the pair chain. ≈ 30 V100-h, ≈ 8 h, ≈ 3.5 $ (estimate).
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,

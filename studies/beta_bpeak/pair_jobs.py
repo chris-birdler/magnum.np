@@ -7,12 +7,46 @@ as d/l_ex, so the pair differs only in A. The Herzer-cell grid scales with the b
 same cells: the pair shares seed, stress axes, packing and history, not the cell-by-cell microstructure.
 
     python pair_jobs.py > jobs/pair_K1A10.txt
+    python pair_jobs.py --freq > jobs/freq_K1pair.txt      # option C′: f/2 and 2 f
 """
 import shlex
 
 from rerun_jobs import job_lines, set_arg
 
-src = dict(job_lines("jobs/sobol_corners.txt"))
-for k in range(3):
-    tok = set_arg(shlex.split(src["K1_%d" % k]), "d_lex", ["300.0"])
-    print("K1A10_%d %s" % (k, " ".join(tok)))
+F_REL_30MHZ = 0.0007136497332286743            # f / f_M at 30 MHz, Js = 1.5 T (run_loops default)
+FREQS = (("fhalf", 0.5), ("f2", 2.0))
+
+
+def pair_lines():
+    """K1A10_k: K1_k with d/l_ex 300; steady rule (--min_calm 2, at most 12 cycles per stage) as the later runs."""
+    src = dict(job_lines("jobs/sobol_corners.txt"))
+    out = []
+    for k in range(3):
+        tok = set_arg(shlex.split(src["K1_%d" % k]), "d_lex", ["300.0"])
+        tok = set_arg(set_arg(tok, "max_cycles_per_amp", ["12"]), "min_calm", ["2"])
+        out.append(("K1A10_%d" % k, tok))
+    return out
+
+
+def freq_lines():
+    """Option C′ (Chris 2026-10-12): the pair K1 (A 20 pJ/m) and K1A10 (A 10 pJ/m) at f/2 and 2 f (15 and 60 MHz), the
+    same seeds, no snapshots, accumulators kept, steady rule. Longest jobs first."""
+    from rerun_jobs import strip_snap
+    src = dict(job_lines("jobs/sobol_corners.txt"))
+    base = [("K1A10_%d" % k, tok) for k, tok in [(k, t) for k, (_, t) in enumerate(pair_lines())]]
+    base += [("K1_%d" % k, set_arg(set_arg(shlex.split(src["K1_%d" % k]), "max_cycles_per_amp", ["12"]), "min_calm", ["2"]))
+             for k in range(3)]
+    out = []
+    for tag, fac in FREQS:
+        for name, tok in base:
+            t = set_arg(strip_snap(list(tok)), "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
+            out.append((fac, "%s_%s" % (name, tag), t))
+    out.sort(key=lambda x: (x[0] != 0.5, not x[1].startswith("K1A10")))     # f/2 of the large box first
+    return [(n, t) for _, n, t in out]
+
+
+if __name__ == "__main__":
+    import sys
+    lines = freq_lines() if "--freq" in sys.argv else pair_lines()
+    for name, tok in lines:
+        print(name, " ".join(tok))

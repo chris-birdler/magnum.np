@@ -686,6 +686,32 @@ def test_cond_jobs_alpha001_keep_design_history():
     assert CR.reference("cond_C0_a001_b20") == "C0_a001"
 
 
+def test_pair_and_freq_jobs():
+    """Decisions Chris 2026-10-12: K1A10 = K1 with d/l_ex 300 (A 10 pJ/m), snapshots kept, steady rule; frequency test
+    C′ = the pair at f/2 and 2 f, no snapshots, the rest equal."""
+    import shlex
+    import os
+    import rerun_jobs as RJ
+    cwd = os.getcwd()
+    os.chdir(pathlib.Path(__file__).resolve().parent)
+    try:
+        import pair_jobs as PJ
+        pl, fl = PJ.pair_lines(), PJ.freq_lines()
+        src = dict(RJ.job_lines("jobs/sobol_corners.txt"))
+    finally:
+        os.chdir(cwd)
+    assert [n for n, _ in pl] == ["K1A10_0", "K1A10_1", "K1A10_2"]
+    for n, t in pl:
+        r = shlex.split(src["K1_" + n[-1]])
+        assert RJ.get_arg(t, "d_lex") == ["300.0"] and RJ.get_arg(t, "seed") == RJ.get_arg(r, "seed")
+        assert RJ.get_arg(t, "snap_phases") == ["16"] and RJ.get_arg(t, "min_calm") == ["2"]
+    assert len(fl) == 12 and fl[0][0] == "K1A10_0_fhalf"
+    for n, t in fl:
+        f = float(RJ.get_arg(t, "f_rel")[0]) / PJ.F_REL_30MHZ
+        assert abs(f - (0.5 if n.endswith("fhalf") else 2.0)) < 1e-6 and "--snap_phases" not in t
+        assert RJ.get_arg(t, "d_lex") == (["300.0"] if n.startswith("K1A10") else ["212.0"])
+
+
 def test_size_jobs_equal_mesh300_except_size_and_seed():
     """PLAN 4.6: each line of the d/l_ex 212 mesh check equals its mesh300 template of seed 921 except d_lex, seed, init_from and the
     steady-rule extension; 50 / 100 mT start from the 9 mT state of the same size, mesh and seed."""
