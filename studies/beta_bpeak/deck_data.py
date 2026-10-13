@@ -275,6 +275,7 @@ def main():
     out["physics"] = physics_block(recs)
     out["channels"] = channels_block(recs, to_P)
     out["alpha_steady"] = alpha_block(to_P)
+    out["alpha_fits"] = alpha_fits_block()
     out["conditioning"] = cond_block()
     (HERE / "results" / "deck_data.json").write_text(json.dumps(out, indent=1))
     print("written results/deck_data.json: %d runs, %d bootstrap resamples, α pairs %d" %
@@ -509,6 +510,45 @@ def alpha_block(to_P):
         out["se"][k] = float(d.std(ddof=1) / math.sqrt(len(d))) if ok else None
         out["P_a01"][k] = float(np.exp(np.mean(w0))) * to_P if ok else None
         out["P_a001"][k] = float(np.exp(np.mean(w1))) * to_P if ok else None
+    return out
+
+
+def alpha_fits_block():
+    """Damping α 0.01 against α 0.1, both variants of eval_alpha_fits.py (PROTOKOLL 7.79): per B the loss ratio
+    (geometric mean, 90 % CI, SD of ln, n) and the number of runs at α 0.01 that settle (≥ 2 calm cycles) of 8; Δβ with
+    one offset per seed for the full ranges with and without 9 mT and for the 3-point windows."""
+    from scipy import stats
+    import eval_alpha_fits as EAF
+    L0, Lc, La = EAF.data()
+    out = {"amps": list(EAF.AMPS), "n_runs": len(EAF.SEEDS), "settled": [], "ratio": {}, "fits": {}}
+    for b in EAF.AMPS:
+        out["settled"].append(int(sum(np.isfinite(Lc[s][b]) for s in EAF.SEEDS)))
+    for vname, L in (("converged", Lc), ("all", La)):
+        rr = []
+        for b in EAF.AMPS:
+            r = np.array([L[s][b] - L0[s][b] for s in EAF.SEEDS if np.isfinite(L[s].get(b, np.nan))])
+            if len(r) >= 3:
+                h = stats.t.ppf(0.95, len(r) - 1) * r.std(ddof=1) / math.sqrt(len(r))
+                rr.append({"gm": float(math.exp(r.mean())), "lo": float(math.exp(r.mean() - h)),
+                           "hi": float(math.exp(r.mean() + h)), "sd_ln": float(r.std(ddof=1)), "n": int(len(r))})
+            else:
+                rr.append(None)
+        out["ratio"][vname] = rr
+        fl = []
+        for lab, amps in EAF.FITS:
+            rd = EAF.fe([(s, b, L[s][b] - L0[s][b]) for s in EAF.SEEDS for b in amps if np.isfinite(L[s].get(b, np.nan))])
+            r1 = EAF.fe([(s, b, L[s][b]) for s in EAF.SEEDS for b in amps if np.isfinite(L[s].get(b, np.nan))])
+            r0 = EAF.per_seed(L0, amps)
+            entry = {"label": lab, "amps": list(amps), "beta_a01": [float(r0.mean()), float(r0.std(ddof=1)), int(len(r0))]}
+            for key, r in (("dbeta", rd), ("beta_a001", r1)):
+                if r is not None:
+                    h = stats.t.ppf(0.95, r[4]) * r[1]
+                    entry[key] = {"est": float(r[0]), "se": float(r[1]), "lo": float(r[0] - h), "hi": float(r[0] + h),
+                                  "n_values": int(r[2]), "n_seeds": int(r[3])}
+                else:
+                    entry[key] = None
+            fl.append(entry)
+        out["fits"][vname] = fl
     return out
 
 

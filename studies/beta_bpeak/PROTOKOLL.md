@@ -3615,6 +3615,48 @@ holds it. eval_pinning.py → results/pinning_check.md (mesh pairs base 0.71 /
   general. Sign and size of the mesh error depend on the microstructure at
   every B.
 
+### 7.79 Damping α 0.01 against α 0.1: β fits with and without 9 mT (2026-10-13, request of Chris)
+
+eval_alpha_fits.py → results/alpha_fits.md / .png; deck_data alpha_fits_block; deck slide 23 (means with 90 %
+intervals and the number of settled runs, no single seeds). Centre point, 8 runs per B.
+- Variant converged: stages with ≥ 2 calm cycles (9 and 20 mT from the 30-cycle runs, 35 … 150 mT from the 9-cycle
+  design runs). Variant all: every run, time mean of w_dis of the last cycles (10 at 9 / 20 mT, 3 above).
+- Runs that settle at α 0.01, of 8, per B (9 / 20 / 35 / 50 / 70 / 100 / 150 mT): 4 / 3 / 5 / 5 / 6 / 6 / 4. At α 0.1 all 8 settle at
+  every B.
+
+Loss ratio P(α 0.01) / P(α 0.1), geometric mean (90 % CI), per B 9 … 150 mT:
+- converged: × 0.13 (0.11 … 0.16) | × 1.06 (0.38 … 2.91) | × 0.80 (0.44 … 1.44) | × 0.73 (0.50 … 1.07) | × 0.75 (0.54 … 1.05) | × 0.81 (0.69 … 0.95) | × 0.62 (0.49 … 0.77)
+- all: × 0.23 (0.15 … 0.37) | × 0.60 (0.35 … 1.04) | × 0.85 (0.59 … 1.22) | × 0.84 (0.65 … 1.09) | × 0.69 (0.51 … 0.93) | × 0.79 (0.66 … 0.93) | × 0.61 (0.55 … 0.69)
+
+Δβ = β(α 0.01) − β(α 0.1), one offset per run (± SE, 90 % CI):
+
+| fit | variant | Δβ |
+|---|---|---|
+| with 9 mT: 9 … 150 | converged | +0.47 ± 0.13 (+0.25 … +0.70), 33 values |
+| without 9 mT: 20 … 150 | converged | -0.17 ± 0.11 (-0.37 … +0.03), 29 values |
+| 9 / 20 / 35 | converged | +1.75 ± 0.52 (+0.53 … +2.98), 12 values |
+| 20 / 35 / 50 | converged | -0.10 ± 0.25 (-0.61 … +0.41), 13 values |
+| 35 / 50 / 70 | converged | -0.32 ± 0.24 (-0.77 … +0.14), 16 values |
+| 50 / 70 / 100 | converged | +0.14 ± 0.32 (-0.46 … +0.73), 17 values |
+| 70 / 100 / 150 | converged | -0.17 ± 0.32 (-0.78 … +0.45), 16 values |
+| with 9 mT: 9 … 150 | all | +0.32 ± 0.09 (+0.17 … +0.46), 56 values |
+| without 9 mT: 20 … 150 | all | -0.01 ± 0.10 (-0.17 … +0.16), 48 values |
+| 9 / 20 / 35 | all | +0.97 ± 0.23 (+0.57 … +1.38), 24 values |
+| 20 / 35 / 50 | all | +0.40 ± 0.24 (-0.02 … +0.81), 24 values |
+| 35 / 50 / 70 | all | -0.30 ± 0.17 (-0.61 … +0.00), 24 values |
+| 50 / 70 / 100 | all | -0.09 ± 0.25 (-0.54 … +0.35), 24 values |
+| 70 / 100 / 150 | all | -0.16 ± 0.21 (-0.53 … +0.20), 24 values |
+
+- Both variants: without 9 mT no change of β (CI includes 0); the effect sits in the window 9 / 20 / 35 mT.
+- Reading: at 9 mT the loss is mostly motion at f (R1 0.91 at α 0.1), which scales with α; above 35 mT motion at
+  other frequencies dominates and scales only weakly. Thus α acts on β only through the low-B end. Centre point,
+  coarse mesh; whether the coarse mesh gives the same ratio as the fine mesh is open.
+- The SE assume independent values within a run; they are rather too small.
+- Independent check of the 9 mT value (context-free agent, 2026-10-13): arithmetic and steady tails confirmed
+  (w_dis SD 0.8 … 2.2 %, no drift); one settled run is in another state after large events; the runs that do
+  not settle give a higher time-mean loss (variant all); one run is a steady period-2 state, which the single-cycle
+  rule rejects (open method point, as the 3 … 5 cycle patterns of 7.76).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
