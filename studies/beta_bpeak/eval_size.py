@@ -170,6 +170,16 @@ def main():
                 cells.append("%.3g (n %d)" % (math.exp(np.mean(v)), len(v)) if v else "–")
             print("| %s | %s | %s |" % (lab, mlab, " | ".join(cells)))
     vals = {p: per_seed(data[p]) for p, _, _ in GROUPS}
+    js = {"points": {}, "lever": {}, "to_P": to_P}           # results/mesh212.json for the deck (added 2026-10-13)
+    for p, lab, seeds in GROUPS:
+        js["points"][p] = {"label": lab, "n_seeds": len(seeds)}
+        for k in OUTPUTS:
+            v = np.array(list(vals[p][k].values()), float)
+            sm = summary(v)
+            js["points"][p][k] = ({"mean": sm[0], "se": sm[1], "n": sm[2], "lo": sm[0] - sm[3], "hi": sm[0] + sm[3],
+                                   "sd": float(v.std(ddof=1)), "per_seed": v.tolist()} if sm else {"n": len(v)})
+        js["points"][p]["P"] = {mesh: {str(b): [data[p][(mesh, s)][b][0] * to_P for s in seeds if b in data[p][(mesh, s)]]
+                                       for b in AMPS} for mesh in ("dx15", "dx3")}
     print("\n## Mesh error (paired per seed)\n")
     table([(lab, vals[p]) for p, lab, _ in GROUPS])
     print("\nStages without a steady value (≥ 2 calm cycles): " + "; ".join(
@@ -196,7 +206,14 @@ def main():
         sh = difference(a, b)
         sc = "not determined" if a is None or b is None else ("yes" if sign_change(b, a) else "no")
         cell = lambda d: "%+.2f ± %.2f (CI %+.2f … %+.2f)" % (d[0], d[1], d[0] - d[2], d[0] + d[2]) if d else "–"
+        js["lever"][k] = {m: ({"mean": d[0], "se": d[1], "lo": d[0] - d[2], "hi": d[0] + d[2]} if d else None)
+                          for m, d in (("dx15", lev["dx15"]), ("dx3", lev["dx3"]), ("share", sh))}
+        js["lever"][k]["values"] = {mesh: {p: [math.log(data[p][(mesh, s)][int(k.split()[1])][0]) if k.startswith("lnP")
+                                               else beta(data[p][(mesh, s)], AMPS if k == "beta" else (9, 50))
+                                               for s in sorted(vals[p][k])] for p in ("M212", "M300")}
+                                    for mesh in ("dx15", "dx3")}
         print("| %s | %s | %s | %s | %s |" % (k, cell(lev["dx15"]), cell(lev["dx3"]), cell(sh), sc))
+    (pathlib.Path(__file__).resolve().parent / "results" / "mesh212.json").write_text(json.dumps(js, indent=1))
     print("\n## Old pairs (relaxation not converged; hints only, PROTOKOLL 7.64)\n")
     analyze.ALLOW_UNCONVERGED = True              # audit mode for the old runs only
     rows = []

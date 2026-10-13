@@ -72,6 +72,18 @@ def main():
     e212 = ES.summary([b212["dx3"][s] - b212["dx15"][s] for s in b212["dx15"] if s in b212["dx3"]])
     L.append("| β (50 → 100 mT) | %s | %s | %s |" % (f(lev["dx15"]), f(lev["dx3"]), f(ES.difference(e300, e212))))
     print("\n".join(L))
+    import json
+    import pathlib
+    js = {"points": {}, "lever": {}}                        # results/mesh_no9.json for the deck (added 2026-10-13)
+    for prefix, (lab, b) in groups.items():
+        paired = [b["dx3"][s] - b["dx15"][s] for s in b["dx15"] if s in b["dx3"]]
+        sm = ES.summary(paired)
+        js["points"][prefix] = {"label": lab, "dbeta": ({"mean": sm[0], "se": sm[1], "n": sm[2], "lo": sm[0] - sm[3],
+                                                          "hi": sm[0] + sm[3]} if sm else None),
+                                "beta": {m: list(b[m].values()) for m in ("dx15", "dx3")}}
+    for m, d in (("dx15", lev["dx15"]), ("dx3", lev["dx3"]), ("share", ES.difference(e300, e212))):
+        js["lever"][m] = {"mean": d[0], "se": d[1], "lo": d[0] - d[2], "hi": d[0] + d[2]} if d else None
+    (pathlib.Path(__file__).resolve().parent / "results" / "mesh_no9.json").write_text(json.dumps(js, indent=1))
 
 
 if __name__ == "__main__":
