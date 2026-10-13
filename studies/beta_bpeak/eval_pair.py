@@ -20,7 +20,7 @@ ln B to the nominal B), P = w · K_d · f in W/cm³.
 4. Loss channels per B and A (mean over the seeds, calm accumulator windows only): R1 = share of the cell loss at f,
    share of the loss in the 10 % of the cells with the highest loss, jump share RF / 2 of the last 3 calm cycles.
 
-    python eval_pair.py > results/pair_K1A10.md
+    python eval_pair.py > results/pair_K1A10.md      # also results/pair_K1A10.json (numbers for the deck)
 """
 import math
 import pathlib
@@ -126,6 +126,8 @@ def main():
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     rec = records()
     import json
+    res = {"seeds": [folder(a, k).name for a in (20, 10) for k in SEEDS], "amps": AMPS, "ratio": {}, "beta": {},
+           "lever": {}, "design": {}}
     u = json.loads((folder(20, 0) / "config.json").read_text())
     to_P = u["units"]["Kd"] * u["f_rel"] * u["units"]["f_M"] / 1e6
     L = ["# Pair K1 (A 20 pJ/m, d/l_ex 212) against K1A10 (A 10 pJ/m, d/l_ex 300)", "",
@@ -143,6 +145,8 @@ def main():
         pb = [lnP(rec[10][k], b, to_P) for k in SEEDS]
         d = [y - x for x, y in zip(pa, pb) if np.isfinite(x) and np.isfinite(y)]
         s = tci(d)
+        res["ratio"]["%g" % b] = ({"gm": math.exp(s[0]), "lo": math.exp(s[2]), "hi": math.exp(s[3]), "n": s[4]} if s
+                                else {"n": len(d)})
         gm = lambda v: ("%.3g" % math.exp(np.nanmean(v))) if np.isfinite(v).any() else "–"
         L.append("| %g | %s | %s | %s | %d / %d |" % (
             b, gm(np.array(pa)), gm(np.array(pb)),
@@ -166,6 +170,12 @@ def main():
                 if np.isfinite(lnw[10][k][b]) and np.isfinite(lnw[20][k][b])]
         r = slope_fe(rows) if len({x[0] for x in rows}) >= MIN_N else None
         meas[lab] = r
+        res["beta"][lab] = {str(a): [float(x) for x in
+                                     [np.polyfit(np.log(amps), [lnw[a][k][b] for b in amps], 1)[0] for k in SEEDS
+                                      if all(np.isfinite(lnw[a][k][b]) for b in amps)]] for a in (20, 10)}
+        if r:
+            h = stats.t.ppf(0.95, r[4]) * r[1]
+            res["lever"][lab] = {"mean": -r[0], "se": r[1], "lo": -r[0] - h, "hi": -r[0] + h, "n": r[3]}
         L.append("| %s | %s | %s | %s |" % (lab, cells[0], cells[1], EAF.fmt_fe(r) if r else "no statement"))
     # 3. design prediction
     est, boots, n_des, lnd = design_prediction(rec)
@@ -179,6 +189,7 @@ def main():
         key = "fit " + lab
         b = np.array([x[key] for x in boots])
         m = meas[lab]
+        res["design"][lab] = {"mean": -est[key], "lo": -float(np.percentile(b, 95)), "hi": -float(np.percentile(b, 5))}
         L.append("| Δβ %s mT | %s | %+.2f (%+.2f … %+.2f) |" % (
             lab, ("%+.2f (%+.2f … %+.2f)" % (m[0], m[0] - stats.t.ppf(0.95, m[4]) * m[1],
                                              m[0] + stats.t.ppf(0.95, m[4]) * m[1])) if m else "–",
@@ -207,6 +218,12 @@ def main():
           "of the particle cells with the highest loss. Jump share: RF / 2 (energy above the smooth periodic curve, "
           "last 3 calm cycles)."]
     print("\n".join(L))
+    import eval_mechanism as EM
+    res["vsw"] = {str(a): [[EM.measures(folder(a, k).name if a == 10 else "K1_%d" % k)["V_sw %d" % b] for b in (9, 50, 150)]
+                           for k in SEEDS] for a in (20, 10)}      # switched volume per half loop (% of V), 3D snapshots
+    res["note"] = ("lever = beta(A 20) - beta(A 10), paired by seed; design = the same from the design GLM (90 % "
+                   "bootstrap); vsw from the snapshot runs K1_k (the reruns K1_k_mc2 have no snapshots) and K1A10_k")
+    (pathlib.Path(__file__).resolve().parent / "results" / "pair_K1A10.json").write_text(json.dumps(res, indent=1))
 
 
 if __name__ == "__main__":

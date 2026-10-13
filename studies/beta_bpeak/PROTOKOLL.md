@@ -3751,6 +3751,16 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
 - Limits: one design point (low K_eff, high stress), 3 seeds, coarse mesh dx 3 (the mesh question is open, B0);
   the cell-by-cell axes of the pair differ; the protocols differ (K1_1, K1_2: ≤ 7 cycles per stage without
   --min_calm; K1_0_mc2: ≤ 15 cycles, --min_calm 2; K1A10: ≤ 12 cycles, --min_calm 2, 512 samples per cycle).
+- Field images (deck slide 10, the purpose of the pair, PLAN 4.8): turn angle θ = arccos(𝐦(t₊) · 𝐦(t₋)) between
+  the two field peaks in the mid cut, seed 2013 (the seed with the median A lever: +0.56 / +0.70 / +0.67; rule fixed
+  before the images were drawn). Mean over the mesh cells of the cut, mean of 3 seeds, 9 / 50 / 150 mT: 2 / 12 / 32°
+  at A 20 and 3 / 12 / 32° at A 10: 𝐦 turns as far locally at both A. The cell mean ⟨𝐦⟩ (Herzer cell, whole volume,
+  1.8 × the switched volume per half loop) turns 1 / 6 / 21° at A 20 and 1 / 6 / 16° at A 10: at 150 mT 25 % less at
+  A 10 (seed ranges do not overlap). Thus the same local motion gives × 3 more loss at 9 mT and half the loss at
+  150 mT. The reason is not determined here.
+- Real cell-loss maps: the snapshot runs K1_0 … 2 (A 20) have no valid cell-loss slices (float16 overflow, old format,
+  7.68: p = inf); only |𝐦₁|² (loss at f) is valid. Real loss maps at A 20 with the same protocol as K1A10 come from the
+  C′ runs K1_k_f1 (A 20 at f, harmonics, 512 samples; no snapshots). The paired loss maps for slide 8 wait for them.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
