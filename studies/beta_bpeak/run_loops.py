@@ -88,7 +88,7 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
 NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
-            "acc_harm": 0}                                         # without them is equal to these defaults
+            "acc_harm": 0, "init_transfer": None}                  # without them is equal to these defaults
 #                                                                    (acc_harm: 2026-10-12, PROTOKOLL 7.72)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -218,6 +218,11 @@ def parse_args(argv=None):
                    help="start from the relaxed virgin state init.pt of another run (no relaxation); a "
                         "relative path is relative to the parent of --out (runs/); the arguments in "
                         "INIT_KEYS must agree")
+    g.add_argument("--init_transfer", type=str, default=None,
+                   help="virgin_asc (PLAN 4.10): start the relaxation from the relaxed state init.pt of a run on a finer "
+                        "mesh (integer ratio of the cells) instead of a random state: block average of m over the "
+                        "particle sub-cells, normalised; then the production relaxation. All INIT_KEYS except dx_lex "
+                        "and relax_maxiter must agree; waits like --init_from (--init_wait_h)")
     g.add_argument("--init_wait_h", type=float, default=0.0,
                    help="wait up to this many hours for the --init_from file (it is written by a job that "
                         "still relaxes)")
@@ -249,6 +254,32 @@ def save_atomic(obj, path):
     tmp = path.with_name(path.name + ".tmp")
     torch.save(obj, tmp)
     os.replace(tmp, path)
+
+
+def transfer_m(m_f, ids_f, ids_c):
+    """Block average of the fine state m_f [Nf,Nf,Nf,3] onto the coarse grid of ids_c [Nc,Nc,Nc] (Nf = k Nc), normalised
+    (PLAN 4.10). Each coarse cell takes the mean over the fine sub-cells with the same index (particle 0 … 3 or void -1);
+    a coarse cell without such a sub-cell (surface mismatch) takes the plain block mean. Returns (m_c, stats)."""
+    Nf, Nc = ids_f.shape[0], ids_c.shape[0]
+    k = Nf // Nc
+    if k * Nc != Nf or k < 1:
+        raise ValueError("the fine mesh (%d cells) is not an integer multiple of the coarse mesh (%d cells)" % (Nf, Nc))
+    m = np.asarray(m_f, np.float64).reshape(Nc, k, Nc, k, Nc, k, 3)
+    same = ids_f.reshape(Nc, k, Nc, k, Nc, k) == ids_c[:, None, :, None, :, None]
+    cnt = same.sum(axis=(1, 3, 5))
+    v = (m * same[..., None]).sum(axis=(1, 3, 5))
+    fall = cnt == 0
+    v[fall] = m.sum(axis=(1, 3, 5))[fall]
+    nrm = np.linalg.norm(v, axis=-1)
+    zero = nrm < 1e-12
+    v = np.where(zero[..., None], np.array([1.0, 0.0, 0.0]), v / np.maximum(nrm, 1e-300)[..., None])
+    mag_c = ids_c >= 0
+    stats = {"factor": int(k), "coarse_particle_cells": int(mag_c.sum()),
+             "no_same_index_subcell": int((mag_c & fall).sum()),
+             "partial_blocks": int((mag_c & ~fall & (cnt < k ** 3)).sum()),
+             "zero_vector": int((mag_c & zero).sum()),
+             "mean_norm_before": float(np.mean(nrm[mag_c & ~fall] / cnt[mag_c & ~fall])) if (mag_c & ~fall).any() else None}
+    return v, stats
 
 
 def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
@@ -625,7 +656,36 @@ def main(argv=None):
         if args.init_block > 0.0 and not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
             warnings.warn("init_block %g l_ex is not a multiple of dx and a divisor of a: "
                           "the initial state depends on the mesh" % args.init_block)
-        state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed))
+        transfer = None
+        if args.init_transfer:
+            # PLAN 4.10: the relaxed state of a finer mesh, block averaged onto this mesh, as the start of the relaxation
+            src = pathlib.Path(args.init_transfer)
+            src = src if src.is_absolute() else out.parent / src
+            t_end = time.time() + 3600.0 * args.init_wait_h
+            while not src.exists() and time.time() < t_end:
+                time.sleep(60.0)
+            if not src.exists():
+                sys.exit("ERROR: --init_transfer %s does not exist" % src)
+            cf = torch.load(str(src), map_location="cpu")
+            if args.surface != "voxel":
+                sys.exit("ERROR: --init_transfer needs --surface voxel")
+            diff = [k for k in INIT_KEYS if k not in ("dx_lex", "relax_maxiter") and cf["config"].get(k) != config.get(k)]
+            if diff:
+                sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
+                    "%s %r -> %r" % (k, cf["config"].get(k), config.get(k)) for k in diff)))
+            if not cf.get("init", {}).get("relax_converged"):
+                sys.exit("ERROR: the relaxation of %s did not converge" % src)
+            dxf = float(cf["config"]["dx_lex"])
+            if not (is_multiple(a_lex, dxf) and is_multiple(args.dx_lex, dxf)):
+                sys.exit("ERROR: dx %g l_ex of %s is not a divisor of dx %g and of a %g l_ex" % (dxf, src, args.dx_lex, a_lex))
+            Nf = int(round(a_lex / dxf))
+            ids_f = fcc_box(Nf, d, dxf * lex, sub=0)["ids"]
+            m_c, tstats = transfer_m(cf["m"].numpy(), ids_f, ids)
+            state.m = T(m_c)
+            transfer = dict(tstats, source=str(src), dx_lex_fine=dxf)
+            print("[init] transferred from %s (dx %g -> %g l_ex): %s" % (src, dxf, args.dx_lex, tstats), flush=True)
+        else:
+            state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed))
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()
@@ -677,6 +737,8 @@ def main(argv=None):
         else:
             llg.step(state, args.relax_tau * U["t_M"])
             print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
+        if transfer is not None and "init" in summary:
+            summary["init"]["transfer"] = transfer
         if args.protocol == "virgin_asc":
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)

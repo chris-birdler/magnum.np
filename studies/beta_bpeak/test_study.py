@@ -123,6 +123,7 @@ def test_cube_axes_same_on_all_meshes(L):
     a, d = box_edge(96.0, 0.65)                    # a = 144 l_ex (mesh test geometry)
     assert _n_mismatch(a, d, L, 3.0, 1.5, 1.5) == 0
     assert _n_mismatch(a, d, L, 3.0, 2.0, 1.0) == 0
+    assert _n_mismatch(a, d, L, 1.5, 0.75, 0.75) == 0      # convergence series 3 / 1.5 / 0.75 (PLAN 4.10)
 
 
 def test_cube_axes_mesh_check_detects_bad_L():
@@ -1004,3 +1005,117 @@ def test_jump_measures_any_samples_per_cycle(tmp_path):
     assert P.shape == (EJ.KEEP_LAST, n)
     m = EJ.measures(P, N60, dM)
     assert m["RF"] < 1e-9 and m["RN"] < 1e-9
+
+
+def test_transfer_m_block_average_mask_and_norm():
+    """run_loops.transfer_m (--init_transfer, PLAN 4.10): a constant field stays constant; a fine field that is constant
+    on each coarse block is recovered exactly, also when the void sub-cells hold other vectors (mask); every output
+    vector has norm 1; a coarse cell without a sub-cell of its own index takes the plain block mean and is counted; a
+    non-integer cell ratio is rejected."""
+    pytest.importorskip("torch")
+    from run_loops import transfer_m
+    rng = np.random.default_rng(3)
+    a, d = box_edge(96.0, 0.65)                                  # a = 144 l_ex, the B0 geometry
+    ic = fcc_box(48, d, 3.0)["ids"]
+    i_f = fcc_box(96, d, 1.5)["ids"]
+    m_c, st = transfer_m(np.broadcast_to([0.0, 0.6, 0.8], (96, 96, 96, 3)), i_f, ic)
+    assert np.allclose(m_c, [0.0, 0.6, 0.8]) and st["factor"] == 2
+    v = rng.normal(size=(48, 48, 48, 3))
+    v /= np.linalg.norm(v, axis=-1, keepdims=True)
+    m_f = np.repeat(np.repeat(np.repeat(v, 2, 0), 2, 1), 2, 2)
+    m_f[i_f < 0] = rng.normal(size=((i_f < 0).sum(), 3))        # garbage in the void
+    m_c, st = transfer_m(m_f, i_f, ic)
+    mag = ic >= 0
+    assert np.allclose(m_c[mag], v[mag], atol=1e-12)
+    assert np.allclose(np.linalg.norm(m_c, axis=-1), 1.0)
+    assert st["no_same_index_subcell"] == 0 and st["zero_vector"] == 0 and st["partial_blocks"] > 0
+    ids_c = np.zeros((2, 2, 2), np.int8)                         # forced empty block: coarse cell (0, 0, 0) is
+    ids_f = np.zeros((4, 4, 4), np.int8)                         # particle 0, its fine sub-cells are all void
+    ids_f[:2, :2, :2] = -1
+    m_f = np.zeros((4, 4, 4, 3)); m_f[..., 2] = 1.0
+    m_f[:2, :2, :2] = [1.0, 0.0, 0.0]
+    m_c, st = transfer_m(m_f, ids_f, ids_c)
+    assert st["no_same_index_subcell"] == 1 and np.allclose(m_c[0, 0, 0], [1.0, 0.0, 0.0])
+    with pytest.raises(ValueError):
+        transfer_m(np.zeros((6, 6, 6, 3)), np.zeros((6, 6, 6), np.int8), np.zeros((4, 4, 4), np.int8))
+
+
+@pytest.mark.parametrize("nc, nf", [(48, 96), (96, 192), (48, 192)])
+def test_transfer_m_surfaces_nest_on_study_grids(nc, nf):
+    """On the B0 grids (d/l_ex 96, dx 3 / 1.5 / 0.75 l_ex) every coarse particle cell has at least one fine sub-cell of
+    the same particle: the staircase surfaces nest, no fallback and no zero vector for a random state."""
+    pytest.importorskip("torch")
+    from run_loops import transfer_m
+    a, d = box_edge(96.0, 0.65)
+    ic = fcc_box(nc, d, a / nc)["ids"]
+    i_f = fcc_box(nf, d, a / nf)["ids"]
+    m_f = np.random.default_rng(nf).normal(size=(nf, nf, nf, 3))
+    _, st = transfer_m(m_f, i_f, ic)
+    assert st["no_same_index_subcell"] == 0 and st["zero_vector"] == 0
+
+
+def _conv_recs(F, T15, T3, I15, I3):
+    import conv_jobs as CJ
+    vals = {"F": F, "T15": T15, "T3": T3, "I15": I15, "I3": I3}
+    recs = {}
+    for arm, v in vals.items():
+        for s, x in zip(CJ.SEEDS, v):
+            ok = x is not None
+            recs[(arm, s)] = {"lnP": x if ok else float("nan"), "status": "settled" if ok else "no calm tail (< 2 calm cycles)",
+                              "s_cyc": 0.03, "dof": 3, "iters": 14000 if arm == "F" else 2000,
+                              "transfer": ({"no_same_index_subcell": 0, "zero_vector": 0} if arm[0] == "T" else None),
+                              "n_cycles": 6}
+    return recs
+
+
+def test_eval_conv_reading_on_synthetic_data():
+    """eval_conv.py (B0, PLAN 4.10): the pre-registered reading on synthetic ln P with a known answer:
+    (a) the transfer removes a large state scatter -> go_transfer, Δ(1.5 − 0.75) recovered; (b) the transferred runs
+    scatter like independent ones -> stop; (c) the scatter is small with either start -> go_small; (d) two settled
+    pairs only -> undetermined. The paired statistics equal scipy's one-sample t interval."""
+    import eval_conv as EC
+    import conv_jobs as CJ
+    from scipy import stats as st
+    F = np.array([0.0, 0.4, -0.3, 0.2])
+    e = np.array([0.02, -0.01, 0.03, -0.02])
+    I15 = [0.3, -0.25, 0.25, -0.1]
+    I3 = [0.5, 0.1, -0.2, 0.4]
+    recs = _conv_recs(list(F), list(F + 0.05 + e), list(F + 0.25 - e), I15, I3)
+    text, key = EC.report(recs)
+    assert key == "go_transfer"
+    lnP = {k: r["lnP"] for k, r in recs.items()}
+    p = EC.paired(lnP, "T15", "F", CJ.SEEDS)
+    d = 0.05 + e
+    lo, hi = st.t.interval(0.90, len(d) - 1, loc=d.mean(), scale=st.sem(d))
+    assert abs(p["mean"] - d.mean()) < 1e-12 and abs(p["ci"][0] - lo) < 1e-12 and abs(p["ci"][1] - hi) < 1e-12
+    assert p["sd_ci"][0] < p["sd"] < p["sd_ci"][1]
+    assert "go:" in text and "inside ± 0.10" in text
+    recs = _conv_recs(list(F), [0.35, -0.2, 0.1, -0.3], list(F + 0.25), I15, I3)
+    assert EC.report(recs)[1] == "stop"
+    recs = _conv_recs(list(F), list(F + 0.05 + e), list(F + 0.25 - e), list(F + 0.04 - e), list(F + 0.3 + e))
+    assert EC.report(recs)[1] == "go_small"
+    recs = _conv_recs(list(F), [0.05, 0.45, None, None], list(F), I15, I3)
+    assert EC.report(recs)[1] == "undetermined"
+
+
+def test_conv_jobs_change_only_the_planned_arguments():
+    """conv_jobs.py (B0): 20 jobs, the F runs first; every line equals the mesh212 template M212_dx15_s931_b9 except
+    d_lex, dx_lex, seed, init_transfer, init_wait_h; the T runs start from the F run of the same seed."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg, job_lines
+    here = pathlib.Path(__file__).resolve().parent
+    tmpl = shlex.split(dict(job_lines(here / "jobs" / "mesh212.txt"))["M212_dx15_s931_b9"])
+    keys = lambda tok: {t[2:] for t in tok if t.startswith("--")}
+    lines = CJ.lines(str(here / "jobs" / "mesh212.txt"))
+    assert len(lines) == 20 and all(n.startswith("B0_F_") for n, _ in lines[:4])
+    for n, a in lines:
+        tok = shlex.split(a)
+        for k in keys(tmpl) | keys(tok):
+            if k not in CJ.CHANGED:
+                assert get_arg(tok, k) == get_arg(tmpl, k), (n, k)
+        arm, s = n.split("_")[1], n.split("_s")[1]
+        assert get_arg(tok, "seed") == [s] and get_arg(tok, "d_lex") == ["96.0"]
+        assert get_arg(tok, "dx_lex") == [{"F": "0.75", "T15": "1.5", "I15": "1.5", "T3": "3.0", "I3": "3.0"}[arm]]
+        assert (get_arg(tok, "init_transfer") == ["B0_F_s%s/init.pt" % s]) == arm.startswith("T")
+        assert get_arg(tok, "init_from") is None

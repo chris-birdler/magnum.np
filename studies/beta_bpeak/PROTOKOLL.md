@@ -3685,6 +3685,31 @@ d/l_ex 96, dx 0.75, and ≈ 18 h at d/l_ex 212, dx 1. A run with 7 amplitudes ha
   the mesh error is largest. "A few zones" holds on both meshes (K3); the shift from the centre to the rim is partly a
   mesh effect.
 
+### 7.81 B0 prepared: state transfer between meshes, jobs, analysis rules (2026-10-13, go of Chris for the preparation)
+
+Goal: step 1 of variant B of PLAN 4.10. All runs start from the same physical state, so that the paired mesh
+difference measures the discretisation and not the state selection. Details and the pre-registered reading: PLAN 4.10
+"B0 as prepared". Not started; the run needs a separate go.
+
+- Code: `run_loops.py --init_transfer <fine run>/init.pt` (function `transfer_m`): block average of m over the fine
+  sub-cells of the same particle (or void), normalised; then the production relaxation. Checks: same INIT_KEYS except
+  dx_lex and relax_maxiter, converged source relaxation, voxel surface, dx of the source divides dx and a.
+- Unit tests (4 new, pass): a constant field stays constant; a block-constant field is recovered exactly also with
+  other vectors in the void sub-cells; norm 1; the fallback is used and counted; a non-integer cell ratio is rejected.
+  On the B0 grids (d/l_ex 96, 48 / 96 / 192 cells) every coarse particle cell has a fine sub-cell of the same particle
+  (0 fallbacks, 0 zero vectors). The cube axes agree on dx 1.5 and dx 0.75 (extended test).
+- Run test on the CPU (d/l_ex 18, φ 0.35 for a box that fits on dx 3; code path only, not physics): dx 1.5 → dx 3
+  transfer, the relaxation converges, the transfer record is in summary.json and init.pt. A source with another seed
+  and a source with another relax_tol_E are rejected (exit code 1).
+- Analysis `eval_conv.py` with a synthetic test (known answers: go with transfer, stop, go with small scatter, not
+  determined; the paired CI equals the scipy t interval). Jobs `conv_jobs.py` → `jobs/conv_b0.txt` (20 jobs, test: only
+  the planned arguments differ from the mesh212 template). Chain `instance/chain_conv.sh` (not installed).
+- Cycle noise at 9 mT (earlier mesh runs, pooled SD of ln w over the calm cycles, 4 runs per group): M212 dx 1.5
+  0.058, M212 dx 3 0.063, M300 dx 1.5 0.077, M300 dx 3 0.029; at 50 / 100 mT 0.087 / 0.028. The calm tails have 2 … 3
+  cycles. Thus a paired difference of two tail means has a noise of ≈ 0.03 … 0.06 in ln P.
+- The measured relaxation of the dx 0.75 test (7.80) stopped at its cap of 1000 iterations (not converged). Thus the
+  iteration count of a full relaxation on dx 0.75 is still an estimate (13 500 … 23 000 from the production meshes).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

@@ -933,9 +933,37 @@ Recommendation: B in two steps. B0 first (≈ 6 $, ≈ 14 h): if the paired SD o
 below ≈ 0.1, continue with the 4 amplitudes (≈ 13 $ more); if not, stop and re-scope (the loss is then dominated by
 state selection, and only many seeds help). The credit after C′ is ≈ 30 $ (estimate).
 
-**Before the runs**: (b) code: transfer_state.py and a run_loops option to start from a transferred state (with unit
-test: block average, mask, normalisation; a run test on dx 3 ← dx 1.5); the analysis script with synthetic test;
-(c) a context-free review of this plan, the job files and the analysis script.
+**Before the runs**: (b) code: a run_loops option to start from a transferred state (with unit test: block average,
+mask, normalisation; a run test on dx 3 ← dx 1.5); the analysis script with synthetic test; (c) a context-free review
+of this plan, the job files and the analysis script. Status 2026-10-13: (b) done (PROTOKOLL 7.81), (c) see 7.81.
+
+**B0 as prepared (2026-10-13, go of Chris for the preparation only; the run needs a separate go)**
+- Jobs `jobs/conv_b0.txt` (`conv_jobs.py`): d/l_ex 96 (box 144 l_ex = 0.48 µm at A 10 pJ/m), base microstructure,
+  9 mT, seeds 941 … 944. Per seed five runs: F (dx 0.75, virgin relaxation), T15 and T3 (dx 1.5 and dx 3, start from
+  the relaxed F state, then the production relaxation), I15 and I3 (dx 1.5 and dx 3, independent virgin relaxation from
+  the same seed). Template: the mesh212 line M212_dx15_s931_b9 (≥ 5 cycles, ≤ 12 cycles, ≥ 2 calm cycles, 256 samples,
+  no accumulators, no snapshots); only d_lex, dx_lex, seed, init_transfer and init_wait_h change.
+- Transfer (`run_loops.py --init_transfer`): each coarse cell takes the mean of m over the fine sub-cells of the same
+  particle (or of the void), normalised. A coarse particle cell without such a sub-cell takes the plain block mean and
+  is counted (the unit test shows 0 such cells on the B0 grids). All INIT_KEYS except dx_lex and relax_maxiter must
+  agree with the source, and the source relaxation must be converged.
+- Order: the four F runs first (one per GPU), then I, then T. Chain `instance/chain_conv.sh`: starts after the go
+  (runs/CONV_GO) and after the end of the C′ chain; job timeout 48 h.
+- Time and cost (measured times of 7.80; the iteration count is an estimate from the production relaxations, 13 500 …
+  23 000): F = relaxation 4 … 7 h + 5 … 12 cycles × 1.28 h = 10 … 22 h per seed, the four F runs in parallel. The
+  16 small runs take ≈ 3 … 6 GPU h together (estimate) and use the GPUs that the F runs free. Wall time ≈ 12 … 24 h,
+  ≈ 45 … 95 GPU h, ≈ 5 … 10 $ (instance ≈ 0.41 $/h). Worst case of one F run (relaxation to the iteration cap
+  80 000): ≈ 39 h.
+- Pre-registered reading (`eval_conv.py`, synthetic test in test_study.py). SD_T = SD over the seeds of
+  ln P(T15) − ln P(F); SD_I = the same for I15. Fewer than 3 seeds with a value in F and T15: not determined.
+  SD_T ≥ 0.10: stop and re-scope. SD_T < 0.10 and SD_I ≥ 0.15: go, the transfer removes the state scatter.
+  SD_T < 0.10 and SD_I < 0.15: go, the scatter is small with either start (the benefit of the transfer is not shown).
+  Variant B needs a separate go in each case.
+- Noise floor and error rates of the rule: the cycle-to-cycle SD of ln w at 9 mT in the earlier mesh runs is 0.03 …
+  0.09 (calm cycles, 6 groups of 4 runs), thus the paired SD cannot fall below ≈ 0.03 … 0.06. With n 4, the probability
+  of "go" (SD_T < 0.10) is 0.99 / 0.89 / 0.61 / 0.28 / 0.14 / 0.05 for a true SD of 0.05 / 0.07 / 0.10 / 0.15 / 0.20
+  / 0.30 (χ² with 3 degrees of freedom). Thus the rule separates a working transfer (SD ≈ 0.05) from the old scatter
+  (0.15 … 0.46) well only at the upper end of that range; at a true SD of 0.15 a false "go" has a probability of 0.28.
 
 ## 5. Optional step 3: mesh control (separate go)
 
