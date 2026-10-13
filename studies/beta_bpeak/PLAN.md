@@ -875,6 +875,52 @@ largest coarse-mesh A effect (low K_eff) with all 7 B values. Then decide
 V2 or V3 with its result. Before the start: a context-free check of this
 plan, the job files and the analysis script.
 
+### 4.10 Mesh convergence with a transferred state (2026-10-13, draft, waits for the go of Chris; replaces the variants of 4.9)
+
+Goal: settle the mesh question for good, without further two-mesh comparisons. Reason (PROTOKOLL 7.63, 7.74, 7.78):
+all checks so far compare dx 3 with dx 1.5 and treat dx 1.5 as the truth; nobody showed that dx 1.5 converges. The
+vortex core radius is ≈ l_ex (3.3 nm), the cells are 10 nm (dx 3) and 5 nm (dx 1.5), and ≈ 70 % of the loss sits in
+the 10 % of the volume where m is most non-uniform. The seed scatter is large and pairing by seed does not reduce it
+(SD of the paired mesh difference of ln P 0.15 … 0.46, the same as the single values), because the same seed relaxes
+into different states on different meshes. The only series with more meshes (d/l_ex 96, 50 mT, n 3, relaxation not
+converged) has CIs that include × 1 for every mesh: no information.
+
+**Design**
+1. Convergence series dx 3 / 1.5 / 0.75 l_ex (ratio 2: block averages are exact and Richardson extrapolation is
+   possible), the same protocol as the design runs (virgin state, 7 amplitudes 9 … 150 mT in one run, steady rule ≥ 2
+   calm cycles, ≤ 12 cycles per stage), α 0.1, base microstructure (L_eff 12 l_ex, r_p 0, φ 0.65).
+2. Transferred state: the virgin state is relaxed once on the finest mesh (dx 0.75, converged relaxation) and
+   transferred to dx 1.5 and dx 3 by block averages of m over the particle sub-cells (normalised), then relaxed again on
+   each mesh with the production relaxation (converged gate). All meshes then start from the same physical state, and
+   the paired difference measures the discretisation, not the state selection. Each coarse mesh also gets the usual
+   independent relaxation from the same seed (cheap), so that the effect of the state selection is measured too.
+3. Tier 1: d/l_ex 96 (0.32 µm at A 10 pJ/m), where dx 0.75 is affordable. The resolution needed for cores and walls is
+   set by dx / l_ex, not by d / l_ex. Limits: outside the design size; the gap between the particles is 1.4 cells on
+   dx 3 at this size.
+4. Tier 2 (only after a positive tier 1, separate go): d/l_ex 212 (0.71 µm) with dx 3 / 1.5 / 0.75 or / 1, if the
+   memory test (below) allows it.
+5. Seeds: n 6 for tier 1. If the transferred state works, the paired SD should fall to the cycle-to-cycle noise
+   (≈ 0.03 … 0.05 in ln P): n 6 then resolves ≈ ± 5 %. If it stays at ≈ 0.3, n 6 resolves only ≈ ± 30 % and the
+   reading is "not determined" (stated now).
+
+**Analysis, fixed before the runs** (a new script, tested on synthetic data first): per mesh the mean and SD over the
+seeds of ln P at each B, of β over 9 … 150 mT and of β in windows of 3 amplitudes; paired differences dx 3 − dx 1.5 and
+dx 1.5 − dx 0.75 (transferred state) with 90 % CI; the same for the independent relaxations (unpaired, Welch). Readings:
+- converged at dx 1.5: |dx 1.5 − dx 0.75| has a 90 % CI inside ± 0.10 in ln P at every B and inside ± 0.10 in β;
+- converging: the difference shrinks from (3 − 1.5) to (1.5 − 0.75), but the last one is outside ± 0.10: dx 0.75 or
+  finer is needed; Richardson estimate of the limit;
+- not converging: no shrinking, or a change of sign: the loss at these amplitudes is not mesh-converged in this
+  model; only ensemble means over many seeds can be used, and the per-seed mesh errors so far are withdrawn.
+Consequences: converged at dx 1.5 → a lean lever study on dx 1.5 has meaning (separate plan); finer needed → the
+design and the dx 1.5 checks are not quantitative, Chris decides between large rented GPUs and a re-scope; not
+converging → re-scope.
+
+**Before the runs**: (a) memory and time test on GPU 3 (running since 2026-10-13 06:12 UTC: d/l_ex 212 at dx 1, 312³
+cells; d/l_ex 96 at dx 0.75; 1 cycle each); (b) code: transfer_state.py and a run_loops option to start from a
+transferred state (with unit test: block average, mask, normalisation; a run test on dx 3 ← dx 1.5); (c) a
+context-free review of this plan, the job files and the analysis script. Cost and time: from (a), entered here before
+the go.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
