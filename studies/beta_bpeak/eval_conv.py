@@ -14,15 +14,19 @@ Cycle noise: pooled SD of ln w_loop over the calm cycles of all runs (the floor 
 
 Pre-registered reading (go / no-go for variant B; SD_T = SD of ln P(T15) − ln P(F), SD_I = SD of ln P(I15) − ln P(F)):
   not determined   fewer than 3 seeds with a value in F and T15;
+  stop             SD_T ≥ 0.10: the transferred state does not remove the scatter → stop and re-scope;
   go, transfer works     SD_T < 0.10 and SD_I ≥ 0.15: the transferred state removes the state scatter → variant B
                    (4 amplitudes, separate go);
   go, scatter small      SD_T < 0.10 and SD_I < 0.15: the scatter is small at this point with either start → variant B;
                    the benefit of the transfer is not shown;
-  stop             SD_T ≥ 0.10: the transferred state does not remove the scatter → stop and re-scope.
+  go, benefit not determined   SD_T < 0.10 and fewer than 3 seeds with a value in F and I15 → variant B; the benefit
+                   of the transfer is not determined.
+ln P is taken at the measured peak flux density b_peak of the calm tail, without a β correction to 9 mT; the report
+lists b_peak / b_target per run.
 Information only (9 mT, one amplitude, no β): mean Δ(1.5 − 0.75), Δ(3 − 1.5), Δ(3 − 0.75) of the T arm with 90 % CI,
 and whether the CI of Δ(1.5 − 0.75) lies inside ± 0.10 (the 4.10 criterion for "converged at dx 1.5", here at 9 mT only).
 
-    python eval_conv.py > results/conv_b0.md
+    python eval_conv.py > results/conv_b0.md      (on the instance, chain_conv.sh writes runs/conv_b0_report.md)
 """
 import json
 import math
@@ -48,23 +52,34 @@ PAIRS = (("T15", "F", "dx 1.5 − dx 0.75, transferred"), ("T3", "T15", "dx 3 �
 
 
 def run_record(d):
-    """{lnP, status, s_cyc, dof, iters, transfer, n_cycles} of one run folder."""
+    """{lnP, status, s_cyc, dof, iters, transfer, n_cycles, b_ratio} of one run folder. The steady rule (≥ 2 calm
+    cycles) is set here for the call of analyze.load_run and restored afterwards."""
     rec = {"lnP": float("nan"), "status": "not run", "s_cyc": float("nan"), "dof": 0, "iters": None,
-           "transfer": None, "n_cycles": 0}
+           "transfer": None, "n_cycles": 0, "b_ratio": float("nan")}
+    if not d.exists():
+        return rec
     if not (d / "summary.json").exists():
+        rec["status"] = "started, no summary (refused or crashed)"
         return rec
     init = json.loads((d / "summary.json").read_text()).get("init", {})
     rec["iters"], rec["transfer"] = init.get("relax_iterations"), init.get("transfer")
     if not (d / "DONE").exists():
-        rec["status"] = "not done"
+        rec["status"] = ("relaxation not converged (gate)" if init and not init.get("relax_converged", True)
+                         else "not done")
         return rec
+    old = analyze.STEADY_TAIL, analyze.STEADY_MIN
+    analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     try:
         cfg, rows = analyze.load_run(d)
     except analyze.UnconvergedRun:
         rec["status"] = "relaxation not converged"
         return rec
+    finally:
+        analyze.STEADY_TAIL, analyze.STEADY_MIN = old
     rec["s_cyc"], rec["dof"] = cfg["s_cyc"], cfg["s_cyc_dof"]
     rec["n_cycles"] = rows[0]["n_cycles"] if rows else 0
+    if rows and cfg.get("b_list"):
+        rec["b_ratio"] = rows[0]["b_peak"] / float(cfg["b_list"][0])
     if not rows or not np.isfinite(rows[0]["w_loop"]) or rows[0]["w_loop"] <= 0:
         rec["status"] = "no calm tail (< 2 calm cycles)"
         return rec
@@ -115,12 +130,15 @@ def reading(lnP, seeds):
     if t["sd"] >= SD_GO:
         return "stop", ("stop: SD_T %.3f ≥ %.2f, the transferred state does not remove the scatter → stop and "
                         "re-scope" % (t["sd"], SD_GO))
-    if i["n"] >= MIN_N and i["sd"] >= SD_OLD:
+    if i["n"] < MIN_N:
+        return "go_undetermined", ("go: SD_T %.3f < %.2f, but only %d seeds with a value in F and I15: the benefit of "
+                                   "the transfer is not determined → variant B (separate go)" % (t["sd"], SD_GO, i["n"]))
+    if i["sd"] >= SD_OLD:
         return "go_transfer", ("go: SD_T %.3f < %.2f and SD_I %.3f ≥ %.2f, the transferred state removes the state "
                                "scatter → variant B (separate go)" % (t["sd"], SD_GO, i["sd"], SD_OLD))
-    return "go_small", ("go: SD_T %.3f < %.2f, but SD_I %s < %.2f: the scatter is small at this point with either start → "
-                        "variant B (separate go); the benefit of the transfer is not shown" %
-                        (t["sd"], SD_GO, ("%.3f" % i["sd"]) if i["n"] >= MIN_N else "(n %d)" % i["n"], SD_OLD))
+    return "go_small", ("go: SD_T %.3f < %.2f and SD_I %.3f < %.2f: the scatter is small at this point with either "
+                        "start → variant B (separate go); the benefit of the transfer is not shown" %
+                        (t["sd"], SD_GO, i["sd"], SD_OLD))
 
 
 def cycle_noise(recs):
@@ -146,16 +164,18 @@ def report(recs, seeds=CJ.SEEDS):
          "90 %% CI with t(n − 1); SD of the paired difference with its 90 %% CI (χ²)." %
          ", ".join(map(str, seeds)), ""]
     L += ["## Runs", "", "| arm | settled / runs | P (W/cm³), geometric mean | SD of ln P over the seeds | relaxation "
-          "iterations (mean, range) | missing |", "|---|---|---|---|---|---|"]
+          "iterations (mean, range) | b_peak / b_target (range) | missing |", "|---|---|---|---|---|---|---|"]
     for arm, _, _ in CJ.ARMS:
         r = [recs[(arm, s)] for s in seeds]
         v = np.array([x["lnP"] for x in r if np.isfinite(x["lnP"])])
         it = [x["iters"] for x in r if x["iters"] is not None]
         miss = ["s%d: %s" % (s, recs[(arm, s)]["status"]) for s in seeds if recs[(arm, s)]["status"] != "settled"]
-        L.append("| %s | %d / %d | %s | %s | %s | %s |" % (
+        br = [x["b_ratio"] for x in r if np.isfinite(x.get("b_ratio", np.nan))]
+        L.append("| %s | %d / %d | %s | %s | %s | %s | %s |" % (
             ARM_LAB[arm], len(v), len(r), "%.3g" % math.exp(v.mean()) if len(v) else "–",
             "%.3f" % v.std(ddof=1) if len(v) > 1 else "–",
-            "%.0f (%d … %d)" % (np.mean(it), min(it), max(it)) if it else "–", "; ".join(miss) or "none"))
+            "%.0f (%d … %d)" % (np.mean(it), min(it), max(it)) if it else "–",
+            "%.4f … %.4f" % (min(br), max(br)) if br else "–", "; ".join(miss) or "none"))
     tr = [recs[(a, s)]["transfer"] for a in ("T15", "T3") for s in seeds if recs[(a, s)]["transfer"]]
     if tr:
         L += ["", "Transfer: %d runs, coarse particle cells without a fine sub-cell of the same particle: %d (max), zero "
@@ -181,7 +201,6 @@ def report(recs, seeds=CJ.SEEDS):
 
 
 def main():
-    analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     text, _ = report(collect())
     print(text)
 

@@ -1072,7 +1072,7 @@ def test_eval_conv_reading_on_synthetic_data():
     """eval_conv.py (B0, PLAN 4.10): the pre-registered reading on synthetic ln P with a known answer:
     (a) the transfer removes a large state scatter -> go_transfer, Δ(1.5 − 0.75) recovered; (b) the transferred runs
     scatter like independent ones -> stop; (c) the scatter is small with either start -> go_small; (d) two settled
-    pairs only -> undetermined. The paired statistics equal scipy's one-sample t interval."""
+    pairs only -> undetermined; (e) go with fewer than 3 independent pairs -> go_undetermined. The paired statistics equal scipy's one-sample t interval."""
     import eval_conv as EC
     import conv_jobs as CJ
     from scipy import stats as st
@@ -1096,6 +1096,8 @@ def test_eval_conv_reading_on_synthetic_data():
     assert EC.report(recs)[1] == "go_small"
     recs = _conv_recs(list(F), [0.05, 0.45, None, None], list(F), I15, I3)
     assert EC.report(recs)[1] == "undetermined"
+    recs = _conv_recs(list(F), list(F + 0.05 + e), list(F + 0.25 - e), [0.3, None, None, -0.1], I3)
+    assert EC.report(recs)[1] == "go_undetermined"
 
 
 def test_conv_jobs_change_only_the_planned_arguments():
@@ -1119,3 +1121,29 @@ def test_conv_jobs_change_only_the_planned_arguments():
         assert get_arg(tok, "dx_lex") == [{"F": "0.75", "T15": "1.5", "I15": "1.5", "T3": "3.0", "I3": "3.0"}[arm]]
         assert (get_arg(tok, "init_transfer") == ["B0_F_s%s/init.pt" % s]) == arm.startswith("T")
         assert get_arg(tok, "init_from") is None
+
+
+def test_eval_conv_run_record_on_real_run_folders():
+    """eval_conv.run_record on real run folders (local raw data; skipped without them): the steady rule ≥ 2 calm
+    cycles is applied inside run_record and the module state of analyze is restored; P in W/cm³ (M212_dx15_s931_b9:
+    4.64 W/cm³, results/mesh212 data); a run with 1 calm cycle at the end (M300_dx15_s922_b9) has no value."""
+    import analyze
+    import eval_conv as EC
+    if not (EC.R / "M212_dx15_s931_b9" / "DONE").exists() or not (EC.R / "M300_dx15_s922_b9" / "DONE").exists():
+        pytest.skip("local run folders not present")
+    old = analyze.STEADY_TAIL, analyze.STEADY_MIN
+    r = EC.run_record(EC.R / "M212_dx15_s931_b9")
+    assert r["status"] == "settled" and abs(math.exp(r["lnP"]) / 4.64 - 1) < 0.005
+    assert abs(r["b_ratio"] - 1) < 0.01 and r["iters"] == 13500
+    assert EC.run_record(EC.R / "M300_dx15_s922_b9")["status"].startswith("no calm tail")
+    assert (analyze.STEADY_TAIL, analyze.STEADY_MIN) == old
+    assert EC.run_record(EC.R / "no_such_run")["status"] == "not run"
+
+
+def test_cleanup_protects_init_transfer_sources(tmp_path):
+    """cleanup_instance.dependents knows the sources of --init_transfer (B0 F states) as well as of --init_from."""
+    import cleanup_instance as CI
+    (tmp_path / "a.txt").write_text("B0_T15_s941 --d_lex 96 --init_transfer B0_F_s941/init.pt\n"
+                                    "X_b50 --d_lex 96 --init_from X_b9/init.pt\n")
+    dep = CI.dependents(tmp_path)
+    assert dep["B0_F_s941/init.pt"] == {"B0_T15_s941"} and dep["X_b9/init.pt"] == {"X_b50"}

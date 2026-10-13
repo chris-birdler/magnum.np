@@ -916,9 +916,10 @@ design and the dx 1.5 checks are not quantitative, Chris decides between large r
 converging → re-scope.
 
 **Cost basis (measured 2026-10-13, PROTOKOLL 7.80):** d/l_ex 96 at dx 0.75: 1.28 h per cycle (59 300 steps,
-dt 0.56 ps), relaxation 1.07 s per iteration (≈ 14 000 iterations ≈ 4.2 h, estimate of the count), 2.3 GB.
-Scaling from the measured time steps (dx 3: 6.3 ps): dt ∝ dx^1.75, cells ∝ dx⁻³, thus ≈ × 27 per halving of dx:
-dx 1.5 ≈ 3 min per cycle, dx 3 ≈ 6 s, dx 1 ≈ 0.32 h (estimates). A run with 7 amplitudes ≈ 56 cycles, with 4
+dt 0.56 ps), relaxation 1.07 s per iteration (11 000 … 25 500 iterations as in the production relaxations ≈ 3.3 …
+7.6 h, estimate of the count), 2.3 GB. Measured at d/l_ex 96 on the V100 (old runs P3_dx3, R_dx15): dx 3 ≈ 44 s per
+cycle, dx 1.5 ≈ 150 s per cycle; the small meshes are limited by the fixed cost per step, not by the cell count.
+dx 1 ≈ 0.32 h per cycle (estimate from dt ∝ dx^1.75 and cells ∝ dx⁻³). A run with 7 amplitudes ≈ 56 cycles, with 4
 amplitudes ≈ 32 cycles. Instance ≈ 0.10 $ per GPU hour. Design size d/l_ex 212 at dx 1: 8.4 GB, relaxation
 4.7 s per iteration (≈ 18 h), ≈ 3 h per cycle (estimate) → ≈ 200 GPU h per seed: not affordable on this instance.
 
@@ -927,15 +928,16 @@ amplitudes ≈ 32 cycles. Instance ≈ 0.10 $ per GPU hour. Design size d/l_ex 2
 | A | 3 / 1.5 / 0.75 | 6 × 7 (9 … 150 mT) | ≈ 480 | ≈ 6 days | ≈ 48 $ | top-up needed |
 | B | 3 / 1.5 / 0.75 | 4 × 4 (9, 20, 50, 150 mT) | ≈ 190 | ≈ 2 days | ≈ 19 $ | 4 seeds resolve ± 5 % only if the transferred state removes the state scatter |
 | C | 3 / 1.5 / 1 | 6 × 7 | ≈ 140 | ≈ 2 days | ≈ 14 $ | dx 1 ≈ the core radius: may still be unresolved; transfer by interpolation (ratio 1.5) |
-| B0 (step 1 of B) | 3 / 1.5 / 0.75 | 4 × 1 (9 mT only) | ≈ 57 | ≈ 14 h | ≈ 6 $ | answers first: does the transferred state remove the scatter at the hardest amplitude? |
+| B0 (step 1 of B) | 3 / 1.5 / 0.75 | 4 × 1 (9 mT only) | ≈ 50 … 100 | ≈ 12 … 25 h | ≈ 5 … 11 $ | answers first: does the transferred state remove the scatter at the hardest amplitude? |
 
-Recommendation: B in two steps. B0 first (≈ 6 $, ≈ 14 h): if the paired SD of ln P (transferred state) falls
+Recommendation: B in two steps. B0 first (≈ 5 … 11 $, ≈ 12 … 25 h): if the paired SD of ln P (transferred state) falls
 below ≈ 0.1, continue with the 4 amplitudes (≈ 13 $ more); if not, stop and re-scope (the loss is then dominated by
 state selection, and only many seeds help). The credit after C′ is ≈ 30 $ (estimate).
 
 **Before the runs**: (b) code: a run_loops option to start from a transferred state (with unit test: block average,
 mask, normalisation; a run test on dx 3 ← dx 1.5); the analysis script with synthetic test; (c) a context-free review
-of this plan, the job files and the analysis script. Status 2026-10-13: (b) done (PROTOKOLL 7.81), (c) see 7.81.
+of this plan, the job files and the analysis script. Status 2026-10-13: (b) and (c) done, the findings of the review
+are fixed (PROTOKOLL 7.81).
 
 **B0 as prepared (2026-10-13, go of Chris for the preparation only; the run needs a separate go)**
 - Jobs `jobs/conv_b0.txt` (`conv_jobs.py`): d/l_ex 96 (box 144 l_ex = 0.48 µm at A 10 pJ/m), base microstructure,
@@ -948,22 +950,36 @@ of this plan, the job files and the analysis script. Status 2026-10-13: (b) done
   is counted (the unit test shows 0 such cells on the B0 grids). All INIT_KEYS except dx_lex and relax_maxiter must
   agree with the source, and the source relaxation must be converged.
 - Order: the four F runs first (one per GPU), then I, then T. Chain `instance/chain_conv.sh`: starts after the go
-  (runs/CONV_GO) and after the end of the C′ chain; job timeout 48 h.
-- Time and cost (measured times of 7.80; the iteration count is an estimate from the production relaxations, 13 500 …
-  23 000): F = relaxation 4 … 7 h + 5 … 12 cycles × 1.28 h = 10 … 22 h per seed, the four F runs in parallel. The
-  16 small runs take ≈ 3 … 6 GPU h together (estimate) and use the GPUs that the F runs free. Wall time ≈ 12 … 24 h,
-  ≈ 45 … 95 GPU h, ≈ 5 … 10 $ (instance ≈ 0.41 $/h). Worst case of one F run (relaxation to the iteration cap
-  80 000): ≈ 39 h.
+  (runs/CONV_GO) and after the end of the C′ chain (queue and post-processing); job timeout 48 h; a run whose
+  relaxation does not converge within 80 000 iterations is excluded (no automatic second attempt with a larger cap),
+  and Chris decides.
+- Time and cost (measured times per iteration and per cycle; the iteration count 11 000 … 25 500 is an estimate from
+  the production relaxations): F = relaxation 3.3 … 7.6 h + 5 … 12 cycles × 1.28 h = 10 … 23 h per seed, the four F
+  runs in parallel. The 16 small runs take ≈ 4 … 10 GPU h together (estimate) and use the GPUs that the F runs free.
+  Wall time ≈ 12 … 25 h, ≈ 50 … 100 GPU h, ≈ 5 … 11 $ (instance ≈ 0.41 $/h). Worst case of one F run (relaxation to
+  the iteration cap 80 000, then excluded): ≈ 24 h of relaxation without a value.
 - Pre-registered reading (`eval_conv.py`, synthetic test in test_study.py). SD_T = SD over the seeds of
   ln P(T15) − ln P(F); SD_I = the same for I15. Fewer than 3 seeds with a value in F and T15: not determined.
   SD_T ≥ 0.10: stop and re-scope. SD_T < 0.10 and SD_I ≥ 0.15: go, the transfer removes the state scatter.
   SD_T < 0.10 and SD_I < 0.15: go, the scatter is small with either start (the benefit of the transfer is not shown).
-  Variant B needs a separate go in each case.
-- Noise floor and error rates of the rule: the cycle-to-cycle SD of ln w at 9 mT in the earlier mesh runs is 0.03 …
-  0.09 (calm cycles, 6 groups of 4 runs), thus the paired SD cannot fall below ≈ 0.03 … 0.06. With n 4, the probability
-  of "go" (SD_T < 0.10) is 0.99 / 0.89 / 0.61 / 0.28 / 0.14 / 0.05 for a true SD of 0.05 / 0.07 / 0.10 / 0.15 / 0.20
-  / 0.30 (χ² with 3 degrees of freedom). Thus the rule separates a working transfer (SD ≈ 0.05) from the old scatter
-  (0.15 … 0.46) well only at the upper end of that range; at a true SD of 0.15 a false "go" has a probability of 0.28.
+  SD_T < 0.10 and fewer than 3 seeds with a value in F and I15: go, the benefit of the transfer is not determined.
+  Variant B needs a separate go in each case. ln P is taken at the measured b_peak of the calm tail, without a β
+  correction to 9 mT (52 earlier 9 mT mesh runs: b_peak / b_target − 1 = −0.6 … +0.7 %, two runs at −2.5 % and
+  +1.6 %, i.e. ≤ 0.05 in ln P at β ≈ 2); the report lists b_peak / b_target per run.
+  Decision of Chris 2026-10-13: option A (threshold 0.10, 4 seeds, ≥ 2 calm cycles as in production), not ≥ 3 calm
+  cycles and not 6 seeds. Reason: B0 only screens; a false "go" costs at most variant B (≈ 13 $), and B measures the
+  paired SD again at 4 amplitudes.
+- Noise floor and error rates of the rule: the cycle-to-cycle SD of ln w at 9 mT in the earlier mesh runs is 0.029 …
+  0.077 (calm cycles, 4 groups of 4 runs). With calm tails of 2 … 3 cycles, the paired SD of two tail means cannot
+  fall below ≈ 0.024 … 0.077. Probability of "go" (SD_T < 0.10, χ² with n − 1 degrees of freedom):
+
+  | true SD of the paired difference | 0.024 | 0.05 | 0.077 | 0.10 | 0.15 | 0.20 | 0.30 |
+  |---|---|---|---|---|---|---|---|
+  | n 4 | 1.00 | 0.99 | 0.83 | 0.61 | 0.28 | 0.14 | 0.05 |
+  | n 3 | 1.00 | 0.98 | 0.81 | 0.63 | 0.36 | 0.22 | 0.11 |
+
+  Thus a working transfer gives "go" with a probability of 0.81 … 1.00 (depending on the noise floor), and the old
+  scatter (0.15 … 0.46) gives a false "go" with a probability of up to 0.28 (n 4) or 0.36 (n 3).
 
 ## 5. Optional step 3: mesh control (separate go)
 

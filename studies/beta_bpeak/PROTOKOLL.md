@@ -3670,8 +3670,8 @@ iterations, 1 cycle at 9 mT, outputs in /root/convtest, outside runs/):
 | d/l_ex 212, dx 1 (test) | 312³ = 30 M | 8.4 GB | 4.7 s | not reached (stopped at 07:40 for the next case) |
 | d/l_ex 96, dx 0.75 (test) | 192³ = 7.1 M | 2.3 GB | 1.07 s | 1.28 h (59 300 steps, dt 0.56 ps) |
 
-Production relaxations need 13 500 … 23 000 iterations (M212, M300). Thus a full relaxation takes ≈ 4 h at
-d/l_ex 96, dx 0.75, and ≈ 18 h at d/l_ex 212, dx 1. A run with 7 amplitudes has ≈ 50 … 60 cycles.
+Production relaxations need 11 000 … 25 500 iterations (M212, M300). Thus a full relaxation takes ≈ 3 … 8 h at
+d/l_ex 96, dx 0.75, and ≈ 14 … 33 h at d/l_ex 212, dx 1 (estimates). A run with 7 amplitudes has ≈ 50 … 60 cycles.
 
 **Audit of all influences** (context-free agent; numbers of the agent, the frequency number recomputed by me):
 - The mesh is not the only open influence of high weight. Frequency: β(2f) − β(f) over 20 … 150 mT from the old
@@ -3705,10 +3705,21 @@ difference measures the discretisation and not the state selection. Details and 
   determined; the paired CI equals the scipy t interval). Jobs `conv_jobs.py` → `jobs/conv_b0.txt` (20 jobs, test: only
   the planned arguments differ from the mesh212 template). Chain `instance/chain_conv.sh` (not installed).
 - Cycle noise at 9 mT (earlier mesh runs, pooled SD of ln w over the calm cycles, 4 runs per group): M212 dx 1.5
-  0.058, M212 dx 3 0.063, M300 dx 1.5 0.077, M300 dx 3 0.029; at 50 / 100 mT 0.087 / 0.028. The calm tails have 2 … 3
-  cycles. Thus a paired difference of two tail means has a noise of ≈ 0.03 … 0.06 in ln P.
+  0.058, M212 dx 3 0.063, M300 dx 1.5 0.077, M300 dx 3 0.029 (at 50 / 100 mT: 0.087 / 0.028). The calm tails have
+  2 … 3 cycles. Thus a paired difference of two tail means has a noise of ≈ 0.024 … 0.077 in ln P.
 - The measured relaxation of the dx 0.75 test (7.80) stopped at its cap of 1000 iterations (not converged). Thus the
-  iteration count of a full relaxation on dx 0.75 is still an estimate (13 500 … 23 000 from the production meshes).
+  iteration count of a full relaxation on dx 0.75 is still an estimate (11 000 … 25 500 from the production meshes).
+- Context-free review (one agent, ≈ 210 000 tokens). No problem in: the transfer arithmetic, the cube axes on all three
+  meshes (also for the seeds 941 … 944), T against I (only the start state differs), the job lines, the statistics, the
+  units. Findings, all fixed after the go of Chris: (1) the queue would start an unconverged dx 0.75 relaxation again
+  with 200 000 iterations (≈ 59 h, up to ≈ 39 $ in total, estimate) → `--gate_maxiter 0`; (2) the reading had no rule
+  for fewer than 3 independent pairs → new result "go, benefit not determined"; (3) the steady rule was set only in
+  main() → set inside run_record; (4) after a reboot the B0 chain could take the lock of the C′ chain before its
+  post-processing → the B0 chain waits for the end of the C′ process and takes no foreign lock; (5) wrong noise range
+  and missing n 3 error rates in PLAN → corrected; (6) contradictory and too low cost numbers (dx 3 at d/l_ex 96 is
+  44 s per cycle, not 6 s) → corrected; (7) the cleanup did not protect the F states → it reads --init_transfer;
+  (8) b_peak / b_target per run added to the report; status names, file path, tests with real run folders.
+- Decision of Chris 2026-10-13: option A for the go rule (threshold 0.10, 4 seeds, ≥ 2 calm cycles).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

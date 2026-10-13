@@ -42,9 +42,10 @@ def dependents(jobs_dir):
                 continue
             name, _, args = line.strip().partition(" ")
             a = shlex.split(args)
-            if "--init_from" in a:
-                src = a[a.index("--init_from") + 1]
-                dep.setdefault(str(pathlib.PurePosixPath(src)), set()).add(name)
+            for key in ("--init_from", "--init_transfer"):          # --init_transfer: B0, PLAN 4.10
+                if key in a:
+                    src = a[a.index(key) + 1]
+                    dep.setdefault(str(pathlib.PurePosixPath(src)), set()).add(name)
     return dep
 
 
