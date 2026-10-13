@@ -834,6 +834,47 @@ separate the mechanisms. The old frequency test (7.9) is valid only at
   effect on β come from the rate-dependent part? Chain instance/chain_freq.sh
   after the pair chain. ≈ 30 V100-h, ≈ 8 h, ≈ 3.5 $ (estimate).
 
+### 4.9 Systematic mesh check along the levers (2026-10-13, proposal, waits for the decision of Chris)
+
+Reason: the three mesh-check points (base 0.71 µm, base 1 µm, K3 0.71 µm;
+PROTOKOLL 7.63, 7.74, 7.78) were chosen one by one. They differ in K_eff,
+stress, packing and size at the same time, the base has only 3 B values,
+low K_eff is missing, and no fine-mesh run reaches 150 mT in the size range.
+The mesh error of β is +0.50 / −0.05 / +0.07 (9 … 100 mT) at these points;
+it cannot be assigned to one parameter.
+
+Cost basis (measured): GPU hours per job of one amplitude (steady rule):
+dx 3: 0.11 h (d/l_ex 212), 0.30 h (300); dx 1.5: 2.3 h (212), 8.6 h (300).
+Instance cost overnight 2026-10-12/13: 3.37 $ in 8.3 h = 0.41 $/h for 4
+GPUs ≈ 0.10 $ per GPU hour. dx 2 (estimate, not measured): ≈ 3.4 × the
+cells and ≈ 2.3 × the steps of dx 3 → ≈ 0.8 h (212), ≈ 2.3 h (300) per
+job. Credit after C′ (estimate): ≈ 30 $.
+
+Common to all variants: stress 0, packing 0.65 (as the base), α 0.1,
+7 amplitudes 9 … 150 mT, 4 seeds per cell of the design, both meshes with
+the same seed, steady rule (≥ 2 calm cycles, ≤ 12 cycles), the jobs of one
+seed and mesh start from the relaxed state of its 9 mT job (as M212).
+Analysis fixed before the runs (as eval_size.py, extended to 7 amplitudes):
+per point the mesh error of ln P per B and of β over 9 … 150 mT and in
+windows of 3 amplitudes, paired per seed, SD and 90 % CI; the size lever
+and the K_eff lever on each mesh, and their mesh shares (Welch).
+
+| variant | points (size × K_eff) | new fine-mesh jobs | GPU h | time on 4 GPUs | cost | answers | does not answer |
+|---|---|---|---|---|---|---|---|
+| V1 | 0.71 µm × {1.0, 6.2} kJ/m³ | 4 new B at the base 0.71 (16 jobs) + 7 B at low K_eff (28 jobs) | ≈ 105 | ≈ 26 h | ≈ 11 $ | Does the mesh error at small particles depend on K_eff? All 7 B incl. 150 mT, windows | the size lever on the fine mesh |
+| V2 | {0.71, 1} µm × {1.0, 6.2} kJ/m³ | V1 + 4 new B at the base 1 µm (16) + 7 B at low K_eff 1 µm (28) | ≈ 500 | ≈ 5 days | ≈ 50 $ | size lever and K_eff lever on the fine mesh, their mesh shares | other stress and packing |
+| V3 | as V2, "fine" = dx 2 instead of dx 1.5, plus dx 2 at the base points where dx 1.5 exists (calibration) | ≈ 72 dx 2 jobs | ≈ 160 | ≈ 40 h | ≈ 16 $ | as V2, if dx 2 agrees with dx 1.5 at the calibration points | whether dx 1.5 or dx 2 is converged |
+
+Risks: V1 gives no fine-mesh lever; V2 exceeds the credit (top-up needed)
+and takes ≈ 5 days; V3 depends on dx 2 being close to dx 1.5 (unknown). For
+all variants: dx 1.5 is not shown to be converged (a dx 1 check at 0.71 µm,
+9 and 100 mT, 3 seeds would cost ≈ 100 GPU h ≈ 10 $, estimate).
+
+Recommendation: V1 first (≈ 11 $, ≈ 1 day). It tests the region of the
+largest coarse-mesh A effect (low K_eff) with all 7 B values. Then decide
+V2 or V3 with its result. Before the start: a context-free check of this
+plan, the job files and the analysis script.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
