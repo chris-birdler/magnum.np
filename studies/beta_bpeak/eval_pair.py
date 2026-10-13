@@ -26,6 +26,7 @@ ln B to the nominal B), P = w · K_d · f in W/cm³.
 
     python eval_pair.py > results/pair_K1A10.md      # also results/pair_K1A10.json (numbers for the deck)
 """
+import json
 import math
 import pathlib
 
@@ -108,6 +109,22 @@ def design_prediction(rec_pair, n_boot=N_BOOT, seed=20261013):
             pass
     return est, boots, len(recs), {"lnd_coded_A20": xa[:, AD.FACTORS.index("lnd")].tolist(),
                                    "lnd_coded_A10": xb[:, AD.FACTORS.index("lnd")].tolist()}
+
+
+def nonuniformity(run, amp):
+    """g = mean of |grad m̄| over the particle cells of the snapshot cut, in rad per particle diameter d: m̄ = m averaged
+    over the 16 snapshots of the loop, normalised and smoothed inside each particle with sigma = L_eff / 2 (the texture
+    measure of acc_reduce.py, there in 3D)."""
+    import domains as DM
+    z = np.load(R / run / "slices.npz")
+    cfg = json.loads((R / run / "config.json").read_text())
+    ids = z[amp + "_ids"].astype(np.int64)
+    m0 = z[amp].astype(np.float32).mean(0)
+    m0 /= np.maximum(np.linalg.norm(m0, axis=-1, keepdims=True), 1e-12)
+    m0 = np.where((ids >= 0)[..., None], m0, 0.0)
+    g = DM.grad_norm(DM.smooth_m(m0[:, :, None, :], ids[:, :, None], 0.5 * cfg["Leff_lex"] / cfg["dx_lex"]),
+                     ids[:, :, None], cfg["dx_lex"])[:, :, 0]
+    return float(g[ids >= 0].mean() * cfg.get("d_lex_used", cfg["d_lex"]))
 
 
 def channels(a, k):
@@ -203,11 +220,16 @@ def main():
         bb = np.array([x[key] for x in boots])
         d = [lnw[10][k][b_] - lnw[20][k][b_] for k in SEEDS if np.isfinite(lnw[10][k][b_]) and np.isfinite(lnw[20][k][b_])]
         s = tci(d)
+        res.setdefault("design_ratio", {})["%g" % b_] = {"est": math.exp(est[key]),
+                                                         "lo": float(np.exp(np.percentile(bb, 5))),
+                                                         "hi": float(np.exp(np.percentile(bb, 95)))}
         L.append("| P(A 10) / P(A 20) at %g mT | %s | × %.2f (%.2f … %.2f) |" % (
             b_, ("× %.2f (%.2f … %.2f)" % (math.exp(s[0]), math.exp(s[2]), math.exp(s[3]))) if s else "–",
             math.exp(est[key]), *np.exp(np.percentile(bb, [5, 95]))))
+    res["P"] = {str(a): [[math.exp(lnP(rec[a][k], b, to_P)) for b in AMPS] for k in SEEDS] for a in (20, 10)}  # W/cm³
     # 4. channels
     ch = {a: {k: channels(a, k) for k in SEEDS} for a in (20, 10)}
+    res["jump"] = {str(a): {"%g" % b: [ch[a][k][b][2] for k in SEEDS] for b in AMPS} for a in (20, 10)}
     L += ["", "## Loss channels and location (mean over the seeds with a value, n in brackets)", "",
           "| B (mT) | R1 A 20 | R1 A 10 | top-10 % share A 20 | top-10 % share A 10 | jump share A 20 | jump share A 10 |",
           "|---|---|---|---|---|---|---|"]
@@ -240,6 +262,15 @@ def main():
         if not any(st.values()):
             L += ["A %d pJ/m: no runs with harmonics yet (%s)." % (a, pat % 0), ""]
             continue
+        res.setdefault("harm", {})[str(a)] = {"%g" % b: np.array(st[b], float)[:, :5].tolist() for b in AMPS if st[b]}
+        hk = {b: [] for b in AMPS}
+        for k in SEEDS:
+            f = R / (pat % k) / "acc.json"
+            if (R / (pat % k) / "DONE").exists() and f.exists():
+                for s in json.loads(f.read_text())["stages"]:
+                    if "harm" in s:
+                        hk[min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1))].append(s["harm"]["R_k"] + [s["harm"]["R_rest"]])
+        res.setdefault("harm_k", {})[str(a)] = {"%g" % b: hk[b] for b in AMPS if hk[b]}
         L += ["A %d pJ/m (%s):" % (a, pat.replace("%d", "k")), "",
               "| B (mT) | n | f | 2 f | 3 f | 4 … 7 f | rest | top 10 %: f / harmonics / rest | rim r ≥ 0.8 R: f / "
               "harmonics / rest | cells with Bessel excess |", "|---|---|---|---|---|---|---|---|---|---|"]
@@ -258,6 +289,8 @@ def main():
           "spectrum; these data cannot separate them. The rim r ≥ 0.8 R holds ≈ 49 % of the volume."]
     print("\n".join(L))
     import eval_mechanism as EM
+    res["g"] = {str(a): [[nonuniformity(folder(a, k).name if a == 10 else "K1_%d" % k, amp) for amp in
+                          ("amp00", "amp03", "amp06")] for k in SEEDS] for a in (20, 10)}
     res["vsw"] = {str(a): [[EM.measures(folder(a, k).name if a == 10 else "K1_%d" % k)["V_sw %d" % b] for b in (9, 50, 150)]
                            for k in SEEDS] for a in (20, 10)}      # switched volume per half loop (% of V), 3D snapshots
     res["note"] = ("lever = beta(A 20) - beta(A 10), paired by seed; design = the same from the design GLM (90 % "

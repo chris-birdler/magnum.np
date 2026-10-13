@@ -12,11 +12,12 @@ The A lever on β follows from s: β(A 20) − β(A 10) ≈ [s(150 mT) − s(9 m
 Estimators:
   (a) design model (Gamma GLM of analyze_design, all α 0.1 design runs): mean over the design points of
       [ln μ(ln d/l_ex = ln 300) − ln μ(ln 212)] / ln(300/212) at each nominal B; 1000 bootstrap resamples (90 %).
-  (b) the same with K_eff fixed at L_eff 30 / 18 / 12 l_ex (stress and packing at the design points).
+  (b) the same with K_eff fixed at L_eff 30 / 19 / 12 l_ex (coded ln Q −1 / 0 / +1; stress and packing at the design
+      points).
   (c) the pair K1 / K1A10 (eval_pair.py, n 3): ln[P(A 10)/P(A 20)] / ln(d/l_ex ratio), per seed, mean, 90 % CI (t).
 Limits: coarse mesh dx 3 (all runs); the quadratic design model; the pair is one corner (L_eff 30).
 
-    python eval_scaling.py > results/scaling_A.md
+    python eval_scaling.py > results/scaling_A.md      # also results/scaling_A.json (deck)
 """
 import math
 import pathlib
@@ -31,8 +32,13 @@ import eval_pair as EP
 R = pathlib.Path(__file__).resolve().parent / "runs"
 AMPS = list(AD.AMPS_MT)
 DLN = math.log(300.0 / 212.0)
-LEFF = (30.0, 18.0, 12.0)
+LEVELS = (-1.0, 0.0, 1.0)               # coded ln Q_eff: L_eff 30 / 19 / 12 l_ex (the K_eff levels of the deck, slide A)
 N_BOOT = 1000
+
+
+def L_of(q):
+    lo, hi = AD.RANGES["lnQ"]
+    return math.exp(-0.5 * (lo + (q + 1) / 2 * (hi - lo)))
 
 
 def coded_lnQ(L):
@@ -57,7 +63,7 @@ def main():
     X = AD.coded(recs)
     T = AD.terms(X)
     W = np.exp(np.array([[r["lnw@%gmT" % m] for m in AMPS] for r in recs]))
-    variants = [("all design points", None)] + [("L_eff %g l_ex" % L, coded_lnQ(L)) for L in LEFF]
+    variants = [("all design points", None)] + [("L_eff %.0f l_ex" % L_of(q), q) for q in LEVELS]
     c0 = AD.glm_coefs(T, W)
     est = {v: s_of_B(c0, X, q) for v, q in variants}
     rng = np.random.default_rng(20261013)
@@ -99,6 +105,11 @@ def main():
         L.append("- %s: %+.2f" % (v, -(est[v][-1] - est[v][0]) * DLN / math.log(150 / 9)))
     L.append("- pair: %+.2f" % (-(pair[-1][0] - pair[0][0]) * np.mean(dl) / math.log(150 / 9)))
     print("\n".join(L))
+    import json as js
+    out = {"amps": AMPS, "variants": {v: {"est": est[v].tolist(), "lo": np.percentile(np.array(boots[v]), 5, 0).tolist(),
+                                          "hi": np.percentile(np.array(boots[v]), 95, 0).tolist()} for v, _ in variants},
+           "pair": [list(x) for x in pair], "note": "s = d ln P / d ln(d/l_ex); A exponent a = -s/2"}
+    (pathlib.Path(__file__).resolve().parent / "results" / "scaling_A.json").write_text(js.dumps(out, indent=1))
 
 
 if __name__ == "__main__":

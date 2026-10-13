@@ -3770,19 +3770,21 @@ P ∝ A^(−s/2). Reading: s = −2 → P ∝ A (exchange energy A/d² of textur
 (domain walls); s = 0 → no A dependence; s > 0 → the loss rises when A falls, more than any energy scale gives.
 Design model (116 α 0.1 runs, Gamma GLM, 90 % bootstrap interval) and the pair (n 3, 90 % CI):
 
-| B (mT) | L_eff 30 l_ex (low K_eff) | L_eff 18 | L_eff 12 (high K_eff) | pair K1 / K1A10 (L_eff 30) |
+| B (mT) | L_eff 30 l_ex (low K_eff) | L_eff 19 | L_eff 12 (high K_eff) | pair K1 / K1A10 (L_eff 30) |
 |---|---|---|---|---|
-| 9 | +5.18 (+4.51 … +5.91) | +2.97 (+2.44 … +3.47) | +1.22 (+0.22 … +2.05) | +3.32 (+2.46 … +4.18) |
-| 50 | +1.13 (+0.57 … +1.90) | +0.86 (+0.21 … +1.36) | +0.66 (−0.68 … +1.49) | +0.67 (−1.15 … +2.48) |
-| 100 | −1.31 (−1.72 … −0.81) | −0.39 (−0.76 … +0.04) | +0.34 (−0.40 … +1.12) | −1.62 (−2.11 … −1.13) |
-| 150 | −1.95 (−2.34 … −1.56) | −0.63 (−0.90 … −0.34) | +0.42 (−0.02 … +0.86) | −1.95 (−2.02 … −1.89) |
+| 9 | +5.18 (+4.51 … +5.91) | +3.20 (+2.69 … +3.69) | +1.22 (+0.22 … +2.05) | +3.32 (+2.46 … +4.18) |
+| 50 | +1.13 (+0.57 … +1.90) | +0.89 (+0.31 … +1.36) | +0.66 (−0.68 … +1.49) | +0.67 (−1.15 … +2.48) |
+| 100 | −1.31 (−1.72 … −0.81) | −0.49 (−0.82 … −0.08) | +0.34 (−0.40 … +1.12) | −1.62 (−2.11 … −1.13) |
+| 150 | −1.95 (−2.34 … −1.56) | −0.76 (−1.03 … −0.49) | +0.42 (−0.02 … +0.86) | −1.95 (−2.02 … −1.89) |
 
 - At 150 mT and low K_eff: s = −2 in the design model and in the pair (P ∝ A). At high K_eff: s = 0 (no A
-  dependence). L_eff 18 lies between (−0.63, the interval excludes −1 and 0).
+  dependence). L_eff 19 (coded ln Q 0, the middle K_eff level of the deck) lies between: −0.76, the interval contains
+  −1 (walls) and excludes 0.
 - At 9 mT s = +1 … +5: a smaller A raises the loss strongly, most at low K_eff. This is not an energy scale; it is a
   change of the state or of its mobility (not resolved here).
-- The A lever on β follows from the two ends: [s(150) − s(9)] · ln(300/212) / ln(150/9) = +0.88 / +0.44 / +0.10 at
-  L_eff 30 / 18 / 12 (design model; the direct A levers of the audit 7.66: +0.96 / +0.51 / +0.15) and +0.64 for the
+- The A lever on β follows from the two ends: [s(150) − s(9)] · ln(300/212) / ln(150/9) = +0.88 / +0.49 / +0.10 at
+  L_eff 30 / 19 / 12 (design model; the direct A levers of the audit 7.66 at L_eff 30 / 18 / 12: +0.96 / +0.51 / +0.15)
+  and +0.64 for the
   pair. Thus the A lever is the sum of two parts: more loss at small B and (at low K_eff) less loss at large B when A
   falls.
 - The model and the pair agree at 100 … 150 mT; at 9 … 20 mT the model gives the larger s at L_eff 30 (7.82).

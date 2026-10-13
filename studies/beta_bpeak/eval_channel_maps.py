@@ -11,7 +11,7 @@ test). Channels of the cell loss p (O2, PROTOKOLL 7.72, 7.83): f (p_1 = p − ha
    the mean total loss of the particle cells in the cut (white = that mean), log scale; negative rest values (Bessel
    excess, 7.83) are shown at the bottom of the scale.
 
-    python eval_channel_maps.py > results/channel_maps_K1A10.md      # also results/channel_maps_K1A10.png
+    python eval_channel_maps.py > results/channel_maps_K1A10.md      # also .png and .json (deck)
 """
 import json
 import pathlib
@@ -57,7 +57,9 @@ def main():
          "Concentration = share of the channel in the zone / volume share of the zone (1 = spread evenly), mean ± SD "
          "over 3 seeds, 3D, calm cycles. Total = all of the cell loss. At 9 mT the rest is ≈ 1 % of the loss and its "
          "zone shares are not meaningful (cells with a Bessel excess have a negative rest).", ""]
+    res = {"zones": {}, "amps": AMPS}
     for zk, zl in ZONES:
+        res["zones"][zk] = {"label": zl, "vol": float(np.mean([S[r][9]["where"][zk]["vol_share"] for r in RUNS]))}
         vol = np.mean([S[r][9]["where"][zk]["vol_share"] for r in RUNS])
         L += ["## %s (volume share %.2f)" % (zl, vol), "", "| B (mT) | " + " | ".join(c for _, c in CH) + " |",
               "|---|" + "---|" * len(CH)]
@@ -65,11 +67,14 @@ def main():
             cells = []
             for ck, _ in CH:
                 v = np.array([S[r][b]["where"][zk][ck] / S[r][b]["where"][zk]["vol_share"] for r in RUNS])
+                res["zones"][zk].setdefault(ck, []).append([float(v.mean()), float(v.std(ddof=1))])
                 cells.append("%.2f ± %.2f" % (v.mean(), v.std(ddof=1)))
             L.append("| %g | %s |" % (b, " | ".join(cells)))
         L.append("")
     seed = map_seed()
     L.append("Maps: %s (the seed with the median A lever of the pair)." % RUNS[seed])
+    res["map_run"] = RUNS[seed]
+    (RES / "channel_maps_K1A10.json").write_text(json.dumps(res, indent=1))
     print("\n".join(L))
     plot(RUNS[seed], S[RUNS[seed]])
 
