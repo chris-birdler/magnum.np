@@ -3561,6 +3561,35 @@ the K1 runs of the design).
   (within the drift limit ± 5 % of the conditioning test). To look at again
   after C′ with the per-cycle data of O2.
 
+### 7.77 Damping test at small B: result (2026-10-13, PLAN 4.7)
+
+Chain α finished 2026-10-13 04:47 UTC: 16 of 16 jobs, none failed; the
+determinism gate (check_reruns.py) passed (exit code 0). Results fetched
+without *.pt (136 files, 32 MB, md5 equal to the instance;
+runs/MANIFEST_cond_a001.md5, local). eval_alpha_cond.py →
+results/alpha_cond.md (rules of PLAN 4.7, fixed before the runs). Note: the
+first version of the script did not set the steady rule for the reference
+values; corrected before any use.
+
+| B | seeds with a calm tail (≥ 2 of 30 cycles) | P(α 0.01) / P(α 0.1) | 90 % CI | SD of ln |
+|---|---|---|---|---|
+| 9 mT | 4 of 8 (C2, C3, C5, C7) | × 0.13 | × 0.11 … 0.16 | 0.14 |
+| 20 mT | 3 of 8 (C0, C3, C4) | × 1.06 | × 0.38 … 2.91 (not determined) | 0.60 |
+
+- At α 0.01 most runs do not settle at 9 and 20 mT even in 30 cycles:
+  event cycles continue up to cycle 29 in several seeds.
+- At 9 mT the 4 settled seeds give × 0.11 … 0.15 each: the loss falls
+  almost in proportion to α (× 0.10). Above 35 mT (design runs, 7.68):
+  × 0.62 … 0.81. Possible selection: the settled seeds can be the calmer
+  ones.
+- R1 at α 0.01 (acc windows, mostly with events): median 0.28 at 9 mT
+  (range 0.003 … 0.85), 0.12 at 20 mT.
+- Consequence for β: if the loss at small B scales with α and at high B
+  only weakly, β is higher at α 0.01. Not measured: only C2 has steady
+  values at both 9 and 150 mT (Δβ +0.65, n 1). No claim.
+- Deck: slide 23 with the 30-cycle values at 9 and 20 mT (deck_data
+  alpha_block, source per amplitude), text and callout without a β number.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

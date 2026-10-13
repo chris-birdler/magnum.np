@@ -484,6 +484,31 @@ def alpha_block(to_P):
         out["n"].append(int(len(c)))
         out["mean"].append(float(c.mean()) if len(c) >= 3 else None)
         out["se"].append(float(c.std(ddof=1) / math.sqrt(len(c))) if len(c) >= 3 else None)
+    # PLAN 4.7: at 9 and 20 mT the 30-cycle runs at α 0.01 give the values (calm tail ≥ 2 of 30 cycles), against the
+    # design value at α 0.1 of the same seeds (eval_alpha_cond.py, PROTOKOLL 7.77)
+    import eval_alpha_cond as EAC
+    out["source"] = ["design runs (9 cycles)"] * len(AD.AMPS_MT)
+    out["n_seeds"] = 8
+    for b in EAC.AMPS:
+        k = list(AD.AMPS_MT).index(b)
+        w1, w0 = [], []
+        for s in EAC.SEEDS:
+            name = "cond_C%d_a001_b%d" % (s, b)
+            ref = AD.run_record(AD.rerun_dir(RUNS / ("C%d" % s)) or RUNS / ("C%d" % s))
+            if not (RUNS / name / "DONE").exists() or ref is None:
+                continue
+            w = EAC.calm_value(name)[0]
+            if w is not None and np.isfinite(ref["lnw@%gmT" % b]):
+                w1.append(math.log(w))
+                w0.append(ref["lnw@%gmT" % b])
+        d = np.array(w1) - np.array(w0)
+        out["n"][k] = int(len(d))
+        out["source"][k] = "30-cycle runs"
+        ok = len(d) >= 3
+        out["mean"][k] = float(d.mean()) if ok else None
+        out["se"][k] = float(d.std(ddof=1) / math.sqrt(len(d))) if ok else None
+        out["P_a01"][k] = float(np.exp(np.mean(w0))) * to_P if ok else None
+        out["P_a001"][k] = float(np.exp(np.mean(w1))) * to_P if ok else None
     return out
 
 
