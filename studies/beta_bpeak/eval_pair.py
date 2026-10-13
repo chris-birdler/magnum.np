@@ -19,6 +19,10 @@ ln B to the nominal B), P = w · K_d · f in W/cm³.
    runs (90 % percentile interval). Measured against predicted.
 4. Loss channels per B and A (mean over the seeds, calm accumulator windows only): R1 = share of the cell loss at f,
    share of the loss in the 10 % of the cells with the highest loss, jump share RF / 2 of the last 3 calm cycles.
+5. Harmonics (O2, PROTOKOLL 7.72; added 2026-10-13, item 1 of Chris): per B the shares of the cell loss at f, 2 f,
+   3 f, 4 … 7 f and the rest (motion above 7 f or not repeating), mean ± SD over the seeds; the share of each part in
+   the 10 % of the cells with the highest loss and in the rim r ≥ 0.8 R; the share of cells with Σ_k p_k > 1.001 p
+   (Bessel check). A 10: K1A10_k; A 20: the C′ runs K1_k_f1 (same protocol) when they exist.
 
     python eval_pair.py > results/pair_K1A10.md      # also results/pair_K1A10.json (numbers for the deck)
 """
@@ -217,6 +221,41 @@ def main():
     L += ["", "R1: share of the cell loss at f (calm accumulator windows). Top-10 % share: share of the loss in the 10 % "
           "of the particle cells with the highest loss. Jump share: RF / 2 (energy above the smooth periodic curve, "
           "last 3 calm cycles)."]
+    # 5. harmonics
+    L += ["", "## Harmonics (O2): shares of the cell loss, mean ± SD over the seeds", ""]
+    for a, pat in ((10, "K1A10_%d"), (20, "K1_%d_f1")):
+        st = {b: [] for b in AMPS}
+        for k in SEEDS:
+            f = R / (pat % k) / "acc.json"
+            if not (R / (pat % k) / "DONE").exists() or not f.exists():
+                continue
+            for s in json.loads(f.read_text())["stages"]:
+                if "harm" not in s:
+                    continue
+                b = min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1))
+                h, wt, rim = s["harm"], s["where"]["p top 10%"], s["where"]["r>=0.8"]
+                st[b].append([h["R_k"][0], h["R_k"][1], h["R_k"][2], sum(h["R_k"][3:]), h["R_rest"],
+                              wt["p_fund_share"], wt["p_harm_share"], wt["p_rest_share"],
+                              rim["p_fund_share"], rim["p_harm_share"], rim["p_rest_share"], h["bessel_frac_over_1e-3"]])
+        if not any(st.values()):
+            L += ["A %d pJ/m: no runs with harmonics yet (%s)." % (a, pat % 0), ""]
+            continue
+        L += ["A %d pJ/m (%s):" % (a, pat.replace("%d", "k")), "",
+              "| B (mT) | n | f | 2 f | 3 f | 4 … 7 f | rest | top 10 %: f / harmonics / rest | rim r ≥ 0.8 R: f / "
+              "harmonics / rest | cells with Bessel excess |", "|---|---|---|---|---|---|---|---|---|---|"]
+        for b in AMPS:
+            if not st[b]:
+                continue
+            x = np.array(st[b], float)
+            m, sd = x.mean(0), (x.std(0, ddof=1) if len(x) > 1 else np.full(x.shape[1], np.nan))
+            L.append("| %g | %d | %.2f ± %.2f | %.3f ± %.3f | %.3f ± %.3f | %.3f ± %.3f | %.2f ± %.2f | %.2f / %.2f / %.2f | "
+                     "%.2f / %.2f / %.2f | %.0f %% |" % (b, len(x), m[0], sd[0], m[1], sd[1], m[2], sd[2], m[3], sd[3],
+                                                     m[4], sd[4], m[5], m[6], m[7], m[8], m[9], m[10], 100 * m[11]))
+        L.append("")
+    L += ["Rest: motion above 7 f or motion that does not repeat from cycle to cycle. A zone share of the rest can exceed "
+          "1 where the rest is small, because cells with a Bessel excess have a negative rest. The 4 … 7 f shares are "
+          "flat in k (≈ 0.02 each): a step-like motion in each cycle and a slow drift within a cycle both give a flat "
+          "spectrum; these data cannot separate them. The rim r ≥ 0.8 R holds ≈ 49 % of the volume."]
     print("\n".join(L))
     import eval_mechanism as EM
     res["vsw"] = {str(a): [[EM.measures(folder(a, k).name if a == 10 else "K1_%d" % k)["V_sw %d" % b] for b in (9, 50, 150)]

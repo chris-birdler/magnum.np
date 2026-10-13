@@ -3762,6 +3762,54 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
   7.68: p = inf); only |𝐦₁|² (loss at f) is valid. Real loss maps at A 20 with the same protocol as K1A10 come from the
   C′ runs K1_k_f1 (A 20 at f, harmonics, 512 samples; no snapshots). The paired loss maps for slide 8 wait for them.
 
+### 7.83 What the K1A10 runs teach: scaling of the loss with A, and the "other frequencies" (2026-10-13, items 3 and 1 of Chris)
+
+**Item 3: how the loss scales with A** (`eval_scaling.py` → results/scaling_A.md; reading fixed in the script before
+the result). Exponent s(B) = ∂ ln P / ∂ ln(d/l_ex) at fixed K_eff, stress and packing; at a fixed particle size
+P ∝ A^(−s/2). Reading: s = −2 → P ∝ A (exchange energy A/d² of textures on the particle scale); s = −1 → P ∝ √A
+(domain walls); s = 0 → no A dependence; s > 0 → the loss rises when A falls, more than any energy scale gives.
+Design model (116 α 0.1 runs, Gamma GLM, 90 % bootstrap interval) and the pair (n 3, 90 % CI):
+
+| B (mT) | L_eff 30 l_ex (low K_eff) | L_eff 18 | L_eff 12 (high K_eff) | pair K1 / K1A10 (L_eff 30) |
+|---|---|---|---|---|
+| 9 | +5.18 (+4.51 … +5.91) | +2.97 (+2.44 … +3.47) | +1.22 (+0.22 … +2.05) | +3.32 (+2.46 … +4.18) |
+| 50 | +1.13 (+0.57 … +1.90) | +0.86 (+0.21 … +1.36) | +0.66 (−0.68 … +1.49) | +0.67 (−1.15 … +2.48) |
+| 100 | −1.31 (−1.72 … −0.81) | −0.39 (−0.76 … +0.04) | +0.34 (−0.40 … +1.12) | −1.62 (−2.11 … −1.13) |
+| 150 | −1.95 (−2.34 … −1.56) | −0.63 (−0.90 … −0.34) | +0.42 (−0.02 … +0.86) | −1.95 (−2.02 … −1.89) |
+
+- At 150 mT and low K_eff: s = −2 in the design model and in the pair (P ∝ A). At high K_eff: s = 0 (no A
+  dependence). L_eff 18 lies between (−0.63, the interval excludes −1 and 0).
+- At 9 mT s = +1 … +5: a smaller A raises the loss strongly, most at low K_eff. This is not an energy scale; it is a
+  change of the state or of its mobility (not resolved here).
+- The A lever on β follows from the two ends: [s(150) − s(9)] · ln(300/212) / ln(150/9) = +0.88 / +0.44 / +0.10 at
+  L_eff 30 / 18 / 12 (design model; the direct A levers of the audit 7.66: +0.96 / +0.51 / +0.15) and +0.64 for the
+  pair. Thus the A lever is the sum of two parts: more loss at small B and (at low K_eff) less loss at large B when A
+  falls.
+- The model and the pair agree at 100 … 150 mT; at 9 … 20 mT the model gives the larger s at L_eff 30 (7.82).
+- Limits: coarse mesh; quadratic model; the pair is one corner.
+
+**Item 1: what the "other frequencies" of 7.70 are** (A 10 pJ/m only, K1A10_0 … 2, n 3; `eval_pair.py` section 5;
+A 20 follows from the C′ runs K1_k_f1). Shares of the cell loss, mean ± SD over the seeds:
+
+| B (mT) | f | 2 f | 3 f | 4 … 7 f | rest (> 7 f or not repeating) |
+|---|---|---|---|---|---|
+| 9 | 0.89 ± 0.04 | 0.03 ± 0.02 | 0.02 ± 0.01 | 0.04 ± 0.02 | 0.01 ± 0.01 |
+| 50 | 0.54 ± 0.11 | 0.07 ± 0.01 | 0.05 ± 0.01 | 0.12 ± 0.04 | 0.22 ± 0.06 |
+| 150 | 0.48 ± 0.04 | 0.11 ± 0.00 | 0.05 ± 0.00 | 0.10 ± 0.00 | 0.26 ± 0.04 |
+
+- At ≥ 35 mT about half of the loss outside f is in the harmonics 2 … 7 f and half is in the rest. The reading rule of
+  7.72 (rest large or small) does not give a clear class: both parts are large.
+- 2 f is the largest harmonic and grows with B (0.03 → 0.11). The 4 … 7 f shares are flat in k (≈ 0.02 each): a
+  step-like motion in each cycle and a slow drift within a cycle both give a flat spectrum; not separable here.
+- The rest and the harmonics sit in the hot spots: at ≥ 50 mT the 10 % of the cells with the highest loss carry
+  ≈ 90 % of the rest, ≈ 84 % of the harmonic loss and ≈ 60 % of the loss at f.
+- The rest (0.22 … 0.27 at ≥ 50 mT) is larger than the jump share RF / 2 of the box (0.06 … 0.11): most of it is
+  local fast or non-repeating motion that does not show as a jump of the box dissipation.
+- Bessel check: 6 … 38 % of the cells have Σ_k p_k > 1.001 p (O2 test: only at 9 mT, 8 %; at 50 mT 0.01 %).
+  Energetically small: the negative rest in the cut plane is ≤ 1.5 % of the loss (most stages < 0.5 %). The cause is
+  not determined (candidates: drift within a cycle, motion between the samples). The 4 … 7 f shares and the rest carry
+  this uncertainty (estimate: up to ≈ 0.1 can move between them).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

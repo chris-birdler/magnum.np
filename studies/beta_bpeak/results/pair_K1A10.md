@@ -62,3 +62,21 @@ Design model: Gamma GLM (quadratic in the 4 coded factors) on 116 α 0.1 design 
 | 150 | 0.37 (3) | 0.48 (3) | 0.71 (3) | 0.72 (3) | 0.10 (3) | 0.06 (3) |
 
 R1: share of the cell loss at f (calm accumulator windows). Top-10 % share: share of the loss in the 10 % of the particle cells with the highest loss. Jump share: RF / 2 (energy above the smooth periodic curve, last 3 calm cycles).
+
+## Harmonics (O2): shares of the cell loss, mean ± SD over the seeds
+
+A 10 pJ/m (K1A10_k):
+
+| B (mT) | n | f | 2 f | 3 f | 4 … 7 f | rest | top 10 %: f / harmonics / rest | rim r ≥ 0.8 R: f / harmonics / rest | cells with Bessel excess |
+|---|---|---|---|---|---|---|---|---|---|
+| 9 | 3 | 0.89 ± 0.04 | 0.033 ± 0.016 | 0.020 ± 0.014 | 0.038 ± 0.019 | 0.01 ± 0.01 | 0.69 / 0.74 / 0.53 | 0.24 / 0.43 / 1.11 | 38 % |
+| 20 | 3 | 0.76 ± 0.08 | 0.041 ± 0.015 | 0.030 ± 0.013 | 0.065 ± 0.028 | 0.11 ± 0.05 | 0.66 / 0.79 / 0.96 | 0.28 / 0.45 / 0.55 | 27 % |
+| 35 | 3 | 0.56 ± 0.08 | 0.069 ± 0.023 | 0.046 ± 0.009 | 0.128 ± 0.057 | 0.20 ± 0.07 | 0.63 / 0.81 / 1.07 | 0.33 / 0.45 / 0.57 | 26 % |
+| 50 | 3 | 0.54 ± 0.11 | 0.068 ± 0.006 | 0.046 ± 0.007 | 0.124 ± 0.044 | 0.22 ± 0.06 | 0.63 / 0.84 / 0.95 | 0.36 / 0.44 / 0.52 | 18 % |
+| 70 | 3 | 0.53 ± 0.05 | 0.071 ± 0.016 | 0.044 ± 0.006 | 0.093 ± 0.010 | 0.26 ± 0.04 | 0.62 / 0.84 / 0.94 | 0.38 / 0.50 / 0.55 | 17 % |
+| 100 | 3 | 0.51 ± 0.02 | 0.084 ± 0.004 | 0.041 ± 0.003 | 0.091 ± 0.008 | 0.27 ± 0.03 | 0.59 / 0.85 / 0.92 | 0.38 / 0.53 / 0.60 | 7 % |
+| 150 | 3 | 0.48 ± 0.04 | 0.110 ± 0.004 | 0.054 ± 0.001 | 0.096 ± 0.002 | 0.26 ± 0.04 | 0.56 / 0.84 / 0.90 | 0.39 / 0.56 / 0.66 | 6 % |
+
+A 20 pJ/m: no runs with harmonics yet (K1_0_f1).
+
+Rest: motion above 7 f or motion that does not repeat from cycle to cycle. A zone share of the rest can exceed 1 where the rest is small, because cells with a Bessel excess have a negative rest. The 4 … 7 f shares are flat in k (≈ 0.02 each): a step-like motion in each cycle and a slow drift within a cycle both give a flat spectrum; these data cannot separate them. The rim r ≥ 0.8 R holds ≈ 49 % of the volume.
