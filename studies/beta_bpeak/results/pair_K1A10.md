@@ -18,15 +18,15 @@ Runs used: K1_0_mc2, K1_1, K1_2, K1A10_0, K1A10_1, K1A10_2
 
 ## β fits
 
-| fit (mT) | β at A 20, per seed (mean / SD, n) | β at A 10, per seed | Δβ = A 10 − A 20, paired (seed offsets) |
-|---|---|---|---|
-| 9 … 150 | 2.45 / 0.12 (n 3) | 1.81 / 0.05 (n 3) | -0.64 ± 0.05 (90 % CI -0.74 … -0.55; 21 values, 3 seeds) |
-| 20 … 150 (without 9 mT) | 2.44 / 0.20 (n 3) | 1.79 / 0.08 (n 3) | -0.65 ± 0.09 (90 % CI -0.80 … -0.50; 18 values, 3 seeds) |
-| 9 / 20 / 35 | 2.48 / 0.08 (n 3) | 1.92 / 0.18 (n 3) | -0.56 ± 0.16 (90 % CI -0.89 … -0.23; 9 values, 3 seeds) |
-| 20 / 35 / 50 | 2.23 / 0.46 (n 3) | 1.97 / 0.20 (n 3) | -0.26 ± 0.23 (90 % CI -0.73 … +0.21; 9 values, 3 seeds) |
-| 35 / 50 / 70 | 2.47 / 0.40 (n 3) | 1.60 / 0.23 (n 3) | -0.87 ± 0.22 (90 % CI -1.32 … -0.42; 9 values, 3 seeds) |
-| 50 / 70 / 100 | 2.80 / 0.41 (n 3) | 1.68 / 0.20 (n 3) | -1.12 ± 0.22 (90 % CI -1.57 … -0.67; 9 values, 3 seeds) |
-| 70 / 100 / 150 | 2.38 / 0.18 (n 3) | 1.78 / 0.05 (n 3) | -0.60 ± 0.12 (90 % CI -0.84 … -0.35; 9 values, 3 seeds) |
+| fit (mT) | β at A 20, per seed (mean / SD, n) | β at A 10, per seed | Δβ = A 10 − A 20 per seed (90 % CI, t) | the same, model with seed offsets on all values |
+|---|---|---|---|---|
+| 9 … 150 | 2.45 / 0.12 (n 3) | 1.81 / 0.05 (n 3) | -0.64 ± 0.04 (-0.76 … -0.53, n 3) | -0.64 ± 0.05 (90 % CI -0.74 … -0.55; 21 values, 3 seeds) |
+| 20 … 150 (without 9 mT) | 2.44 / 0.20 (n 3) | 1.79 / 0.08 (n 3) | -0.65 ± 0.08 (-0.87 … -0.42, n 3) | -0.65 ± 0.09 (90 % CI -0.80 … -0.50; 18 values, 3 seeds) |
+| 9 / 20 / 35 | 2.48 / 0.08 (n 3) | 1.92 / 0.18 (n 3) | -0.56 ± 0.13 (-0.93 … -0.19, n 3) | -0.56 ± 0.16 (90 % CI -0.89 … -0.23; 9 values, 3 seeds) |
+| 20 / 35 / 50 | 2.23 / 0.46 (n 3) | 1.97 / 0.20 (n 3) | -0.26 ± 0.32 (-1.20 … +0.68, n 3) | -0.26 ± 0.23 (90 % CI -0.73 … +0.21; 9 values, 3 seeds) |
+| 35 / 50 / 70 | 2.47 / 0.40 (n 3) | 1.60 / 0.23 (n 3) | -0.87 ± 0.29 (-1.72 … -0.02, n 3) | -0.87 ± 0.22 (90 % CI -1.32 … -0.42; 9 values, 3 seeds) |
+| 50 / 70 / 100 | 2.80 / 0.41 (n 3) | 1.68 / 0.20 (n 3) | -1.12 ± 0.34 (-2.12 … -0.13, n 3) | -1.12 ± 0.22 (90 % CI -1.57 … -0.67; 9 values, 3 seeds) |
+| 70 / 100 / 150 | 2.38 / 0.18 (n 3) | 1.78 / 0.05 (n 3) | -0.60 ± 0.09 (-0.85 … -0.34, n 3) | -0.60 ± 0.12 (90 % CI -0.84 … -0.35; 9 values, 3 seeds) |
 
 ## Measured against the prediction of the design model
 
@@ -34,13 +34,13 @@ Design model: Gamma GLM (quadratic in the 4 coded factors) on 116 α 0.1 design 
 
 | output | measured (paired, 90 % CI) | design model (90 % interval) |
 |---|---|---|
-| Δβ 9 … 150 mT | -0.64 (-0.74 … -0.55) | -0.92 (-1.04 … -0.82) |
-| Δβ 20 … 150 (without 9 mT) mT | -0.65 (-0.80 … -0.50) | -1.00 (-1.14 … -0.86) |
-| Δβ 9 / 20 / 35 mT | -0.56 (-0.89 … -0.23) | -0.74 (-0.94 … -0.53) |
-| Δβ 20 / 35 / 50 mT | -0.26 (-0.73 … +0.21) | -0.96 (-1.27 … -0.63) |
-| Δβ 35 / 50 / 70 mT | -0.87 (-1.32 … -0.42) | -1.38 (-1.65 … -1.07) |
-| Δβ 50 / 70 / 100 mT | -1.12 (-1.57 … -0.67) | -1.14 (-1.44 … -0.93) |
-| Δβ 70 / 100 / 150 mT | -0.60 (-0.84 … -0.35) | -0.58 (-0.90 … -0.36) |
+| Δβ 9 … 150 mT | -0.64 (-0.76 … -0.53) | -0.92 (-1.04 … -0.82) |
+| Δβ 20 … 150 (without 9 mT) mT | -0.65 (-0.87 … -0.42) | -1.00 (-1.14 … -0.86) |
+| Δβ 9 / 20 / 35 mT | -0.56 (-0.93 … -0.19) | -0.74 (-0.94 … -0.53) |
+| Δβ 20 / 35 / 50 mT | -0.26 (-1.20 … +0.68) | -0.96 (-1.27 … -0.63) |
+| Δβ 35 / 50 / 70 mT | -0.87 (-1.72 … -0.02) | -1.38 (-1.65 … -1.07) |
+| Δβ 50 / 70 / 100 mT | -1.12 (-2.12 … -0.13) | -1.14 (-1.44 … -0.93) |
+| Δβ 70 / 100 / 150 mT | -0.60 (-0.85 … -0.34) | -0.58 (-0.90 … -0.36) |
 | P(A 10) / P(A 20) at 9 mT | × 3.11 (2.32 … 4.17) | × 5.61 (4.33 … 7.36) |
 | P(A 10) / P(A 20) at 20 mT | × 1.61 (1.03 … 2.51) | × 3.27 (2.64 … 4.19) |
 | P(A 10) / P(A 20) at 35 mT | × 1.49 (0.68 … 3.26) | × 2.05 (1.68 … 2.60) |
@@ -80,3 +80,13 @@ A 10 pJ/m (K1A10_k):
 A 20 pJ/m: no runs with harmonics yet (K1_0_f1).
 
 Rest: motion above 7 f or motion that does not repeat from cycle to cycle. A zone share of the rest can exceed 1 where the rest is small, because cells with a Bessel excess have a negative rest. The 4 … 7 f shares are flat in k (≈ 0.02 each): a step-like motion in each cycle and a slow drift within a cycle both give a flat spectrum; these data cannot separate them. The rim r ≥ 0.8 R holds ≈ 49 % of the volume.
+
+## Motion in the snapshot cut and loss at f / outside f, ratio A 10 / A 20 per seed
+
+q = Σ over the 16 snapshots of one loop of |Δm|² per mesh cell, mean over the particle cells of the cut (the loss measure q of the deck; it resolves motion on the time scale T/16). Loss at f = R1 · P, outside f = (1 − R1) · P (calm accumulator windows; n < 3 where a window has an event).
+
+| B (mT) | q ratio per seed | q ratio of the means | P ratio (paired, geometric mean) | loss at f, ratio | loss outside f, ratio |
+|---|---|---|---|---|---|
+| 9 | 4.47 / 1.51 / 4.08 | 3.34 | 3.11 | 2.83 (n 3) | 11.95 (n 3) |
+| 50 | 2.25 / 1.33 / 1.47 | 1.62 | 1.26 | 1.15 (n 3) | 1.34 (n 3) |
+| 150 | 0.91 / 0.86 / 1.03 | 0.93 | 0.51 | 0.67 (n 3) | 0.42 (n 3) |

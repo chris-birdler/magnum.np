@@ -3731,13 +3731,16 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
 
 | quantity | measured (pair) | design model at the same factors (90 % bootstrap interval) |
 |---|---|---|
-| A lever on β, 9 … 150 mT | +0.64 (+0.55 … +0.74) | +0.92 (+0.82 … +1.04) |
-| A lever on β, 20 … 150 mT | +0.65 (+0.50 … +0.80) | +1.00 (+0.86 … +1.14) |
+| A lever on β, 9 … 150 mT | +0.64 (+0.53 … +0.76; per seed +0.56 / +0.70 / +0.67) | +0.92 (+0.82 … +1.04) |
+| A lever on β, 20 … 150 mT | +0.65 (+0.42 … +0.87) | +1.00 (+0.86 … +1.14) |
 | P(A 10) / P(A 20) at 9 / 20 mT | × 3.11 (2.32 … 4.17) / × 1.61 (1.03 … 2.51) | × 5.61 (4.33 … 7.36) / × 3.27 (2.64 … 4.19) |
 | P(A 10) / P(A 20) at 50 / 100 / 150 mT | × 1.26 (0.68 … 2.33) / × 0.58 (0.49 … 0.68) / × 0.51 (0.50 … 0.52) | × 1.34 / × 0.61 / × 0.50 |
 
 - The A lever at K1 is real and does not depend on the 9 mT point (+0.64 with, +0.65 without 9 mT). β is 2.45 ± 0.12
   (SD, n 3) at A 20 and 1.81 ± 0.05 at A 10.
+- Correction 2026-10-13 (review): the intervals of the A lever are now per seed (t with 2 degrees of freedom). The
+  first version used a model with one offset per seed on all 21 values; it treats the amplitudes as independent and
+  gave +0.55 … +0.74. eval_pair.py keeps it as a second column.
 - The design model over-predicts the A lever at this corner by ≈ 0.3 (the intervals do not overlap). The difference
   comes from small B: at 9 and 20 mT the model predicts about twice the measured loss ratio; at 50 … 150 mT the
   model and the pair agree within the intervals. The coded ln d/l_ex of the pair is −0.89 / +1.07 (A 10 is 0.07 coded
@@ -3756,8 +3759,14 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
   before the images were drawn). Mean over the mesh cells of the cut, mean of 3 seeds, 9 / 50 / 150 mT: 2 / 12 / 32°
   at A 20 and 3 / 12 / 32° at A 10: 𝐦 turns as far locally at both A. The cell mean ⟨𝐦⟩ (Herzer cell, whole volume,
   1.8 × the switched volume per half loop) turns 1 / 6 / 21° at A 20 and 1 / 6 / 16° at A 10: at 150 mT 25 % less at
-  A 10 (seed ranges do not overlap). Thus the same local motion gives × 3 more loss at 9 mT and half the loss at
-  150 mT. The reason is not determined here.
+  A 10 (seed ranges do not overlap).
+- Correction 2026-10-13 (context-free review of the deck): the sentence "the same local motion gives × 3 more loss at
+  9 mT and half the loss at 150 mT" was wrong. θ compares only the two field peaks, not the path of 𝐦. The motion
+  measure q = Σ |Δ𝐦|² over the 16 snapshots (mean of the cut, eval_pair.py section 6), ratio A 10 / A 20: × 3.3 at
+  9 mT (per seed 4.5 / 1.5 / 4.1; loss × 3.1), × 1.6 at 50 mT (loss × 1.3), × 0.93 at 150 mT (loss × 0.51). Thus at
+  9 mT 𝐦 moves more at A 10, and the loss follows. At 150 mT the motion on the time scale T/16 is the same, and the
+  loss halves: the loss at f falls to × 0.67, the loss outside f to × 0.42 (R1 · P, n 3). The difference at 150 mT
+  sits in fast motion that the 16 snapshots do not resolve.
 - Real cell-loss maps: the snapshot runs K1_0 … 2 (A 20) have no valid cell-loss slices (float16 overflow, old format,
   7.68: p = inf); only |𝐦₁|² (loss at f) is valid. Real loss maps at A 20 with the same protocol as K1A10 come from the
   C′ runs K1_k_f1 (A 20 at f, harmonics, 512 samples; no snapshots). The paired loss maps for slide 8 wait for them.
@@ -3788,6 +3797,11 @@ Design model (116 α 0.1 runs, Gamma GLM, 90 % bootstrap interval) and the pair 
   pair. Thus the A lever is the sum of two parts: more loss at small B and (at low K_eff) less loss at large B when A
   falls.
 - The model and the pair agree at 100 … 150 mT; at 9 … 20 mT the model gives the larger s at L_eff 30 (7.82).
+- The reading "exchange energy" for s = −2 is a hypothesis. A check with the non-uniformity g of the loop-mean 𝐦 in the
+  snapshot cut (rad per particle diameter, 3 seeds: 4.2 … 4.3 at A 20, 4.4 … 4.6 at A 10, the same at 9 … 150 mT, +3 …
+  +7 % per seed): the exchange energy A·g² of these textures falls to × 0.56 at A 10, the loss at 150 mT to × 0.51
+  (0.50 … 0.52). Close, but outside the interval; g comes from one cut. The same g at 9 mT gives no explanation for
+  × 3.1 there: the cause at small B is open.
 - Limits: coarse mesh; quadratic model; the pair is one corner.
 
 **Item 1: what the "other frequencies" of 7.70 are** (A 10 pJ/m only, K1A10_0 … 2, n 3; `eval_pair.py` section 5;

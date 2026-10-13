@@ -12,8 +12,10 @@ ln B to the nominal B), P = w · K_d · f in W/cm³.
 1. P per B for each A (geometric mean over the seeds), the ratio P(A 10) / P(A 20) paired by seed (geometric mean,
    90 % CI with t(n − 1)), the number of settled stages per B.
 2. β (slope of ln P over ln B): 9 … 150 mT, 20 … 150 mT (without 9 mT), 3-point windows. Per A: per-seed fits (mean,
-   SD, n; only seeds with all points). Δβ = β(A 10) − β(A 20): model with one offset per seed and one common slope on
-   the paired differences (gaps allowed; ± SE, 90 % CI). Fewer than 3 seeds: no statement.
+   SD, n; only seeds with all points). Δβ = β(A 10) − β(A 20) per seed, mean ± SE, 90 % CI with t(n − 1) (the seed is
+   the unit; corrected 2026-10-13 after the review: before, the model with one offset per seed and one common slope on
+   all values was the main number, its interval treats the amplitudes as independent and is too narrow; it is kept as
+   a second column). Fewer than 3 seeds: no statement.
 3. Prediction of the design model (Gamma GLM of analyze_design, all α 0.1 design runs) for the same change
    (coded factors of K1_k → K1A10_k, the other factors fixed): Δβ and Δ ln P, 1000 bootstrap resamples of the design
    runs (90 % percentile interval). Measured against predicted.
@@ -127,6 +129,14 @@ def nonuniformity(run, amp):
     return float(g[ids >= 0].mean() * cfg.get("d_lex_used", cfg["d_lex"]))
 
 
+def q_cut(run, amp):
+    """Mean over the particle cells of the snapshot cut of q = Σ_j |m(t_{j+1}) − m(t_j)|² over the 16 snapshots."""
+    z = np.load(R / run / "slices.npz")
+    m = z[amp].astype(np.float64)
+    q = ((np.roll(m, -1, axis=0) - m) ** 2).sum(axis=(0, 3))
+    return float(q[z[amp + "_ids"] >= 0].mean())
+
+
 def channels(a, k):
     """Per nominal B: (R1, top-10 % share, jump share) or NaN (calm windows / steady stages only)."""
     d = folder(a, k)
@@ -175,8 +185,8 @@ def main():
             else "n %d: no statement" % len(d), int(np.isfinite(pa).sum()), int(np.isfinite(pb).sum())))
     # 2. β fits
     L += ["", "## β fits", "",
-          "| fit (mT) | β at A 20, per seed (mean / SD, n) | β at A 10, per seed | Δβ = A 10 − A 20, paired (seed offsets) |",
-          "|---|---|---|---|"]
+          "| fit (mT) | β at A 20, per seed (mean / SD, n) | β at A 10, per seed | Δβ = A 10 − A 20 per seed (90 % CI, t) | "
+          "the same, model with seed offsets on all values |", "|---|---|---|---|---|"]
     lnw = {a: {k: {b: (rec[a][k]["lnw@%gmT" % b] if rec[a][k] is not None else np.nan) for b in AMPS} for k in SEEDS}
            for a in (20, 10)}
     meas = {}
@@ -194,10 +204,20 @@ def main():
         res["beta"][lab] = {str(a): [float(x) for x in
                                      [np.polyfit(np.log(amps), [lnw[a][k][b] for b in amps], 1)[0] for k in SEEDS
                                       if all(np.isfinite(lnw[a][k][b]) for b in amps)]] for a in (20, 10)}
+        dd = [np.polyfit(np.log(amps), [lnw[10][k][b] for b in amps], 1)[0] -
+              np.polyfit(np.log(amps), [lnw[20][k][b] for b in amps], 1)[0] for k in SEEDS
+              if all(np.isfinite(lnw[a][k][b]) for a in (20, 10) for b in amps)]
+        sl = tci(dd)
+        meas[lab] = sl
+        if sl:
+            res["lever"][lab] = {"mean": -sl[0], "se": sl[1], "lo": -sl[3], "hi": -sl[2], "n": sl[4],
+                                 "per_seed": [-x for x in dd]}
         if r:
             h = stats.t.ppf(0.95, r[4]) * r[1]
-            res["lever"][lab] = {"mean": -r[0], "se": r[1], "lo": -r[0] - h, "hi": -r[0] + h, "n": r[3]}
-        L.append("| %s | %s | %s | %s |" % (lab, cells[0], cells[1], EAF.fmt_fe(r) if r else "no statement"))
+            res.setdefault("lever_fe", {})[lab] = {"mean": -r[0], "se": r[1], "lo": -r[0] - h, "hi": -r[0] + h}
+        L.append("| %s | %s | %s | %s | %s |" % (
+            lab, cells[0], cells[1], ("%+.2f ± %.2f (%+.2f … %+.2f, n %d)" % sl) if sl else "no statement",
+            EAF.fmt_fe(r) if r else "no statement"))
     # 3. design prediction
     est, boots, n_des, lnd = design_prediction(rec)
     L += ["", "## Measured against the prediction of the design model", "",
@@ -212,8 +232,7 @@ def main():
         m = meas[lab]
         res["design"][lab] = {"mean": -est[key], "lo": -float(np.percentile(b, 95)), "hi": -float(np.percentile(b, 5))}
         L.append("| Δβ %s mT | %s | %+.2f (%+.2f … %+.2f) |" % (
-            lab, ("%+.2f (%+.2f … %+.2f)" % (m[0], m[0] - stats.t.ppf(0.95, m[4]) * m[1],
-                                             m[0] + stats.t.ppf(0.95, m[4]) * m[1])) if m else "–",
+            lab, ("%+.2f (%+.2f … %+.2f)" % (m[0], m[2], m[3])) if m else "–",
             est[key], *np.percentile(b, [5, 95])))
     for b_ in AMPS:
         key = "lnw_%g" % b_
@@ -287,6 +306,31 @@ def main():
           "1 where the rest is small, because cells with a Bessel excess have a negative rest. The 4 … 7 f shares are "
           "flat in k (≈ 0.02 each): a step-like motion in each cycle and a slow drift within a cycle both give a flat "
           "spectrum; these data cannot separate them. The rim r ≥ 0.8 R holds ≈ 49 % of the volume."]
+    # 6. motion in the snapshots and loss at f / outside f (added 2026-10-13 after the review of deck slide 16)
+    L += ["", "## Motion in the snapshot cut and loss at f / outside f, ratio A 10 / A 20 per seed", "",
+          "q = Σ over the 16 snapshots of one loop of |Δm|² per mesh cell, mean over the particle cells of the cut (the "
+          "loss measure q of the deck; it resolves motion on the time scale T/16). Loss at f = R1 · P, outside f = "
+          "(1 − R1) · P (calm accumulator windows; n < 3 where a window has an event).", "",
+          "| B (mT) | q ratio per seed | q ratio of the means | P ratio (paired, geometric mean) | loss at f, ratio | loss outside f, ratio |",
+          "|---|---|---|---|---|---|"]
+    res["q"], res["f_split"] = {}, {}
+    for b, amp in ((9, "amp00"), (50, "amp03"), (150, "amp06")):
+        q = {a: [q_cut(folder(a, k).name if a == 10 else "K1_%d" % k, amp) for k in SEEDS] for a in (20, 10)}
+        qr = [q[10][k] / q[20][k] for k in SEEDS]
+        fs = []
+        for k in SEEDS:
+            r20, r10 = ch[20][k][b][0], ch[10][k][b][0]
+            if np.isfinite(r20) and np.isfinite(r10):
+                p20, p10 = math.exp(lnP(rec[20][k], b, to_P)), math.exp(lnP(rec[10][k], b, to_P))
+                fs.append((r10 * p10 / (r20 * p20), (1 - r10) * p10 / ((1 - r20) * p20)))
+        gmf = lambda v: math.exp(np.mean(np.log(v)))
+        res["q"]["%g" % b] = {"per_seed": qr, "ratio_of_means": float(np.mean(q[10]) / np.mean(q[20]))}
+        res["f_split"]["%g" % b] = {"f": gmf([x[0] for x in fs]) if fs else None,
+                                    "out": gmf([x[1] for x in fs]) if fs else None, "n": len(fs)}
+        L.append("| %d | %s | %.2f | %.2f | %s | %s |" % (
+            b, " / ".join("%.2f" % x for x in qr), np.mean(q[10]) / np.mean(q[20]), res["ratio"]["%g" % b]["gm"],
+            ("%.2f (n %d)" % (gmf([x[0] for x in fs]), len(fs))) if fs else "–",
+            ("%.2f (n %d)" % (gmf([x[1] for x in fs]), len(fs))) if fs else "–"))
     print("\n".join(L))
     import eval_mechanism as EM
     res["g"] = {str(a): [[nonuniformity(folder(a, k).name if a == 10 else "K1_%d" % k, amp) for amp in
