@@ -3721,6 +3721,37 @@ difference measures the discretisation and not the state selection. Details and 
   (8) b_peak / b_target per run added to the report; status names, file path, tests with real run folders.
 - Decision of Chris 2026-10-13: option A for the go rule (threshold 0.10, 4 seeds, ≥ 2 calm cycles).
 
+### 7.82 Pair K1 / K1A10: the A lever measured directly at one corner (2026-10-13, request of Chris)
+
+Runs: corner K1 (L_eff 30 l_ex, K_eff 1.0 kJ/m³, K_σ 1.5 K_eff, φ 0.62, α 0.1, dx 3, f 30 MHz), seeds 2011 … 2013, at
+A 20 pJ/m (d/l_ex 216, design runs K1_0_mc2, K1_1, K1_2) and A 10 pJ/m (d/l_ex 304, K1A10_0 … 2; 3 × 93 MB fetched, md5
+identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no analysis for the pair; the rules of
+`eval_pair.py` were written before the K1A10 values were read. Result: results/pair_K1A10.md. A lever = β(A 20) −
+β(A 10), paired by seed, n 3, 90 % CI with t; all 7 amplitudes settled (≥ 2 calm cycles) in all 6 runs.
+
+| quantity | measured (pair) | design model at the same factors (90 % bootstrap interval) |
+|---|---|---|
+| A lever on β, 9 … 150 mT | +0.64 (+0.55 … +0.74) | +0.92 (+0.82 … +1.04) |
+| A lever on β, 20 … 150 mT | +0.65 (+0.50 … +0.80) | +1.00 (+0.86 … +1.14) |
+| P(A 10) / P(A 20) at 9 / 20 mT | × 3.11 (2.32 … 4.17) / × 1.61 (1.03 … 2.51) | × 5.61 (4.33 … 7.36) / × 3.27 (2.64 … 4.19) |
+| P(A 10) / P(A 20) at 50 / 100 / 150 mT | × 1.26 (0.68 … 2.33) / × 0.58 (0.49 … 0.68) / × 0.51 (0.50 … 0.52) | × 1.34 / × 0.61 / × 0.50 |
+
+- The A lever at K1 is real and does not depend on the 9 mT point (+0.64 with, +0.65 without 9 mT). β is 2.45 ± 0.12
+  (SD, n 3) at A 20 and 1.81 ± 0.05 at A 10.
+- The design model over-predicts the A lever at this corner by ≈ 0.3 (the intervals do not overlap). The difference
+  comes from small B: at 9 and 20 mT the model predicts about twice the measured loss ratio; at 50 … 150 mT the
+  model and the pair agree within the intervals. The coded ln d/l_ex of the pair is −0.89 / +1.07 (A 10 is 0.07 coded
+  units outside the design range).
+- Why × 0.51 at 150 mT: (216 / 304)² = 0.505. At 150 mT the loss density at fixed d scales with A, i.e. with the
+  exchange energy density A / d² of the magnetisation textures. At 9 mT the smaller A gives × 3 more loss.
+- Loss channels (paired difference A 10 − A 20, n 3, 90 % CI; n 2 at 35 and 100 mT: no statement): at 9 mT the loss
+  is more concentrated at A 10 (share of the top 10 % of the cells +0.17, +0.09 … +0.25); at 150 mT more of the loss
+  is at f (R1 +0.12, +0.08 … +0.15) and the jump share is smaller (−0.04, −0.05 … −0.03). Other B: no clear
+  difference.
+- Limits: one design point (low K_eff, high stress), 3 seeds, coarse mesh dx 3 (the mesh question is open, B0);
+  the cell-by-cell axes of the pair differ; the protocols differ (K1_1, K1_2: ≤ 7 cycles per stage without
+  --min_calm; K1_0_mc2: ≤ 15 cycles, --min_calm 2; K1A10: ≤ 12 cycles, --min_calm 2, 512 samples per cycle).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
