@@ -863,7 +863,7 @@ and the K_eff lever on each mesh, and their mesh shares (Welch).
 |---|---|---|---|---|---|---|---|
 | V1 | 0.71 µm × {1.0, 6.2} kJ/m³ | 4 new B at the base 0.71 (16 jobs) + 7 B at low K_eff (28 jobs) | ≈ 105 | ≈ 26 h | ≈ 11 $ | Does the mesh error at small particles depend on K_eff? All 7 B incl. 150 mT, windows | the size lever on the fine mesh |
 | V2 | {0.71, 1} µm × {1.0, 6.2} kJ/m³ | V1 + 4 new B at the base 1 µm (16) + 7 B at low K_eff 1 µm (28) | ≈ 500 | ≈ 5 days | ≈ 50 $ | size lever and K_eff lever on the fine mesh, their mesh shares | other stress and packing |
-| V3 | as V2, "fine" = dx 2 instead of dx 1.5, plus dx 2 at the base points where dx 1.5 exists (calibration) | ≈ 72 dx 2 jobs | ≈ 160 | ≈ 40 h | ≈ 16 $ | as V2, if dx 2 agrees with dx 1.5 at the calibration points | whether dx 1.5 or dx 2 is converged |
+| V3 | as V2, "fine" = dx 2 instead of dx 1.5; the base points (dx 1.5 exists at 9 / 50 / 100 mT) serve as calibration | 112 dx 2 jobs (4 points × 7 B × 4 seeds) + the new dx 3 jobs | ≈ 185 | ≈ 46 h | ≈ 19 $ | as V2, if dx 2 agrees with dx 1.5 at the calibration points | whether dx 1.5 or dx 2 is converged |
 
 Risks: V1 gives no fine-mesh lever; V2 exceeds the credit (top-up needed)
 and takes ≈ 5 days; V3 depends on dx 2 being close to dx 1.5 (unknown). For
