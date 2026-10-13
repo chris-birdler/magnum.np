@@ -3590,6 +3590,31 @@ values; corrected before any use.
 - Deck: slide 23 with the 30-cycle values at 9 and 20 mT (deck_data
   alpha_block, source per amplitude), text and callout without a β number.
 
+### 7.78 Grid-pinning check with the data at hand (2026-10-13, post hoc)
+
+Hypothesis of Chris: at 9 mT the core moves less than one cell, so the grid
+holds it. eval_pinning.py → results/pinning_check.md (mesh pairs base 0.71 /
+1.0 µm and K3, last 2 calm cycles, paired per seed). x = core shift estimate
+ΔM_p / Ms · R (rigid vortex, order of magnitude only).
+- x at 9 mT: 2.8 … 4.1 nm = 0.28 … 0.41 coarse cells (also < 1 fine cell of
+  5 nm); 20 mT 0.6 cells; 35 mT 1.1; 50 mT 1.6 … 2.3; 100 mT 3.2 … 4.5.
+- ΔM_p (particle magnetisation amplitude) coarse / fine = 1.00 … 1.01 at all
+  points and B: the mesh changes the loss, not the reversible response
+  (which the demagnetisation of the powder largely sets).
+- sin δ coarse / fine: base 0.71 µm × 0.45 / 0.97 / 1.68 (9 / 50 / 100 mT);
+  base 1.0 µm × 1.48 / 1.49 / 1.31; K3 × 0.67 / 0.81 / 0.64 / 0.71 / 0.68 /
+  0.91 (9 … 100 mT).
+- Jump share (RF / 2) fine / coarse at 9 mT: 0.064 / 0.020 (base 0.71),
+  0.057 / 0.083 (base 1.0), 0.056 / 0.019 (K3); at 70 … 100 mT the coarse
+  mesh has more: 0.09 … 0.14 against 0.04 … 0.06.
+- Reading: for the hypothesis: at 9 mT (x < 1 cell) the coarse mesh has
+  less loss and fewer bursts at 0.71 µm; at high B more bursts. Against it:
+  at 1 µm the coarse mesh has more loss at 9 mT (x also < 1 cell), and the
+  mesh error stays at x = 2 … 4 cells (base 1 µm × 1.3 … 1.5, K3 × 0.64 …
+  0.71). Thus "shift below one cell" does not explain the pattern in
+  general. Sign and size of the mesh error depend on the microstructure at
+  every B.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
