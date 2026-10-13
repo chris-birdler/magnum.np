@@ -3845,6 +3845,28 @@ descriptive). Concentration = share of the channel in a zone / volume share of t
   (vortex core or wall) is not determined.
 - At 9 mT the rest is ≈ 1 % and its zone shares are not meaningful (negative rest in cells with a Bessel excess).
 
+### 7.84 Design model against the two direct tests of the A effect; the map cut (2026-10-13, context-free reviews of the deck)
+
+**Model against direct tests** (`eval_model_points.py` → results/model_points.md; coarse mesh; A effect = β(A 20) −
+β(A 10) at d = 1 µm, fit over 9 / 50 / 100 mT, 90 % intervals):
+
+| point | measured | design model at the same factors |
+|---|---|---|
+| corner K1 (K_eff 1.0 kJ/m³, K_σ 1.5 K_eff, φ 0.62), pair, n 3 paired | +0.67 (+0.61 … +0.73) | +0.91 (+0.78 … +1.03) |
+| base point (K_eff 6.2 kJ/m³, no stress, φ 0.65), M212 / M300, n 4 + 4 (Welch) | +0.65 (+0.40 … +0.91) | +0.37 (+0.14 … +0.58) |
+
+- The two direct tests give the same A effect at both K_eff ends (difference 0.02, about −0.2 … +0.2). The model gives
+  a difference of 0.54. Thus the K_eff dependence of the A effect in the model (A × K_eff interaction, 7.66) is not
+  seen in the 2 direct tests. At K1 the intervals do not overlap, at the base point they overlap.
+- Limits: 2 points; the base-point runs use one job per amplitude from the relaxed virgin state (not the ascending
+  design history), and different seeds at 212 and 300; the pair uses the design protocol. No generalisation.
+- The deck now says this on the slides for A, the direct test, the mesh levers, validity and the key messages.
+
+**The map cut**: the slices (acc_slices.npz, slices.npz) are the plane z = 0 (the first cell layer, a box face). The
+plane holds only 2 of the 4 particles: particle 3 whole in the middle and particle 0 as 4 corner quarters (periodic
+box); checked with the ids of K1A10_2 and S041. The deck said "cut through the 4 particles": corrected on the slides
+7, 8, 11 and 15, and the claim "each particle holds a vortex" (slide 7) is removed (the cut shows 2 particles).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
