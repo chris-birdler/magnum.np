@@ -3657,6 +3657,34 @@ Loss ratio P(α 0.01) / P(α 0.1), geometric mean (90 % CI), per B 9 … 150 mT:
   not settle give a higher time-mean loss (variant all); one run is a steady period-2 state, which the single-cycle
   rule rejects (open method point, as the 3 … 5 cycle patterns of 7.76).
 
+### 7.80 Memory and time of fine meshes; audit of all influences (2026-10-13)
+
+**Memory and time test** (go of Chris; GPU 3 of the instance, base microstructure, short relaxation of 1000
+iterations, 1 cycle at 9 mT, outputs in /root/convtest, outside runs/):
+
+| case | cells | GPU memory | relaxation per iteration | one cycle |
+|---|---|---|---|---|
+| d/l_ex 212, dx 3 (production) | 108³ = 1.3 M | ≈ 1 GB | 0.04 s | ≈ 85 s (at f) |
+| d/l_ex 212, dx 1.5 (production) | 2.1 M particle cells | ≈ 3 GB | 0.40 s | ≈ 0.4 h (estimate from the jobs) |
+| d/l_ex 300, dx 1.5 (production) | – | – | 1.59 s | – |
+| d/l_ex 212, dx 1 (test) | 312³ = 30 M | 8.4 GB | 4.7 s | not reached (stopped at 07:40 for the next case) |
+| d/l_ex 96, dx 0.75 (test) | 192³ = 7.1 M | 2.3 GB | 1.07 s | 1.28 h (59 300 steps, dt 0.56 ps) |
+
+Production relaxations need 13 500 … 23 000 iterations (M212, M300). Thus a full relaxation takes ≈ 4 h at
+d/l_ex 96, dx 0.75, and ≈ 18 h at d/l_ex 212, dx 1. A run with 7 amplitudes has ≈ 50 … 60 cycles.
+
+**Audit of all influences** (context-free agent; numbers of the agent, the frequency number recomputed by me):
+- The mesh is not the only open influence of high weight. Frequency: β(2f) − β(f) over 20 … 150 mT from the old
+  frequency test 7.9 = +0.35 ± 0.03 (base, n 4) and +0.52 ± 0.06 (corner L_eff 30, r_p 3, old stress axes, n 4)
+  (steady rule there: ≥ 1 calm cycle). Damping: ≈ 80 % of the A lever sits in the loss at f (7.71), which carries
+  only ≈ 10 % of the loss at α 0.01; A × α was never tested.
+- Medium weight: box of 4 particles, fixed stress axes and drive direction; the form of the Herzer cells; T = 0;
+  the initial state at 1 µm; solver tolerance and float32 under production conditions.
+- Checked and robust: event threshold 0.10 / 0.20 / 0.30 (A lever +0.57 / +0.57 / +0.59); eddy currents; determinism;
+  relaxation rest torque; w_loop against w_dis. Without 9 mT the A lever is +0.69 (20 … 150 mT), in the range where
+  the mesh error is largest. "A few zones" holds on both meshes (K3); the shift from the centre to the rim is partly a
+  mesh effect.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
