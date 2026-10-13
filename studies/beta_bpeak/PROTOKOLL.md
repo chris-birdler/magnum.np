@@ -3810,6 +3810,25 @@ A 20 follows from the C′ runs K1_k_f1). Shares of the cell loss, mean ± SD ov
   not determined (candidates: drift within a cycle, motion between the samples). The 4 … 7 f shares and the rest carry
   this uncertainty (estimate: up to ≈ 0.1 can move between them).
 
+**Item 2: where the channels sit** (A 10 only, `eval_channel_maps.py` → results/channel_maps_K1A10.md and .png;
+descriptive). Concentration = share of the channel in a zone / volume share of the zone, mean ± SD over 3 seeds, 3D.
+
+| zone (volume share) | B (mT) | total | f | 2 … 7 f | rest |
+|---|---|---|---|---|---|
+| texture top 10 % (0.10) | 50 | 7.1 ± 0.4 | 5.5 ± 0.1 | 8.2 ± 0.1 | 9.4 ± 0.3 |
+| texture top 10 % (0.10) | 150 | 5.9 ± 0.1 | 4.7 ± 0.1 | 6.6 ± 0.3 | 7.5 ± 0.4 |
+| centre r < 0.5 R (0.12) | 9 / 150 | 2.7 / 1.4 | 2.8 / 1.6 | 2.2 / 1.2 | – / 1.0 |
+| rim r ≥ 0.8 R (0.49) | 9 / 150 | 0.54 / 1.02 | 0.49 / 0.79 | 0.88 / 1.15 | – / 1.35 |
+
+- Every channel sits mostly where the loop-mean 𝐦 is most non-uniform; the further from f, the stronger: at ≥ 20 mT
+  f ≈ × 5 … 6, harmonics ≈ × 7.5 … 8, rest ≈ × 9 … 11 of an even spread.
+- The rim share of the total rises with B (7.69) for two reasons: every channel moves to the rim (f 0.49 → 0.79), and
+  the harmonics and the rest, which sit more at the rim than f, grow.
+- In the cut (K1A10_2, one plane) the harmonics and the rest form a spot in the middle of the central particle and
+  bands at the edges of the corner particles; the loss at f is spread wider. The type of the structure at the spot
+  (vortex core or wall) is not determined.
+- At 9 mT the rest is ≈ 1 % and its zone shares are not meaningful (negative rest in cells with a Bessel excess).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
