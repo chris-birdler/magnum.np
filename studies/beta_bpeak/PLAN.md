@@ -915,11 +915,27 @@ Consequences: converged at dx 1.5 → a lean lever study on dx 1.5 has meaning (
 design and the dx 1.5 checks are not quantitative, Chris decides between large rented GPUs and a re-scope; not
 converging → re-scope.
 
-**Before the runs**: (a) memory and time test on GPU 3 (running since 2026-10-13 06:12 UTC: d/l_ex 212 at dx 1, 312³
-cells; d/l_ex 96 at dx 0.75; 1 cycle each); (b) code: transfer_state.py and a run_loops option to start from a
-transferred state (with unit test: block average, mask, normalisation; a run test on dx 3 ← dx 1.5); (c) a
-context-free review of this plan, the job files and the analysis script. Cost and time: from (a), entered here before
-the go.
+**Cost basis (measured 2026-10-13, PROTOKOLL 7.80):** d/l_ex 96 at dx 0.75: 1.28 h per cycle (59 300 steps,
+dt 0.56 ps), relaxation 1.07 s per iteration (≈ 14 000 iterations ≈ 4.2 h, estimate of the count), 2.3 GB.
+Scaling from the measured time steps (dx 3: 6.3 ps): dt ∝ dx^1.75, cells ∝ dx⁻³, thus ≈ × 27 per halving of dx:
+dx 1.5 ≈ 3 min per cycle, dx 3 ≈ 6 s, dx 1 ≈ 0.32 h (estimates). A run with 7 amplitudes ≈ 56 cycles, with 4
+amplitudes ≈ 32 cycles. Instance ≈ 0.10 $ per GPU hour. Design size d/l_ex 212 at dx 1: 8.4 GB, relaxation
+4.7 s per iteration (≈ 18 h), ≈ 3 h per cycle (estimate) → ≈ 200 GPU h per seed: not affordable on this instance.
+
+| variant | meshes | seeds × B | GPU h | time on 4 GPUs | cost | risk |
+|---|---|---|---|---|---|---|
+| A | 3 / 1.5 / 0.75 | 6 × 7 (9 … 150 mT) | ≈ 480 | ≈ 6 days | ≈ 48 $ | top-up needed |
+| B | 3 / 1.5 / 0.75 | 4 × 4 (9, 20, 50, 150 mT) | ≈ 190 | ≈ 2 days | ≈ 19 $ | 4 seeds resolve ± 5 % only if the transferred state removes the state scatter |
+| C | 3 / 1.5 / 1 | 6 × 7 | ≈ 140 | ≈ 2 days | ≈ 14 $ | dx 1 ≈ the core radius: may still be unresolved; transfer by interpolation (ratio 1.5) |
+| B0 (step 1 of B) | 3 / 1.5 / 0.75 | 4 × 1 (9 mT only) | ≈ 57 | ≈ 14 h | ≈ 6 $ | answers first: does the transferred state remove the scatter at the hardest amplitude? |
+
+Recommendation: B in two steps. B0 first (≈ 6 $, ≈ 14 h): if the paired SD of ln P (transferred state) falls
+below ≈ 0.1, continue with the 4 amplitudes (≈ 13 $ more); if not, stop and re-scope (the loss is then dominated by
+state selection, and only many seeds help). The credit after C′ is ≈ 30 $ (estimate).
+
+**Before the runs**: (b) code: transfer_state.py and a run_loops option to start from a transferred state (with unit
+test: block average, mask, normalisation; a run test on dx 3 ← dx 1.5); the analysis script with synthetic test;
+(c) a context-free review of this plan, the job files and the analysis script.
 
 ## 5. Optional step 3: mesh control (separate go)
 
