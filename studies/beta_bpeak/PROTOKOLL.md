@@ -4015,7 +4015,7 @@ review of the correction done; its points are in this section.
   - Cause check (go of Chris; eval_freq.py section 9, local, no GPU). Rest without ε = R_rest (1 + ε) − ε (the rest
     relative to w_loop when the excess sits in the rest). At 15 MHz and 9 mT: −0.002 … +0.004 in 5 of 6 runs (6th
     +0.076). In these 5 runs the loop closes (|ΔM| / M_peak ≤ 0.0001) and ε is the same in each kept cycle (spread
-    ≤ 0.02 over 3 … 5 cycles): the state is periodic. A periodic state with ε > 0 breaks the energy balance (exact
+    ≤ 0.021 over 3 … 5 cycles): the state is periodic. A periodic state with ε > 0 breaks the energy balance (exact
     dynamics give w_dis = w_loop over a closed cycle). Thus ε there is an error of the computed trajectory or of the
     sampled integral, not a loss, and not a drift of the state (a drift would not close the loop and would change ε
     from cycle to cycle). Established for these 5 stages; which numerical part (integrator tolerance atol 1e-5, as in
