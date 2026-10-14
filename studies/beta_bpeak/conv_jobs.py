@@ -8,7 +8,8 @@ r_p 0, φ 0.65, α 0.1, converged virgin relaxation) at d/l_ex 96, 9 mT only, se
   I15  dx 1.5,  independent virgin relaxation from the same seed (as all mesh checks so far);
   I3   dx 3,    the same.
 Template: the mesh212 line M212_dx15_s931_b9 (single amplitude, ≥ 5 cycles, ≤ 12 cycles, --min_calm 2, 256 samples,
-no accumulators, no snapshots); only the name, --d_lex, --dx_lex, --seed, --init_transfer and --init_wait_h change.
+no accumulators, no snapshots); only the name, --d_lex, --dx_lex, --seed, --init_transfer, --init_wait_h and --atol
+change (atol 1e-6 since PROTOKOLL 7.88; names B0b_*).
 Order: the four F runs first (longest, one per GPU), then I, then T (the T runs need the init.pt of their F run;
 --init_wait_h covers a slow F relaxation).
 
@@ -22,11 +23,13 @@ SEEDS = range(941, 945)
 D_LEX = 96.0
 ARMS = (("F", 0.75, False), ("I15", 1.5, False), ("I3", 3.0, False), ("T15", 1.5, True), ("T3", 3.0, True))
 WAIT_H = 40.0
-CHANGED = ("d_lex", "dx_lex", "seed", "init_transfer", "init_wait_h")
+CHANGED = ("d_lex", "dx_lex", "seed", "init_transfer", "init_wait_h", "atol")
+ATOL = "1e-06"          # PROTOKOLL 7.88: with atol 1e-5 the energy check fails on dx 0.75 (w_loop is not affected)
+PREFIX = "B0b"          # the rerun of B0 with atol 1e-6 (the stopped B0 runs keep their names)
 
 
 def name(arm, s):
-    return "B0_%s_s%d" % (arm, s)
+    return "%s_%s_s%d" % (PREFIX, arm, s)
 
 
 def lines(src="jobs/mesh212.txt"):
@@ -37,6 +40,7 @@ def lines(src="jobs/mesh212.txt"):
             t = set_arg(tok0, "d_lex", ["%.1f" % D_LEX])
             t = set_arg(t, "dx_lex", [repr(dx)])
             t = set_arg(t, "seed", [str(s)])
+            t = set_arg(t, "atol", [ATOL])
             if transfer:
                 t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", s)])
                 t = set_arg(t, "init_wait_h", ["%g" % WAIT_H])

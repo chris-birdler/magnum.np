@@ -1110,7 +1110,7 @@ def test_conv_jobs_change_only_the_planned_arguments():
     tmpl = shlex.split(dict(job_lines(here / "jobs" / "mesh212.txt"))["M212_dx15_s931_b9"])
     keys = lambda tok: {t[2:] for t in tok if t.startswith("--")}
     lines = CJ.lines(str(here / "jobs" / "mesh212.txt"))
-    assert len(lines) == 20 and all(n.startswith("B0_F_") for n, _ in lines[:4])
+    assert len(lines) == 20 and all(n.startswith(CJ.PREFIX + "_F_") for n, _ in lines[:4])
     for n, a in lines:
         tok = shlex.split(a)
         for k in keys(tmpl) | keys(tok):
@@ -1119,7 +1119,8 @@ def test_conv_jobs_change_only_the_planned_arguments():
         arm, s = n.split("_")[1], n.split("_s")[1]
         assert get_arg(tok, "seed") == [s] and get_arg(tok, "d_lex") == ["96.0"]
         assert get_arg(tok, "dx_lex") == [{"F": "0.75", "T15": "1.5", "I15": "1.5", "T3": "3.0", "I3": "3.0"}[arm]]
-        assert (get_arg(tok, "init_transfer") == ["B0_F_s%s/init.pt" % s]) == arm.startswith("T")
+        assert (get_arg(tok, "init_transfer") == ["%s_F_s%s/init.pt" % (CJ.PREFIX, s)]) == arm.startswith("T")
+        assert get_arg(tok, "atol") == [CJ.ATOL]
         assert get_arg(tok, "init_from") is None
 
 
@@ -1147,3 +1148,21 @@ def test_cleanup_protects_init_transfer_sources(tmp_path):
                                     "X_b50 --d_lex 96 --init_from X_b9/init.pt\n")
     dep = CI.dependents(tmp_path)
     assert dep["B0_F_s941/init.pt"] == {"B0_T15_s941"} and dep["X_b9/init.pt"] == {"X_b50"}
+
+
+def test_eval_sweep_reading_on_synthetic_resonances():
+    """eval_sweep.py (PROTOKOLL 7.89): the pre-registered reading on synthetic loss-per-cycle curves w(f) of a driven
+    damped oscillator: a lower eigen-frequency at A 10 -> supports; the same eigen-frequency -> against; both far
+    above the range with a slow rise -> against; the vertex of the parabola recovers the peak within one grid step."""
+    import eval_sweep as ES
+    f = np.array(ES.F_MHZ)
+
+    def w(f0, zeta=0.15):                          # loss per cycle ∝ χ'' of a damped oscillator
+        r = f / f0
+        return 2 * zeta * r / ((1 - r ** 2) ** 2 + (2 * zeta * r) ** 2)
+    key, f10, f20 = ES.reading(f, w(35.0), w(150.0))
+    assert key == "supports" and abs(math.log(f10 / 35.0)) < 0.35 and abs(math.log(f20 / 150.0)) < 0.35
+    assert ES.reading(f, w(60.0), w(60.0))[0] == "against"
+    slow = lambda: f ** 0.8                        # n = 1.8 everywhere, no maximum
+    assert ES.reading(f, slow(), slow())[0] == "against"
+    assert ES.reading(f, w(35.0), w(1000.0))[0] == "supports"          # A 20 still rising at 240 MHz

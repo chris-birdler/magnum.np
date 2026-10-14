@@ -3975,6 +3975,22 @@ K_eff and stress; α; state drift in the frequency test), "vortex-like" replaced
 relaxation gives n ≤ 2, the prediction f₀(A 20) > f₀(A 10) named as the test of the eigen-motion hypothesis, n,
 intervals and fit ranges added, the K_eff sign change marked as a model result, terms and status lines unified.
 
+### 7.89 Frequency sweep at 9 mT, then B0 with atol 1e-6 (2026-10-14, decision Chris: option B; rules fixed now)
+
+- Sweep (jobs/sweep9.txt, pair_jobs.py --sweep, 32 jobs): corner K1, A 20 (K1_k) and A 10 (K1A10_k), seeds 2011 …
+  2013, only the 9 mT stage, started from the relaxed state of the same seed (--init_from, the start state of C′),
+  harmonics k ≤ 7, samples max(256, 512 · 30 MHz / f), steady rule; f = 21 / 42 / 85 / 120 / 240 MHz (15 / 30 / 60 MHz
+  from the first stage of C′). Control: K1_0 and K1A10_0 at 30 MHz must reproduce the C′ value (relative < 1e-3).
+- Question: is the loss at 9 mT the low-frequency side of a damped eigen-motion whose frequency is lower at A 10 than
+  at A 20? Reading (eval_sweep.py, synthetic test in test_study.py): "supports" if w(f) of A 10 has an interior maximum
+  and the maximum of A 20 lies higher (more than one grid step, or at/above 240 MHz while still rising); "against" if
+  both rise without an interior maximum with n ≤ 2 above 60 MHz, or both maxima lie within one grid step; else "not
+  determined".
+- Then B0 again (jobs/conv_b0.txt, names B0b_*): unchanged design and reading (PLAN 4.10), --atol 1e-6 for all arms
+  (7.88). Chain instance/chain_sweep_b0.sh: starts after the precision test queue.
+- Cost (estimate): sweep ≈ 7 … 12 GPU h, ≈ 2 … 3.5 h wall, ≈ 1 … 1.5 $; B0b ≈ 14 … 28 h, ≈ 6 … 12 $ (atol 1e-6 adds
+  ≈ 15 % time).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
