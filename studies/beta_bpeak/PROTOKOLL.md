@@ -4187,6 +4187,33 @@ up to some 100 J/m³ with stress). Their internal time scale is then of the orde
 lies above it, in another regime than in the model. The frequency results of the model may not transfer to a real
 powder.
 
+### 7.95 Frequency data at 9 mT: what was computed, and how accurate (2026-10-14, question of Chris)
+
+Question of Chris: the time scale of 7.94 does not depend on A; then something does not fit. Statistics or accuracy?
+Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with their values).
+
+- What was computed: corner K1, seeds 2011 … 2013, 9 mT only, from the relaxed start state of each seed; 15 / 30 /
+  60 MHz = first stage of the C′ runs, 21 / 42 / 85 / 120 / 240 MHz = sweep; drive correction after cycle 0, 7 … 12
+  cycles, steady rule ≥ 2 calm cycles; 1024 … 256 samples per cycle; coarse mesh, atol 1e-5, single precision.
+- The run code works in units of l_ex at A 10 pJ/m. The "A 20" and "A 10" runs differ only in the particle size:
+  d/l_ex 216 against 304 (0.72 against 1.02 µm at A 10 pJ/m, box 108 against 152 cells). The same in both: K_eff
+  995 J/m³, K_p 1492 J/m³, L_eff 100 nm, cell 3 l_ex, α 0.1, J_s 1.5 T, packing, stress axes, drive, frequency. With
+  the particle size the number of Herzer cells per particle changes (about 316 against 790), and the grain axes differ.
+- Accuracy of each value: reached B_peak 8.89 … 9.10 mT (at most 3 % in w); cycle-to-cycle SD of w median 3.5 %,
+  largest 18 % (A 10, 42 MHz, seed 0). The dips are in all 3 seeds and are about a factor 2 (A 10: w 1.41 … 1.50 at
+  42 MHz against 2.36 … 2.69 at 30 and 60 MHz). Thus neither the drive nor the scatter of the cycles explains them.
+  Seed scatter is large where A 20 changes its state (42 MHz: 2.19 … 5.30).
+- Consistency: all time scales that do not contain d are equal in both runs: the anisotropy time of 7.94 (the same
+  K_eff), the exchange time on the scale of the grain cells or of the mesh, the magnetostatic time. They cannot shift
+  the curve. The only time scale that changes is the exchange time on the particle scale, ∝ A / d²; its ratio is
+  (304 / 216)² = 1.98, the shift factor 2 found in 7.92. Thus the observation is consistent with an exchange-governed
+  motion on the particle scale, not with the anisotropy time. The anisotropy estimate of 7.94 only shows that the
+  frequency range is not quasi-static for internal motions.
+- Limits: the shift test of 7.92 rests on two features per curve (local maximum and dip); a pure power law fits every
+  shift equally, so the test is weak. A mesh artefact cannot give an A-dependent shift through the cell size (the cell
+  is 3 l_ex in both runs); through the particle size (101 against 72 cells per diameter) it is not excluded. All values
+  are on the coarse mesh.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
