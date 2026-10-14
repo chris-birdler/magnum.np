@@ -4069,6 +4069,28 @@ review of the correction done; its points are in this section.
   change of ε, or short events between the 256 samples per cycle); which numerical part gives ε at 9 mT and 15 MHz (a
   run with atol 1e-6 would separate it; GPU).
 
+### 7.91 Frequency sweep at 9 mT: result (2026-10-14; reading fixed in 7.89)
+
+- Run 06:52 … 08:37 UTC on the instance, 32 jobs, no failure, post-processing exit code 0. Data local: runs/*_sw*
+  without checkpoint.pt (23 MB, 258 files, md5 equal to the instance, runs/MANIFEST_sweep9.md5); results/sweep9.json
+  and results/sweep9_report.md (eval_sweep.py). B0b (atol 1e-6) started at 08:37 UTC (chain 7.89).
+- Control: w at 30 MHz equals the C′ value (relative difference 2.9e-6 at A 20, 1.1e-6 at A 10; limit 1e-3).
+
+| f (MHz) | 15 | 21 | 30 | 42 | 60 | 85 | 120 | 240 |
+|---|---|---|---|---|---|---|---|---|
+| w A 20 (10⁻⁷, geometric mean of 3 seeds) | 0.29 | 0.45 | 0.84 | 3.58 | 6.21 | 3.04 | 7.84 | 10.2 (n 2) |
+| w A 10 (10⁻⁷) | 0.44 | 1.34 | 2.57 | 1.41 | 2.51 | 5.17 | 4.36 | 10.3 |
+| P(A 10) / P(A 20), paired, 90 % CI | 1.53 (0.94 … 2.49) | 3.01 (2.15 … 4.22) | 3.07 (2.24 … 4.22) | 0.39 (0.17 … 0.93) | 0.40 (0.35 … 0.46) | 1.70 (1.50 … 1.93) | 0.56 (0.45 … 0.69) | n 2 |
+
+- Pre-registered reading: **not determined**. The largest w lies at the edge (240 MHz) for both A, so the rule finds no
+  interior maximum.
+- Observation, not pre-registered (3 seeds, no claim): w(f) is not monotonic. A 10 has a local maximum at 30 MHz and a
+  dip at 42 MHz, A 20 a local maximum at 60 MHz and a dip at 85 MHz. Both rise again above. The local maxima lie lower
+  at A 10 than at A 20, in the direction of hypothesis H1 (7.87), but the fixed rule does not support H1. The seeds of
+  A 20 at 42 MHz scatter strongly (2.2 … 5.3 · 10⁻⁷). Causes of the dips (several eigen-motions, or a different steady
+  state at each frequency): not checked.
+- Next step: decision of Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
