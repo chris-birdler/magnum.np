@@ -4271,6 +4271,13 @@ seeds (3 independent microstructures), n seeds with a steady value.
   Error bars of absolute values and of comparisons between different microstructures must use the larger scatter of
   the centre group, and they still miss the variation that the model does not contain (packing, size, shape, random
   stress axes).
+- Verdict (question of Chris "noise or effect?"): (a) the dips and the factor-2 shift: not shown. Their size
+  (13 … 38 % per seed) is about the uncertainty of the method (cycle choice up to 20 %); "all 3 seeds fall" has a
+  probability of 1/8 = 0.125 without any effect (sign test); the t-interval rests on an SD from 3 values. Treat them as
+  noise of the method until the fine mesh shows them. (b) Effects in the model, far larger than every uncertainty:
+  P rises × 9.7 … 15 (large particle) and × 5.3 … 6.5 (small particle) per seed from 15 to 30 MHz at 9 mT; the loss
+  ratio of the two particle sizes turns from × 3.07 (2.24 … 4.22) at 30 MHz to × 0.40 (0.35 … 0.46) at 60 MHz. All on
+  the coarse mesh, where 9 mT has the largest mesh error: whether they are physical stays open (B0b, fine mesh).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
