@@ -316,20 +316,62 @@ def main():
           "|---|---|---|---|---|---|---|---|"]
     L += ["| %d | %s | %d | %+.3f … %+.3f | %.4f | %+.3f | %+.3f | %+.3f |" % x for x in det]
     res["balance_9mT"] = det
-    # 10. the A effect on β from its two ends (question of Chris 2026-10-14): β(A 20) − β(A 10) ≈ [ln r(9) − ln r(150)] /
-    # ln(150/9), r = P(A 10) / P(A 20) of section 5b; compared with the fitted A effect of section 3
-    L += ["", "## 10. A effect on β from the two ends (9 and 150 mT), r = P(A 10) / P(A 20)", "",
-          "| f | r at 9 mT | r at 150 mT | from the 9 mT end | from the 150 mT end | sum | fitted (90 % CI) |",
-          "|---|---|---|---|---|---|---|"]
-    res["A_effect_ends"] = {}
-    lb = math.log(AMPS[-1] / AMPS[0])
-    for j, fr in enumerate(FREQ):
-        r9, r150 = res["A_ratio"]["%g" % AMPS[0]][j][0], res["A_ratio"]["%g" % AMPS[-1]][j][0]
-        e9, e150 = math.log(r9) / lb, -math.log(r150) / lb
-        fit = res["A_effect"][fr]
-        res["A_effect_ends"][fr] = {"r9": r9, "r150": r150, "end9": e9, "end150": e150}
-        L.append("| %s | %.2f | %.2f | %+.2f | %+.2f | %+.2f | %+.2f (%+.2f … %+.2f) |" % (
-            FLAB[fr], r9, r150, e9, e150, e9 + e150, fit[0], fit[2], fit[3]))
+    # 10. does the A effect on β rest on one end point? (question of Chris 2026-10-14) A effect β(A 20) − β(A 10),
+    # paired by seed, 90 % CI with t(2), with all 7 amplitudes and without 9 mT / without 150 mT / without both
+    L += ["", "## 10. A effect on β without the end points (paired, 90 % CI)", "",
+          "| fit range (mT) | f/2 | f | 2 f |", "|---|---|---|---|"]
+    res["A_effect_ranges"] = {}
+    for amps_, lab in ((AMPS, "9 … 150"), (AMPS[1:], "20 … 150 (without 9)"), (AMPS[:-1], "9 … 100 (without 150)"),
+                       (AMPS[1:-1], "20 … 100")):
+        cells = []
+        for fr in FREQ:
+            sv = tci([beta(W[(20, fr, k)], amps_) - beta(W[(10, fr, k)], amps_) for k in SEEDS])
+            res["A_effect_ranges"]["%s|%s" % (lab, fr)] = list(sv) if sv else None
+            cells.append(("%+.2f (%+.2f … %+.2f)" % (sv[0], sv[2], sv[3])) if sv else "–")
+        L.append("| %s | %s |" % (lab, " | ".join(cells)))
+    # 11. local β(B) per frequency and particle size (question of Chris 2026-10-14): slope of ln P over ln B in windows
+    # of 3 neighbouring amplitudes (as the deck), per seed, mean ± SD over the 3 seeds; figure freq_beta_windows.png
+    wins = [AMPS[i:i + 3] for i in range(len(AMPS) - 2)]
+    L += ["", "## 11. Local β in windows of 3 amplitudes, per frequency and particle size (mean ± SD of 3 seeds)", "",
+          "Large particle = A 10 runs (d/l_ex 304), small particle = A 20 runs (d/l_ex 216).", "",
+          "| window (mT) | " + " | ".join("%s, %s" % (dl, FLAB[fr]) for dl in ("large", "small") for fr in FREQ) + " |",
+          "|---|" + "---|" * 6]
+    res["beta_windows"] = {}
+    for wdw in wins:
+        cells = []
+        for a in (10, 20):
+            for fr in FREQ:
+                v = [beta(W[(a, fr, k)], amps=wdw) for k in SEEDS]
+                v = np.array([x for x in v if np.isfinite(x)])
+                res["beta_windows"]["%d|%s|%g-%g" % (a, fr, wdw[0], wdw[-1])] = v.tolist()
+                cells.append("%.2f ± %.2f" % (v.mean(), v.std(ddof=1)) if len(v) > 1 else "–")
+        L.append("| %g … %g | %s |" % (wdw[0], wdw[-1], " | ".join(cells)))
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4), sharey=True)
+        centre = [math.exp(np.mean(np.log(wdw))) for wdw in wins]
+        for ax, a, lab in ((axs[0], 10, "large particle (A 10 runs, d/l_ex 304)"),
+                           (axs[1], 20, "small particle (A 20 runs, d/l_ex 216)")):
+            for fr, col, mk in (("fhalf", "#1F4E79", "o"), ("f", "#9B111E", "s"), ("f2", "#E8A33D", "^")):
+                vv = [res["beta_windows"]["%d|%s|%g-%g" % (a, fr, wdw[0], wdw[-1])] for wdw in wins]
+                m = [np.mean(x) for x in vv]
+                sd = [np.std(x, ddof=1) for x in vv]
+                ax.errorbar(centre, m, yerr=sd, color=col, marker=mk, capsize=3, lw=1.8,
+                            label={"fhalf": "15 MHz", "f": "30 MHz", "f2": "60 MHz"}[fr])
+            ax.axhline(2.0, color="grey", ls=":", lw=1)
+            ax.set_xscale("log")
+            ax.set_xticks([9, 20, 35, 50, 70, 100, 150])
+            ax.set_xticklabels(["9", "20", "35", "50", "70", "100", "150"])
+            ax.set_xlabel("peak flux density B (mT), window centre")
+            ax.set_title(lab, fontsize=10)
+        axs[0].set_ylabel("local β (window of 3 amplitudes)")
+        axs[0].legend(frameon=False)
+        fig.tight_layout()
+        fig.savefig(pathlib.Path(__file__).resolve().parent / "results" / "freq_beta_windows.png", dpi=150)
+    except Exception as exc:                                    # noqa: BLE001 - the figure is optional
+        L.append("figure not made: %s" % exc)
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "freq_Cprime.json").write_text(json.dumps(res, indent=1))
 

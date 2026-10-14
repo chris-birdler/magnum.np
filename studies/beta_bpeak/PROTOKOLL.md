@@ -4288,19 +4288,35 @@ seeds (3 independent microstructures), n seeds with a steady value.
   after the other, and each stage starts from the end state of the stage before. Thus 126 stage values, but per
   particle size and frequency only 3 independent values (the seeds); β is one value per run. The sweep (7.91) ran
   only 9 mT and gives no β.
-- Split of the A effect on β into its two ends (eval_freq.py section 10): β(A 20) − β(A 10) ≈ [ln r(9 mT) −
-  ln r(150 mT)] / ln(150/9), r = P(A 10) / P(A 20), paired by seed (n 3).
+- β per frequency and particle size (eval_freq.py sections 3, 10, 11; mean ± SD of 3 seeds; an SD from 3 values
+  can be up to 4.4 × too small, 7.97). Large particle = A 10 runs (d/l_ex 304), small = A 20 runs (216).
 
-| f | r at 9 mT | r at 150 mT | from the 9 mT end | from the 150 mT end | sum | fitted (90 % CI) |
+| | 15 MHz | 30 MHz | 60 MHz |
+|---|---|---|---|
+| β 9 … 150 mT, large particle | 2.28 ± 0.12 | 1.81 ± 0.05 | 2.12 ± 0.03 |
+| β 9 … 150 mT, small particle | 2.45 ± 0.03 | 2.45 ± 0.11 | 1.78 ± 0.01 |
+| A effect β(small) − β(large), paired, 90 % CI | +0.16 (+0.00 … +0.32) | +0.64 (+0.53 … +0.75) | −0.34 (−0.39 … −0.29) |
+| the same, fit 20 … 150 mT (without 9 mT) | +0.16 (+0.10 … +0.23) | +0.65 (+0.43 … +0.86) | −0.17 (−0.43 … +0.09) |
+| the same, fit 9 … 100 mT (without 150 mT) | +0.18 (−0.06 … +0.43) | +0.65 (+0.55 … +0.75) | −0.45 (−0.50 … −0.40) |
+
+Local β in windows of 3 amplitudes (figure results/freq_beta_windows.png):
+
+| window (mT) | large 15 | large 30 | large 60 | small 15 | small 30 | small 60 |
 |---|---|---|---|---|---|---|
-| 15 MHz | 1.52 | 1.03 | +0.15 | −0.01 | +0.14 | +0.16 (+0.00 … +0.32) |
-| 30 MHz | 3.11 | 0.51 | +0.40 | +0.24 | +0.64 | +0.64 (+0.53 … +0.75) |
-| 60 MHz | 0.39 | 0.96 | −0.33 | +0.02 | −0.32 | −0.34 (−0.39 … −0.29) |
+| 9 … 35 | 2.10 ± 0.22 | 1.92 ± 0.18 | 2.28 ± 0.01 | 2.27 ± 0.04 | 2.48 ± 0.08 | 1.61 ± 0.13 |
+| 20 … 50 | 2.36 ± 0.25 | 1.97 ± 0.20 | 2.28 ± 0.10 | 2.66 ± 0.07 | 2.23 ± 0.46 | 1.66 ± 0.20 |
+| 35 … 70 | 2.49 ± 0.30 | 1.60 ± 0.23 | 1.96 ± 0.25 | 2.44 ± 0.27 | 2.47 ± 0.40 | 1.83 ± 0.04 |
+| 50 … 100 | 2.38 ± 0.03 | 1.68 ± 0.20 | 1.96 ± 0.16 | 2.59 ± 0.12 | 2.81 ± 0.41 | 2.02 ± 0.10 |
+| 70 … 150 | 2.32 ± 0.13 | 1.78 ± 0.05 | 1.89 ± 0.30 | 2.54 ± 0.24 | 2.37 ± 0.17 | 2.04 ± 0.06 |
 
-- Reading: the sign change comes from the 9 mT end (r 3.11 → 0.39), and at 60 MHz the 150 mT contribution also
-  vanishes (r 0.51 → 0.96). At 30 MHz about 60 % of the A effect on β comes from the 9 mT end, the point with the
-  largest mesh error. Both ends show an A effect only at 30 MHz (at 15 and 60 MHz r at 150 mT is about 1). Thus the
-  A lever on β of the study rests on two features that are specific to 30 MHz in this simulation.
+- Reading: at 30 MHz the large particle has the lowest β in every window (1.60 … 1.97), the small one 2.23 … 2.81;
+  the A effect on β is the same in every fit range (+0.64 … +0.66): it does not rest on the 9 mT point or on the
+  150 mT point. At 60 MHz the small particle has a low β at small B (1.61 … 1.83 up to 70 mT) and the large one a high
+  β there (2.28); the sign change rests mostly on the range up to 50 mT (without 9 mT: −0.17, the interval contains 0).
+  At 15 MHz both lie at 2.1 … 2.7, the small particle a little higher.
+- Correction (same day): a first version of this section split the A effect into a "9 mT end" (+0.40) and a "150 mT
+  end" (+0.24) and said that about 60 % of it rests on the 9 mT point. That split referred both ends to an equal loss
+  (ratio 1), an arbitrary reference; the test without the end points above shows that the statement was wrong.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
