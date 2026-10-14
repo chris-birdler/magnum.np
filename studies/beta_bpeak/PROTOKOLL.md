@@ -4318,6 +4318,37 @@ Local β in windows of 3 amplitudes (figure results/freq_beta_windows.png):
   end" (+0.24) and said that about 60 % of it rests on the 9 mT point. That split referred both ends to an equal loss
   (ratio 1), an arbitrary reference; the test without the end points above shows that the statement was wrong.
 
+### 7.99 What happens at 60 MHz: the motion of the small particle stops repeating at small B (2026-10-14)
+
+Question of Chris: 60 MHz is the outlier; what happens there, and what is the characteristic frequency? Local check
+(eval_sweep_regime.py → results/sweep9_regime.md): per run and stage, from the last 3 cycles, RN = share of the
+dissipation that changes from cycle to cycle, RF = share above the smooth periodic curve, loop closure, span of the
+energy balance ε over the 3 cycles; mean of 3 seeds.
+
+| 9 mT | 15 | 21 | 30 | 42 | 60 | 85 | 120 | 240 MHz |
+|---|---|---|---|---|---|---|---|---|
+| small particle (A 20 runs): RN | 0.020 | 0.009 | 0.004 | 0.037 | **0.201** | 0.086 | 0.178 | 0.130 |
+| small: ε span | 0.002 | 0.002 | 0.001 | 0.034 | **0.523** | 0.165 | 0.564 | 0.377 |
+| large particle (A 10 runs): RN | 0.023 | 0.016 | 0.042 | 0.041 | 0.048 | **0.115** | 0.107 | 0.072 |
+| large: ε span | 0.007 | 0.026 | 0.031 | 0.127 | 0.107 | **0.330** | 0.323 | 0.143 |
+
+- At 60 MHz the motion of the small particle no longer repeats at small B: 20 % of the dissipation changes from cycle
+  to cycle (0.4 % at 30 MHz), the loop does not close (closure 0.0047 against 0.0000), the energy balance of single
+  cycles spreads by 0.52. Over B (C′): at 60 MHz RN 0.10 … 0.20, largest at 9 … 35 mT; at 30 MHz RN 0.004 … 0.07 up
+  to 35 mT and 0.13 … 0.31 above 50 mT.
+- Effect on β, small particle 30 → 60 MHz: P rises × 15 at 9 mT but only × 2.3 at 150 mT (paired, from the loss per
+  cycle × 7.6 and × 1.16), so β falls from 2.45 to 1.78. Large particle: P × 1.9 at 9 mT (the loss per cycle stays,
+  × 0.96) and × 4.3 at 150 mT, so β rises from 1.81 to 2.12. Both changes together give the sign change of the A
+  effect on β.
+- Characteristic frequency, measured as the onset of the irregular motion at 9 mT: small particle between 42 and
+  60 MHz, large particle between 60 and 85 MHz. Estimate (7.94): the relaxation time of a motion that the anisotropy
+  field restores is 14 … 34 ns at K1; the drive period falls below it at about 30 … 74 MHz. Then the magnetisation
+  cannot settle in each half cycle. This time does not depend on A or d; it explains the range, not the difference
+  between the sizes. The onset is lower for the smaller particle, opposite to the shift by the factor 2 of 7.92: the
+  shift hypothesis is not supported by this measure.
+- Physical or numerical: irregular motion of a driven nonlinear system can be real, or it can be seeded by the
+  integrator tolerance (atol 1e-5). Not separated by these data.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
