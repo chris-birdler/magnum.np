@@ -4080,21 +4080,23 @@ review of the correction done; its points are in this section.
 
 | f (MHz) | 15 | 21 | 30 | 42 | 60 | 85 | 120 | 240 |
 |---|---|---|---|---|---|---|---|---|
-| w A 20 (10⁻⁷, geometric mean of 3 seeds) | 0.29 | 0.45 | 0.84 | 3.58 | 6.21 | 3.04 | 7.84 | 10.2 (n 2) |
-| w A 10 (10⁻⁷) | 0.44 | 1.34 | 2.57 | 1.41 | 2.51 | 5.17 | 4.36 | 10.3 |
+| P A 20 (W/cm³, mean ± SD of 3 seeds) | 0.39 ± 0.05 | 0.85 ± 0.13 | 2.29 ± 0.55 | 14.5 ± 5.9 | 33.5 ± 4.0 | 23.5 ± 4.9 | 85.1 ± 14.8 | 219 ± 23 (n 2) |
+| P A 10 (W/cm³) | 0.59 ± 0.12 | 2.57 ± 0.31 | 6.92 ± 0.36 | 5.37 ± 0.31 | 13.5 ± 0.7 | 39.6 ± 5.7 | 46.9 ± 3.3 | 222 ± 30 |
 | P(A 10) / P(A 20), paired, 90 % CI | 1.53 (0.94 … 2.49) | 3.01 (2.15 … 4.22) | 3.07 (2.24 … 4.22) | 0.39 (0.17 … 0.93) | 0.40 (0.35 … 0.46) | 1.70 (1.50 … 1.93) | 0.56 (0.45 … 0.69) | n 2 |
 
 - The values at 15, 30 and 60 MHz are those of C′ (first stage, 7.89); the sweep ran 21, 42, 85, 120 and 240 MHz and
   the two 30 MHz controls.
-- Pre-registered reading: **not determined**. The largest w lies at the edge (240 MHz) for both A. The rule as coded and
+- Pre-registered reading (on the loss per cycle): **not determined**. The largest loss per cycle lies at the edge
+  (240 MHz) for both A. The rule as coded and
   tested before the runs (eval_sweep.reading) counts a maximum at the edge as "no maximum found": "supports" needs an
   interior maximum of A 10; "against" needs either both curves rising with n ≤ 2 above 60 MHz (here n up to 3.7) or
   two interior maxima within one grid step. Open point for Chris: the wording of 7.89 ("both maxima lie within one grid
   step") can also be read as "against" for two edge maxima at the same f. The coded reading is used here.
-- Observation, not pre-registered (3 seeds, no claim): w(f) is not monotonic. A 10 has a local maximum at 30 MHz and a
-  dip at 42 MHz, A 20 a local maximum at 60 MHz and a dip at 85 MHz. Both rise again above. The local maxima lie lower
+- Observation, not pre-registered (3 seeds, no claim): the loss is not monotonic in f. A 10 has a local maximum of
+  the loss per cycle at 30 MHz and a dip at 42 MHz, A 20 at 60 and 85 MHz. Both rise again above. In P the dips are
+  13 … 38 % per seed (7.97). The local maxima lie lower
   at A 10 than at A 20, in the direction of hypothesis H1 (7.87), but the fixed rule does not support H1. The seeds of
-  A 20 at 42 MHz scatter strongly (2.2 … 5.3 · 10⁻⁷). Causes of the dips (several eigen-motions, or a different steady
+  A 20 at 42 MHz scatter strongly (P 8.3 … 20.2 W/cm³). Causes of the dips (several eigen-motions, or a different steady
   state at each frequency): not checked.
 - Next step: decision of Chris.
 
@@ -4108,15 +4110,16 @@ energy that the state gives away in the start-up events.
 - Reading fixed before the markers were looked at (docstring): two runs are in the same state if every marker differs
   by at most 3 × the larger cycle-to-cycle spread + a floor. Result: **same state** at both dips. A 10 at 42 MHz: same
   state as a neighbour frequency in 3 of 3 seeds, A 20 at 85 MHz in 2 of 3. Thus the dips of w(f) do not come from
-  another steady state (as far as these markers see). All 3 seeds show the dips (A 10, 42 MHz: w 1.41 … 1.50 · 10⁻⁷
-  against 2.43 … 2.69 at 30 MHz and 2.36 … 2.62 at 60 MHz; A 20, 85 MHz: 2.36 … 3.60 against 5.38 … 6.80 at 60 MHz).
+  another steady state (as far as these markers see). All 3 seeds show the dips (A 10: P 5.06 … 5.69 W/cm³ at 42 MHz
+  against 6.52 … 7.23 at 30 MHz; A 20: P 17.9 … 27.3 W/cm³ at 85 MHz against 28.9 … 36.4 at 60 MHz).
 - Added after the reading, against the 30 MHz state of the same seed: clear differences (ratio ≥ 2) in 3 of 42 runs,
   all at A 20 (seed 2 at 42 and 85 MHz, seed 0 at 120 MHz). A 20 gives away more energy in the start-up at ≥ 42 MHz
-  (up to 66 · 10⁻⁷ in w units) than at ≤ 30 MHz (≤ 0.5 · 10⁻⁷). A 10: no ratio above 1.6.
-- Added after the reading (observation, not pre-registered): w(f) of A 20 has the shape of the A 10 curve shifted by
-  the factor 2 in f. SD of ln w20(s f) − ln w10(f) over the common frequencies (mean curves; per seed pair):
+  (up to 5.9 µJ/cm³) than at 30 MHz and below (at most 0.05 µJ/cm³). A 10: no ratio above 1.6.
+- Added after the reading (observation, not pre-registered): the loss energy per loop E(f) (µJ/cm³) of A 20 has the
+  shape of the A 10 curve shifted by the factor 2 in f. SD of ln E20(s f) − ln E10(f) over the common frequencies
+  (mean curves; per seed pair):
   s 1: 0.83 (0.84 ± 0.07); s √2: 0.63 (0.65 ± 0.10); **s 2: 0.17 (0.23 ± 0.01)**; s 2√2: 0.78 (0.80 ± 0.15).
-  At s 2, w20(2 f) ≈ 2.4 × w10(f) (6 frequencies, 15 … 120 MHz of A 10).
+  At s 2, E20(2 f) ≈ 2.4 × E10(f) (6 frequencies, 15 … 120 MHz of A 10), so P20(2 f) ≈ 4.8 × P10(f).
 - Hypothesis (not tested; it extends H1 of 7.87; wording corrected 2026-10-14, see 7.94): at 9 mT the loss comes
   from a slow local motion whose characteristic frequencies scale with A, far below the gyromagnetic resonance (GHz).
   An exchange-dominated motion or relaxation of a texture of fixed size scales so (rate ∝ γ A / (M_s L²)); a
@@ -4199,10 +4202,11 @@ Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with 
   d/l_ex 216 against 304 (0.72 against 1.02 µm at A 10 pJ/m, box 108 against 152 cells). The same in both: K_eff
   995 J/m³, K_p 1492 J/m³, L_eff 100 nm, cell 3 l_ex, α 0.1, J_s 1.5 T, packing, stress axes, drive, frequency. With
   the particle size the number of Herzer cells per particle changes (about 316 against 790), and the grain axes differ.
-- Accuracy of each value: reached B_peak 8.89 … 9.10 mT (at most 3 % in w); cycle-to-cycle SD of w median 3.6 %,
-  largest 18 % (A 10, 42 MHz, seed 0). The dips are in all 3 seeds and are about a factor 2 (A 10: w 1.41 … 1.50 at
-  42 MHz against 2.36 … 2.69 at 30 and 60 MHz). Thus neither the drive nor the scatter of the cycles explains them.
-  Seed scatter is large where A 20 changes its state (42 MHz: 2.19 … 5.30).
+- Accuracy of each value: reached B_peak 8.89 … 9.10 mT (at most 3 % in the loss); cycle-to-cycle SD of the loss
+  median 3.6 %, largest 18 % (A 10, 42 MHz, seed 0); choice of the cycles up to 20 % (7.97). The dips are in all 3
+  seeds: P falls by 13 … 30 % (A 10, 30 → 42 MHz) and 23 … 38 % (A 20, 60 → 85 MHz). In the loss per cycle they looked
+  like a factor 2, because the frequency rises at the same time. Seed scatter is large where A 20 changes its state
+  (42 MHz: P 8.3 … 20.2 W/cm³).
 - Consistency: all time scales that do not contain d are equal in both runs: the anisotropy time of 7.94 (the same
   K_eff), the exchange time on the scale of the grain cells or of the mesh, the magnetostatic time. They cannot shift
   the curve. The only time scale that changes is the exchange time on the particle scale, ∝ A / d²; its ratio is
@@ -4218,9 +4222,10 @@ Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with 
 
 - Where: on the frequency axis at 9 mT. The w(f) curve of the smaller particle ("A 20", d/l_ex 216) has its features at
   twice the frequency of the larger one ("A 10", 304): local maximum 60 against 30 MHz, dip 85 against 42 MHz (7.92). At
-  these corresponding frequencies the smaller particle loses about 2.4 × more per cycle. The factor is not in β.
-- At larger B it does not hold (eval_sweep_audit.py, C′ with 15 / 30 / 60 MHz): for w20(2 f) = c · w10(f) the two
-  shifted ratios w20(30)/w10(15) and w20(60)/w10(30) must be equal. At 9 mT 1.92 and 2.43; at 20 … 150 mT 2.72 … 3.67
+  these corresponding frequencies the smaller particle loses about 2.4 × more energy per loop (P about 4.8 × more,
+  because f is doubled). The factor is not in β.
+- At larger B it does not hold (eval_sweep_audit.py, C′ with 15 / 30 / 60 MHz, E the loss energy per loop): for
+  E20(2 f) = c · E10(f) the two shifted ratios E20(30)/E10(15) and E20(60)/E10(30) must be equal. At 9 mT 1.92 and 2.43; at 20 … 150 mT 2.72 … 3.67
   against 1.58 … 2.27. Thus the shift is an observation at 9 mT only.
 - Where it can come from, when only the particle size differs (estimates):
   (i) exchange on the particle scale: a pattern that scales with d has a restoring field ∝ A / d², ratio
@@ -4234,6 +4239,38 @@ Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with 
 - Conclusion: the factor 2 at 9 mT has no consistent explanation. It rests on two features of one flux density and can
   be chance. No further interpretation until fine-mesh data exist. The patch proposal for slide 32 (factor 2 as
   (d/l_ex)²) is withdrawn.
+
+### 7.97 Loss density at 9 mT with its scatter; why the seed scatter is small here (2026-10-14, question of Chris)
+
+Table (eval_sweep_audit.py, steady rule of eval_sweep): P = f K_d w in W/cm³ (core volume), mean ± SD between the
+seeds (3 independent microstructures), n seeds with a steady value.
+
+| f (MHz) | large particle ("A 10", d/l_ex 304) | small particle ("A 20", d/l_ex 216) |
+|---|---|---|
+| 15 | 0.59 ± 0.12 (n 3) | 0.39 ± 0.05 (n 3) |
+| 21 | 2.57 ± 0.31 (n 3) | 0.85 ± 0.13 (n 3) |
+| 30 | 6.92 ± 0.36 (n 3) | 2.29 ± 0.55 (n 3) |
+| 42 | 5.37 ± 0.31 (n 3) | 14.5 ± 5.9 (n 3) |
+| 60 | 13.5 ± 0.7 (n 3) | 33.5 ± 4.0 (n 3) |
+| 85 | 39.6 ± 5.7 (n 3) | 23.5 ± 4.9 (n 3) |
+| 120 | 46.9 ± 3.3 (n 3) | 85.1 ± 14.8 (n 3) |
+| 240 | 222 ± 30 (n 3) | 219 ± 23 (n 2; seed 2 has no steady value after 12 cycles) |
+
+- Dips, paired by seed (the same microstructure at both f), factor on P, 90 % CI with t(2): large particle 30 → 42 MHz
+  × 0.78 (0.64 … 0.94; seeds 0.70 / 0.87 / 0.77); small particle 60 → 85 MHz × 0.69 (0.57 … 0.84; 0.77 / 0.62 /
+  0.69). The cycle choice changes single values by up to 20 % (median 0 %); the dips stay with both rules in all seeds.
+- Remark of Chris: in his simulations the loss at small B often varies by about 80 % between seeds. Why the scatter is
+  smaller here: (i) the seeds differ only in the random axes and offsets of the grain cells (about 790 per particle,
+  so the random part averages out strongly) and in the random start state before the relaxation. The particle
+  positions (fcc), the packing, the particle size and shape and the stress axes (37° and 79°) are the same for all
+  seeds. Thus the model's seed scatter is only a part of the variation of a real powder. (ii) n 3 cannot show a small
+  scatter: the true SD can be up to 4.4 × the sample SD (90 % bound, χ² with 2 degrees of freedom). The centre point
+  of the design (n 8, the same rules) has an SD of ln P of 0.16 … 0.32 over B, max/min up to 2.25; the corner groups
+  (n 3) 0.03 … 0.40. The SD of 5 … 7 % of the large particle at 30 … 60 MHz is likely too small.
+- Consequence: comparisons across frequency are paired (same seed), so most of the microstructure scatter cancels.
+  Error bars of absolute values and of comparisons between different microstructures must use the larger scatter of
+  the centre group, and they still miss the variation that the model does not contain (packing, size, shape, random
+  stress axes).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
