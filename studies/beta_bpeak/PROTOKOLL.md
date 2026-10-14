@@ -4199,7 +4199,7 @@ Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with 
   d/l_ex 216 against 304 (0.72 against 1.02 µm at A 10 pJ/m, box 108 against 152 cells). The same in both: K_eff
   995 J/m³, K_p 1492 J/m³, L_eff 100 nm, cell 3 l_ex, α 0.1, J_s 1.5 T, packing, stress axes, drive, frequency. With
   the particle size the number of Herzer cells per particle changes (about 316 against 790), and the grain axes differ.
-- Accuracy of each value: reached B_peak 8.89 … 9.10 mT (at most 3 % in w); cycle-to-cycle SD of w median 3.5 %,
+- Accuracy of each value: reached B_peak 8.89 … 9.10 mT (at most 3 % in w); cycle-to-cycle SD of w median 3.6 %,
   largest 18 % (A 10, 42 MHz, seed 0). The dips are in all 3 seeds and are about a factor 2 (A 10: w 1.41 … 1.50 at
   42 MHz against 2.36 … 2.69 at 30 and 60 MHz). Thus neither the drive nor the scatter of the cycles explains them.
   Seed scatter is large where A 20 changes its state (42 MHz: 2.19 … 5.30).
