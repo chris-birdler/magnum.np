@@ -1,6 +1,6 @@
 #!/bin/bash
 # Option 2 of Chris (2026-10-14, PROTOKOLL 7.100): long tolerance test at 60 MHz (jobs/atol60.txt, 6 jobs, 40 cycles,
-# atol 1e-5 and 1e-6). Waits until the sweep/B0b chain (chain_sweep_b0.sh) has ended (its lock /root/sweep_chain.lock),
+# atol 1e-5 and 1e-6). Waits until B0b has its report (runs/conv_b0_report.md) and the sweep/B0b chain has ended,
 # then pins its own commit (/root/atol60_commit), runs the queue, post-processes and writes the pre-registered report
 # runs/atol60_report.md (eval_atol60.py). A stop file (runs/STOP_NEW_JOBS) stops the queue before any job.
 #   install: echo <commit> > /root/atol60_commit; cp chain_atol60.sh /root/; add the onstart line; start with nohup.
