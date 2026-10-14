@@ -121,9 +121,18 @@ n = 1: the loss per cycle does not depend on f (hysteresis); n = 2: loss per cyc
 | 10 | 100 | 6.5 / 6.7 / 5.9 | 0.7 / 1.0 / 1.1 |
 | 10 | 150 | 6.1 / 5.9 / 4.7 | 0.8 / 1.0 / 1.1 |
 
-## 8. Energy weight of the Bessel excess in the cut plane (negative rest / total loss), mean over seeds and B
+## 8. Net over-completeness e = max(Σ_{k ≤ 7} R_k − 1, 0) of the frequency split, 3D, all seeds and B
+
+e > 0: the parts at f … 7f add up to more than the loss (negative rest). e is a lower bound of the per-cell excess. Largest e (seed, nominal B) and number of stages with e > 0.02.
 
 | A | f/2 | f | 2 f |
 |---|---|---|---|
-| 20 | 0.05 % | 0.05 % | 0.62 % |
-| 10 | 0.06 % | 0.21 % | 0.30 % |
+| 20 | 0, 0 of 21 | 0, 0 of 21 | 0.127 (seed 0, 9 mT), 5 of 21 |
+| 10 | 0, 0 of 21 | 0, 0 of 21 | 0.173 (seed 0, 9 mT), 2 of 21 |
+
+Per-cell excess x = Σ max(Σ_k p_k − p, 0) / Σ p in the cut plane z = 0 (2 of the 4 particles): largest x of the planes with a mean rest > 0 (number of planes); planes with a mean rest ≤ 0 (stored as zeros): number and largest lower bound −rest_mean / p_mean.
+
+| A | f/2 | f | 2 f |
+|---|---|---|---|
+| 20 | 0.0090 (21); 0 zeroed | 0.0042 (20); 1 zeroed, ≥ 0.0012 | 0.0588 (17); 4 zeroed, ≥ 0.2547 |
+| 10 | 0.0084 (21); 0 zeroed | 0.0148 (19); 2 zeroed, ≥ 0.0012 | 0.0314 (16); 5 zeroed, ≥ 0.3811 |

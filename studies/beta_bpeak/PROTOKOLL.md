@@ -3943,8 +3943,7 @@ Request of Chris (go 2026-10-14): evaluate what the files give, then the conclus
   sweep at 9 mT (e.g. 7.5 … 240 MHz) for both A.
 - Location against frequency: c in the 10 % with the highest g grows a little with f at small B (A 20 at 9 mT: 4.1 /
   4.7 / 5.7), and the rim share grows with f at all B.
-- Bessel excess, energy weight in the cut plane: 0.05 / 0.05 / 0.62 % (A 20) and 0.06 / 0.21 / 0.30 % (A 10) of the
-  loss at f/2 / f / 2 f: negligible for the shares.
+- Energy weight of the Bessel excess: the value of this section (from the cut plane) is not valid. See 7.90.
 
 ### 7.88 Precision test result; third context-free review of the deck (2026-10-14)
 
@@ -3990,6 +3989,61 @@ intervals and fit ranges added, the K_eff sign change marked as a model result, 
   (7.88). Chain instance/chain_sweep_b0.sh: starts after the precision test queue.
 - Cost (estimate): sweep ≈ 7 … 12 GPU h, ≈ 2 … 3.5 h wall, ≈ 1 … 1.5 $; B0b ≈ 14 … 28 h, ≈ 6 … 12 $ (atol 1e-6 adds
   ≈ 15 % time).
+- Rule added 2026-10-14 (7.90): the frequency groups (acc.json) of a sweep stage are read only if its net
+  over-completeness e = max(Σ_{k ≤ 7} R_k − 1, 0) ≤ 0.02. At 60 MHz (256 samples per cycle) 7 of 42 C′ stages failed
+  this check, 5 of them at 9 mT. The loss values (w_loop) are not affected.
+
+### 7.90 Error of the frequency split: the cut-plane check was wrong (2026-10-14, question of Chris)
+
+Question of Chris: can noise or jumps of 𝐦 make the per-cell Fourier split wrong, or do they only go into the rest?
+Go of Chris for the patch of eval_freq.py (3D check), deck slides 9 and 11 and this record. The patch of
+acc_reduce.relative_slice is only proposed (no go yet). Context-free review of the correction done; its points are in
+this section.
+
+- Mechanisms (properties of the method): (i) motion above 7f goes into the rest without error, because p̄ comes from
+  the damping term at each sample, not from the Fourier series; (ii) motion that does not repeat from loop to loop
+  (drift, changing jumps) gives the per-loop Fourier series a step at the end of the loop; the step adds a part of about
+  equal size at each k (|m_k| ∝ 1/k, p_k ∝ k² |m_k|²). Thus the border between 2f … 7f and the rest is not sharp, and
+  Σ_{k ≤ 7} p_k can exceed p̄ in a cell (negative rest); (iii) an excess of p̄ over the true loss (integrator error,
+  or energy that the state gives away when it drifts) goes into the rest.
+- Check of (iii) with the energy balance of the kept cycles, ε = w_dis / w_loop − 1, against the rest, 126 stages of
+  18 C′ runs (the stages of one run are not independent; no error is given): ε = +0.009 (mean, SD 0.020, −0.016 …
+  +0.117), rest 0.19 (mean), 0.26 at 35 … 150 mT.
+  - At 20 … 150 mT (108 stages): ε ≤ +0.085, correlation of ε and rest −0.25. The rest there is not an excess of p̄.
+  - At 9 mT (18 stages): correlation +0.55. At 15 MHz ε and rest are equal in 5 of 6 runs (ε +0.047 … +0.117, rest
+    +0.048 … +0.105; 6th run ε +0.031, rest +0.104). There the rest is mostly an excess of p̄, not motion. Cause
+    (integrator error at atol 1e-5, as in 7.88, or a drift of the state) not tested. At 30 MHz ε and rest are both
+    ≤ 0.03.
+- Finding: the check "energy weight of the Bessel excess in the cut plane ≤ 0.6 %" (eval_freq.py section 8, 7.87,
+  deck slides 9 and 11) is wrong. Cause: acc_reduce.relative_slice stores a plane relative to its mean and stores zeros
+  when the mean is ≤ 0 (the signed mean itself is stored). A plane with a net negative rest thus shows rest 0. This
+  hits the 60 MHz stages with the largest excess and also 3 planes at 30 MHz. Local acc_slices.npz with a zeroed rest
+  plane (of 194 files): K1A10_0_f2 amp00/01, K1A10_1 amp00/02, K1A10_1_f2 amp00/05, K1A10_2_f2 amp00, K1_0_f2
+  amp00/01, K1_1_f1 amp00, K1_1_f2 amp00, K1_2_f2 amp00. The two runs of the deck maps (K1A10_2, K1_2_f1) have no
+  zeroed plane. A second weakness of relative_slice: a very small positive mean gives very large relative values, which
+  can overflow float16 (maximum 65504).
+- New check (eval_freq.py section 8): (a) 3D from acc.json, net over-completeness e = max(Σ_{k ≤ 7} R_k − 1, 0) per
+  stage. e is a lower bound of the per-cell excess x = Σ max(Σ_k p_k − p, 0) / Σ p (cells with a positive rest
+  compensate). (b) x in the cut plane z = 0 (2 of the 4 particles) where the plane mean rest is > 0; for a zeroed plane
+  the stored signed mean gives a lower bound −rest_mean / p_mean.
+
+| A (pJ/m) | 15 MHz | 30 MHz | 60 MHz |
+|---|---|---|---|
+| 20, e (3D) | 0 in 21 of 21 stages | 0 in 21 of 21 | up to 0.127 (seed 0, 9 mT); 5 of 21 stages > 0.02 |
+| 20, x (cut) | ≤ 0.009 (21 planes) | ≤ 0.004 (20 planes); 1 zeroed, ≥ 0.001 | ≤ 0.059 (17 planes); 4 zeroed, up to ≥ 0.25 |
+| 10, e (3D) | 0 in 21 of 21 | 0 in 21 of 21 | up to 0.173 (seed 0, 9 mT); 2 of 21 stages > 0.02 |
+| 10, x (cut) | ≤ 0.008 (21 planes) | ≤ 0.015 (19 planes); 2 zeroed, ≥ 0.001 | ≤ 0.031 (16 planes); 5 zeroed, up to ≥ 0.38 |
+
+- Cells with Σ_k p_k > 1.001 p̄ (section 5, mean over seeds and B): 1 / 6 / 30 % (A 20) and 3 / 20 / 31 % (A 10) at
+  15 / 30 / 60 MHz. At 60 MHz, 7 of 42 stages have e > 0.02 (5 of them at 9 mT, 2 in K1_0_f2 at 20 and 35 mT).
+- Consequences: the loss values, β, the frequency ratios and the A effect are not affected (they come from w_loop).
+  At 15 and 30 MHz the excess is small where it can be checked (x ≤ 1.5 % of the loss in 81 of 84 cut planes, e = 0 in
+  3D); the frequency groups of the pair and the channel maps (30 MHz) keep their values, with this limit. At 60 MHz the
+  groups are not reliable at 9 mT and in K1_0_f2 also at 20 and 35 mT. The rest at 9 mT and 15 MHz is mostly an excess
+  of p̄ (see the check of (iii)). Deck: slide 9 sections 5 and 6 and slide 11 corrected; the numbers come from
+  freq_Cprime.json.
+- Open: the cause of the over-completeness at 60 MHz (motion that does not repeat, or short events between the 256
+  samples per cycle); the cause of ε at 9 mT and 15 MHz; the patch of relative_slice (proposed, no go yet).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

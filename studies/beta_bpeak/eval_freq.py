@@ -19,6 +19,11 @@ Values: ln w at the 7 nominal amplitudes (analyze_design.run_record), w = loss p
 5. Bessel check (7.83): share of the cells with Σ_k p_k > 1.001 p per frequency. Same sample interval at all f: if the
    excess comes from motion between the samples it is the same at all f; if it comes from a drift within a cycle it
    grows with the cycle time (largest at f/2).
+8. Net over-completeness of the split (PROTOKOLL 7.90): e = max(Σ_{k ≤ 7} R_k − 1, 0) = max(−R_rest, 0) per stage, 3D
+   (acc.json). It is a lower bound of the per-cell excess x = Σ max(Σ_k p_k − p, 0) / Σ p (cells with a positive rest
+   compensate). x itself is known only in the cut plane (acc_slices.npz), and only where the mean rest of the plane is
+   > 0: acc_reduce.relative_slice stores a plane with a mean rest ≤ 0 as zeros. For such a plane the stored signed
+   mean gives a lower bound of x in the plane: −rest_mean / p_mean.
 
     python eval_freq.py > results/freq_Cprime.md      # also results/freq_Cprime.json
 """
@@ -38,6 +43,7 @@ SEEDS = range(3)
 FREQ = ("fhalf", "f", "f2")
 FLAB = {"fhalf": "f/2", "f": "f", "f2": "2 f"}
 MIN_N = 3
+E_TOL = 0.02          # net over-completeness above this value: the split of the stage is not reliable (7.90)
 
 
 def folder(a, fr, k):
@@ -221,26 +227,59 @@ def main():
                 res["zones"]["%d|%g|%s" % (a, b, zk)] = vals
                 cells.append(" / ".join("%.1f" % x for x in vals))
             L.append("| %d | %g | %s | %s |" % (a, b, *cells))
-    # 8. energy weight of the Bessel excess in the cut plane: Σ max(−rest, 0) / Σ p (acc_slices.npz), mean over seeds, B
-    L += ["", "## 8. Energy weight of the Bessel excess in the cut plane (negative rest / total loss), mean over seeds and B",
-          "", "| A | f/2 | f | 2 f |", "|---|---|---|---|"]
-    res["bessel_energy"] = {}
+    # 8. net over-completeness of the split, 3D (acc.json): e = max(Σ_k R_k − 1, 0) per stage (PROTOKOLL 7.90)
+    L += ["", "## 8. Net over-completeness e = max(Σ_{k ≤ 7} R_k − 1, 0) of the frequency split, 3D, all seeds and B", "",
+          "e > 0: the parts at f … 7f add up to more than the loss (negative rest). e is a lower bound of the per-cell "
+          "excess. Largest e (seed, nominal B) and number of stages with e > %.2f." % E_TOL, "",
+          "| A | f/2 | f | 2 f |", "|---|---|---|---|"]
+    res["overcomplete"] = {}
     for a in (20, 10):
-        vals = []
+        cells, row = [], {}
         for fr in FREQ:
-            v = []
+            e = []
+            for k in SEEDS:
+                f = folder(a, fr, k) / "acc.json"
+                for s in json.loads(f.read_text())["stages"] if f.exists() else []:
+                    if "harm" in s:
+                        e.append((max(-s["harm"]["R_rest"], 0.0), k, min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1))))
+            if not e:
+                cells.append("–")
+                continue
+            emax = max(e)
+            if emax[0] == 0.0:                          # no stage with a negative rest: no location to name
+                emax = (0.0, None, None)
+            row[fr] = {"max": emax[0], "seed": emax[1], "B_mT": emax[2], "n_over": sum(x[0] > E_TOL for x in e),
+                       "n": len(e)}
+            cells.append(("%.3f (seed %d, %.0f mT)" % emax if emax[1] is not None else "0") +
+                         ", %d of %d" % (row[fr]["n_over"], len(e)))
+        res["overcomplete"][str(a)] = row
+        L.append("| %d | %s |" % (a, " | ".join(cells)))
+    # per-cell excess x in the cut plane: planes with a mean rest > 0 (x known), planes with a mean rest ≤ 0 (lower bound)
+    L += ["", "Per-cell excess x = Σ max(Σ_k p_k − p, 0) / Σ p in the cut plane z = 0 (2 of the 4 particles): largest x "
+          "of the planes with a mean rest > 0 (number of planes); planes with a mean rest ≤ 0 (stored as zeros): number "
+          "and largest lower bound −rest_mean / p_mean.", "", "| A | f/2 | f | 2 f |", "|---|---|---|---|"]
+    res["cut_excess"] = {}
+    for a in (20, 10):
+        cells, row = [], {}
+        for fr in FREQ:
+            x, lb = [], []
             for k in SEEDS:
                 z = np.load(folder(a, fr, k) / "acc_slices.npz")
                 ids = z["ids"] >= 0
                 for key in z.files:
                     if key.endswith("_rest_rel"):
                         st = key[:-len("_rest_rel")]
-                        rest = z[key].astype(float) * float(z[st + "_rest_mean"])
-                        pp = z[st + "_p_rel"].astype(float) * float(z[st + "_p_mean"])
-                        v.append(np.maximum(-rest[ids], 0).sum() / pp[ids].sum())
-            vals.append(float(np.mean(v)) if v else float("nan"))
-        res["bessel_energy"][str(a)] = dict(zip(FREQ, vals))
-        L.append("| %d | %s |" % (a, " | ".join("%.2f %%" % (100 * x) for x in vals)))
+                        rm, pm = float(z[st + "_rest_mean"]), float(z[st + "_p_mean"])
+                        if rm > 0:
+                            rest = z[key].astype(float) * rm
+                            pp = z[st + "_p_rel"].astype(float) * pm
+                            x.append(float(np.maximum(-rest[ids], 0).sum() / pp[ids].sum()))
+                        else:
+                            lb.append(-rm / pm)
+            row[fr] = {"x_max": max(x), "n_x": len(x), "n_zeroed": len(lb), "lb_max": max(lb) if lb else None}
+            cells.append("%.4f (%d); %d zeroed%s" % (max(x), len(x), len(lb), (", ≥ %.4f" % max(lb)) if lb else ""))
+        res["cut_excess"][str(a)] = row
+        L.append("| %d | %s |" % (a, " | ".join(cells)))
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "freq_Cprime.json").write_text(json.dumps(res, indent=1))
 
