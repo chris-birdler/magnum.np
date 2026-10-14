@@ -1218,3 +1218,78 @@ def test_eval_atol60_reading_on_synthetic_series():
     assert EA.reading([early, irr, (None, "marginal")], [early, early, early]) == "not determined"
     assert EA.value_reading([10.0, 10.5, 9.5], [10.2, 9.8, 10.0], [10.0, 10.0, 10.0]) == "the C′ value holds"
     assert EA.value_reading([13.0, 13.5, 9.5], [13.2, 13.8, 10.0], [10.0, 10.0, 10.0]) == "the C′ value is off"
+
+
+def test_init_from_jobs_have_the_init_keys_of_their_source():
+    """run_loops stops a job whose --init_from state was relaxed with other INIT_KEYS (atol since 7.88). Every job line
+    with --init_from <run>/init.pt must have the INIT_KEYS of the line of <run> (PROTOKOLL 7.101: the L6 lines of the
+    first jobs/atol60.txt had atol 1e-6 against 1e-5 and would have stopped at once)."""
+    import shlex
+    import run_loops
+    from rerun_jobs import job_lines
+    jobs = pathlib.Path(__file__).resolve().parent / "jobs"
+    src = {}
+    for f in sorted(jobs.glob("*.txt")):
+        for name, a in job_lines(f):
+            assert src.setdefault(name, a) == a, "two different lines for %s" % name
+    parse = lambda a: vars(run_loops.parse_args(shlex.split(a) + ["--out", "x"]))
+    n = 0
+    for f in sorted(jobs.glob("*.txt")):
+        for name, a in job_lines(f):
+            t = parse(a)
+            init = t.get("init_from") or ""
+            run = init.split("/")[0]
+            if not init.endswith("/init.pt") or run not in src:
+                continue                                          # no init_from, or a state file without a job line
+            s = parse(src[run])
+            diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)]
+            assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
+            n += 1
+    assert n >= 190
+
+
+def test_atol_job_lines():
+    """PROTOKOLL 7.101: atol60 L5 starts from K1_k/init.pt, L6 relaxes itself; the atol30 twins are the production line
+    of K1_k with only atol 1e-6 added and the snapshots removed. The job files equal the generator output."""
+    import shlex
+    import pair_jobs
+    from rerun_jobs import job_lines, strip_snap
+    here = pathlib.Path(__file__).resolve().parent
+    for fn, lines in (("atol60.txt", pair_jobs.atol60_lines()), ("atol30.txt", pair_jobs.atol30_lines())):
+        assert [(n, " ".join(t)) for n, t in lines] == job_lines(here / "jobs" / fn)
+    for name, tok in pair_jobs.atol60_lines():
+        assert ("--init_from" in tok) == name.endswith("L5")
+    src = dict(job_lines(here / "jobs" / "sobol_corners.txt"))
+    for k, (name, tok) in enumerate(pair_jobs.atol30_lines()):
+        prod = shlex.split(src["K1_%d" % k])
+        assert name == "K1_%d_L6" % k and tok[-2:] == ["--atol", "1e-06"]
+        assert tok[:-2] == strip_snap(prod) and "--init_from" not in tok
+        assert {x for x in prod if x.startswith("--")} - set(tok) == {"--snap_phases", "--snap_cycles", "--snap_mT"}
+
+
+def test_eval_atol30_reading_and_closure_median(tmp_path, monkeypatch):
+    """PROTOKOLL 7.101: the reading of the tolerance twins (fixed before the runs) and the measured cycles."""
+    import json
+    import eval_atol30 as E3
+    assert E3.reading([0.9, 0.7, 0.2]) == "physical"
+    assert E3.reading([0.1, 0.3, 0.8]) == "numerical"
+    assert E3.reading([0.6, 0.55, None]) == "physical"
+    assert E3.reading([0.9, None, 0.1]) == "not determined"
+    assert E3.reading([None, None, None]) == "not determined"
+    cyc = lambda clo: {"closure": clo, "w_loop": 1e-6, "w_dis": 1.02e-6}
+    corrected = {"h_amp_initial": 1.0, "cycles": [cyc(0.5), cyc(0.4)] + [cyc(0.001)] * 5}
+    plain = {"cycles": [cyc(0.5)] + [cyc(0.003)] * 6}
+    assert len(E3.measured(corrected)) == 5 and len(E3.measured(plain)) == 6
+    assert E3.closure_median([corrected, plain]) == 0.003
+    st = [dict(corrected, measure=True, complete=True) for _ in E3.AMPS]
+    for name, clo in (("K1_0", 0.001), ("K1_0_L6", 0.0008)):
+        d = tmp_path / name
+        d.mkdir()
+        for s in st:
+            s["cycles"] = [cyc(0.5), cyc(0.4)] + [cyc(clo)] * 5
+        (d / "summary.json").write_text(json.dumps({"stages": st, "init": {"E_over_Kd": 5e-4, "M_over_Ms": [0, 0, 0]}}))
+        (d / "DONE").touch()
+    monkeypatch.setattr(E3, "R", tmp_path)
+    a, b = E3.load(tmp_path / "K1_0"), E3.load(tmp_path / "K1_0_L6")
+    assert abs(E3.closure_median(b[0]) / E3.closure_median(a[0]) - 0.8) < 1e-12
+    assert E3.load(tmp_path / "K1_1") is None

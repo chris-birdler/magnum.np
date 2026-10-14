@@ -2,7 +2,8 @@
 """
 Long tolerance test at 60 MHz (option 2 of Chris 2026-10-14; reading fixed in PROTOKOLL 7.100 before the runs).
 Runs: K1_k_sw060L6 (atol 1e-6) and K1_k_sw060L5 (atol 1e-5), k = 0 … 2: the small particle (A 20 runs) at 60 MHz,
-9 mT only, exactly 40 cycles. Reference: the 9 mT stage of K1_k_f2 (C′, atol 1e-5, stop rule).
+9 mT only, exactly 40 cycles. Reference: the 9 mT stage of K1_k_f2 (C′, atol 1e-5, stop rule). L5 starts from
+K1_k/init.pt; L6 relaxes again with atol 1e-6 from the same seed (atol is an INIT_KEY, PROTOKOLL 7.101).
 
 Per run, from cycle 2 on: for each window of 3 cycles ending at cycle c: RN (share of the box dissipation that changes
 from cycle to cycle), mean closure, and w(c). c_settle = first cycle from which every later window has RN ≤ 0.05,
@@ -101,11 +102,22 @@ def run_series(d):
     return rn, clo, w
 
 
+def start_diff(k, tag):
+    """Start control (reported only, PROTOKOLL 7.101): L6 relaxes itself, L5 starts from K1_k/init.pt. Relative
+    difference of the relaxed energy E/K_d and of w_loop of cycle 0 against L5."""
+    if tag == "L5":
+        return "reference"
+    s6, s5 = [json.loads((R / ("K1_%d_sw060%s" % (k, t)) / "summary.json").read_text()) for t in ("L6", "L5")]
+    dE = s6["init"]["E_over_Kd"] / s5["init"]["E_over_Kd"] - 1
+    dw = s6["stages"][0]["cycles"][0]["w_loop"] / s5["stages"][0]["cycles"][0]["w_loop"] - 1
+    return "%+.1e / %+.1e" % (dE, dw)
+
+
 def main():
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     res, L = {}, ["# Long tolerance test at 60 MHz, 9 mT, small particle (reading fixed in PROTOKOLL 7.100)", "",
-                  "| seed | atol | class | c_settle | P last 10 cycles (W/cm³, mean ± SD) | C′ value (W/cm³) |",
-                  "|---|---|---|---|---|---|"]
+                  "| seed | atol | class | c_settle | P last 10 cycles (W/cm³, mean ± SD) | C′ value (W/cm³) | start: E/K_d "
+                  "and w_loop of cycle 0, relative to L5 |", "|---|---|---|---|---|---|---|"]
     r = {"L6": [], "L5": []}
     pv = {"L6": [], "L5": []}
     ref = []
@@ -120,8 +132,8 @@ def main():
             pv[tag].append(float(p.mean()))
             res["%d|%s" % (k, tag)] = {"class": c, "c_settle": s, "P_mean": float(p.mean()), "P_sd": float(p.std(ddof=1)),
                                        "RN": rn, "closure": clo, "w": w}
-            L.append("| %d | %s | %s | %s | %.1f ± %.1f | %.1f |" % (k, tol, c, s if s is not None else "–", p.mean(),
-                                                                    p.std(ddof=1), ref[-1]))
+            L.append("| %d | %s | %s | %s | %.1f ± %.1f | %.1f | %s |" % (k, tol, c, s if s is not None else "–", p.mean(),
+                                                                         p.std(ddof=1), ref[-1], start_diff(k, tag)))
     rd, vr = reading(r["L6"], r["L5"]), value_reading(pv["L6"], pv["L5"], ref)
     res["reading"], res["value_reading"] = rd, vr
     L += ["", "**Reading (motion): %s**" % rd, "", "**Reading (loss value): %s**" % vr]

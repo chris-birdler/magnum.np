@@ -4396,6 +4396,154 @@ Reading (fixed now, eval_atol60.py, synthetic test in test_study.py):
   K1_k_f2 for both tolerances in ≥ 2 of 3 seeds, "the C′ value is off" if outside ±10 % in ≥ 2 of 3 seeds, else not
   determined.
 
+### 7.101 Loop closure of the main run: recurrent jumps, no monotonic change of M, independent of atol (2026-10-14)
+
+Question of Chris: are nearly half of the 116 runs of the main analysis not settled, because the amplitudes rise
+without a relaxation between them? Why did the rule of 2 calm cycles not prevent this? Answer: no. The class "not
+periodic" of 7.100 means that the time pattern of the dissipation changes from cycle to cycle (RN). It does not mean an
+open loop. The numbers below come from config.json, summary.json and samples_*.csv of the 116 runs (α 0.1, 30 MHz).
+The check ran locally, without a GPU.
+
+Terms of this section. Event: a cycle with |w_dis / w_loop − 1| > 0.2 or w_loop ≤ 0 (7.53). Calm cycle: the opposite
+of an event. Steady tail: the calm cycles after the last event of a stage (7.54). Closure: |M(end) − M(start)| / M_peak
+of one cycle. ΔM: the same difference with its sign. Δe = w_loop − w_dis: the change of the internal energy over one
+cycle from H = 0 to H = 0, in units of K_d (energy theorem). Half loop width: half the opening of the loop at H = 0,
+M_peak sin δ. For an elliptic loop sin δ = w_loop / (2π h b), with h = H_peak / M_s and b = B_peak / J_s (estimate).
+
+**Protocol of the main run.** virgin_asc: random start, relaxation at H = 0 until converged, then 7 stages
+9 → 20 → 35 → 50 → 70 → 100 → 150 mT. The stages follow directly. There is no relaxation and no pause between them.
+The amplitude changes at H = 0. Each stage starts from the end state of the stage before.
+- 103 runs: 7 cycles per stage, no stop rule during the run.
+- 13 reruns (_mc2): at least 7 cycles, then more until the steady tail has 2 cycles, at most 15 (7 … 12 used).
+- Analysis: cycle 0 (drive correction) and cycle 1 are discarded. The other cycles are measured. The steady-tail rule
+  is applied afterwards.
+- Thus the rule of 2 calm cycles acted during the run in 13 of 116 runs only. In the other runs it is a filter of the
+  analysis.
+
+**Calm cycles.** All 812 stages (116 runs × 7 amplitudes) end with a steady tail of at least 2 cycles (minimum 2, at
+150 mT 4). All measured cycles are calm in 70 / 98 / 91 / 102 / 112 / 109 / 114 of 116 stages (9 … 150 mT). The rule
+checks only the energy balance of each cycle (tolerance 20 %). It does not check the closure and the repetition of the
+cycles. Thus a steady tail does not mean "settled" in the sense of 7.100: w is not stationary to 5 % in 16 … 28 % of
+the stages (7.100). For C′ the case 60 MHz at 9 mT stays open (P drift of the large particle, 7.100; atol60 test).
+
+**Closure of the main run** (mean of the cycles of the steady tail per stage; number of stages of 116 above a limit):
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 | 150 | sum (of 812) |
+|---|---|---|---|---|---|---|---|---|
+| > 2 % (closure_tol of the run) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| > 0.5 % | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 4 |
+| > 0.2 % | 9 | 5 | 13 | 7 | 12 | 12 | 12 | 70 |
+| > 0.1 % | 23 | 20 | 35 | 35 | 35 | 40 | 47 | 235 |
+| median | 0.02 % | 0.03 % | 0.05 % | 0.06 % | 0.05 % | 0.08 % | 0.08 % | |
+
+Against the half loop width, the closure has a median of 1 … 10 %. It is above 25 % of the half width in 9 … 18 % of
+the cycles, and above 50 % in about 3 %.
+
+**Monotonic change or recurrent jumps.** Criteria (fixed before the data were looked at), per B over the steady tails:
+"recurrent jumps" if |mean Δe / w_loop| ≤ max(2 SE, 0.02) and the share of consecutive cycles with the same sign of ΔM
+is ≤ 0.5 + 2 SE; "still relaxing" if mean Δe / w_loop < −max(2 SE, 0.02) or the share is > 0.5 + 2 SE; else not
+determined.
+
+| B (mT) | Δe / w_loop per cycle, mean ± SE (n 116 stages) | consecutive cycles with the same sign of ΔM | stages with an event in the measured cycles | events: energy release / uptake |
+|---|---|---|---|---|
+| 9 | −0.74 ± 0.25 % | 39 % (398 pairs) | 46 | 62 / 2 |
+| 20 | −0.68 ± 0.17 % | 35 % (431) | 18 | 29 / 0 |
+| 35 | −0.18 ± 0.17 % | 36 % (409) | 25 | 48 / 0 |
+| 50 | −0.27 ± 0.09 % | 25 % (439) | 14 | 20 / 0 |
+| 70 | −0.31 ± 0.11 % | 30 % (453) | 4 | 6 / 0 |
+| 100 | −0.23 ± 0.13 % | 29 % (450) | 7 | 9 / 0 |
+| 150 | +0.04 ± 0.06 % | 25 % (462) | 2 | 2 / 0 |
+
+- Reading: "recurrent jumps" at all B.
+- The same-sign share is 25 … 39 %. Reference values: if M at H = 0 scatters independently about a fixed state,
+  consecutive ΔM share one value with opposite signs, and the share is 1/3. A wandering state (independent steps)
+  gives 1/2. A monotonic change gives nearly 1. The data agree with a fixed state with scatter. The binomial SE
+  (2.3 … 2.5 %) is a lower limit, because the pairs of one stage are not independent.
+- The unsettled part is the start of a stage. After the amplitude step, the state still changes irreversibly in the
+  measured cycles in 2 … 46 of 116 stages per B. 176 of 178 events release energy. The steady-tail rule removes these
+  cycles. At least 2 calm cycles remain after the last event.
+- More relaxation time between the amplitudes would not have helped. The 9 mT stage starts from the converged
+  relaxation at H = 0, and it has the most events. The larger field switches regions for the first time. A relaxation
+  at H = 0 stays in the nearest local minimum and cannot do this. More cycles per stage would give more calm cycles.
+- Δe / w_loop is below 0 by 2.8 … 4.0 SE at 9, 20, 50 and 70 mT (−0.3 … −0.7 %), but within the 2 % limit. Candidate
+  cause: the integrator error of w_dis at atol 1e-5 (7.88), not an energy release. Estimate for dx 3: K1_k at 9 mT has
+  a closure of 0 from cycle 4 … 5 on and still w_dis / w_loop 1.015 … 1.03, that is w_dis 1.5 … 3 % too large. w_loop,
+  and thus P, does not depend on atol (7.88, and B0 / B0b below).
+
+**C′ per frequency** (corner K1, 3 seeds × 7 amplitudes = 21 stages per group; the same measures; steady rule during
+the run, at most 12 cycles):
+
+| f | particle | stages with a steady tail ≥ 2 | largest number of cycles | events release / uptake | median closure | same sign of ΔM | median cycle SD of w |
+|---|---|---|---|---|---|---|---|
+| 15 MHz | large | 21 / 21 | 7 | 4 / 0 | 0.006 % | 28 % | 1.2 % |
+| 15 MHz | small | 21 / 21 | 7 | 3 / 0 | 0.004 % | 24 % | 1.6 % |
+| 30 MHz | large | 21 / 21 | 9 | 9 / 0 | 0.048 % | 28 % | 2.8 % |
+| 30 MHz | small | 21 / 21 | 8 | 4 / 0 | 0.053 % | 33 % | 2.3 % |
+| 60 MHz | large | 21 / 21 | 7 | 4 / 0 | 0.068 % | 34 % | 2.4 % |
+| 60 MHz | small | 21 / 21 | 12 | 18 / 0 | 0.101 % | 26 % | 4.4 % |
+
+- All 126 stages have a steady tail of at least 2 cycles. In no group does M change monotonically. These are medians
+  over all B. They do not replace 7.100 for 9 mT at 60 MHz.
+- 15 MHz is the cleanest group: its closure is 8 … 13 × smaller than at 30 MHz.
+- The small particle at 60 MHz has 2 … 6 × more events. It needs up to 12 cycles (the limit) and has twice the cycle
+  scatter of w. This is an observation from 3 seeds, not a proven effect.
+- The closure grows with f (0.005 % → 0.05 % → 0.07 … 0.10 %). Candidate (estimate, Kittel with H_K, 7.94): a jump
+  rings down with τ = 1 / (α 2π f_K) ≈ 5 … 34 ns. The period is 67 / 33 / 17 ns. An integrator error would rather grow
+  at 15 MHz, because a cycle has more steps there. This is a hint, not a proof.
+
+**Is the closure an integrator error? B0 against B0b (go of Chris, reading fixed before the comparison).**
+- Reading: "physical" if the median closure with atol 1e-6 is at least 0.5 × the median with atol 1e-5, per seed;
+  else "numerical".
+- Data: B0 (atol 1e-5, stopped in 7.85) has 2 … 4 cycles per seed in samples_00_amp00.csv. Its summary.json does not
+  exist, because run_loops writes it at the end of a stage. B0b (atol 1e-6, running) has the same cycles. Same seeds
+  941 … 944, d/l_ex 96, dx 0.75, 9 mT.
+- Result: in all 12 common cycles of the 4 seeds the closure with 1e-6 is 0.9998 … 1.0014 × the closure with 1e-5.
+  This holds also for large values (0.3 … 3 %) and through the jumps (s943: w_loop × 3.8 in 3 cycles). W_loop agrees to
+  5·10⁻⁵. The relaxations need the same number of iterations (11 500 / 14 500 / 10 500 / 5 500). w_dis differs (s941
+  cycle 2: 1.09·10⁻⁶ against 5.12·10⁻⁷), as in 7.88.
+- **Reading: physical** in 4 of 4 seeds (in the measured cycles from cycle 2 on: 3 of 3 seeds; B0 s942 has no cycle 2).
+- Limits: dx 0.75, not the mesh of the main run (dx 3); 9 mT only; 1 … 4 cycles per seed, mostly the first cycles of
+  the stage.
+- The precision test P48 (d/l_ex 48, dx 0.75, 9 mT) agrees: the closure per cycle is the same to 5 digits for single
+  1e-5, double 1e-5 and single 1e-6.
+
+**Error in the atol60 jobs, found before the runs.**
+- atol is an INIT_KEY (7.88). A job with --init_from K1_k/init.pt (relaxed with atol 1e-5) and --atol 1e-6 stops at
+  once ("relaxed with other arguments"). The 3 L6 jobs of jobs/atol60.txt (7.100) had this error.
+- Cause: the job builder did not compare the INIT_KEYS with the source run. The dry run tested only the evaluation.
+- Fix (patch, go of Chris): a run with atol 1e-6 relaxes again with atol 1e-6 from the same seed, as a production run
+  with atol 1e-6 would. The relaxation of K1_0 took 298 s. The L5 jobs keep --init_from.
+- New test (test_init_from_jobs_have_the_init_keys_of_their_source): every job line with --init_from <run>/init.pt has
+  the INIT_KEYS of the line of <run>. The test fails on the old jobs/atol60.txt (3 lines, atol). It passes on all 194
+  such lines now.
+- At 60 MHz, L5 and L6 now start from two relaxations. eval_atol60.py reports a start control (E / K_d and w_loop of
+  cycle 0, L6 relative to L5). In B0 / B0b the relaxed state was the same for both atol. The readings of 7.100 do not
+  change.
+
+**Tolerance twins at 30 MHz** (decision Chris: option 1 with patch; still in the chain, see the remark at the end).
+- Jobs jobs/atol30.txt (pair_jobs.py --atol30): K1_k_L6 (k 0 … 2) is the production line of K1_k (7 amplitudes, 7
+  cycles each, virgin relaxation) with --atol 1e-6. Only the snapshots are removed (disk). Reference: K1_k (atol 1e-5,
+  the same line; not K1_k_mc2).
+- Reading (eval_atol30.py, synthetic test in test_study.py, fixed now):
+  - per run, c = median closure over the measured cycles (cycles 2 … 6 of all 7 stages, no filter);
+  - per seed, r_k = c(K1_k_L6) / c(K1_k); the reference values are c(K1_k) = 0.055 / 0.057 / 0.054 %;
+  - "physical" if r_k ≥ 0.5 in at least 2 of 3 seeds, "numerical" if r_k < 0.5 in at least 2 of 3 seeds;
+  - "not determined" if a run is missing or incomplete, or if c(K1_k) = 0, so that no 2 seeds agree.
+- Controls (reported, not part of the reading): the relaxed start state of K1_k_L6 against K1_k (E / K_d, M / M_s);
+  w_loop of cycle 0 at 9 mT ("same start" if within 1e-3 relative, else the comparison is statistical only).
+- Also reported, not part of the reading: per B the closure, w_dis / w_loop and P (W/cm³) with both tolerances.
+- Output: runs/atol30_report.md and results/atol30.json.
+- Chain instance/chain_atol30.sh: pin /root/atol30_commit, read after the wait. The chain starts when the atol60 queue
+  has ended (runs/ATOL60_QUEUE_DONE) and the atol60 chain has released its lock.
+- The atol60 chain now also reads its pin after the wait, and it deletes an old ATOL60_QUEUE_DONE before its queue. It
+  was restarted once with the new pin.
+- Failure mode: if the atol60 queue never ends (for example, B0b gives no report), the atol30 chain waits. Its log
+  shows the wait. The state is checked at each status report.
+- Cost (estimate from the measured cycle time of K1_k, 1.2 h per run, + 15 % for atol 1e-6, + about 5 min relaxation):
+  about 4.4 GPU h, about 1.5 h wall time, about 0.6 $.
+- Remark: B0 / B0b already give "physical" on dx 0.75 at 9 mT. The twins test the mesh of the main run (dx 3) and
+  35 … 150 mT, where the closure of K1 is. Chris can remove them from the chain without cost before they start.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

@@ -8,6 +8,8 @@ same cells: the pair shares seed, stress axes, packing and history, not the cell
 
     python pair_jobs.py > jobs/pair_K1A10.txt
     python pair_jobs.py --freq > jobs/freq_K1pair.txt      # option C′: f/2 and 2 f
+    python pair_jobs.py --atol60 > jobs/atol60.txt         # tolerance test at 60 MHz (7.100, 7.101)
+    python pair_jobs.py --atol30 > jobs/atol30.txt         # tolerance twins of the main run at 30 MHz (7.101)
 """
 import shlex
 
@@ -15,6 +17,7 @@ from rerun_jobs import job_lines, set_arg
 
 F_REL_30MHZ = 0.0007136497332286743            # f / f_M at 30 MHz, Js = 1.5 T (run_loops default)
 FREQS = (("fhalf", 0.5), ("f1", 1.0), ("f2", 2.0))     # f1: only K1 (K1A10 at f = the pair runs), 7.73
+INIT_ATOL = 1e-5                                # atol of the relaxed states K1_k/init.pt (run_loops default)
 
 
 def pair_lines():
@@ -91,7 +94,8 @@ def atol60_lines():
     """Long tolerance test at 60 MHz (decision Chris 2026-10-14, option 2, PROTOKOLL 7.100): the sweep line of the
     small particle (K1_k, A 20 runs) at 60 MHz, 9 mT only, exactly 40 cycles, with --atol 1e-5 (L5) and 1e-6 (L6).
     Reference: the 9 mT stage of K1_k_f2 (C′); the sweep protocol equals the C′ first stage (control at 30 MHz,
-    7.91). Longest (1e-6) first."""
+    7.91). atol is an INIT_KEY (7.88): K1_k/init.pt was relaxed with atol 1e-5, so only L5 starts from it; L6 relaxes
+    again with atol 1e-6 from the same seed (PROTOKOLL 7.101). Longest (1e-6) first."""
     out = []
     for tol, tag in (("1e-06", "L6"), ("1e-05", "L5")):
         for k in range(3):
@@ -101,14 +105,26 @@ def atol60_lines():
             t = set_arg(t, "atol", [tol])
             t = set_arg(t, "cycles_per_amp", ["40"])
             t = set_arg(t, "max_cycles_per_amp", ["40"])
+            if float(tol) != INIT_ATOL:
+                t = set_arg(t, "init_from", None)
             out.append(("K1_%d_sw060%s" % (k, tag), t))
     return out
 
 
+def atol30_lines():
+    """Tolerance twins of the main run at 30 MHz (decision Chris 2026-10-14, option 1 with patch, PROTOKOLL 7.101): the
+    production line of K1_k (jobs/sobol_corners.txt: 7 amplitudes, 7 cycles each, virgin relaxation) with --atol 1e-6.
+    atol is an INIT_KEY (7.88), so each twin relaxes again from its seed with atol 1e-6. Only the snapshots are removed
+    (disk, no physics). Reference: the main runs K1_k (atol 1e-5, the same line)."""
+    from rerun_jobs import strip_snap
+    src = dict(job_lines("jobs/sobol_corners.txt"))
+    return [("K1_%d_L6" % k, set_arg(strip_snap(shlex.split(src["K1_%d" % k])), "atol", ["1e-06"])) for k in range(3)]
+
+
 if __name__ == "__main__":
     import sys
-    if "--atol60" in sys.argv:
-        for name, tok in atol60_lines():
+    if "--atol60" in sys.argv or "--atol30" in sys.argv:
+        for name, tok in (atol60_lines() if "--atol60" in sys.argv else atol30_lines()):
             print(name, " ".join(tok))
         sys.exit(0)
     lines = freq_lines() if "--freq" in sys.argv else (sweep_lines() if "--sweep" in sys.argv else pair_lines())

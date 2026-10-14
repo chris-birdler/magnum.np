@@ -8,12 +8,12 @@ B=/root/magnum.np/studies/beta_bpeak
 exec 3> /root/atol60_chain.lock
 flock -n 3 || { echo "$(date '+%F %T') atol60 chain already running"; exit 0; }
 [ -f /root/atol60_commit ] || { echo "$(date '+%F %T') no /root/atol60_commit: stop"; exit 1; }
-C=$(cat /root/atol60_commit)
 [ -f $B/runs/ATOL60_DONE ] && { echo "$(date '+%F %T') atol60 already done"; exit 0; }
 sleep 120                                   # at a restart the sweep/B0b chain takes its lock first
 while ! { [ -f $B/runs/conv_b0_report.md ] && flock -n /root/sweep_chain.lock true; }; do
     sleep 300                               # B0b not done or its chain still running (the lock is only tested)
 done
+C=$(cat /root/atol60_commit)               # read after the wait: a new pin needs no restart (PROTOKOLL 7.101)
 cd /root/magnum.np || exit 1
 if [ "$(git rev-parse HEAD)" != "$C" ]; then
     git fetch -q --depth 50 origin study/beta-bpeak-pinning && git checkout -q -f "$C" || {
@@ -22,6 +22,7 @@ fi
 cd $B || exit 1
 L=queue_atol60.log
 echo "$(date '+%F %T') atol60 chain start at $(git log --oneline -1)" >> $L
+rm -f runs/ATOL60_QUEUE_DONE                # an old marker must not start the atol30 chain early
 python run_queue.py jobs/atol60.txt --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 10 --gate_maxiter 0 \
     --status status_atol60.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 rc=$?; echo "$(date '+%F %T') atol60 queue exit code $rc" >> $L
