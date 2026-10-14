@@ -10,10 +10,10 @@ flock -n 3 || { echo "$(date '+%F %T') atol60 chain already running"; exit 0; }
 [ -f /root/atol60_commit ] || { echo "$(date '+%F %T') no /root/atol60_commit: stop"; exit 1; }
 C=$(cat /root/atol60_commit)
 [ -f $B/runs/ATOL60_DONE ] && { echo "$(date '+%F %T') atol60 already done"; exit 0; }
-exec 4> /root/sweep_chain.lock
-flock 4                                     # blocks until the sweep/B0b chain has ended
-flock -u 4
-sleep 30
+sleep 120                                   # at a restart the sweep/B0b chain takes its lock first
+while ! { [ -f $B/runs/conv_b0_report.md ] && flock -n /root/sweep_chain.lock true; }; do
+    sleep 300                               # B0b not done or its chain still running (the lock is only tested)
+done
 cd /root/magnum.np || exit 1
 if [ "$(git rev-parse HEAD)" != "$C" ]; then
     git fetch -q --depth 50 origin study/beta-bpeak-pinning && git checkout -q -f "$C" || {
