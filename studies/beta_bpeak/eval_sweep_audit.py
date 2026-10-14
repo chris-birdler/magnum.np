@@ -55,6 +55,21 @@ def main():
                 L.append("- anisotropy.%s: A 10 run %s, A 20 run %s" % (sk, v10[sk], v20[sk]))
         else:
             L.append("- %s: A 10 run %s, A 20 run %s" % (kk, v10, v20))
+    # loss density P = f K_d w (W/cm³, core volume) at 9 mT, steady rule as in eval_sweep (w9: raw at the reached
+    # B_peak); mean ± SD between the seeds (independent microstructures), SE = SD / √n, n seeds with a steady value
+    import math
+    import eval_sweep as SW
+    kd = 1.5 ** 2 / (2 * 4e-7 * math.pi) / 1e6                          # K_d in J/cm³
+    L += ["", "## Loss density P at 9 mT (W/cm³), steady rule as in eval_sweep", "",
+          "| particle | f (MHz) | n | mean | SD between seeds | SE | per seed |", "|---|---|---|---|---|---|---|"]
+    for a, lab in ((10, "large (A 10, d/l_ex 304)"), (20, "small (A 20, d/l_ex 216)")):
+        for f in SW.F_MHZ:
+            P = np.array([f * 1e6 * kd * SW.w9(SW.folder(a, f, k)) for k in range(3)])
+            v = P[np.isfinite(P)]
+            sdv = v.std(ddof=1) if len(v) > 1 else float("nan")
+            L.append("| %s | %.0f | %d | %.2f | %.2f (%.0f %%) | %.2f | %s |" % (
+                lab, f, len(v), v.mean(), sdv, 100 * sdv / v.mean(), sdv / math.sqrt(len(v)),
+                " / ".join("%.2f" % x if np.isfinite(x) else "no steady value" for x in P)))
     # the shift by the factor 2 in f at all B (C′ only: 15 / 30 / 60 MHz, ln w at the nominal B of eval_freq). If
     # w20(2 f) = c · w10(f), the two shifted ratios w20(30)/w10(15) and w20(60)/w10(30) are equal.
     import analyze
