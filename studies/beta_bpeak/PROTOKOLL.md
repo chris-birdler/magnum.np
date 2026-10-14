@@ -4214,6 +4214,27 @@ Audit (eval_sweep_audit.py → results/sweep9_audit.md, all 48 runs listed with 
   is 3 l_ex in both runs); through the particle size (101 against 72 cells per diameter) it is not excluded. All values
   are on the coarse mesh.
 
+### 7.96 Where the factor 2 is, and where it can come from (2026-10-14, question of Chris)
+
+- Where: on the frequency axis at 9 mT. The w(f) curve of the smaller particle ("A 20", d/l_ex 216) has its features at
+  twice the frequency of the larger one ("A 10", 304): local maximum 60 against 30 MHz, dip 85 against 42 MHz (7.92). At
+  these corresponding frequencies the smaller particle loses about 2.4 × more per cycle. The factor is not in β.
+- At larger B it does not hold (eval_sweep_audit.py, C′ with 15 / 30 / 60 MHz): for w20(2 f) = c · w10(f) the two
+  shifted ratios w20(30)/w10(15) and w20(60)/w10(30) must be equal. At 9 mT 1.92 and 2.43; at 20 … 150 mT 2.72 … 3.67
+  against 1.58 … 2.27. Thus the shift is an observation at 9 mT only.
+- Where it can come from, when only the particle size differs (estimates):
+  (i) exchange on the particle scale: a pattern that scales with d has a restoring field ∝ A / d², ratio
+  (304 / 216)² = 1.98. Size: μ0 H_ex = (2 A / M_s) (2π / λ)² gives 0.64 mT (18 MHz) for λ = 1.02 µm and 1.3 mT
+  (36 MHz) for λ = 0.72 µm. These fields are smaller than the anisotropy fields, which do not depend on d (K_eff
+  1.7 mT, stress K_p 2.5 mT). The total restoring field then changes much less than × 2. A clean factor 2 needs pattern
+  features of at most about 0.25 µm (μ0 H_ex ≥ 10 mT). Not consistent so far.
+  (ii) number of grain cells per particle (316 against about 790): the random part of the anisotropy averaged over a
+  particle is about K_eff / √N = 35 … 56 J/m³, small against K_p = 1492 J/m³. Negligible.
+  (iii) mesh: 72 against 101 cells per diameter; pinning at the mesh is not excluded, but gives no simple factor 2.
+- Conclusion: the factor 2 at 9 mT has no consistent explanation. It rests on two features of one flux density and can
+  be chance. No further interpretation until fine-mesh data exist. The patch proposal for slide 32 (factor 2 as
+  (d/l_ex)²) is withdrawn.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

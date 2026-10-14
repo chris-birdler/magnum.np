@@ -55,6 +55,21 @@ def main():
                 L.append("- anisotropy.%s: A 10 run %s, A 20 run %s" % (sk, v10[sk], v20[sk]))
         else:
             L.append("- %s: A 10 run %s, A 20 run %s" % (kk, v10, v20))
+    # the shift by the factor 2 in f at all B (C′ only: 15 / 30 / 60 MHz, ln w at the nominal B of eval_freq). If
+    # w20(2 f) = c · w10(f), the two shifted ratios w20(30)/w10(15) and w20(60)/w10(30) are equal.
+    import analyze
+    import analyze_design as AD
+    import eval_freq as EF
+    analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
+    W = EF.lnw_all()
+    L += ["", "## Shift by the factor 2 in f at all B (C′, geometric mean of 3 seeds)", "",
+          "| B (mT) | w20/w10 at 15 / 30 / 60 MHz | w20(30)/w10(15) | w20(60)/w10(30) |", "|---|---|---|---|"]
+    for i, b in enumerate(EF.AMPS):
+        g = lambda a, fr: np.array([W[(a, fr, k)][i] for k in range(3)])
+        un = [np.exp(np.mean(g(20, fr) - g(10, fr))) for fr in ("fhalf", "f", "f2")]
+        L.append("| %g | %s | %.2f | %.2f |" % (b, " / ".join("%.2f" % x for x in un),
+                                               np.exp(np.mean(g(20, "f") - g(10, "fhalf"))),
+                                               np.exp(np.mean(g(20, "f2") - g(10, "f")))))
     print("\n".join(L))
 
 
