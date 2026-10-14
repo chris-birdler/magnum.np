@@ -4167,6 +4167,26 @@ not checked for spheres; magnetostatic, so hardly dependent on A: it does not fi
 relaxation cannot give; the start-up events and the state changes of A 20 at ≥ 42 MHz (7.92) point to such processes.
 The pre-registered question of 7.89 ("damped eigen-motion") stays as written; its reading (7.91) does not change.
 
+Addition (2026-10-14, remark of Chris "so small differences of f cannot give different physics"; go for the patch):
+the GHz resonance holds for the particle as a whole (against its demagnetising field). Inside the particles, motions
+that keep the flux closure (rotation in walls and textures) feel only the anisotropy field μ0 H_K = 2 K / M_s. Their
+time scale (Kittel, γ/2π = 28 GHz/T, α 0.1; estimate):
+
+| K | μ0 H_K | f_K = γ μ0 H_K / 2π | relaxation time 1 / (α 2π f_K) |
+|---|---|---|---|
+| 1.0 kJ/m³ (K1, K_eff only) | 1.7 mT | 47 MHz | 34 ns |
+| about 2.5 kJ/m³ (K1 with K_σ 1.5 K_eff, rough sum) | 4.2 mT | 117 MHz | 14 ns |
+| 6.2 kJ/m³ (high K_eff) | 10.4 mT | 290 MHz | 5.5 ns |
+
+The drive periods are 67 / 33 / 17 ns at 15 / 30 / 60 MHz. Thus in this model the drive lies close to the internal
+time scale, and differences between 15 and 60 MHz are possible. Still open: n > 2 needs a threshold process (candidate:
+pinning at the coarse mesh, the core moves less than one cell at 9 mT; earlier analysis eval_pinning.py), and f_K does
+not depend on A at fixed K_eff (it does not explain the shift by the factor 2 of 7.92).
+Transfer (estimate): real nanocrystalline powders have a much smaller K_eff (a few J/m³ from the grains, Herzer 1990;
+up to some 100 J/m³ with stress). Their internal time scale is then of the order of 0.1 … 5 MHz, and a drive at 30 MHz
+lies above it, in another regime than in the model. The frequency results of the model may not transfer to a real
+powder.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
