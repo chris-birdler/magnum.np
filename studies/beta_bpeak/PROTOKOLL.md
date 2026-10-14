@@ -3936,11 +3936,13 @@ Request of Chris (go 2026-10-14): evaluate what the files give, then the conclus
   0.94 (A 10); at 150 mT 1.2 (A 20) and 2.1 (A 10). The loss per cycle at 9 mT of A 10 rises × 6 from 15 to 30 MHz and
   stays from 30 to 60 MHz; that of A 20 rises × 2.9 and × 7.6. Loss ratio A 10 / A 20 at 9 mT: × 1.6 / 3.1 / 0.4 at
   15 / 30 / 60 MHz.
-- Hypothesis (not tested): the loss at small B comes from a damped eigen-motion of the non-uniform zones (a resonance
-  of the vortex-like textures) with an eigen-frequency between 15 and 60 MHz at A 10 and above 60 MHz at A 20. n > 2
-  cannot come from a linear relaxation (n ≤ 2 there); it fits the steep rise below a weakly damped resonance. Then A
-  and the particle size set β at 30 MHz through the position of 30 MHz relative to this frequency. Test: a frequency
-  sweep at 9 mT (e.g. 7.5 … 240 MHz) for both A.
+- Hypothesis (not tested; wording corrected 2026-10-14, see 7.94): the loss at small B comes from a slow local motion
+  in the non-uniform zones, with a characteristic frequency far below the gyromagnetic resonance of the particles
+  (GHz). This frequency lies between 15 and 60 MHz at A 10 and above 60 MHz at A 20. Candidates (not separated): a
+  motion or relaxation of the texture that the exchange sets (rate ∝ A), or jumps above a threshold (depinning). n > 2
+  cannot come from a linear relaxation (n ≤ 2 there); it needs the threshold process. Then A and the particle size set
+  β at 30 MHz through the position of 30 MHz relative to this frequency. Test: a frequency sweep at 9 mT (e.g. 7.5 …
+  240 MHz) for both A.
 - Location against frequency: c in the 10 % with the highest g grows a little with f at small B (A 20 at 9 mT: 4.1 /
   4.7 / 5.7), and the rim share grows with f at all B.
 - Energy weight of the Bessel excess: the value of this section (from the cut plane) is not valid. See 7.90.
@@ -4115,10 +4117,11 @@ energy that the state gives away in the start-up events.
   the factor 2 in f. SD of ln w20(s f) − ln w10(f) over the common frequencies (mean curves; per seed pair):
   s 1: 0.83 (0.84 ± 0.07); s √2: 0.63 (0.65 ± 0.10); **s 2: 0.17 (0.23 ± 0.01)**; s 2√2: 0.78 (0.80 ± 0.15).
   At s 2, w20(2 f) ≈ 2.4 × w10(f) (6 frequencies, 15 … 120 MHz of A 10).
-- Hypothesis (not tested; it extends H1 of 7.87): at 9 mT the loss comes from an eigen-motion whose frequencies scale
-  with A, as an exchange-dominated motion of a texture of fixed size does (ω ∝ γ A / (M_s L²); a magnetostatic
-  gyration would hardly depend on A). Then A sets the loss at a fixed drive frequency through the position of the
-  drive relative to these frequencies.
+- Hypothesis (not tested; it extends H1 of 7.87; wording corrected 2026-10-14, see 7.94): at 9 mT the loss comes
+  from a slow local motion whose characteristic frequencies scale with A, far below the gyromagnetic resonance (GHz).
+  An exchange-dominated motion or relaxation of a texture of fixed size scales so (rate ∝ γ A / (M_s L²)); a
+  magnetostatic gyration of a vortex core would hardly depend on A. Then A sets the loss at a fixed drive frequency
+  through the position of the drive relative to these frequencies.
 - Limits: the markers are coarse (a change inside a particle that keeps its mean, such as a core shift or a chirality,
   is not seen); 3 seeds of one corner (K1), 9 mT, coarse mesh, α 0.1; the shift is tested only in steps of √2; the
   observation was found after the reading, so it needs a test fixed in advance.
@@ -4146,6 +4149,23 @@ f = 15 / 21 / 30 / 42 MHz; R_s = mean over these f.
 - Consequence: the map test cannot separate the shift hypothesis from the state changes of A 20. The w(f) shift of 7.92
   stays an observation found after the reading. A decisive test needs a prediction fixed in advance on new runs.
 - Next step: decision of Chris.
+
+### 7.94 Correction: the characteristic frequency of H1 is not a resonance of the particles (2026-10-14, remark of Chris)
+
+Remark of Chris: the resonance frequency is much larger. Check (Snoek's law, Snoek 1948): (μ − 1) f_r ≈ (2/3) (γ/2π)
+J_s, γ/2π = 28 GHz/T, J_s = 1.5 T. With the powder μ_r of the model (6.5 … 6.9): f_r ≈ 5 GHz; for a sphere at the
+demagnetisation limit (χ ≈ 3): f_r ≈ 9 GHz. The data agree: at 30 MHz μ_r is constant and the loss angle δ is about
+0.4°; near a resonance δ would be large. Thus the drive lies far below the resonance of the particles, and the features
+of w(f) at 30 … 85 MHz are not that resonance. The wording "eigen-motion below a weakly damped resonance" (7.87, 7.92,
+deck slide 32) was misleading and is corrected (go of Chris for the patch). New wording: a slow local motion in the
+non-uniform zones with a characteristic frequency far below the gyromagnetic resonance. It can carry the loss and
+change δ only a little, because 10 % of the volume carry about 74 % of the loss. Candidates (hypothesis, not tested):
+(i) gyration of a vortex core (in µm-sized elements typically 0.1 … 1 GHz, literature on discs, e.g. Guslienko 2002;
+not checked for spheres; magnetostatic, so hardly dependent on A: it does not fit the shift by the factor 2 of 7.92);
+(ii) a motion or relaxation of a texture of fixed size that the exchange sets (rate ∝ A γ / (M_s L²); fits the shift);
+(iii) jumps above a threshold (depinning): the only candidate for the local n up to 3.9 … 5.2, which a linear
+relaxation cannot give; the start-up events and the state changes of A 20 at ≥ 42 MHz (7.92) point to such processes.
+The pre-registered question of 7.89 ("damped eigen-motion") stays as written; its reading (7.91) does not change.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
