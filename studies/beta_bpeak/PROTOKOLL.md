@@ -4082,8 +4082,13 @@ review of the correction done; its points are in this section.
 | w A 10 (10⁻⁷) | 0.44 | 1.34 | 2.57 | 1.41 | 2.51 | 5.17 | 4.36 | 10.3 |
 | P(A 10) / P(A 20), paired, 90 % CI | 1.53 (0.94 … 2.49) | 3.01 (2.15 … 4.22) | 3.07 (2.24 … 4.22) | 0.39 (0.17 … 0.93) | 0.40 (0.35 … 0.46) | 1.70 (1.50 … 1.93) | 0.56 (0.45 … 0.69) | n 2 |
 
-- Pre-registered reading: **not determined**. The largest w lies at the edge (240 MHz) for both A, so the rule finds no
-  interior maximum.
+- The values at 15, 30 and 60 MHz are those of C′ (first stage, 7.89); the sweep ran 21, 42, 85, 120 and 240 MHz and
+  the two 30 MHz controls.
+- Pre-registered reading: **not determined**. The largest w lies at the edge (240 MHz) for both A. The rule as coded and
+  tested before the runs (eval_sweep.reading) counts a maximum at the edge as "no maximum found": "supports" needs an
+  interior maximum of A 10; "against" needs either both curves rising with n ≤ 2 above 60 MHz (here n up to 3.7) or
+  two interior maxima within one grid step. Open point for Chris: the wording of 7.89 ("both maxima lie within one grid
+  step") can also be read as "against" for two edge maxima at the same f. The coded reading is used here.
 - Observation, not pre-registered (3 seeds, no claim): w(f) is not monotonic. A 10 has a local maximum at 30 MHz and a
   dip at 42 MHz, A 20 a local maximum at 60 MHz and a dip at 85 MHz. Both rise again above. The local maxima lie lower
   at A 10 than at A 20, in the direction of hypothesis H1 (7.87), but the fixed rule does not support H1. The seeds of
