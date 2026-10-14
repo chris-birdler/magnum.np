@@ -3867,6 +3867,58 @@ plane holds only 2 of the 4 particles: particle 3 whole in the middle and partic
 box); checked with the ids of K1A10_2 and S041. The deck said "cut through the 4 particles": corrected on the slides
 7, 8, 11 and 15, and the claim "each particle holds a vortex" (slide 7) is removed (the cut shows 2 particles).
 
+### 7.85 B0 stopped: energy balance fails on dx 0.75; precision test (2026-10-14, decision Chris: option B)
+
+- B0 started 2026-10-13 21:31 UTC after C′. The 4 relaxations on dx 0.75 (d/l_ex 96) converged after 11 500 / 14 500 /
+  10 500 / 5 500 iterations (≈ 0.98 s per iteration, 1.5 … 3.9 h); one cycle took 1.2 … 1.3 h (as measured in 7.80).
+- The cycles were not calm: w_dis / w_loop = 2.0 / 1.9 / 2.4 (s941), 2.3 / 3.0 (s942), 1.44 / 1.05 / 1.12 (s943),
+  3.9 / 5.1 / 3.6 / 3.7 (s944). In s944 the loop is periodic (closure 1·10⁻⁵, w_loop changes by 0.3 % from cycle to
+  cycle), so the energy balance must hold; a ratio of 3.7 is a numerical error, not physics. On dx 3 and dx 1.5 the
+  calm ratio is ≈ 1. Hypotheses: float32 rounding noise (exchange field ∝ 1/dx²) or the error of the time integrator
+  (atol 1e-5) on the fine mesh.
+- With this, 3 of 4 dx 0.75 runs would reach 12 cycles without a calm tail, and the pre-registered reading would be
+  "not determined". Chris chose option B: B0 stopped 04:5x UTC (chain, queue and runs ended by PID, chain removed from
+  onstart; the outputs and the 4 relaxed dx 0.75 states are kept).
+- Precision test (jobs/prec48.txt, conv_jobs.py --prec): d/l_ex 48 (8 × fewer cells, the same dx / l_ex), base
+  microstructure, seed 951, 9 mT, exactly 5 cycles: dx 0.75 single, dx 0.75 double, dx 0.75 single with atol 1e-6,
+  dx 1.5 single. Reading (fixed now): the variant whose w_dis / w_loop stays within ± 0.2 of 1 in cycles 2 … 4 while
+  dx 0.75 single does not names the cause (float32 or the time integrator); if dx 0.75 single is calm too, the test is
+  not informative at this size; if no dx 0.75 variant is calm, the cause is elsewhere. Started 05:0x UTC.
+
+### 7.86 Frequency test C′: result (2026-10-14; analysis of PLAN 4.8, eval_freq.py → results/freq_Cprime.md)
+
+15 runs (corner K1, A 20 and A 10 pJ/m, seeds 2011 … 2013, f/2 / f / 2 f = 15 / 30 / 60 MHz, the same sample interval);
+846 MB fetched, md5 identical with the instance (runs/MANIFEST_freq_Cprime.md5). All 7 amplitudes settled (≥ 2 calm
+cycles) in all 18 run-frequency combinations (the f runs at A 10 are the pair runs K1A10_k). Checks of the method:
+energy balance in the last cycle 0.90 … 1.07 at all stages; K1_0_f1 reproduces the design run K1_0 at f (the same w);
+at 9 mT the state markers (offset of the loop, pairs above 60°) are the same at the 3 frequencies, so the frequency
+dependence there is not a different state.
+
+| A | B (mT) | w(f/2) / w(f) | w(2 f) / w(f) |
+|---|---|---|---|
+| 20 | 9 / 50 / 150 | × 0.34 / 0.34 / 0.30 | × 7.6 / 2.0 / 1.16 |
+| 10 | 9 / 50 / 150 | × 0.17 / 0.29 / 0.59 | × 0.96 / 1.9 / 2.2 |
+
+(w = loss per cycle, paired by seed, n 3; full table with 90 % CI in results/freq_Cprime.md.)
+
+- The loss per cycle grows faster than ∝ f from f/2 to f at all B (a loss ∝ f per cycle gives × 0.5). Thus w = w_h +
+  c · f does not hold, and no rate-independent part w_h can be found (w_h < 0). In this model the loss at 15 … 60 MHz
+  is a rate-dependent loss.
+- β (9 … 150 mT): A 20 2.45 / 2.45 / 1.78, A 10 2.28 / 1.81 / 2.12 at f/2 / f / 2 f. A effect on β β(A 20) − β(A 10),
+  paired: +0.16 (+0.00 … +0.32) at 15 MHz, +0.64 (+0.53 … +0.75) at 30 MHz, −0.34 (−0.39 … −0.29) at 60 MHz. The A
+  effect on β is a property of the dynamics at 30 MHz, not a static property; it changes its sign between 30 and
+  60 MHz. Answer to the question of PLAN 4.8: the A effect sits in the rate-dependent loss (a rate-independent part is
+  not measurable here).
+- Harmonics (7.72 reading rule): at 9 … 35 mT the shares move with f (e.g. A 20 at 20 mT: R1 0.92 / 0.81 / 0.68,
+  2 … 7 × f 0.04 / 0.14 / 0.27): a rate effect. At ≥ 50 mT R1 depends little on f (A 10: 0.67 / 0.54 / 0.58 at 50 mT,
+  0.48 / 0.48 / 0.46 at 150 mT): there the split is closer to a static nonlinearity.
+- Bessel check (7.83): cells with Σ_k p_k > 1.001 p: 1 / 6 / 30 % (A 20) and 3 / 20 / 31 % (A 10) at f/2 / f / 2 f.
+  Neither pre-registered case: not the same at all f (motion between the samples) and not largest at f/2 (drift
+  over a long cycle); it grows with f. The rest at 2 f and 9 mT is negative (−0.09 … −0.10). Cause open.
+- Limits: one corner (low K_eff, high stress), 3 seeds, coarse mesh dx 3 (the 9 mT point is suspect on this mesh,
+  7.78), α 0.1. Above 9 mT the states at the 3 frequencies drift apart (state markers), so part of the difference at
+  higher B can be state selection.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
