@@ -173,6 +173,62 @@ def main():
             vals.append(float(np.mean(v)) if v else float("nan"))
         res["bessel"][str(a)] = dict(zip(FREQ, vals))
         L.append("| %d | %s |" % (a, " | ".join("%.0f %%" % (100 * v) if np.isfinite(v) else "–" for v in vals)))
+    # 6. exponent of P in f: P ∝ f^n, n = 1 + d ln w / d ln f (w = loss per cycle), from f/2 → f and f → 2 f
+    L += ["", "## 6. Exponent n of the loss density in f (P ∝ f^n), paired by seed, 90 % CI", "",
+          "n = 1: the loss per cycle does not depend on f (hysteresis); n = 2: loss per cycle ∝ f (viscous).", "",
+          "| A | B (mT) | n from 15 → 30 MHz | n from 30 → 60 MHz |", "|---|---|---|---|"]
+    res["n_f"] = {}
+    for a in (20, 10):
+        for i, b in enumerate(AMPS):
+            cells, row = [], []
+            for lo, hi in (("fhalf", "f"), ("f", "f2")):
+                s = tci([1 + (W[(a, hi, k)][i] - W[(a, lo, k)][i]) / math.log(2.0) for k in SEEDS])
+                cells.append(("%.2f (%.2f … %.2f)" % (s[0], s[2], s[3])) if s else "no statement")
+                row.append([s[0], s[2], s[3]] if s else None)
+            res["n_f"]["%d|%g" % (a, b)] = row
+            L.append("| %d | %g | %s | %s |" % (a, b, *cells))
+    # 7. where the loss sits at each frequency: concentration of the total loss in the 10 % with the highest g and at
+    # the rim (acc.json "where", calm cycles), mean over the seeds
+    L += ["", "## 7. Concentration c of the total loss per zone and frequency (mean over the seeds)", "",
+          "| A | B (mT) | 10 % with the highest g: f/2 / f / 2 f | rim r ≥ 0.8 R: f/2 / f / 2 f |", "|---|---|---|---|"]
+    res["zones"] = {}
+    for a in (20, 10):
+        for b in AMPS:
+            cells = []
+            for zk in ("texture top 10%", "r>=0.8"):
+                vals = []
+                for fr in FREQ:
+                    v = []
+                    for k in SEEDS:
+                        f = folder(a, fr, k) / "acc.json"
+                        for s in json.loads(f.read_text())["stages"]:
+                            if min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1)) == b:
+                                w = s["where"][zk]
+                                v.append(w["p_share"] / w["vol_share"])
+                    vals.append(float(np.mean(v)) if v else float("nan"))
+                res["zones"]["%d|%g|%s" % (a, b, zk)] = vals
+                cells.append(" / ".join("%.1f" % x for x in vals))
+            L.append("| %d | %g | %s | %s |" % (a, b, *cells))
+    # 8. energy weight of the Bessel excess in the cut plane: Σ max(−rest, 0) / Σ p (acc_slices.npz), mean over seeds, B
+    L += ["", "## 8. Energy weight of the Bessel excess in the cut plane (negative rest / total loss), mean over seeds and B",
+          "", "| A | f/2 | f | 2 f |", "|---|---|---|---|"]
+    res["bessel_energy"] = {}
+    for a in (20, 10):
+        vals = []
+        for fr in FREQ:
+            v = []
+            for k in SEEDS:
+                z = np.load(folder(a, fr, k) / "acc_slices.npz")
+                ids = z["ids"] >= 0
+                for key in z.files:
+                    if key.endswith("_rest_rel"):
+                        st = key[:-len("_rest_rel")]
+                        rest = z[key].astype(float) * float(z[st + "_rest_mean"])
+                        pp = z[st + "_p_rel"].astype(float) * float(z[st + "_p_mean"])
+                        v.append(np.maximum(-rest[ids], 0).sum() / pp[ids].sum())
+            vals.append(float(np.mean(v)) if v else float("nan"))
+        res["bessel_energy"][str(a)] = dict(zip(FREQ, vals))
+        L.append("| %d | %s |" % (a, " | ".join("%.2f %%" % (100 * x) for x in vals)))
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "freq_Cprime.json").write_text(json.dumps(res, indent=1))
 

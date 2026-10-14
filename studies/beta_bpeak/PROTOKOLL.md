@@ -3919,6 +3919,33 @@ dependence there is not a different state.
   7.78), α 0.1. Above 9 mT the states at the 3 frequencies drift apart (state markers), so part of the difference at
   higher B can be state selection.
 
+### 7.87 Final local evaluation: frequency groups at both A, loss location at both A, frequency exponent (2026-10-14)
+
+Request of Chris (go 2026-10-14): evaluate what the files give, then the conclusion "what sets β". Scripts: eval_pair.py
+(section 5 with A 20 from the C′ runs K1_k_f1), eval_channel_maps.py (both A), eval_freq.py (sections 6 … 8).
+
+- Frequency groups at f, A 10 − A 20 paired by seed (n 3, 90 % CI): at 100 / 150 mT the share at f is higher at A 10
+  (+0.10 / +0.11, intervals exclude 0) and the rest is lower (−0.11 / −0.15). At 9 … 50 mT no clear difference. Thus at
+  large B the higher A loses more in fast or irregular motion. Rest share at 150 mT: 0.40 (A 20), 0.26 (A 10).
+- Location (concentration c of the total loss, 3 seeds): in the 10 % with the highest non-uniformity g, c = 4.7 / 6.3
+  / 4.9 at A 20 and 6.4 / 7.1 / 5.9 at A 10 (9 / 50 / 150 mT): the loss is somewhat more concentrated at A 10, most at
+  small B. Rim and centre: the same trend with B at both A (centre 3.1 → 1.5 and 2.7 → 1.4, rim 0.45 → 1.04 and
+  0.54 → 1.02).
+- Exponent of P in f (P ∝ f^n; n = 1: loss per cycle independent of f, n = 2: loss per cycle ∝ f), paired, n 3:
+  from 15 to 30 MHz n = 2.5 … 3.1 (A 20) and 1.75 … 3.6 (A 10) over B; from 30 to 60 MHz at 9 mT n = 3.9 (A 20) but
+  0.94 (A 10); at 150 mT 1.2 (A 20) and 2.1 (A 10). The loss per cycle at 9 mT of A 10 rises × 6 from 15 to 30 MHz and
+  stays from 30 to 60 MHz; that of A 20 rises × 2.9 and × 7.6. Loss ratio A 10 / A 20 at 9 mT: × 1.6 / 3.1 / 0.4 at
+  15 / 30 / 60 MHz.
+- Hypothesis (not tested): the loss at small B comes from a damped eigen-motion of the non-uniform zones (a resonance
+  of the vortex-like textures) with an eigen-frequency between 15 and 60 MHz at A 10 and above 60 MHz at A 20. n > 2
+  cannot come from a linear relaxation (n ≤ 2 there); it fits the steep rise below a weakly damped resonance. Then A
+  and the particle size set β at 30 MHz through the position of 30 MHz relative to this frequency. Test: a frequency
+  sweep at 9 mT (e.g. 7.5 … 240 MHz) for both A.
+- Location against frequency: c in the 10 % with the highest g grows a little with f at small B (A 20 at 9 mT: 4.1 /
+  4.7 / 5.7), and the rim share grows with f at all B.
+- Bessel excess, energy weight in the cut plane: 0.05 / 0.05 / 0.62 % (A 20) and 0.06 / 0.21 / 0.30 % (A 10) of the
+  loss at f/2 / f / 2 f: negligible for the shares.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

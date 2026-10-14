@@ -249,6 +249,13 @@ def main():
     # 4. channels
     ch = {a: {k: channels(a, k) for k in SEEDS} for a in (20, 10)}
     res["jump"] = {str(a): {"%g" % b: [ch[a][k][b][2] for k in SEEDS] for b in AMPS} for a in (20, 10)}
+    jf1 = {}                                       # jump share of the A 20 runs with the protocol of K1A10 (C′, at f)
+    for k in SEEDS:
+        d = R / ("K1_%d_f1" % k)
+        if (d / "DONE").exists():
+            for i, m in enumerate(EJ.run_measures(d, len(AMPS))):
+                jf1.setdefault("%g" % AMPS[i], []).append(m["RF"] / 2 if (m is not None and m["steady"]) else float("nan"))
+    res["jump20f1"] = jf1
     L += ["", "## Loss channels and location (mean over the seeds with a value, n in brackets)", "",
           "| B (mT) | R1 A 20 | R1 A 10 | top-10 % share A 20 | top-10 % share A 10 | jump share A 20 | jump share A 10 |",
           "|---|---|---|---|---|---|---|"]
@@ -301,6 +308,30 @@ def main():
             L.append("| %g | %d | %.2f ± %.2f | %.3f ± %.3f | %.3f ± %.3f | %.3f ± %.3f | %.2f ± %.2f | %.2f / %.2f / %.2f | "
                      "%.2f / %.2f / %.2f | %.0f %% |" % (b, len(x), m[0], sd[0], m[1], sd[1], m[2], sd[2], m[3], sd[3],
                                                      m[4], sd[4], m[5], m[6], m[7], m[8], m[9], m[10], 100 * m[11]))
+        L.append("")
+    # paired difference A 10 − A 20 of the frequency groups (both protocols: K1A10_k against K1_k_f1)
+    pg = {a: {k: {} for k in SEEDS} for a in (20, 10)}
+    for a, pat in ((10, "K1A10_%d"), (20, "K1_%d_f1")):
+        for k in SEEDS:
+            f = R / (pat % k) / "acc.json"
+            if (R / (pat % k) / "DONE").exists() and f.exists():
+                for s in json.loads(f.read_text())["stages"]:
+                    if "harm" in s:
+                        h = s["harm"]
+                        pg[a][k][min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1))] = [
+                            h["R_k"][0], sum(h["R_k"][1:]), h["R_rest"]]
+    if all(pg[20][k] for k in SEEDS):
+        L += ["Paired difference A 10 − A 20 (per seed, 90 % CI with t, n 3):", "",
+              "| B (mT) | f | 2 … 7 f | rest |", "|---|---|---|---|"]
+        res["harm_diff"] = {}
+        for b in AMPS:
+            cells, row = [], []
+            for j in range(3):
+                s = tci([pg[10][k][b][j] - pg[20][k][b][j] for k in SEEDS if b in pg[10][k] and b in pg[20][k]])
+                cells.append(("%+.2f (%+.2f … %+.2f)" % (s[0], s[2], s[3])) if s else "–")
+                row.append([s[0], s[2], s[3]] if s else None)
+            res["harm_diff"]["%g" % b] = row
+            L.append("| %g | %s |" % (b, " | ".join(cells)))
         L.append("")
     L += ["Rest: motion above 7 f or motion that does not repeat from cycle to cycle. A zone share of the rest can exceed "
           "1 where the rest is small, because cells with a Bessel excess have a negative rest. The 4 … 7 f shares are "

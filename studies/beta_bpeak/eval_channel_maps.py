@@ -22,6 +22,7 @@ R = pathlib.Path(__file__).resolve().parent / "runs"
 RES = pathlib.Path(__file__).resolve().parent / "results"
 AMPS = [9, 20, 35, 50, 70, 100, 150]
 RUNS = ["K1A10_%d" % k for k in range(3)]
+RUNS20 = ["K1_%d_f1" % k for k in range(3)]       # A 20 pJ/m with the same protocol (C′ runs at f), added 2026-10-14
 ZONES = (("r<0.5", "centre r < 0.5 R"), ("0.5<=r<0.8", "middle"), ("r>=0.8", "rim r ≥ 0.8 R"),
          ("texture top 10%", "texture top 10 %"), ("p top 10%", "p top 10 %"))
 CH = (("p_share", "total"), ("p_fund_share", "f"), ("p_harm_share", "2 … 7 f"), ("p_rest_share", "rest"))
@@ -74,6 +75,27 @@ def main():
     seed = map_seed()
     L.append("Maps: %s (the seed with the median A lever of the pair)." % RUNS[seed])
     res["map_run"] = RUNS[seed]
+    res["map_run20"] = RUNS20[seed]
+    # A 20 against A 10: concentration of the total loss and of each group per zone (both protocols at f)
+    S20 = {run: stages(run) for run in RUNS20 if (R / run / "acc.json").exists()}
+    if len(S20) == 3:
+        L.append("")
+        L += ["## A 20 pJ/m (K1_k_f1) against A 10 pJ/m (K1A10_k): concentration c, mean ± SD over 3 seeds", "",
+              "| zone | B (mT) | total A 20 / A 10 | f A 20 / A 10 | 2 … 7 f A 20 / A 10 | rest A 20 / A 10 |",
+              "|---|---|---|---|---|---|"]
+        res["zones20"] = {}
+        for zk, zl in ZONES:
+            res["zones20"][zk] = {}
+            for b in AMPS:
+                cells = []
+                for ck, _ in CH:
+                    v20 = np.array([S20[r][b]["where"][zk][ck] / S20[r][b]["where"][zk]["vol_share"] for r in RUNS20])
+                    v10 = np.array([S[r][b]["where"][zk][ck] / S[r][b]["where"][zk]["vol_share"] for r in RUNS])
+                    res["zones20"][zk].setdefault(ck, []).append([float(v20.mean()), float(v20.std(ddof=1))])
+                    cells.append("%.2f / %.2f" % (v20.mean(), v10.mean()))
+                if b in (9, 50, 150):
+                    L.append("| %s | %g | %s |" % (zl, b, " | ".join(cells)))
+        print("\n".join(L[-(3 + 3 * len(ZONES)):]))
     (RES / "channel_maps_K1A10.json").write_text(json.dumps(res, indent=1))
     print("\n".join(L))
     plot(RUNS[seed], S[RUNS[seed]])
