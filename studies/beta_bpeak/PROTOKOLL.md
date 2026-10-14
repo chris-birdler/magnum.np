@@ -19,7 +19,10 @@ test), 7.66 and audit_20261012/REPORT.md (independent audit), 7.63 / 7.64
 (voids included); P = f · K_d · w = loss density in W/cm³ per core volume
 at f = 30 MHz. L_eff = edge of the
 Herzer cell (random-anisotropy cell), K_eff = K_d (l_ex / L_eff)². K_σ =
-r_p · K_eff = stress anisotropy per particle. Range effect = change of an
+r_p · K_eff = stress anisotropy per particle. Simulation model = the micromagnetic computation (LLG with exchange,
+demagnetisation, Herzer and stress anisotropy, drive field; T = 0; periodic box of 4 spheres). Main fit = the statistical
+fit (Gamma GLM) of P over the design parameters of all α 0.1 design runs (before 2026-10-14 also called "design
+model"). Range effect = change of an
 output from the low to the high end of one factor, the other factors
 averaged over the design points. Lever = a range effect that is significant
 after the Holm correction over the 8 main tests (5 %). Event cycle: w_loop ≤
@@ -3729,7 +3732,7 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
 `eval_pair.py` were written before the K1A10 values were read. Result: results/pair_K1A10.md. A lever = β(A 20) −
 β(A 10), paired by seed, n 3, 90 % CI with t; all 7 amplitudes settled (≥ 2 calm cycles) in all 6 runs.
 
-| quantity | measured (pair) | design model at the same factors (90 % bootstrap interval) |
+| quantity | measured (pair) | main fit at the same factors (90 % bootstrap interval) |
 |---|---|---|
 | A lever on β, 9 … 150 mT | +0.64 (+0.53 … +0.76; per seed +0.56 / +0.70 / +0.67) | +0.92 (+0.82 … +1.04) |
 | A lever on β, 20 … 150 mT | +0.65 (+0.42 … +0.87) | +1.00 (+0.86 … +1.14) |
@@ -3741,7 +3744,7 @@ identical with the instance, runs/MANIFEST_pair_K1A10.md5). PLAN 4.8 fixed no an
 - Correction 2026-10-13 (review): the intervals of the A lever are now per seed (t with 2 degrees of freedom). The
   first version used a model with one offset per seed on all 21 values; it treats the amplitudes as independent and
   gave +0.55 … +0.74. eval_pair.py keeps it as a second column.
-- The design model over-predicts the A lever at this corner by ≈ 0.3 (the intervals do not overlap). The difference
+- The main fit over-predicts the A lever at this corner by ≈ 0.3 (the intervals do not overlap). The difference
   comes from small B: at 9 and 20 mT the model predicts about twice the measured loss ratio; at 50 … 150 mT the
   model and the pair agree within the intervals. The coded ln d/l_ex of the pair is −0.89 / +1.07 (A 10 is 0.07 coded
   units outside the design range).
@@ -3786,13 +3789,13 @@ Design model (116 α 0.1 runs, Gamma GLM, 90 % bootstrap interval) and the pair 
 | 100 | −1.31 (−1.72 … −0.81) | −0.49 (−0.82 … −0.08) | +0.34 (−0.40 … +1.12) | −1.62 (−2.11 … −1.13) |
 | 150 | −1.95 (−2.34 … −1.56) | −0.76 (−1.03 … −0.49) | +0.42 (−0.02 … +0.86) | −1.95 (−2.02 … −1.89) |
 
-- At 150 mT and low K_eff: s = −2 in the design model and in the pair (P ∝ A). At high K_eff: s = 0 (no A
+- At 150 mT and low K_eff: s = −2 in the main fit and in the pair (P ∝ A). At high K_eff: s = 0 (no A
   dependence). L_eff 19 (coded ln Q 0, the middle K_eff level of the deck) lies between: −0.76, the interval contains
   −1 (walls) and excludes 0.
 - At 9 mT s = +1 … +5: a smaller A raises the loss strongly, most at low K_eff. This is not an energy scale; it is a
   change of the state or of its mobility (not resolved here).
 - The A lever on β follows from the two ends: [s(150) − s(9)] · ln(300/212) / ln(150/9) = +0.88 / +0.49 / +0.10 at
-  L_eff 30 / 19 / 12 (design model; the direct A levers of the audit 7.66 at L_eff 30 / 18 / 12: +0.96 / +0.51 / +0.15)
+  L_eff 30 / 19 / 12 (main fit; the direct A levers of the audit 7.66 at L_eff 30 / 18 / 12: +0.96 / +0.51 / +0.15)
   and +0.64 for the
   pair. Thus the A lever is the sum of two parts: more loss at small B and (at low K_eff) less loss at large B when A
   falls.
@@ -3850,7 +3853,7 @@ descriptive). Concentration = share of the channel in a zone / volume share of t
 **Model against direct tests** (`eval_model_points.py` → results/model_points.md; coarse mesh; A effect = β(A 20) −
 β(A 10) at d = 1 µm, fit over 9 / 50 / 100 mT, 90 % intervals):
 
-| point | measured | design model at the same factors |
+| point | measured | main fit at the same factors |
 |---|---|---|
 | corner K1 (K_eff 1.0 kJ/m³, K_σ 1.5 K_eff, φ 0.62), pair, n 3 paired | +0.67 (+0.61 … +0.73) | +0.91 (+0.78 … +1.03) |
 | base point (K_eff 6.2 kJ/m³, no stress, φ 0.65), M212 / M300, n 4 + 4 (Welch) | +0.65 (+0.40 … +0.91) | +0.37 (+0.14 … +0.58) |
@@ -4156,7 +4159,7 @@ f = 15 / 21 / 30 / 42 MHz; R_s = mean over these f.
 ### 7.94 Correction: the characteristic frequency of H1 is not a resonance of the particles (2026-10-14, remark of Chris)
 
 Remark of Chris: the resonance frequency is much larger. Check (Snoek's law, Snoek 1948): (μ − 1) f_r ≈ (2/3) (γ/2π)
-J_s, γ/2π = 28 GHz/T, J_s = 1.5 T. With the powder μ_r of the model (6.5 … 6.9): f_r ≈ 5 GHz; for a sphere at the
+J_s, γ/2π = 28 GHz/T, J_s = 1.5 T. With the powder μ_r of the simulation (6.5 … 6.9): f_r ≈ 5 GHz; for a sphere at the
 demagnetisation limit (χ ≈ 3): f_r ≈ 9 GHz. The data agree: at 30 MHz μ_r is constant and the loss angle δ is about
 0.4°; near a resonance δ would be large. Thus the drive lies far below the resonance of the particles, and the features
 of w(f) at 30 … 85 MHz are not that resonance. The wording "eigen-motion below a weakly damped resonance" (7.87, 7.92,
@@ -4181,13 +4184,13 @@ time scale (Kittel, γ/2π = 28 GHz/T, α 0.1; estimate):
 | about 2.5 kJ/m³ (K1 with K_σ 1.5 K_eff, rough sum) | 4.2 mT | 117 MHz | 14 ns |
 | 6.2 kJ/m³ (high K_eff) | 10.4 mT | 290 MHz | 5.5 ns |
 
-The drive periods are 67 / 33 / 17 ns at 15 / 30 / 60 MHz. Thus in this model the drive lies close to the internal
+The drive periods are 67 / 33 / 17 ns at 15 / 30 / 60 MHz. Thus in this simulation the drive lies close to the internal
 time scale, and differences between 15 and 60 MHz are possible. Still open: n > 2 needs a threshold process (candidate:
 pinning at the coarse mesh, the core moves less than one cell at 9 mT; earlier analysis eval_pinning.py), and f_K does
 not depend on A at fixed K_eff (it does not explain the shift by the factor 2 of 7.92).
 Transfer (estimate): real nanocrystalline powders have a much smaller K_eff (a few J/m³ from the grains, Herzer 1990;
 up to some 100 J/m³ with stress). Their internal time scale is then of the order of 0.1 … 5 MHz, and a drive at 30 MHz
-lies above it, in another regime than in the model. The frequency results of the model may not transfer to a real
+lies above it, in another regime than in the simulation. The frequency results of the simulation may not transfer to a real
 powder.
 
 ### 7.95 Frequency data at 9 mT: what was computed, and how accurate (2026-10-14, question of Chris)
@@ -4263,21 +4266,41 @@ seeds (3 independent microstructures), n seeds with a steady value.
   smaller here: (i) the seeds differ only in the random axes and offsets of the grain cells (about 790 per particle,
   so the random part averages out strongly) and in the random start state before the relaxation. The particle
   positions (fcc), the packing, the particle size and shape and the stress axes (37° and 79°) are the same for all
-  seeds. Thus the model's seed scatter is only a part of the variation of a real powder. (ii) n 3 cannot show a small
+  seeds. Thus the seed scatter of the simulation is only a part of the variation of a real powder. (ii) n 3 cannot show a small
   scatter: the true SD can be up to 4.4 × the sample SD (90 % bound, χ² with 2 degrees of freedom). The centre point
   of the design (n 8, the same rules) has an SD of ln P of 0.16 … 0.32 over B, max/min up to 2.25; the corner groups
   (n 3) 0.03 … 0.40. The SD of 5 … 7 % of the large particle at 30 … 60 MHz is likely too small.
 - Consequence: comparisons across frequency are paired (same seed), so most of the microstructure scatter cancels.
   Error bars of absolute values and of comparisons between different microstructures must use the larger scatter of
-  the centre group, and they still miss the variation that the model does not contain (packing, size, shape, random
+  the centre group, and they still miss the variation that the simulation model does not contain (packing, size, shape, random
   stress axes).
 - Verdict (question of Chris "noise or effect?"): (a) the dips and the factor-2 shift: not shown. Their size
   (13 … 38 % per seed) is about the uncertainty of the method (cycle choice up to 20 %); "all 3 seeds fall" has a
   probability of 1/8 = 0.125 without any effect (sign test); the t-interval rests on an SD from 3 values. Treat them as
-  noise of the method until the fine mesh shows them. (b) Effects in the model, far larger than every uncertainty:
+  noise of the method until the fine mesh shows them. (b) Effects in the simulation, far larger than every uncertainty:
   P rises × 9.7 … 15 (large particle) and × 5.3 … 6.5 (small particle) per seed from 15 to 30 MHz at 9 mT; the loss
   ratio of the two particle sizes turns from × 3.07 (2.24 … 4.22) at 30 MHz to × 0.40 (0.35 … 0.46) at 60 MHz. All on
   the coarse mesh, where 9 mT has the largest mesh error: whether they are physical stays open (B0b, fine mesh).
+
+### 7.98 Why the A effect on β changes its sign with f (2026-10-14, question of Chris)
+
+- Data: C′ = 18 runs (2 particle sizes × 3 frequencies × 3 seeds). Each run passes the 7 amplitudes (9 → 150 mT) one
+  after the other, and each stage starts from the end state of the stage before. Thus 126 stage values, but per
+  particle size and frequency only 3 independent values (the seeds); β is one value per run. The sweep (7.91) ran
+  only 9 mT and gives no β.
+- Split of the A effect on β into its two ends (eval_freq.py section 10): β(A 20) − β(A 10) ≈ [ln r(9 mT) −
+  ln r(150 mT)] / ln(150/9), r = P(A 10) / P(A 20), paired by seed (n 3).
+
+| f | r at 9 mT | r at 150 mT | from the 9 mT end | from the 150 mT end | sum | fitted (90 % CI) |
+|---|---|---|---|---|---|---|
+| 15 MHz | 1.52 | 1.03 | +0.15 | −0.01 | +0.14 | +0.16 (+0.00 … +0.32) |
+| 30 MHz | 3.11 | 0.51 | +0.40 | +0.24 | +0.64 | +0.64 (+0.53 … +0.75) |
+| 60 MHz | 0.39 | 0.96 | −0.33 | +0.02 | −0.32 | −0.34 (−0.39 … −0.29) |
+
+- Reading: the sign change comes from the 9 mT end (r 3.11 → 0.39), and at 60 MHz the 150 mT contribution also
+  vanishes (r 0.51 → 0.96). At 30 MHz about 60 % of the A effect on β comes from the 9 mT end, the point with the
+  largest mesh error. Both ends show an A effect only at 30 MHz (at 15 and 60 MHz r at 150 mT is about 1). Thus the
+  A lever on β of the study rests on two features that are specific to 30 MHz in this simulation.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

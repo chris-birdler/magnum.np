@@ -316,6 +316,20 @@ def main():
           "|---|---|---|---|---|---|---|---|"]
     L += ["| %d | %s | %d | %+.3f … %+.3f | %.4f | %+.3f | %+.3f | %+.3f |" % x for x in det]
     res["balance_9mT"] = det
+    # 10. the A effect on β from its two ends (question of Chris 2026-10-14): β(A 20) − β(A 10) ≈ [ln r(9) − ln r(150)] /
+    # ln(150/9), r = P(A 10) / P(A 20) of section 5b; compared with the fitted A effect of section 3
+    L += ["", "## 10. A effect on β from the two ends (9 and 150 mT), r = P(A 10) / P(A 20)", "",
+          "| f | r at 9 mT | r at 150 mT | from the 9 mT end | from the 150 mT end | sum | fitted (90 % CI) |",
+          "|---|---|---|---|---|---|---|"]
+    res["A_effect_ends"] = {}
+    lb = math.log(AMPS[-1] / AMPS[0])
+    for j, fr in enumerate(FREQ):
+        r9, r150 = res["A_ratio"]["%g" % AMPS[0]][j][0], res["A_ratio"]["%g" % AMPS[-1]][j][0]
+        e9, e150 = math.log(r9) / lb, -math.log(r150) / lb
+        fit = res["A_effect"][fr]
+        res["A_effect_ends"][fr] = {"r9": r9, "r150": r150, "end9": e9, "end150": e150}
+        L.append("| %s | %.2f | %.2f | %+.2f | %+.2f | %+.2f | %+.2f (%+.2f … %+.2f) |" % (
+            FLAB[fr], r9, r150, e9, e150, e9 + e150, fit[0], fit[2], fit[3]))
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "freq_Cprime.json").write_text(json.dumps(res, indent=1))
 
