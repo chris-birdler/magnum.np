@@ -4096,6 +4096,34 @@ review of the correction done; its points are in this section.
   state at each frequency): not checked.
 - Next step: decision of Chris.
 
+### 7.92 Sweep at 9 mT: is the steady state the same at all frequencies? (2026-10-14, option 1 of Chris)
+
+Local check, no GPU (eval_sweep_state.py → results/sweep9_state.md / .json). 48 runs: corner K1, A 20 and A 10, seeds
+0 … 2, 8 frequencies, all from the same relaxed start state of the seed. Markers per run (mean over the kept cycles):
+the mean of M along the field in each of the 4 particles (Mp0 … Mp3), the box mean ⟨M⟩, n60 (pairs above 60°); and the
+energy that the state gives away in the start-up events.
+
+- Reading fixed before the markers were looked at (docstring): two runs are in the same state if every marker differs
+  by at most 3 × the larger cycle-to-cycle spread + a floor. Result: **same state** at both dips. A 10 at 42 MHz: same
+  state as a neighbour frequency in 3 of 3 seeds, A 20 at 85 MHz in 2 of 3. Thus the dips of w(f) do not come from
+  another steady state (as far as these markers see). All 3 seeds show the dips (A 10, 42 MHz: w 1.41 … 1.50 · 10⁻⁷
+  against 2.43 … 2.69 at 30 MHz and 2.36 … 2.62 at 60 MHz; A 20, 85 MHz: 2.36 … 3.60 against 5.38 … 6.80 at 60 MHz).
+- Added after the reading, against the 30 MHz state of the same seed: clear differences (ratio ≥ 2) in 3 of 42 runs,
+  all at A 20 (seed 2 at 42 and 85 MHz, seed 0 at 120 MHz). A 20 gives away more energy in the start-up at ≥ 42 MHz
+  (up to 66 · 10⁻⁷ in w units) than at ≤ 30 MHz (≤ 0.5 · 10⁻⁷). A 10: no ratio above 1.6.
+- Added after the reading (observation, not pre-registered): w(f) of A 20 has the shape of the A 10 curve shifted by
+  the factor 2 in f. SD of ln w20(s f) − ln w10(f) over the common frequencies (mean curves; per seed pair):
+  s 1: 0.83 (0.84 ± 0.07); s √2: 0.63 (0.65 ± 0.10); **s 2: 0.17 (0.23 ± 0.01)**; s 2√2: 0.78 (0.80 ± 0.15).
+  At s 2, w20(2 f) ≈ 2.4 × w10(f) (6 frequencies, 15 … 120 MHz of A 10).
+- Hypothesis (not tested; it extends H1 of 7.87): at 9 mT the loss comes from an eigen-motion whose frequencies scale
+  with A, as an exchange-dominated motion of a texture of fixed size does (ω ∝ γ A / (M_s L²); a magnetostatic
+  gyration would hardly depend on A). Then A sets the loss at a fixed drive frequency through the position of the
+  drive relative to these frequencies.
+- Limits: the markers are coarse (a change inside a particle that keeps its mean, such as a core shift or a chirality,
+  is not seen); 3 seeds of one corner (K1), 9 mT, coarse mesh, α 0.1; the shift is tested only in steps of √2; the
+  observation was found after the reading, so it needs a test fixed in advance.
+- Next step: decision of Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
