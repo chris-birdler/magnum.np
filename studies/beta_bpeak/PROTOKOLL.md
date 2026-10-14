@@ -3901,9 +3901,9 @@ dependence there is not a different state.
 
 (w = loss per cycle, paired by seed, n 3; full table with 90 % CI in results/freq_Cprime.md.)
 
-- The loss per cycle grows faster than ∝ f from f/2 to f at all B (a loss ∝ f per cycle gives × 0.5). Thus w = w_h +
-  c · f does not hold, and no rate-independent part w_h can be found (w_h < 0). In this model the loss at 15 … 60 MHz
-  is a rate-dependent loss.
+- The loss per cycle grows faster than ∝ f from f/2 to f at all B except A 10 at 100 … 150 mT (correction 7.88:
+  there n = 2.07 and 1.75 (1.57 … 1.93) in P ∝ f^n). Thus w = w_h + c · f does not hold in general. In this model the
+  loss at 15 … 60 MHz is a rate-dependent loss.
 - β (9 … 150 mT): A 20 2.45 / 2.45 / 1.78, A 10 2.28 / 1.81 / 2.12 at f/2 / f / 2 f. A effect on β β(A 20) − β(A 10),
   paired: +0.16 (+0.00 … +0.32) at 15 MHz, +0.64 (+0.53 … +0.75) at 30 MHz, −0.34 (−0.39 … −0.29) at 60 MHz. The A
   effect on β is a property of the dynamics at 30 MHz, not a static property; it changes its sign between 30 and
@@ -3945,6 +3945,35 @@ Request of Chris (go 2026-10-14): evaluate what the files give, then the conclus
   4.7 / 5.7), and the rim share grows with f at all B.
 - Bessel excess, energy weight in the cut plane: 0.05 / 0.05 / 0.62 % (A 20) and 0.06 / 0.21 / 0.30 % (A 10) of the
   loss at f/2 / f / 2 f: negligible for the shares.
+
+### 7.88 Precision test result; third context-free review of the deck (2026-10-14)
+
+**Precision test (7.85)**, d/l_ex 48, base microstructure, 9 mT, dx 0.75, cycles 1 … 4 (cycle 0 = transient):
+
+| run | w_dis / w_loop | w_loop (cycles 1 / 2 / 3) | wall per cycle |
+|---|---|---|---|
+| single, atol 1e-5 | 1.96 … 1.99 | 8.320 / 8.439 / 8.443 ·10⁻⁷ | 730 … 755 s |
+| double, atol 1e-5 | 2.49 … 2.51 | 8.319 / 8.438 ·10⁻⁷ | 1240 s |
+| single, atol 1e-6 | 1.01 … 1.02 | 8.320 / 8.439 / 8.443 ·10⁻⁷ | 842 … 878 s |
+| dx 1.5 single, atol 1e-5 (reference) | 1.25 … 1.26 | – | 219 s |
+
+- Reading (fixed in 7.85): the variant with atol 1e-6 is calm while single at atol 1e-5 is not: the cause is the
+  error of the time integrator, not float32 (double precision does not help, it is even worse). The step count is
+  almost the same (≈ 59 000 per cycle); the cost of atol 1e-6 is + 14 … 16 % wall time.
+- w_loop (the loss value of the study) is the same to 4 digits in all three variants: only the dissipation integral
+  w_dis, and thus the calm check, is wrong at atol 1e-5 on fine meshes. The loss values of B0 and of the mesh checks
+  are not affected; the steady rule is. On dx 1.5 the excess is already + 26 % at this size (the dx 1.5 mesh checks at
+  d/l_ex 212 / 300 passed the rule).
+- Consequence: a B0 rerun needs --atol 1e-6 (atol is an INIT_KEY: the dx 0.75 relaxations must run again).
+
+**Third review of the deck** (35 slides; one agent): fixed: "established" holds on the coarse mesh only; the claim
+"w grows faster than ∝ f at all B" (see the correction above); the hypothesis "at large B the loss follows the
+exchange energy" is rejected, because P(A 10) / P(A 20) at 150 mT is × 0.51 (0.49 … 0.54) at 30 MHz but × 1.03
+(0.75 … 1.40) at 15 MHz and × 0.96 (0.81 … 1.13) at 60 MHz (eval_freq.py section 5b; 100 mT: × 0.93 / 0.57 / 1.11):
+a static energy scale cannot give this. Further: open points completed (no fine-mesh check at K1; the 9 mT point;
+K_eff and stress; α; state drift in the frequency test), "vortex-like" replaced by "non-uniform zones", any linear
+relaxation gives n ≤ 2, the prediction f₀(A 20) > f₀(A 10) named as the test of the eigen-motion hypothesis, n,
+intervals and fit ranges added, the K_eff sign change marked as a model result, terms and status lines unified.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

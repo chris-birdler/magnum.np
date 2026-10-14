@@ -173,6 +173,18 @@ def main():
             vals.append(float(np.mean(v)) if v else float("nan"))
         res["bessel"][str(a)] = dict(zip(FREQ, vals))
         L.append("| %d | %s |" % (a, " | ".join("%.0f %%" % (100 * v) if np.isfinite(v) else "–" for v in vals)))
+    # 5b. A effect on ln P at each frequency: P(A 10) / P(A 20), paired by seed (added 2026-10-14 after the review)
+    L += ["", "## 5b. Loss ratio P(A 10) / P(A 20) at each frequency, paired by seed, 90 % CI", "",
+          "| B (mT) | 15 MHz | 30 MHz | 60 MHz |", "|---|---|---|---|"]
+    res["A_ratio"] = {}
+    for i, b in enumerate(AMPS):
+        cells, row = [], []
+        for fr in FREQ:
+            s = tci([W[(10, fr, k)][i] - W[(20, fr, k)][i] for k in SEEDS])
+            cells.append(("× %.2f (%.2f … %.2f)" % (math.exp(s[0]), math.exp(s[2]), math.exp(s[3]))) if s else "–")
+            row.append([math.exp(s[0]), math.exp(s[2]), math.exp(s[3])] if s else None)
+        res["A_ratio"]["%g" % b] = row
+        L.append("| %g | %s |" % (b, " | ".join(cells)))
     # 6. exponent of P in f: P ∝ f^n, n = 1 + d ln w / d ln f (w = loss per cycle), from f/2 → f and f → 2 f
     L += ["", "## 6. Exponent n of the loss density in f (P ∝ f^n), paired by seed, 90 % CI", "",
           "n = 1: the loss per cycle does not depend on f (hysteresis); n = 2: loss per cycle ∝ f (viscous).", "",
