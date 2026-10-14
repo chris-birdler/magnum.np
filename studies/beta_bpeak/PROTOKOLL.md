@@ -4011,9 +4011,26 @@ review of the correction done; its points are in this section.
   +0.117), rest 0.19 (mean), 0.26 at 35 … 150 mT.
   - At 20 … 150 mT (108 stages): ε ≤ +0.085, correlation of ε and rest −0.25. The rest there is not an excess of p̄.
   - At 9 mT (18 stages): correlation +0.55. At 15 MHz ε and rest are equal in 5 of 6 runs (ε +0.047 … +0.117, rest
-    +0.048 … +0.105; 6th run ε +0.031, rest +0.104). There the rest is mostly an excess of p̄, not motion. Cause
-    (integrator error at atol 1e-5, as in 7.88, or a drift of the state) not tested. At 30 MHz ε and rest are both
-    ≤ 0.03.
+    +0.048 … +0.105; 6th run ε +0.031, rest +0.104). At 30 MHz ε and rest are both ≤ 0.03.
+  - Cause check (go of Chris; eval_freq.py section 9, local, no GPU). Rest without ε = R_rest (1 + ε) − ε (the rest
+    relative to w_loop when the excess sits in the rest). At 15 MHz and 9 mT: −0.002 … +0.004 in 5 of 6 runs (6th
+    +0.076). In these 5 runs the loop closes (|ΔM| / M_peak ≤ 0.0001) and ε is the same in each kept cycle (spread
+    ≤ 0.02 over 3 … 5 cycles): the state is periodic. A periodic state with ε > 0 breaks the energy balance (exact
+    dynamics give w_dis = w_loop over a closed cycle). Thus ε there is an error of the computed trajectory or of the
+    sampled integral, not a loss, and not a drift of the state (a drift would not close the loop and would change ε
+    from cycle to cycle). Established for these 5 stages; which numerical part (integrator tolerance atol 1e-5, as in
+    7.88, or the sampling of p at 1024 points per cycle) is not separated. Excess power (W_dis − W_loop) f: 0.02 …
+    0.04 W/cm³ at 15 MHz; at 30 MHz 0.003 … 0.045 W/cm³ in the 3 runs with a steady ε (A 20). A source with about
+    the same power per time (time step 5.9 ps at all f) gives a large ε where the loss per cycle is small: 9 mT,
+    15 MHz.
+  - Effect on the reported values: the loss values (w_loop) are not affected. The rest at 9 mT and 15 MHz is ≈ 0 after
+    the correction. At 20 … 150 mT the correction changes the mean rest by ≤ 0.026 (A 10, 30 MHz, 35 mT: 0.200 →
+    0.174); at 50 … 150 mT and 30 MHz by ≤ 0.009. The deck values (rest at 30 MHz, 50 … 150 mT; the 9 mT rest is not
+    used) do not change; no slide change.
+  - At 60 MHz and 9 mT the state is less periodic: ε changes from cycle to cycle by up to 0.3 (A 20) and the loop
+    closes less well (|ΔM| / M_peak 0.0004 … 0.0067, against ≤ 0.0006 at 15 and 30 MHz). This fits mechanism (ii) as
+    the cause of the over-completeness there. Not proven: the run with the largest e (K1A10_0_f2, e 0.173) has a steady
+    ε (+0.027, +0.028, 2 cycles) and |ΔM| / M_peak 0.003.
 - Finding: the check "energy weight of the Bessel excess in the cut plane ≤ 0.6 %" (eval_freq.py section 8, 7.87,
   deck slides 9 and 11) is wrong. Cause: acc_reduce.relative_slice stores a plane relative to its mean and stores zeros
   when the mean is ≤ 0 (the signed mean itself is stored). A plane with a net negative rest thus shows rest 0. This
@@ -4048,8 +4065,9 @@ review of the correction done; its points are in this section.
   results of the old files are unchanged (freq_Cprime, channel_maps_K1A10 and the deck figures byte-identical). The
   sweep and B0b chain on the instance runs the old commit 371004f: its acc_slices.npz have the old format. The per-cell
   accumulators (acc_*.npz) are deleted after the postprocessing, so old planes cannot be recomputed.
-- Open: the cause of the over-completeness at 60 MHz (motion that does not repeat, or short events between the 256
-  samples per cycle).
+- Open: the cause of the over-completeness at 60 MHz (motion that does not repeat, supported by the cycle-to-cycle
+  change of ε, or short events between the 256 samples per cycle); which numerical part gives ε at 9 mT and 15 MHz (a
+  run with atol 1e-6 would separate it; GPU).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

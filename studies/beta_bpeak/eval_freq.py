@@ -24,6 +24,11 @@ Values: ln w at the 7 nominal amplitudes (analyze_design.run_record), w = loss p
    compensate). x itself is known only in the cut plane (acc_slices.npz), and only where the mean rest of the plane is
    > 0 in files written before 2026-10-14: acc_reduce.relative_slice stored a plane with a mean rest ≤ 0 as zeros. For
    such a plane the stored signed mean gives a lower bound of x in the plane: −rest_mean / p_mean.
+9. Energy balance and rest (PROTOKOLL 7.90): ε = w_dis / w_loop − 1 of the kept cycles. If the excess of the measured
+   dissipation over the loop area sits in the rest, the rest relative to w_loop without it is R_rest (1 + ε) − ε. A
+   periodic state (loop closes, ε the same in each cycle) with ε > 0 breaks the energy balance: then ε is an error of
+   the computed trajectory or of the sampled integral, not a loss. Per run at 9 mT: ε per cycle, closure, excess power
+   (W_dis − W_loop) f.
 
     python eval_freq.py > results/freq_Cprime.md      # also results/freq_Cprime.json
 """
@@ -279,6 +284,38 @@ def main():
             cells.append("%.4f (%d); %d zeroed%s" % (max(x), len(x), len(lb), (", ≥ %.4f" % max(lb)) if lb else ""))
         res["cut_excess"][str(a)] = row
         L.append("| %d | %s |" % (a, " | ".join(cells)))
+    # 9. energy balance and rest: ε = w_dis / w_loop − 1 of the kept cycles, rest without ε = R_rest (1 + ε) − ε
+    L += ["", "## 9. Energy balance ε = w_dis / w_loop − 1 and the rest without ε, R_rest (1 + ε) − ε (mean over the seeds)",
+          "", "| A | f | " + " | ".join("%g mT" % b for b in AMPS) + " |", "|---|---|" + "---|" * len(AMPS)]
+    res["balance"] = {}
+    det = []
+    for a in (20, 10):
+        for fr in FREQ:
+            out = {b: [] for b in AMPS}
+            for k in SEEDS:
+                d = folder(a, fr, k)
+                summ = {st["name"]: st for st in json.loads((d / "summary.json").read_text())["stages"]}
+                fhz = json.loads((d / "config.json").read_text())["freq"]
+                for s in json.loads((d / "acc.json").read_text())["stages"]:
+                    h, cyc = s["harm"], {c["cycle"]: c for c in summ[s["stage"]]["cycles"]}
+                    kept = [cyc[c] for c in h["cycles_kept"]]
+                    eps = [c["w_dis"] / c["w_loop"] - 1 for c in kept]
+                    e = float(np.mean(eps))
+                    b = min(AMPS, key=lambda x: abs(x / s["B_peak_mT"] - 1))
+                    out[b].append((h["R_rest"], h["R_rest"] * (1 + e) - e, e))
+                    if b == AMPS[0]:
+                        det.append((a, FLAB[fr], k, min(eps), max(eps), float(np.mean([c["closure"] for c in kept])),
+                                    h["R_rest"], h["R_rest"] * (1 + e) - e,
+                                    float(np.mean([c["W_dis"] - c["W_loop"] for c in kept])) * fhz * 1e-6))
+            res["balance"]["%d|%s" % (a, fr)] = {"%g" % b: np.mean(out[b], 0).tolist() for b in AMPS}
+            L.append("| %d | %s | %s |" % (a, FLAB[fr], " | ".join("%.3f → %.3f (ε %+.3f)" % tuple(np.mean(out[b], 0))
+                                                                   for b in AMPS)))
+    L += ["", "At %g mT per run: ε of the kept cycles (min … max), closure |ΔM| / M_peak (mean), rest, rest without ε, "
+          "excess power (W_dis − W_loop) f in W/cm³:" % AMPS[0], "",
+          "| A | f | seed | ε min … max | closure | rest | rest without ε | excess power (W/cm³) |",
+          "|---|---|---|---|---|---|---|---|"]
+    L += ["| %d | %s | %d | %+.3f … %+.3f | %.4f | %+.3f | %+.3f | %+.3f |" % x for x in det]
+    res["balance_9mT"] = det
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "freq_Cprime.json").write_text(json.dumps(res, indent=1))
 
