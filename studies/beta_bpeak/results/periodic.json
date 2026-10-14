@@ -1,0 +1,1312 @@
+{
+ "main": {
+  "9": {
+   "n": 116,
+   "periodic": 93,
+   "marginal": 7,
+   "not periodic": 16,
+   "w_not_stationary": 19
+  },
+  "20": {
+   "n": 116,
+   "periodic": 68,
+   "marginal": 16,
+   "not periodic": 32,
+   "w_not_stationary": 30
+  },
+  "35": {
+   "n": 116,
+   "periodic": 48,
+   "marginal": 9,
+   "not periodic": 59,
+   "w_not_stationary": 33
+  },
+  "50": {
+   "n": 116,
+   "periodic": 30,
+   "marginal": 18,
+   "not periodic": 68,
+   "w_not_stationary": 29
+  },
+  "70": {
+   "n": 116,
+   "periodic": 21,
+   "marginal": 22,
+   "not periodic": 73,
+   "w_not_stationary": 27
+  },
+  "100": {
+   "n": 116,
+   "periodic": 9,
+   "marginal": 28,
+   "not periodic": 79,
+   "w_not_stationary": 31
+  },
+  "150": {
+   "n": 116,
+   "periodic": 6,
+   "marginal": 48,
+   "not periodic": 62,
+   "w_not_stationary": 20
+  }
+ },
+ "cprime": {
+  "9": {
+   "n": 18,
+   "periodic": 12,
+   "marginal": 2,
+   "not periodic": 4,
+   "w_not_stationary": 5
+  },
+  "20": {
+   "n": 18,
+   "periodic": 10,
+   "marginal": 3,
+   "not periodic": 5,
+   "w_not_stationary": 3
+  },
+  "35": {
+   "n": 18,
+   "periodic": 6,
+   "marginal": 2,
+   "not periodic": 10,
+   "w_not_stationary": 6
+  },
+  "50": {
+   "n": 18,
+   "periodic": 4,
+   "marginal": 5,
+   "not periodic": 9,
+   "w_not_stationary": 5
+  },
+  "70": {
+   "n": 18,
+   "periodic": 2,
+   "marginal": 6,
+   "not periodic": 10,
+   "w_not_stationary": 4
+  },
+  "100": {
+   "n": 18,
+   "periodic": 1,
+   "marginal": 6,
+   "not periodic": 11,
+   "w_not_stationary": 6
+  },
+  "150": {
+   "n": 18,
+   "periodic": 3,
+   "marginal": 9,
+   "not periodic": 6,
+   "w_not_stationary": 3
+  }
+ },
+ "per_run": {
+  "C0": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "C1": [
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "C2": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "C3": [
+   "periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "periodic",
+   "marginal",
+   "marginal"
+  ],
+  "C4": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "C5": [
+   "marginal",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "C6": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "C7": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "marginal"
+  ],
+  "K1_0_mc2": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_1": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_2": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K2_0": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic"
+  ],
+  "K2_1": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "periodic"
+  ],
+  "K2_2": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "K3_0": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "periodic",
+   "not periodic"
+  ],
+  "K3_1": [
+   "periodic",
+   "marginal",
+   "periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "K3_2": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "K4_0_mc2": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "K4_1_mc2": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "K4_2": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "marginal"
+  ],
+  "S000": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S001": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S002": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal"
+  ],
+  "S003": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S004": [
+   "periodic",
+   "periodic",
+   "marginal",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S005": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S006": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic"
+  ],
+  "S007": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S008": [
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S009": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S010": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal"
+  ],
+  "S011": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S012": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S013": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S014": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S015": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S016": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic"
+  ],
+  "S017": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S018": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S019": [
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S020_mc2": [
+   "marginal",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S021": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S022": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S023": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic"
+  ],
+  "S024": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S025": [
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S026_mc2": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic"
+  ],
+  "S027": [
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S028": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S029": [
+   "marginal",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S030": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S031": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S032": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S033_mc2": [
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S034_mc2": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S035_mc2": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S036": [
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S037": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S038": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S039": [
+   "periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S040": [
+   "periodic",
+   "marginal",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S041": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S042": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S043": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S044": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S045": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S046": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S047_mc2": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S048": [
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S049": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic"
+  ],
+  "S050": [
+   "not periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal"
+  ],
+  "S051": [
+   "periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S052": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic"
+  ],
+  "S053": [
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S054": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S055_mc2": [
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S056": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S057": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S058": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S059": [
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S060": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S061": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "S062": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S063": [
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S064": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "S065": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S066": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "periodic",
+   "marginal"
+  ],
+  "S067_mc2": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S068": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S069": [
+   "periodic",
+   "periodic",
+   "marginal",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S070": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S071": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S072": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "marginal",
+   "periodic"
+  ],
+  "S073": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S074": [
+   "periodic",
+   "marginal",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S075": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S076_mc2": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S077": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S078": [
+   "not periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S079": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "S080": [
+   "marginal",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "marginal",
+   "not periodic"
+  ],
+  "S081": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S082": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal"
+  ],
+  "S083": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S084": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "not periodic"
+  ],
+  "S085": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S086": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S087": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "not periodic"
+  ],
+  "S088": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S089": [
+   "periodic",
+   "marginal",
+   "marginal",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S090": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal",
+   "marginal",
+   "marginal"
+  ],
+  "S091_mc2": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "not periodic"
+  ],
+  "S092": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "S093": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal"
+  ],
+  "S094": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "S095": [
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_0_fhalf": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "K1_0_f1": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_0_f2": [
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "K1_1_fhalf": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "marginal"
+  ],
+  "K1_1_f1": [
+   "periodic",
+   "not periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_1_f2": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_2_fhalf": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_2_f1": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1_2_f2": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic"
+  ],
+  "K1A10_0_fhalf": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "periodic",
+   "marginal",
+   "marginal"
+  ],
+  "K1A10_0": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "not periodic",
+   "marginal"
+  ],
+  "K1A10_0_f2": [
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "periodic",
+   "periodic"
+  ],
+  "K1A10_1_fhalf": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "K1A10_1": [
+   "periodic",
+   "periodic",
+   "not periodic",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal"
+  ],
+  "K1A10_1_f2": [
+   "periodic",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "periodic"
+  ],
+  "K1A10_2_fhalf": [
+   "periodic",
+   "periodic",
+   "periodic",
+   "periodic",
+   "marginal",
+   "not periodic",
+   "periodic"
+  ],
+  "K1A10_2": [
+   "marginal",
+   "not periodic",
+   "marginal",
+   "marginal",
+   "not periodic",
+   "not periodic",
+   "marginal"
+  ],
+  "K1A10_2_f2": [
+   "marginal",
+   "marginal",
+   "marginal",
+   "marginal",
+   "marginal",
+   "marginal",
+   "marginal"
+  ]
+ }
+}

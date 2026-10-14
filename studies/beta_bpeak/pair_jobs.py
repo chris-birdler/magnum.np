@@ -87,8 +87,30 @@ def sweep_lines():
     return [(n, t) for _, n, t in out]
 
 
+def atol60_lines():
+    """Long tolerance test at 60 MHz (decision Chris 2026-10-14, option 2, PROTOKOLL 7.100): the sweep line of the
+    small particle (K1_k, A 20 runs) at 60 MHz, 9 mT only, exactly 40 cycles, with --atol 1e-5 (L5) and 1e-6 (L6).
+    Reference: the 9 mT stage of K1_k_f2 (C′); the sweep protocol equals the C′ first stage (control at 30 MHz,
+    7.91). Longest (1e-6) first."""
+    out = []
+    for tol, tag in (("1e-06", "L6"), ("1e-05", "L5")):
+        for k in range(3):
+            _, tok = next((n, t) for n, t in sweep_lines() if n == "K1_%d_sw085" % k)
+            t = set_arg(list(tok), "f_rel", ["%.10g" % (F_REL_30MHZ * 2.0)])
+            t = set_arg(t, "samples", ["256"])
+            t = set_arg(t, "atol", [tol])
+            t = set_arg(t, "cycles_per_amp", ["40"])
+            t = set_arg(t, "max_cycles_per_amp", ["40"])
+            out.append(("K1_%d_sw060%s" % (k, tag), t))
+    return out
+
+
 if __name__ == "__main__":
     import sys
+    if "--atol60" in sys.argv:
+        for name, tok in atol60_lines():
+            print(name, " ".join(tok))
+        sys.exit(0)
     lines = freq_lines() if "--freq" in sys.argv else (sweep_lines() if "--sweep" in sys.argv else pair_lines())
     for name, tok in lines:
         print(name, " ".join(tok))

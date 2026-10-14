@@ -4349,6 +4349,53 @@ energy balance ε over the 3 cycles; mean of 3 seeds.
 - Physical or numerical: irregular motion of a driven nonlinear system can be real, or it can be seeded by the
   integrator tolerance (atol 1e-5). Not separated by these data.
 
+### 7.100 Are the evaluated loops settled? Stop rule checked; long tolerance test at 60 MHz (2026-10-14)
+
+Remark of Chris: when the loop does not close, the stage has not settled. True for the small particle at 60 MHz and
+9 mT: P jumps by ±15 % from cycle to cycle to the end (26 … 40 W/cm³), the loop does not close (0.001 … 0.010), and
+K1_2_f2 still has events in cycles 6 and 7 (ε +1.4, +1.2); the large particle at 60 MHz drifts (22 → 14 W/cm³). At
+30 MHz (K1_0_f1) P is constant from cycle 3 and the loop is closed. Cause (method): the stop rule (≥ 2 calm cycles at
+the end, |w_dis / w_loop − 1| ≤ 0.2, at most 12 cycles) checks the energy balance of each cycle, not whether the cycles
+repeat. Thus the 60 MHz values at 9 mT (dips, factor 2, β 1.78 of the small particle, the sign change of the A effect)
+rest on cycles that have not settled.
+
+Option 1 of Chris (local, eval_periodic.py → results/periodic.md / .json): every stage of the 116 runs of the main
+analysis (30 MHz) and of C′, last 3 cycles. Classes fixed before the data were looked at: periodic RN ≤ 0.05 and
+closure ≤ 0.001; not periodic RN > 0.10 or closure > 0.002; marginal otherwise.
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 | 150 |
+|---|---|---|---|---|---|---|---|
+| main data: periodic / marginal / not periodic | 93 / 7 / 16 | 68 / 16 / 32 | 48 / 9 / 59 | 30 / 18 / 68 | 21 / 22 / 73 | 9 / 28 / 79 | 6 / 48 / 62 |
+| main data: w not stationary (added after the classes) | 19 | 30 | 33 | 29 | 27 | 31 | 20 |
+
+- The class "not periodic" comes mostly from RN (the time pattern of the dissipation changes from cycle to cycle, for
+  example jumps at other times); the median closure is at most 0.0007. RN does not test whether the loss value has
+  settled. Added after the classes were looked at: the loss per cycle is not stationary (|drift| over the 3 cycles or
+  cycle SD of w above 5 %) in 19 … 33 of 116 stages per B (16 … 28 %). The drift has no sign: up and down about equal,
+  mean drift +0.1 … +0.8 % at most B (SE 0.4 … 1.0 %; 35 mT +3.9 %, SE 5.8 %, from single outliers). Thus the
+  unsettled stages add noise to single values, not a bias; the bootstrap intervals of the main fit contain this noise
+  through the scatter between the runs. Single values (and n 3 comparisons) carry an extra 5 … 10 % in about a quarter
+  of the stages.
+- At large B the motion is intermittent (it differs from cycle to cycle) but the loss per cycle is stationary to about
+  2 % (median cycle SD 1.6 … 2.3 %): a statistically steady state with jumps, not an unsettled one.
+
+Option 2 of Chris (instead of the 3 short jobs of 7.99; after B0b on the same instance; jobs/atol60.txt from
+pair_jobs.py --atol60): the small particle (K1_k, seeds 0 … 2) at 60 MHz, 9 mT only, exactly 40 cycles, with atol 1e-5
+and 1e-6 (6 jobs, names K1_k_sw060L5 / L6; otherwise the sweep line). Cost (estimate) about 4 GPU h, 0.5 … 1 $.
+Reading (fixed now, eval_atol60.py, synthetic test in test_study.py):
+  per run, from cycle 2 on: c_settle = first cycle from which every later window of 3 cycles has RN ≤ 0.05, closure
+  ≤ 0.001 and w within ±5 % of the mean of the last 10 cycles; "periodic" if c_settle exists, "stays irregular" if the
+  last 10 cycles have median RN > 0.10 or median closure > 0.002, else "marginal".
+  tolerance artefact      with 1e-6 periodic with c_settle ≤ 12 in ≥ 2 of 3 seeds, with 1e-5 not periodic by cycle 12
+                          in ≥ 2 of 3 seeds;
+  settles slowly          both tolerances periodic in ≥ 2 of 3 seeds, and c_settle > 12 in ≥ 2 of 3 seeds for one of them
+                          (the limit of 12 cycles was too short);
+  stays irregular         both tolerances "stays irregular" in ≥ 2 of 3 seeds;
+  otherwise               not determined.
+  Loss value: P = mean of the last 10 cycles per run; "the C′ value holds" if it lies within ±10 % of the 9 mT value of
+  K1_k_f2 for both tolerances in ≥ 2 of 3 seeds, "the C′ value is off" if outside ±10 % in ≥ 2 of 3 seeds, else not
+  determined.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

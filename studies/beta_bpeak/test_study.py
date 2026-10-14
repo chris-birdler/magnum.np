@@ -1198,3 +1198,23 @@ def test_eval_sweep_reading_on_synthetic_resonances():
     slow = lambda: f ** 0.8                        # n = 1.8 everywhere, no maximum
     assert ES.reading(f, slow(), slow())[0] == "against"
     assert ES.reading(f, w(35.0), w(1000.0))[0] == "supports"          # A 20 still rising at 240 MHz
+
+
+def test_eval_atol60_reading_on_synthetic_series():
+    """PROTOKOLL 7.100: the classes and the reading of the long tolerance test (fixed before the runs)."""
+    import eval_atol60 as EA
+    n = 38                                                        # windows ending at cycles 2 … 39
+    rn_ok, clo_ok, w_ok = [0.01] * n, [0.0002] * n, [1.0] * n
+    s, c = EA.windows([0.2] * 5 + rn_ok[5:], [0.005] * 5 + clo_ok[5:], [1.3] * 5 + w_ok[5:])
+    assert c == "periodic" and s == 7                             # first good window ends at cycle 2 + 5
+    s, c = EA.windows([0.2] * n, [0.004] * n, w_ok)
+    assert c == "stays irregular" and s is None
+    s, c = EA.windows([0.07] * n, [0.0015] * n, w_ok)
+    assert c == "marginal"
+    early, late, irr = (5, "periodic"), (20, "periodic"), (None, "stays irregular")
+    assert EA.reading([early, early, irr], [irr, irr, early]) == "tolerance artefact"
+    assert EA.reading([late, late, early], [late, early, late]) == "settles slowly"
+    assert EA.reading([irr, irr, early], [irr, irr, irr]) == "stays irregular"
+    assert EA.reading([early, irr, (None, "marginal")], [early, early, early]) == "not determined"
+    assert EA.value_reading([10.0, 10.5, 9.5], [10.2, 9.8, 10.0], [10.0, 10.0, 10.0]) == "the C′ value holds"
+    assert EA.value_reading([13.0, 13.5, 9.5], [13.2, 13.8, 10.0], [10.0, 10.0, 10.0]) == "the C′ value is off"
