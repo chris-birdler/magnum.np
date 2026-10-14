@@ -4396,7 +4396,7 @@ Reading (fixed now, eval_atol60.py, synthetic test in test_study.py):
   K1_k_f2 for both tolerances in ≥ 2 of 3 seeds, "the C′ value is off" if outside ±10 % in ≥ 2 of 3 seeds, else not
   determined.
 
-### 7.101 Loop closure of the main run: recurrent jumps, no monotonic change of M, independent of atol (2026-10-14)
+### 7.101 Loop closure of the main run: recurrent jumps about a fixed state; closure independent of atol (2026-10-14)
 
 Question of Chris: are nearly half of the 116 runs of the main analysis not settled, because the amplitudes rise
 without a relaxation between them? Why did the rule of 2 calm cycles not prevent this? Answer: no. The class "not
@@ -4455,10 +4455,43 @@ determined.
 | 150 | +0.04 ± 0.06 % | 25 % (462) | 2 | 2 / 0 |
 
 - Reading: "recurrent jumps" at all B.
-- The same-sign share is 25 … 39 %. Reference values: if M at H = 0 scatters independently about a fixed state,
-  consecutive ΔM share one value with opposite signs, and the share is 1/3. A wandering state (independent steps)
-  gives 1/2. A monotonic change gives nearly 1. The data agree with a fixed state with scatter. The binomial SE
-  (2.3 … 2.5 %) is a lower limit, because the pairs of one stage are not independent.
+- Expected same-sign share. The criterion above used 0.5, the value of a wandering state. The correct reference for
+  a fixed state is 1/3 (added after the data were looked at):
+
+| picture | M at H = 0 from cycle to cycle | expected share of consecutive cycles with the same sign of ΔM |
+|---|---|---|
+| fixed state with scatter | independent values about a fixed mean | 1/3 |
+| wandering state | independent steps, M moves away freely | 1/2 |
+| monotonic change | M moves in one direction | nearly 1 |
+
+  Why 1/3: ΔM of cycle c is M_{c+1} − M_c, with M_c the value at the start of cycle c. Two consecutive ΔM have the
+  same sign only if M_c, M_{c+1} and M_{c+2} are in rising or in falling order. For independent values from any
+  continuous distribution, the probability of this is 2 / 3! = 1/3.
+  Limit of the test (simulation of the second review): a monotonic change of M gives a share near 1 only when the
+  change per cycle is large against the cycle-to-cycle scatter of M. A change of 1 × the scatter per cycle gives 0.55,
+  and 0.3 × the scatter gives 0.36. Thus the share cannot find a monotonic change smaller than about the scatter of M.
+  For the loss, the stationarity of w (7.100) covers this case.
+- SE of the share (added after the review): bootstrap over whole stages, 2000 draws. Inside one stage, neighbouring
+  pairs share one ΔM and are negatively correlated. This alone makes the binomial SE too large. Differences between
+  the stages make it too small. The bootstrap SE is 0 … 20 % above the binomial SE at the measured share.
+
+| B (mT) | 9 | 20 | 35 | 50 | 70 | 100 | 150 | all B |
+|---|---|---|---|---|---|---|---|---|
+| same-sign share | 38.9 % | 34.8 % | 36.4 % | 24.6 % | 29.6 % | 29.1 % | 24.7 % | 30.9 % |
+| SE, stage bootstrap | 2.7 % | 2.5 % | 2.8 % | 2.1 % | 2.3 % | 2.4 % | 2.3 % | 0.9 % |
+| distance to 1/2, in SE | −4.1 | −6.0 | −4.9 | −12.0 | −8.9 | −8.7 | −11.2 | −20.3 |
+| distance to 1/3, in SE | +2.1 | +0.6 | +1.1 | −4.1 | −1.6 | −1.8 | −3.8 | −2.6 |
+
+- Reading (after the data were looked at): at all B the share is 4 … 12 SE below 1/2. Thus M does not wander, and it
+  does not change monotonically by more than its scatter.
+- At 20, 35, 70 and 100 mT the share agrees with 1/3 (within 2 SE).
+- At 50 and 150 mT the share is about 4 SE below 1/3. Thus a ΔM is followed by a ΔM of the opposite sign more often
+  than for independent values of M. An example is a change back and forth from cycle to cycle.
+- At 9 mT the share is 2.1 SE above 1/3: a weak persistent part.
+- C′ (21 stages per group): 24 … 34 %, within 1.8 SE of 1/3 and 3.3 … 5.7 SE below 1/2.
+- The share does not give the size of the scatter. The scatter of M at H = 0 shows in the closure (median
+  0.02 … 0.08 % of M_peak, table above). The cycle SD of w is a different quantity (median 0.4 … 2.3 %,
+  results/periodic.md).
 - The unsettled part is the start of a stage. After the amplitude step, the state still changes irreversibly in the
   measured cycles in 2 … 46 of 116 stages per B. 176 of 178 events release energy. The steady-tail rule removes these
   cycles. At least 2 calm cycles remain after the last event.
@@ -4482,8 +4515,8 @@ the run, at most 12 cycles):
 | 60 MHz | large | 21 / 21 | 7 | 4 / 0 | 0.068 % | 34 % | 2.4 % |
 | 60 MHz | small | 21 / 21 | 12 | 18 / 0 | 0.101 % | 26 % | 4.4 % |
 
-- All 126 stages have a steady tail of at least 2 cycles. In no group does M change monotonically. These are medians
-  over all B. They do not replace 7.100 for 9 mT at 60 MHz.
+- All 126 stages have a steady tail of at least 2 cycles. In no group does M change monotonically by more than its
+  scatter (limit of the test above). These are medians over all B. They do not replace 7.100 for 9 mT at 60 MHz.
 - 15 MHz is the cleanest group: its closure is 8 … 13 × smaller than at 30 MHz.
 - The small particle at 60 MHz has 2 … 6 × more events. It needs up to 12 cycles (the limit) and has twice the cycle
   scatter of w. This is an observation from 3 seeds, not a proven effect.
