@@ -22,8 +22,8 @@ Values: ln w at the 7 nominal amplitudes (analyze_design.run_record), w = loss p
 8. Net over-completeness of the split (PROTOKOLL 7.90): e = max(Σ_{k ≤ 7} R_k − 1, 0) = max(−R_rest, 0) per stage, 3D
    (acc.json). It is a lower bound of the per-cell excess x = Σ max(Σ_k p_k − p, 0) / Σ p (cells with a positive rest
    compensate). x itself is known only in the cut plane (acc_slices.npz), and only where the mean rest of the plane is
-   > 0: acc_reduce.relative_slice stores a plane with a mean rest ≤ 0 as zeros. For such a plane the stored signed
-   mean gives a lower bound of x in the plane: −rest_mean / p_mean.
+   > 0 in files written before 2026-10-14: acc_reduce.relative_slice stored a plane with a mean rest ≤ 0 as zeros. For
+   such a plane the stored signed mean gives a lower bound of x in the plane: −rest_mean / p_mean.
 
     python eval_freq.py > results/freq_Cprime.md      # also results/freq_Cprime.json
 """
@@ -34,6 +34,7 @@ import pathlib
 import numpy as np
 from scipy import stats
 
+import acc_reduce as AR
 import analyze
 import analyze_design as AD
 
@@ -269,13 +270,11 @@ def main():
                 for key in z.files:
                     if key.endswith("_rest_rel"):
                         st = key[:-len("_rest_rel")]
-                        rm, pm = float(z[st + "_rest_mean"]), float(z[st + "_p_mean"])
-                        if rm > 0:
-                            rest = z[key].astype(float) * rm
-                            pp = z[st + "_p_rel"].astype(float) * pm
+                        if AR.plane_known(z, st, "rest"):
+                            rest, pp = AR.slice_values(z, st, "rest"), AR.slice_values(z, st, "p")
                             x.append(float(np.maximum(-rest[ids], 0).sum() / pp[ids].sum()))
                         else:
-                            lb.append(-rm / pm)
+                            lb.append(-float(z[st + "_rest_mean"]) / float(z[st + "_p_mean"]))
             row[fr] = {"x_max": max(x), "n_x": len(x), "n_zeroed": len(lb), "lb_max": max(lb) if lb else None}
             cells.append("%.4f (%d); %d zeroed%s" % (max(x), len(x), len(lb), (", ≥ %.4f" % max(lb)) if lb else ""))
         res["cut_excess"][str(a)] = row

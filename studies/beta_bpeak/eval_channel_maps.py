@@ -18,6 +18,8 @@ import pathlib
 
 import numpy as np
 
+import acc_reduce as AR
+
 R = pathlib.Path(__file__).resolve().parent / "runs"
 RES = pathlib.Path(__file__).resolve().parent / "results"
 AMPS = [9, 20, 35, 50, 70, 100, 150]
@@ -45,10 +47,9 @@ def channel_maps(run, stage):
     """(f, harmonics, rest) in the cut, each / mean total loss of the particle cells; mask of the particle cells."""
     z = np.load(R / run / "acc_slices.npz")
     mask = z["ids"] >= 0
-    p = z[stage + "_p_rel"].astype(np.float64)                  # already / the mean total loss in the cut
+    assert AR.plane_known(z, stage, "rest"), (run, stage)       # an old file stored this rest plane as zeros (7.90)
     pm = float(z[stage + "_p_mean"])
-    h = z[stage + "_harm_rel"].astype(np.float64) * float(z[stage + "_harm_mean"]) / pm
-    r = z[stage + "_rest_rel"].astype(np.float64) * float(z[stage + "_rest_mean"]) / pm
+    p, h, r = (AR.slice_values(z, stage, k) / pm for k in ("p", "harm", "rest"))
     return p - h - r, h, r, mask
 
 

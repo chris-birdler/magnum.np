@@ -592,10 +592,42 @@ def test_acc_reduce_relative_slice_is_finite():
     inside = np.ones((4, 4), bool)
     inside[0, 0] = False
     plane[0, 0] = 0.0
-    rel, mean = relative_slice(plane, inside)
+    rel, mean, scale = relative_slice(plane, inside)
     assert rel.dtype == np.float16 and np.all(np.isfinite(rel))
     assert abs(mean - plane[inside].mean()) < 1e-6 * mean
+    assert abs(scale - mean) < 1e-6 * mean                     # a quantity >= 0: scale = mean, rel = p / mean as before
     assert np.allclose(rel.astype(float) * mean, plane, rtol=2e-3)
+
+
+def test_acc_reduce_signed_slice_round_trip(tmp_path):
+    """PROTOKOLL 7.90: a signed plane (the rest) with a mean <= 0 or near 0 is stored, not zeroed; slice_values reads
+    new files (rel x scale) and old files (rel x mean, no scale); plane_known marks an old zeroed plane."""
+    from acc_reduce import relative_slice, slice_values, plane_known
+    rng = np.random.default_rng(3)
+    inside = np.ones((20, 20), bool)
+    inside[:3] = False
+    for shift in (-0.3, -1e-9, 0.0, 1e-9, 0.3):              # mean below 0, near 0 and above 0
+        plane = rng.normal(shift, 1.0, (20, 20)) * 1e7
+        plane[~inside] = 0.0
+        plane[inside] -= plane[inside].mean() - shift * 1e7
+        rel, mean, scale = relative_slice(plane, inside)
+        assert scale > 0 and np.all(np.isfinite(rel.astype(float)))
+        np.savez(tmp_path / "z.npz", a_rest_rel=rel, a_rest_mean=mean, a_rest_scale=scale)
+        z = np.load(tmp_path / "z.npz")
+        assert plane_known(z, "a", "rest")
+        assert np.allclose(slice_values(z, "a", "rest"), plane, rtol=0, atol=2e-3 * np.abs(plane).max())
+    one = np.zeros((4, 4))
+    one[2, 2] = 1.0                                           # one cell holds everything: rel = 16 fits float16
+    big = np.zeros((300, 300))
+    big[5, 5] = 1.0                                           # rel = 9e4 > float16 maximum: stored as float32
+    for pl, dt in ((one, np.float16), (big, np.float32)):
+        rel, mean, scale = relative_slice(pl, np.ones(pl.shape, bool))
+        assert rel.dtype == dt and np.isclose(float(rel.max()) * scale, 1.0, rtol=1e-3)
+    np.savez(tmp_path / "old.npz", a_rest_rel=np.zeros((2, 2), np.float16), a_rest_mean=-2.0,
+             b_rest_rel=np.full((2, 2), 1.0, np.float16), b_rest_mean=5.0)
+    z = np.load(tmp_path / "old.npz")
+    assert not plane_known(z, "a", "rest") and plane_known(z, "b", "rest")
+    assert np.allclose(slice_values(z, "b", "rest"), 5.0)
 
 
 def test_min_calm_stop_rule():

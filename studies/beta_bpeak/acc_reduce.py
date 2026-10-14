@@ -10,9 +10,13 @@ Reduce the per-cell accumulators of one run (run_loops --acc, audit 3 item 9b) t
              smoothed 0.5 L_eff, as phase_extra.py), rest, and the 10 % cells with the largest p: volume share,
              share of the local loss p, share of p_fund, mean and spread of the local lag of the fundamental
              along the drive (weighted by |m1_par|^2, relative to the drive fundamental h1)
-  slices     in the plane z = first cell layer: <stage>_p_rel = p / (mean p of the particle cells of the plane) as
-             float16 and <stage>_p_mean (W/m³, float64); <stage>_m1sq = |m1|^2 (float16). Before 2026-10-11 p was
-             stored in W/m³ as float16 under <stage>_p: values above 65504 overflow to inf (PROTOKOLL 7.61)
+  slices     in the plane z = first cell layer, for x = p, harm (Σ_{k=2..K} p_k), rest (p − Σ_k p_k, signed):
+             <stage>_x_rel = x / <stage>_x_scale (float16, float32 if float16 overflows), <stage>_x_scale = mean |x|
+             and <stage>_x_mean = mean x of the particle cells of the plane (W/m³, float64); read the values with
+             slice_values(). For x ≥ 0 (p, harm) scale = mean, thus <stage>_p_rel = p / (mean p of the plane).
+             <stage>_m1sq = |m1|^2 (float16). Before 2026-10-11 p was stored in W/m³ as float16 under <stage>_p
+             (values above 65504 overflow to inf, PROTOKOLL 7.61). Before 2026-10-14 there was no _scale: x_rel =
+             x / x_mean, and a plane with x_mean ≤ 0 was stored as zeros (the rest at 60 MHz, PROTOKOLL 7.90)
     python acc_reduce.py runs/S001 [...]
 """
 import json
@@ -29,15 +33,33 @@ from phase_extra import wspread
 
 MU0, GAMMA = 4e-7 * math.pi, 2.21276157e5
 CHECK_TOL = 1e-3
+F16_MAX = 6.0e4          # largest relative value stored as float16 (float16 maximum 65504)
 
 
 
 def relative_slice(plane, inside):
-    """p in a plane as float16 relative to its mean over the particle cells (float16 has a maximum of 65504; p in W/m³
-    reaches 1e9) and that mean in W/m³ as float64."""
+    """A plane relative to a scale (float16 has a maximum of 65504; p in W/m³ reaches 1e9), the scale and the signed
+    mean over the particle cells (float64). Scale = mean |value| over the particle cells: equal to the mean for a
+    quantity ≥ 0, and > 0 also for a signed quantity whose mean is ≤ 0 or near 0 (PROTOKOLL 7.90). float32 when a
+    value relative to the scale does not fit into float16."""
     mean = float(plane[inside].mean()) if inside.any() else 0.0
-    rel = plane / mean if mean > 0 else np.zeros_like(plane)
-    return rel.astype(np.float16), np.float64(mean)
+    scale = float(np.abs(plane[inside]).mean()) if inside.any() else 0.0
+    rel = plane / scale if scale > 0 else np.zeros_like(plane)
+    dtype = np.float16 if np.abs(rel).max(initial=0.0) < F16_MAX else np.float32
+    return rel.astype(dtype), np.float64(mean), np.float64(scale)
+
+
+def slice_values(z, stage, key):
+    """Values of a stored plane (W/m³): rel × scale, or rel × mean in files without a scale (before 2026-10-14; there a
+    plane with a mean ≤ 0 is zeros, use plane_known)."""
+    sk = "%s_%s_scale" % (stage, key)
+    f = z[sk] if sk in z.files else z["%s_%s_mean" % (stage, key)]
+    return z["%s_%s_rel" % (stage, key)].astype(np.float64) * float(f)
+
+
+def plane_known(z, stage, key):
+    """False for a plane that an old file (no scale) stored as zeros because its mean was ≤ 0."""
+    return "%s_%s_scale" % (stage, key) in z.files or float(z["%s_%s_mean" % (stage, key)]) > 0
 
 def harmonic_loss(mk2, alpha, Ms, w):
     """Loss density of the local motion at k w per cell (W/m³), k = 1 … K: p_k = alpha mu0 Ms / gamma (k w)^2
@@ -111,14 +133,15 @@ def run(d):
         fp[mask] = p
         fm = np.zeros(ids.shape, np.float32)
         fm[mask] = (np.abs(m1) ** 2).sum(-1)
-        slices[stage + "_p_rel"], slices[stage + "_p_mean"] = relative_slice(fp[:, :, 0], ids[:, :, 0] >= 0)
+        slices[stage + "_p_rel"], slices[stage + "_p_mean"], slices[stage + "_p_scale"] = relative_slice(
+            fp[:, :, 0], ids[:, :, 0] >= 0)
         slices[stage + "_m1sq"] = fm[:, :, 0].astype(np.float16)
         if harm is not None:
             for key, v in (("harm", ph), ("rest", prest)):
                 fh = np.zeros(ids.shape, np.float64)
                 fh[mask] = v
-                slices[stage + "_%s_rel" % key], slices[stage + "_%s_mean" % key] = relative_slice(fh[:, :, 0],
-                                                                                                 ids[:, :, 0] >= 0)
+                (slices[stage + "_%s_rel" % key], slices[stage + "_%s_mean" % key],
+                 slices[stage + "_%s_scale" % key]) = relative_slice(fh[:, :, 0], ids[:, :, 0] >= 0)
             print("%s %s: R_k %s  rest %.3f  Bessel max %.4f  calm cycles %s of %d" % (
                 d.name, stage, " ".join("%.3f" % x for x in harm["R_k"]), harm["R_rest"], harm["bessel_max"],
                 harm["cycles_kept"], harm["cycles_acc"]), flush=True)

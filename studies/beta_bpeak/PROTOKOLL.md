@@ -3996,9 +3996,9 @@ intervals and fit ranges added, the K_eff sign change marked as a model result, 
 ### 7.90 Error of the frequency split: the cut-plane check was wrong (2026-10-14, question of Chris)
 
 Question of Chris: can noise or jumps of 𝐦 make the per-cell Fourier split wrong, or do they only go into the rest?
-Go of Chris for the patch of eval_freq.py (3D check), deck slides 9 and 11 and this record. The patch of
-acc_reduce.relative_slice is only proposed (no go yet). Context-free review of the correction done; its points are in
-this section.
+Go of Chris for the patch of eval_freq.py (3D check), deck slides 9 and 11 and this record; second go ("Ok") for the
+patch of acc_reduce.relative_slice, slide 9 sections 4 and 7, and the check of the cause of ε at 9 mT. Context-free
+review of the correction done; its points are in this section.
 
 - Mechanisms (properties of the method): (i) motion above 7f goes into the rest without error, because p̄ comes from
   the damping term at each sample, not from the Fourier series; (ii) motion that does not repeat from loop to loop
@@ -4042,8 +4042,14 @@ this section.
   groups are not reliable at 9 mT and in K1_0_f2 also at 20 and 35 mT. The rest at 9 mT and 15 MHz is mostly an excess
   of p̄ (see the check of (iii)). Deck: slide 9 sections 5 and 6 and slide 11 corrected; the numbers come from
   freq_Cprime.json.
+- Patch of acc_reduce.relative_slice (2026-10-14): a plane is stored relative to its mean |value| (key
+  <stage>_<x>_scale), so a signed plane with a mean ≤ 0 is kept; float32 when a relative value does not fit into
+  float16. Readers (eval_freq, eval_channel_maps, deck) use slice_values / plane_known and read old and new files; the
+  results of the old files are unchanged (freq_Cprime, channel_maps_K1A10 and the deck figures byte-identical). The
+  sweep and B0b chain on the instance runs the old commit 371004f: its acc_slices.npz have the old format. The per-cell
+  accumulators (acc_*.npz) are deleted after the postprocessing, so old planes cannot be recomputed.
 - Open: the cause of the over-completeness at 60 MHz (motion that does not repeat, or short events between the 256
-  samples per cycle); the cause of ε at 9 mT and 15 MHz; the patch of relative_slice (proposed, no go yet).
+  samples per cycle).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
