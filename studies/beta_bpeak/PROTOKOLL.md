@@ -4404,6 +4404,10 @@ periodic" of 7.100 means that the time pattern of the dissipation changes from c
 open loop. The numbers below come from config.json, summary.json and samples_*.csv of the 116 runs (α 0.1, 30 MHz).
 The check ran locally, without a GPU.
 
+Numbers: eval_closure_state.py → results/closure_state.md / .json (all tables of this section; the B0 / B0b sample
+files were fetched, md5 of the B0 files in runs/MANIFEST_b0_samples.md5; the B0b files are partial copies of a
+running job and are replaced at the final fetch).
+
 Terms of this section. Event: a cycle with |w_dis / w_loop − 1| > 0.2 or w_loop ≤ 0 (7.53). Calm cycle: the opposite
 of an event. Steady tail: the calm cycles after the last event of a stage (7.54). Closure: |M(end) − M(start)| / M_peak
 of one cycle. ΔM: the same difference with its sign. Δe = w_loop − w_dis: the change of the internal energy over one
@@ -4488,7 +4492,7 @@ determined.
 - At 50 and 150 mT the share is about 4 SE below 1/3. Thus a ΔM is followed by a ΔM of the opposite sign more often
   than for independent values of M. An example is a change back and forth from cycle to cycle.
 - At 9 mT the share is 2.1 SE above 1/3: a weak persistent part.
-- C′ (21 stages per group): 24 … 34 %, within 1.8 SE of 1/3 and 3.3 … 5.7 SE below 1/2.
+- C′ (21 stages per group): 24 … 34 %, within 1.9 SE of 1/3 and 3.3 … 5.7 SE below 1/2.
 - The share does not give the size of the scatter. The scatter of M at H = 0 shows in the closure (median
   0.02 … 0.08 % of M_peak, table above). The cycle SD of w is a different quantity (median 0.4 … 2.3 %,
   results/periodic.md).

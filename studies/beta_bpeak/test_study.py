@@ -1293,3 +1293,23 @@ def test_eval_atol30_reading_and_closure_median(tmp_path, monkeypatch):
     a, b = E3.load(tmp_path / "K1_0"), E3.load(tmp_path / "K1_0_L6")
     assert abs(E3.closure_median(b[0]) / E3.closure_median(a[0]) - 0.8) < 1e-12
     assert E3.load(tmp_path / "K1_1") is None
+
+
+def test_eval_closure_state_same_sign_references():
+    """PROTOKOLL 7.101: consecutive ΔM of independent values of M have the same sign in 1/3 of the pairs, a wandering
+    state (independent steps) in 1/2, a monotonic change in all pairs; the stage bootstrap gives a finite SE."""
+    import eval_closure_state as EC
+    rng = np.random.default_rng(3)
+    def share(m_series):
+        st = [EC.same_sign_pairs(list(np.sign(np.diff(m)))) for m in m_series]
+        return EC.boot_share(st, np.random.default_rng(1), n_boot=200)
+    p, se, sb, n = share([rng.normal(size=6) for _ in range(3000)])
+    assert abs(p - 1 / 3) < 0.015 and 0 < se < 0.02 and n == 3000 * 4
+    p, _, _, _ = share([np.cumsum(rng.normal(size=6)) for _ in range(3000)])
+    assert abs(p - 0.5) < 0.015
+    p, _, _, _ = share([np.arange(6) * 10.0 + rng.normal(size=6) for _ in range(300)])
+    assert p > 0.99
+    assert EC.same_sign_pairs([1, 1, -1, -1, 1]) == (2, 4) and EC.same_sign_pairs([1]) == (0, 0)
+    assert EC.reading_drift(-0.005, 0.002, 0.33, 0.024) == "recurrent jumps"
+    assert EC.reading_drift(-0.05, 0.002, 0.33, 0.024) == "still relaxing"
+    assert EC.reading_drift(0.0, 0.002, 0.62, 0.024) == "still relaxing"
