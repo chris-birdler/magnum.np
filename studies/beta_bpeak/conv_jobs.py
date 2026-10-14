@@ -44,6 +44,29 @@ def lines(src="jobs/mesh212.txt"):
     return out
 
 
+PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
+        ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
+
+
+def prec_lines(src="jobs/mesh212.txt"):
+    """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
+    than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
+    --max_cycles_per_amp 5). dx 0.75 in single and double precision and with atol 1e-6, dx 1.5 single as the reference.
+    Question: why is w_dis / w_loop 2 … 5 in the B0 runs on dx 0.75?"""
+    tok0 = shlex.split(dict(job_lines(src))["M212_dx15_s931_b9"])
+    out = []
+    for nm, dx, extra in PREC:
+        t = set_arg(tok0, "d_lex", ["48.0"])
+        t = set_arg(t, "dx_lex", [repr(dx)])
+        t = set_arg(t, "seed", ["951"])
+        t = set_arg(set_arg(t, "max_cycles_per_amp", ["5"]), "min_calm", ["0"])
+        for k, v in extra.items():
+            t = set_arg(t, k, v)
+        out.append((nm, " ".join(t)))
+    return out
+
+
 if __name__ == "__main__":
-    for n, a in lines():
+    import sys
+    for n, a in (prec_lines() if "--prec" in sys.argv else lines()):
         print(n, a)
