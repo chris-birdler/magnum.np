@@ -4124,6 +4124,29 @@ energy that the state gives away in the start-up events.
   observation was found after the reading, so it needs a test fixed in advance.
 - Next step: decision of Chris.
 
+### 7.93 Sweep at 9 mT: loss maps of A 10 at f against A 20 at scaled f (2026-10-14, option 1 of Chris, second step)
+
+Local check, no GPU (eval_sweep_maps.py → results/sweep9_maps.md / .json). Question: does A 20 at 2 f lose in the same
+zones as A 10 at f (hypothesis of 7.92)? Cut z = 0, 9 mT; the A 10 map (152 cells per edge) as block mean on the A 20
+grid (108); Pearson correlation r of ln p over the common particle cells, for A 20 at √2^s · f, s 0 … 3,
+f = 15 / 21 / 30 / 42 MHz; R_s = mean over these f.
+
+| seed | R_0 | R_1 | R_2 | R_3 |
+|---|---|---|---|---|
+| 0 | 0.672 | 0.717 | **0.730** | 0.660 |
+| 1 | **0.583** | 0.541 | 0.498 | 0.426 |
+| 2 | 0.722 | 0.756 | 0.820 | **0.856** |
+
+- Reading (fixed before the comparison): **not determined**. Largest R_s at s 2 / 0 / 3; "supports" needs s 2 in all 3
+  seeds, "against" s 0 in at least 2. The map of the motion at f (|m1|², reported only) gives s 1 / 0 / 2.
+- Why the test does not decide (observation): the maps follow the state. Seed 1 of A 20 is in another state at 60 and
+  120 MHz (7.92); every pair with A 20 at 60 MHz has r 0.31 … 0.39. Seed 2 of A 20 changes its state at 42 MHz and
+  above; its maps at 42 … 240 MHz resemble each other (r up to 0.91 against A 10). Within one seed, r changes by 0.1 …
+  0.3 from one f to the next, as much as between the shifts.
+- Consequence: the map test cannot separate the shift hypothesis from the state changes of A 20. The w(f) shift of 7.92
+  stays an observation found after the reading. A decisive test needs a prediction fixed in advance on new runs.
+- Next step: decision of Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
