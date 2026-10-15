@@ -5200,7 +5200,9 @@ chain). Raw data local
   exit code 0 (values from its stdout; the files were deleted afterwards, a local start on the CPU was stopped).
 - Design change of PLAN 4.11: the stage 2 lines have --b_tol 0.01, the stage 1 I arms ran without it. Comparisons of
   I arms with F or T (I15 − F, I3 − F, T − I, SD_I) therefore mix two drive rules; the comparisons inside stage 2
-  (T15 − F, T3 − T15, T3 − F) do not. Option for Chris: run N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01.
+  (T15 − F, T3 − T15, T3 − F) do not. Option for Chris: run N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01. Decision of Chris: yes, after stage 2. Chain instance/chain_newell_s1b.sh (commit 922288a; conv_jobs.py --newell
+  1b): waits for NEWELL_S2_DONE, keeps the old folders as *_nobtol, runs the two jobs and writes the report over all
+  arms to runs/newell_b0_s1b_report.md. Started at 17:37 UTC (waiting).
 - Not yet reported (PLAN 4.11 stage 1, information): E_ref and E_FD of the new relaxed states (the init.pt files are on
   the instance; check_mesh_energy.py after stage 2).
 
