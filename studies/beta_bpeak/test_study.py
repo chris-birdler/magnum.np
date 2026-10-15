@@ -1313,3 +1313,22 @@ def test_eval_closure_state_same_sign_references():
     assert EC.reading_drift(-0.005, 0.002, 0.33, 0.024) == "recurrent jumps"
     assert EC.reading_drift(-0.05, 0.002, 0.33, 0.024) == "still relaxing"
     assert EC.reading_drift(0.0, 0.002, 0.62, 0.024) == "still relaxing"
+
+
+def test_state_files_are_on_the_disk_before_the_rename(tmp_path, monkeypatch):
+    """PROTOKOLL 7.102: a hard restart of the instance left a renamed init.pt with 0 bytes. save_atomic, write_atomic
+    and run_queue.save_queue_state flush the data (os.fsync of the file) before the rename and the directory after it."""
+    import json
+    torch = pytest.importorskip("torch")
+    import run_loops
+    import run_queue
+    calls = []
+    real = os.fsync
+    monkeypatch.setattr(os, "fsync", lambda fd: (calls.append(fd), real(fd))[1])
+    p = tmp_path / "init.pt"
+    run_loops.save_atomic({"m": torch.ones(2)}, p)
+    assert float(torch.load(p)["m"].sum()) == 2.0 and len(calls) == 2 and not (tmp_path / "init.pt.tmp").exists()
+    run_loops.write_atomic(tmp_path / "summary.json", "{}")
+    assert (tmp_path / "summary.json").read_text() == "{}" and len(calls) == 4
+    run_queue.save_queue_state(tmp_path / "run", {"state": "done"})
+    assert json.loads((tmp_path / "run" / "QUEUE_STATE.json").read_text()) == {"state": "done"} and len(calls) == 6

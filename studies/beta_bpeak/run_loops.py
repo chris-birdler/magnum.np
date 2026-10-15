@@ -243,17 +243,34 @@ def git_commit():
         return "unknown"
 
 
+def replace_durable(tmp, path):
+    """os.replace with the data of tmp on the disk before the rename and the directory entry on the disk after it
+    (PROTOKOLL 7.102: after a hard restart of the instance a renamed init.pt had 0 bytes, because its data were still
+    in the page cache)."""
+    fd = os.open(tmp, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.replace(tmp, path)
+    fd = os.open(pathlib.Path(path).parent, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def write_atomic(path, text):
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text)
-    os.replace(tmp, path)
+    replace_durable(tmp, path)
 
 
 def save_atomic(obj, path):
     import torch
     tmp = path.with_name(path.name + ".tmp")
     torch.save(obj, tmp)
-    os.replace(tmp, path)
+    replace_durable(tmp, path)
 
 
 def transfer_m(m_f, ids_f, ids_c):
@@ -941,7 +958,7 @@ def main(argv=None):
                          p_box=p_box, p_dis_samples=harm.s_psum / n, freq=f_stage,
                          mk2=(harm.s_mk2[:, mask_t] / len(harm.kept)).T.contiguous().cpu().numpy(),
                          cycles_kept=np.array(harm.kept), cycles_acc=harm.n_cycles)
-                os.replace(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
+                replace_durable(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
                 info.update(file="acc_%02d_%s.npz" % (si, st["name"]),
                             p_box_over_p_dis=p_box / max(harm.s_psum / n, 1e-300))
             else:
@@ -960,7 +977,7 @@ def main(argv=None):
                      m1=((acc["re"][mask_t] + 1j * acc["im"][mask_t]) * (2.0 / n)).to(torch.complex64).cpu().numpy(),
                      h1=np.complex128(acc["h1"] * 2.0 / n), n_samples=n, cycles_from=ACC_FROM_CYCLE,
                      p_box=p_box, p_dis_samples=acc["p_sum"] / n, freq=f_stage)
-            os.replace(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
+            replace_durable(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
             rec["acc"] = {"file": "acc_%02d_%s.npz" % (si, st["name"]), "n_samples": n,
                           "p_box_over_p_dis": p_box / max(acc["p_sum"] / n, 1e-300)}
             print("[%s] accumulators: %d samples, sum check p_box/p_dis = %.6f" %

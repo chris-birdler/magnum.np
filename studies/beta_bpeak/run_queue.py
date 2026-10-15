@@ -121,7 +121,8 @@ def save_queue_state(d, st):
     d.mkdir(parents=True, exist_ok=True)
     tmp = d / "QUEUE_STATE.json.tmp"
     tmp.write_text(json.dumps(st, indent=1))
-    os.replace(tmp, d / "QUEUE_STATE.json")
+    from run_loops import replace_durable                 # data on the disk before the rename (PROTOKOLL 7.102)
+    replace_durable(tmp, d / "QUEUE_STATE.json")
 
 
 def gate_args(args, maxiter):
