@@ -4789,6 +4789,113 @@ not set β (7.19, 7.46); the texture now comes from the per-cell accumulators.
 - Cost (estimate from the C′ times: large particle 39 min relaxation and 122 s per cycle, small particle 5 min and 48 s
   per cycle): ≈ 11 GPU h, ≈ 3 h on 4 GPUs, ≈ 1.3 $.
 
+### 7.104 Energy checks after B0b: the staircase surface carries the mesh error; 10 % criterion (2026-10-15)
+
+Question of Chris after the B0b reading "stop" (7.102): a loss that does not converge and scatters more on finer meshes
+cannot be physics; find the error. Order of the check: the measuring method, then the code, then the model. All
+checks use existing states; no new simulation. Script check_mesh_energy.py; deck slide_decks/staircase_energy_map.
+Energies per volume of the simulation box in units of K_d (K_d 895 kJ/m³ at J_s 1.5 T). Terms: l_ex is the exchange
+length (3.34 nm at A 10 pJ/m); Δx the cell size; Q_eff = K_eff / K_d the strength of the grain anisotropy; r_p the
+stress anisotropy of a particle in units of K_eff; the B0b arms F, I and T as in 7.102.
+
+**Code.**
+- check_mesh_energy.py sets up the material and the geometry as run_loops.py. For the relaxed states its total energy
+  equals the energy of the relaxation record to all printed digits (28 of 28 states: 20 of B0b, 8 of M300). Thus the
+  check computes the same energies as the simulations.
+- Code test with given smooth fields (results/mesh_energy.md; geometry d/l_ex 48, φ 0.45; an earlier run at φ 0.55 is in
+  commit ecc9537; only a code test): each term converges with the cell size. The exchange energy of a helix approaches
+  the continuum value as −10 / −5 / −2.1 % on 3 / 1.5 / 0.75 l_ex. This is the free boundary at the staircase, first
+  order in Δx. The stray-field energy of a vortex falls by about half with each halving of Δx. No error is found in the
+  energy terms.
+- Not valid for B0b and not used: the comparison with the smoothed surface and the corrugation test of the same script
+  (results/mesh_energy.md, results/mesh_corrugation.md). They used an invented geometry (d/l_ex 48, φ 0.45) and a
+  synthetic vortex. Decision of Chris: checks use the geometry and the states of the result. The smoothed surface
+  (--surface fraction) stays excluded (7.29, confirmed 2026-10-15).
+
+**One frozen state on three meshes** (results/mesh_energy_states.md; B0b geometry, d/l_ex 97.5 (nominal 96), base
+microstructure, seeds 941 … 944). The relaxed state of F (Δx 0.75 l_ex) is averaged onto Δx 1.5 and 3 l_ex
+(run_loops.transfer_m) without a new relaxation: the "frozen state". Mean of 4 seeds:
+
+| term | Δx 0.75 | Δx 1.5 | Δx 3 |
+|---|---|---|---|
+| exchange | 0.00248 | 0.00242 | 0.00234 |
+| anisotropy | −0.00159 | −0.00159 | −0.00159 |
+| stray field | 0.00063 | 0.00137 | 0.00311 |
+
+- The stray-field energy changes most: × 4.9 from 0.75 to 3 l_ex. The exchange energy falls by 6 %. The anisotropy
+  energy stays within 1 %. The SD over the seeds is at most 3.3 % of a value.
+- On cubic cells the surface of a sphere is a staircase. Its steps carry magnetic surface charges that a smooth sphere
+  does not have. "Staircase error" E_st means this extra stray-field energy.
+- Each mesh relaxed by itself gives other states (mean of the I and T arms against F). On 1.5 l_ex the exchange is
+  +5 % and the stray field +31 %. On 3 l_ex the exchange is +17 % and the stray field +43 % (arm I3 only: +16 % and
+  +43 %). Interpretation: the coarse states follow the steps and pay with exchange energy.
+- Law, from the three means (three values and three unknowns, thus no test of the law): E_st ≈ c (Δx/d)^p K_d with
+  c 0.221 and p 1.23 ± 0.01 (SE over the 4 seeds). The limit of the smooth sphere is an extrapolation (Richardson):
+  0.00008, that is 13 % of the value on 0.75 l_ex (estimate). Thus the staircase error is 0.0030 / 0.0013 / 0.00055 on
+  3 / 1.5 / 0.75 l_ex.
+
+**The law at 1 µm** (results/mesh_energy_m300.md; d/l_ex 300, base microstructure, the relaxed Δx 1.5 states of
+M300_dx15_s92k_b9, seeds 921 … 924, single precision as in production). Reading fixed before the run: "the law holds at
+1 µm" if the stray-field change of the frozen state from 1.5 to 3 l_ex lies within ±30 % of the prediction.
+- Measured 0.000486 ± 0.000001 (SE, n 4). Predicted 0.00044 with the rounded constants, 0.00043 with the exact ones.
+  **Reading: the law holds at 1 µm.** The deviation (+12 %) is large against the SE: the law predicts the second size
+  within 12 %, not exactly.
+- Relaxed M300 states: on 3 l_ex the exchange is +31 % and the stray field +6 % against 1.5 l_ex.
+
+**Criterion** (Chris): the staircase error must be small against the energies that set the physics. Limit: 10 % of the
+anisotropy energy E_K, because E_K sets the real pinning.
+- |E_K| ≈ a Q_eff K_d with a 0.229 (B0b and M300 states, both at Q_eff 1/144). That E_K scales with Q_eff is an
+  assumption; other Q_eff are not measured. The stress anisotropy is not counted.
+- R_K = E_st / |E_K| for the B0b state: 1.9 / 0.81 / 0.34 on 3 / 1.5 / 0.75 l_ex. Against the exchange energy of the
+  frozen state on each mesh: 1.3 / 0.53 / 0.22 (the deck uses the exchange of state F: 1.2 / 0.52 / 0.22).
+- At d/l_ex 300 (1 µm at A 10 pJ/m): R_K 0.53 on 3 l_ex and 0.23 on 1.5 l_ex. These values come from the M300 change,
+  split with p of B0b; the law alone gives 0.47 and 0.20. Estimate.
+- The 10 % line needs Δx/d ≤ 0.0028 at Q_eff 1/144 (estimate). At 1 µm this is a cell of 2.8 nm and about 143 million
+  cells. One V100 (16 GB) holds about 57 million cells (linear from 30 million cells in 8.4 GB, 7.80; estimate).
+- The parameter study (Δx/d 0.010 … 0.014, Q_eff 1/900 … 1/144) lies at R_K ≈ 0.47 … 4.6 (estimate). With the stress
+  anisotropy counted as (1 + r_p) the values are lower, by up to a factor 4 at r_p 3 (not measured).
+- R_K and the measured mesh errors of β (Δβ, 3 − 1.5 l_ex; results/mesh212.md): d/l_ex 300: R_K 0.47, Δβ −0.06 ± 0.05
+  (n 4); d/l_ex 212: R_K 0.73, Δβ +0.51 ± 0.13 (n 4); K3: R_K 1.6 without the stress anisotropy, 0.64 with it, Δβ
+  +0.12 ± 0.03 (n 6). Three points are no test of a relation between R_K and Δβ. R_K measures the energy error of a
+  state; it is not a prediction of the loss error.
+
+**The mesh error of the loss against the relative cell size** (existing pairs; Δ ln P = coarse − fine, mean ± SE; B0b
+with independent relaxation):
+
+| pair | Δx/d coarse → fine | 9 mT | 50 mT | 100 mT | n |
+|---|---|---|---|---|---|
+| B0b, 3 → 1.5 l_ex | 0.031 → 0.015 | −0.79 ± 0.31 | – | – | 4 |
+| B0b, 1.5 → 0.75 l_ex | 0.015 → 0.0077 | −1.17 ± 0.17 | – | – | 4 |
+| M212, base | 0.014 → 0.0071 | −0.85 ± 0.19 | −0.10 ± 0.12 | +0.43 ± 0.16 | 4 |
+| K3 | 0.014 → 0.0070 | −0.47 ± 0.09 | −0.36 ± 0.13 | −0.14 ± 0.09 | 6 |
+| M300, base | 0.010 → 0.0050 | +0.39 ± 0.20 | +0.34 ± 0.16 | +0.22 ± 0.06 | 4 |
+
+- No pair is within ±0.10 at 9 mT.
+- No fall with Δx/d is seen: the two B0b pairs differ by 0.38 ± 0.35.
+- No sign change with the size is shown (7.64, mesh212.md): at d/l_ex 300 the 90 % CI at 9 mT includes 0.
+- The B0b arm with a transferred state gives −0.98 ± 0.24 (3 → 1.5) and −0.96 ± 0.67 (1.5 → 0.75).
+- Each pair halves Δx/d and Δx/l_ex together. The only partial separation is the comparison of pairs at the same
+  Δx/d: B0b 1.5 → 0.75 (−1.17) against M212 3 → 1.5 (−0.85). The errors are similar, a hint that Δx/d controls the
+  error. Limits: the two pairs differ in d/l_ex; n 4; one point each, no rule for the design (7.102).
+
+**Remarks of Chris and their reading.**
+- "A rougher surface normally gives more loss." This holds when the drive exceeds the pinning. At 9 mT the drive is
+  h ≈ 0.00075 (h = H_peak / M_s). The pinning of the staircase on 3 l_ex corresponds to h ≈ 0.001 … 0.01 (estimate:
+  E_st / (2 f) for a switched volume fraction f of 0.1 … 1). Strong pinning then keeps the state still: less loss. At
+  150 mT the drive is h ≈ 0.015 and exceeds it. Hints in the data, not shown: the coarse mesh gives less loss at small
+  particles; at d/l_ex 300 it gives more loss at all three B (the 90 % CI includes 0 at 9 and 50 mT); at K3 its deficit
+  shrinks with B.
+- Cubic particles: their corners are strong pinning sites. Their geometry is exact on every grid. Thus the loss is
+  expected to converge to the value of a cube; no cube run exists. A cube is a different model, not a correction of the
+  sphere.
+
+**Status.** The code is not the cause. The staircase surface adds a stray-field energy that falls only about as fast as
+Δx. In the parameter study it is of the size of the anisotropy energy (estimate). Which part of the loss error it
+causes is not shown. The error of one frozen state is a proxy; the pinning comes from the part that differs between
+states. Open decision of Chris (re-scope after 7.102): a particle shape without a curved surface; the results on 3 l_ex
+as a staircase model with these limits; or a GPU with 80 GB (about 286 million cells; one relaxation iteration about
+22 s at the 10 % line; estimates).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

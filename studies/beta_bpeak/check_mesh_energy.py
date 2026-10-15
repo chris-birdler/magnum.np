@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Code check of the mesh dependence (question of Chris 2026-10-15 after B0b, PROTOKOLL 7.103): does each energy term of
+Code check of the mesh dependence (question of Chris 2026-10-15 after B0b, PROTOKOLL 7.104): does each energy term of
 the production setup converge with the cell size for a given smooth magnetisation? The material and geometry are set
 up as in run_loops.py (fcc_box, frac, Ms / A / Ku per cell, Herzer cubes, voids with A = 0 and Ms_void). The fields
 are given analytically on the cell centres (lengths in l_ex):
