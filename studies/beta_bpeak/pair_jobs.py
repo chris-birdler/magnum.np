@@ -11,6 +11,8 @@ same cells: the pair shares seed, stress axes, packing and history, not the cell
     python pair_jobs.py --atol60 > jobs/atol60.txt         # tolerance test at 60 MHz (7.100, 7.101)
     python pair_jobs.py --atol30 > jobs/atol30.txt         # tolerance twins of the main run at 30 MHz (7.101)
     python pair_jobs.py --long60 > jobs/long60.txt         # long runs at 60 MHz after the C′ history (7.103)
+    python pair_jobs.py --k3freq > jobs/k3freq_fd.txt      # frequency test at the corner K3 (7.106)
+    python pair_jobs.py --k3freq newell > jobs/k3freq_newell.txt
 """
 import shlex
 
@@ -134,11 +136,48 @@ def long60_lines():
     return [tuple(x.split(" ", 1)) for x in big + small]
 
 
+K3_FREQ_MHZ = (30.0, 42.4264, 60.0, 84.8528, 120.0, 169.7056)   # 30 · √2^n, n 0 … 5
+
+
+def k3freq_lines(strayfield="fd"):
+    """Frequency test at the corner K3 (decision Chris 2026-10-15, PROTOKOLL 7.106): does the onset of the non-repeating
+    motion at 9 mT move with K_eff? K3 (L_eff 18 l_ex: K_eff 2.76 kJ/m³, 2.76 × K1; d/l_ex 212 as the small particle
+    of K1; K_σ 1.5 K_eff; φ 0.69) at 30 … 170 MHz in steps of √2. The production line of K3_k (jobs/sobol_corners.txt:
+    7 amplitudes, converged virgin relaxation, atol 1e-5, dx 3) with the C′ settings: steady rule (≥ 2 calm cycles, at
+    most 12 per stage; validated at 60 MHz by the long runs, 7.105), no snapshots, harmonics k ≤ 7, samples
+    max(256, 512 · 30 MHz / f). Each run relaxes its virgin state itself (the same deterministic start state at all f);
+    an unconverged relaxation stops the run (exit code 3) and the queue repeats it once with a larger cap. strayfield
+    "newell": the same lines with --strayfield newell --strayfield_shells 4 and the prefix K3N. Longest jobs first."""
+    from rerun_jobs import strip_snap
+    src = dict(job_lines("jobs/sobol_corners.txt"))
+    out = []
+    for f in K3_FREQ_MHZ:
+        fac = f / 30.0
+        for k in range(3):
+            t = set_arg(set_arg(shlex.split(src["K3_%d" % k]), "max_cycles_per_amp", ["12"]), "min_calm", ["2"])
+            t = strip_snap(t)
+            if f != 30.0:                                   # 30 MHz keeps the default f, as the C′ runs at f
+                t = set_arg(t, "f_rel", ["%.10g" % (F_REL_30MHZ * fac)])
+            t = set_arg(t, "acc_harm", ["7"])
+            t = set_arg(t, "samples", [str(max(256, int(round(512 / fac))))])
+            prefix = "K3"
+            if strayfield == "newell":
+                t = set_arg(set_arg(t, "strayfield", ["newell"]), "strayfield_shells", ["4"])
+                prefix = "K3N"
+            out.append((1.0 / fac, "%s_%d_f%03d" % (prefix, k, round(f)), t))
+    out.sort(key=lambda x: -x[0])
+    return [(n, t) for _, n, t in out]
+
+
 if __name__ == "__main__":
     import sys
     if "--long60" in sys.argv:
         for name, args in long60_lines():
             print(name, args)
+        sys.exit(0)
+    if "--k3freq" in sys.argv:
+        for name, tok in k3freq_lines("newell" if "newell" in sys.argv else "fd"):
+            print(name, " ".join(tok))
         sys.exit(0)
     if "--atol60" in sys.argv or "--atol30" in sys.argv:
         for name, tok in (atol60_lines() if "--atol60" in sys.argv else atol30_lines()):

@@ -1504,3 +1504,49 @@ def test_eval_conv_stage1_reading():
     assert EC.stage1_reading(nan, fd)[0] == "undetermined"
     key, text, (p, q) = EC.stage1_reading(n_vals(-0.1), fd)
     assert p["n"] == 4 and abs(q["mean"] - (p["mean"] + 0.8)) < 1e-12
+
+
+def test_k3freq_lines():
+    """pair_jobs.k3freq_lines (PROTOKOLL 7.106): 18 jobs per solver, longest (30 MHz) first; each line equals the K3
+    production line of the same seed except the steady rule (max 12, min_calm 2), no snapshots, harmonics 7, samples
+    max(256, 512 · 30/f), f_rel (not at 30 MHz) and, for newell, the two stray-field arguments."""
+    import shlex
+    import pair_jobs as PJ
+    from rerun_jobs import get_arg, job_lines
+    here = pathlib.Path(__file__).resolve().parent
+    src = dict(job_lines(here / "jobs" / "sobol_corners.txt"))
+    planned = {"max_cycles_per_amp", "min_calm", "f_rel", "acc_harm", "samples", "strayfield", "strayfield_shells",
+               "snap_phases", "snap_cycles", "snap_mT"}
+    for solver, prefix in (("fd", "K3"), ("newell", "K3N")):
+        jobs = PJ.k3freq_lines(solver)
+        assert len(jobs) == 18 and all(n.endswith("_f030") for n, _ in jobs[:3])
+        for n, tok in jobs:
+            assert n.startswith(prefix + "_")
+            k, f = int(n.split("_")[1]), float(n.split("_f")[-1])
+            ref = shlex.split(src["K3_%d" % k])
+            for key in {t[2:] for t in tok + ref if t.startswith("--")} - planned:
+                assert get_arg(tok, key) == get_arg(ref, key), (n, key)
+            fmhz = min(PJ.K3_FREQ_MHZ, key=lambda x: abs(round(x) - f))
+            assert get_arg(tok, "max_cycles_per_amp") == ["12"] and get_arg(tok, "min_calm") == ["2"]
+            assert get_arg(tok, "samples") == [str(max(256, int(round(512 * 30.0 / fmhz))))]
+            if fmhz == 30.0:
+                assert get_arg(tok, "f_rel") is None
+            else:
+                assert abs(float(get_arg(tok, "f_rel")[0]) / PJ.F_REL_30MHZ - fmhz / 30.0) < 1e-6
+            assert (get_arg(tok, "strayfield") == ["newell"]) == (solver == "newell")
+            assert get_arg(tok, "snap_mT") is None
+
+
+def test_eval_k3freq_reading():
+    """eval_k3freq.reading (PROTOKOLL 7.106) on synthetic RN values at 9 mT."""
+    import eval_k3freq as EK
+    fr = EK.K3_FREQ_MHZ
+    nv = {f: 3 for f in fr}
+    rn = lambda vals: dict(zip(fr, vals))
+    assert EK.reading(rn([0.01, 0.02, 0.03, 0.04, 0.2, 0.3]), nv)[0] == "shifted"
+    assert EK.reading(rn([0.01, 0.02, 0.03, 0.08, 0.05, 0.3]), nv)[:3:2] == ("shifted", 169.7056)
+    assert EK.reading(rn([0.01, 0.02, 0.03, 0.15, 0.2, 0.3]), nv)[0] == "partly"
+    assert EK.reading(rn([0.01, 0.02, 0.2, 0.15, 0.2, 0.3]), nv)[0] == "not_shifted"
+    assert EK.reading(rn([0.01, 0.02, 0.03, 0.04, 0.05, 0.06]), nv)[0] == "none"
+    assert EK.reading(rn([0.01, 0.02, 0.03, 0.04, 0.2, 0.3]), {**nv, 60.0: 1})[0] == "undetermined"
+    assert EK.klass(0.05) == "repeating" and EK.klass(0.07) == "marginal" and EK.klass(0.11) == "non-repeating"
