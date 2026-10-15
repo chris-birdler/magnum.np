@@ -48,7 +48,7 @@ def attempts(d):
 def run(d):
     s = json.loads((d / "summary.json").read_text())
     st = [x for x in s["stages"] if x.get("measure")][0]
-    meas = st["cycles"][2:] if "h_amp_initial" in st else st["cycles"][1:]
+    meas = st["cycles"][analyze.first_measured(st):]      # from 1; 2 / 3 after one / two drive corrections
     tail = analyze.steady_tail(meas, AD.BAL_EVENT)
     ev = [c["cycle"] for c in meas if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1) > AD.BAL_EVENT]
     P = np.array([F_HZ * K_D * c["w_loop"] for c in tail])

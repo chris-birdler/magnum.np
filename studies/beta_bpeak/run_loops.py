@@ -86,7 +86,8 @@ from units import units, F_REL_DEFAULT, JS_REF, A_REF, MU0   # noqa: E402
 _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed trapz
 
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
-ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
+ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction; one more
+#                         after a second correction, acc_first)
 NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
             "acc_harm": 0, "init_transfer": None,                  # without them is equal to these defaults
             "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
@@ -214,9 +215,11 @@ def parse_args(argv=None):
     g.add_argument("--ringdown_samples", type=int, default=512, help="samples per period in the ring-down")
     g.add_argument("--keep_stage_ckpt", action="store_true", help="keep m after every stage")
     g.add_argument("--acc", action="store_true",
-                   help="per-cell accumulators over the cycles >= %d of each measured stage (all samples of a "
+                   help="per-cell accumulators over the cycles >= %d (>= %d after a second drive correction) of each "
+                        "measured stage (all samples of a "
                         "cycle): mean local dissipation p, mean m (m0) and the fundamental m1 = 2/n sum m e^{-i w t}; "
-                        "written to acc_<i>_<stage>.npz (particle cells only; audit 3, item 9b)" % ACC_FROM_CYCLE)
+                        "written to acc_<i>_<stage>.npz (particle cells only; audit 3, item 9b)"
+                        % (ACC_FROM_CYCLE, ACC_FROM_CYCLE + 1))
     g.add_argument("--acc_harm", type=int, default=0,
                    help="with --acc (PROTOKOLL 7.72): K >= 2 adds per cell |m_k|^2 of the harmonics k = 1 … K "
                         "(per cycle, summed over the components, averaged over the kept cycles), and only calm "
