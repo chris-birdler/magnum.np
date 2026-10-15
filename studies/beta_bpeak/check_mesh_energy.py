@@ -34,6 +34,22 @@ Mode "corrugation" (pinning by the surface): the vortex of each particle is shif
 peak, for both surfaces and three meshes.
 
     python check_mesh_energy.py corrugation [d_lex [phi]] > results/mesh_corrugation.md
+
+Mode "solver" (go of Chris 2026-10-15; on the instance, needs runs/B0b_*/init.pt): the production demag DemagFieldPBC
+(finite differences for the potential, Bruckner et al. 2021) against the Newell demag DemagField with image shells in a
+cube arrangement plus the compensation of the outer surface charges (newell_pbc). Code test before the run: for
+uniform m a cubic-symmetric body arrangement has the exact energy φ (1 − φ) / 3 K_d per box volume for every direction
+of m; on the B0b geometry the Newell form gives it within 1e-4 with one shell, DemagFieldPBC deviates by +9.5 / 4.7 /
+2.4 % on dx 3 / 1.5 / 0.75 for m along (111) and is exact only for m along an axis. States as in mode "states" (seeds
+941 … 944; F, F→1.5, F→3, I15, T15, I3, T3), shells 1, 2, 4, double precision. Readings fixed before the run:
+  convergence   the Newell energies are converged if |E(2 shells) − E(4 shells)| ≤ 1e-6 K_d for all states;
+  solver share  Δ = E_FD − E_Newell(4 shells) per state; s(dx) = [Δ(dx) − Δ(0.75)] / [E_FD(dx) − E_FD(0.75)] for the
+                frozen F state is the part of the 7.104 mesh difference that comes from the solver; mean over the
+                seeds: s(3) ≥ 0.5 "the solver dominates", s(3) ≤ 0.2 "the solver is minor", else "both are relevant";
+  10 % rule     the solver error matters for the 10 % criterion of 7.104 if the mean |Δ| / |E_K| of the relaxed
+                dx 3 states (I3, T3) exceeds 0.1 (E_K = anisotropy energy of the state).
+
+    python check_mesh_energy.py solver > runs/demag_solver.md
 """
 import math
 import pathlib
@@ -50,7 +66,31 @@ from geometry import fcc_box                                                   #
 from units import units                                                        # noqa: E402
 
 LEFF, SEED, JS, A = 12.0, 941, 1.5, 1e-11
-PHI = float(sys.argv[2]) if len(sys.argv) > 2 else 0.65
+PHI = 0.65                                            # the default mode sets it from argv[2] (main)
+SHELLS = (1, 2, 4)
+
+
+def newell_pbc(n, dx, ms, shells):
+    """Newell demag of magnum.np (DemagField) on an n³ box with `shells` image shells per side (a cube of (2 shells + 1)³
+    boxes). The cube of images adds the field −<M>/3 of its outer surface charges at the box; energy_newell_pbc removes
+    it, which gives the zero mean field of the true periodic medium (as DemagFieldPBC). ms: Ms per cell [n, n, n, 1].
+    In the cube arrangement the image couplings that the dipole branch of DemagField drops at the local origin sum to
+    zero for each cell (cubic symmetry). Returns (state, term); the kernel is computed once at the first call."""
+    import torch
+    from magnumnp import Mesh, State, DemagField
+    st = State(Mesh((n, n, n), (dx,) * 3, pbc=(shells,) * 3))
+    st.material = {"Ms": ms if torch.is_tensor(ms) else torch.tensor(ms, dtype=torch.get_default_dtype())}
+    return st, DemagField()
+
+
+def energy_newell_pbc(st, term, m, Ms, Kd):
+    """Demag energy per box volume in K_d of m [n, n, n, 3] with the outer surface charges compensated:
+    E = E_images − μ0 V |<M>|² / 6, i.e. E / (K_d V) − |<M> / Ms|² / 3."""
+    import torch
+    st.m = m if torch.is_tensor(m) else torch.tensor(m, dtype=torch.get_default_dtype())
+    V = float(np.prod(st.mesh.dx)) * float(np.prod(st.mesh.n))
+    mean = (st.material["Ms"] * st.m).mean(dim=(0, 1, 2)) / Ms
+    return float(term.E(st)) / (Kd * V) - float((mean ** 2).sum()) / 3.0
 
 
 def setup(d_lex, dx_lex, seed=SEED, surface="voxel"):
@@ -174,6 +214,87 @@ def states():
     print("\n".join(L))
 
 
+def solver():
+    """DemagFieldPBC against Newell with compensated outer surface charges on the B0b states (readings: module doc)."""
+    import json
+    import torch
+    import run_loops
+    U = units(JS, A)
+    Ms = U["Ms"]
+    S, NW = {}, {}
+    for dx in (0.75, 1.5, 3.0):
+        S[dx] = setup(96.0, dx, SEED)
+        st = S[dx][0]
+        for sh in SHELLS:
+            NW[(dx, sh)] = newell_pbc(st.mesh.n[0], float(st.mesh.dx[0]), st.material["Ms"], sh)
+    rows = []
+    for seed in (941, 942, 943, 944):
+        for dx in (0.75, 1.5, 3.0):                   # the cube axes of this seed (anisotropy energy E_K)
+            st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
+            ax, _ = cube_axes(ids, dx, a, d, LEFF, seed)
+            st.material["Ku_axis"] = T(ax)
+        mF = torch.load(HERE / "runs" / ("B0b_F_s%d" % seed) / "init.pt", map_location="cpu", weights_only=False)
+        cases = [("F", 0.75, mF["m"])]
+        for dx in (1.5, 3.0):
+            mc, _ = run_loops.transfer_m(mF["m"].double().cpu().numpy(), S[0.75][3], S[dx][3])
+            cases.append(("F→%g" % dx, dx, mc))
+        for arm, dx in (("I15", 1.5), ("T15", 1.5), ("I3", 3.0), ("T3", 3.0)):
+            c = torch.load(HERE / "runs" / ("B0b_%s_s%d" % (arm, seed)) / "init.pt", map_location="cpu", weights_only=False)
+            cases.append((arm, dx, c["m"]))
+        for name, dx, m in cases:
+            st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
+            V = float(np.prod(st.mesh.dx)) * float(np.prod(st.mesh.n))
+            m = T(m.detach().cpu().double().numpy() if torch.is_tensor(m) else np.asarray(m, dtype=np.float64))
+            st.m = m
+            r = {"seed": seed, "state": name, "dx": dx, "E_K": float(terms["anisotropy"].E(st)) / (Kd * V),
+                 "E_FD": float(terms["demag"].E(st)) / (Kd * V)}
+            for sh in SHELLS:
+                r["E_N%d" % sh] = energy_newell_pbc(*NW[(dx, sh)], m, Ms, Kd)
+            r["delta"] = r["E_FD"] - r["E_N%d" % SHELLS[-1]]
+            rows.append(r)
+            print("%d %s %g %.7f %.7f %+.2e" % (seed, name, dx, r["E_FD"], r["E_N%d" % SHELLS[-1]], r["delta"]),
+                  file=sys.stderr, flush=True)
+    sh = SHELLS[-1]
+    L = ["# Demag solver check on the B0b states (check_mesh_energy.py solver)", "",
+         "Per box volume in units of K_d, double precision. E_FD = DemagFieldPBC (production); E_N(k) = Newell with k "
+         "image shells and compensated outer surface charges; Δ = E_FD − E_N(%d); E_K = anisotropy energy. "
+         "'F→dx' = the relaxed F state, block-averaged onto dx, not relaxed." % sh, "",
+         "| seed | state | dx | E_K | E_FD | " + " | ".join("E_N(%d)" % k for k in SHELLS) + " | Δ | Δ / abs(E_K) |",
+         "|---|---|---|---|---|" + "---|" * len(SHELLS) + "---|---|"]
+    for r in rows:
+        L.append("| %d | %s | %g | %.6f | %.6f | " % (r["seed"], r["state"], r["dx"], r["E_K"], r["E_FD"])
+                 + " | ".join("%.7f" % r["E_N%d" % k] for k in SHELLS)
+                 + " | %+.6f | %.2f |" % (r["delta"], abs(r["delta"] / r["E_K"])))
+    conv = max(abs(r["E_N%d" % SHELLS[-2]] - r["E_N%d" % sh]) for r in rows)
+    g = lambda seed, state: next(r for r in rows if r["seed"] == seed and r["state"] == state)
+    seeds = (941, 942, 943, 944)
+    out = {"convergence_max_abs": conv, "rows": rows}
+    L += ["", "Convergence: max |E_N(%d) − E_N(%d)| = %.1e K_d over all states (limit 1e-6): **%s**."
+          % (SHELLS[-2], sh, conv, "converged" if conv <= 1e-6 else "not converged")]
+    for dx in (3.0, 1.5):
+        dFD = np.array([g(s, "F→%g" % dx)["E_FD"] - g(s, "F")["E_FD"] for s in seeds])
+        dN = np.array([g(s, "F→%g" % dx)["E_N%d" % sh] - g(s, "F")["E_N%d" % sh] for s in seeds])
+        sh_ = (dFD - dN) / dFD
+        out["frozen_dx%g" % dx] = {"dE_FD": dFD.tolist(), "dE_N": dN.tolist(), "share": sh_.tolist()}
+        line = ("Frozen F state, dx %g − dx 0.75: E_FD difference %.5f ± %.5f, Newell difference %.5f ± %.5f K_d "
+                "(mean ± SE, n 4); solver share s = %.2f ± %.2f" % (dx, dFD.mean(), dFD.std(ddof=1) / 2, dN.mean(),
+                                                                 dN.std(ddof=1) / 2, sh_.mean(), sh_.std(ddof=1) / 2))
+        if dx == 3.0:
+            s3 = sh_.mean()
+            rd = "the solver dominates" if s3 >= 0.5 else ("the solver is minor" if s3 <= 0.2 else "both are relevant")
+            out["reading_share"] = rd
+            line += ". **Reading: %s.**" % rd
+        L.append(line + ("." if dx != 3.0 else ""))
+    q = np.array([abs(r["delta"] / r["E_K"]) for r in rows if r["state"] in ("I3", "T3")])
+    rd = "relevant" if q.mean() > 0.1 else "not relevant"
+    out["reading_10pc"] = rd
+    out["delta_over_EK_dx3_relaxed"] = q.tolist()
+    L.append("Relaxed dx 3 states (I3, T3): |Δ| / |E_K| = %.2f ± %.2f (mean ± SE, n %d). **Reading: the solver error "
+             "is %s for the 10 %% criterion.**" % (q.mean(), q.std(ddof=1) / math.sqrt(len(q)), len(q), rd))
+    (HERE / "runs" / "demag_solver.json").write_text(json.dumps(out, indent=1))
+    print("\n".join(L))
+
+
 def m300():
     """Energy terms of the M300 states (d/l_ex 300) on dx 1.5 and dx 3; one mesh and demag kernel per dx, the cube axes
     per seed."""
@@ -231,10 +352,13 @@ def main():
     set_precision("double")                          # once, before the first mesh
     if len(sys.argv) > 1 and sys.argv[1] == "states":
         return states()
+    if len(sys.argv) > 1 and sys.argv[1] == "solver":
+        return solver()
+    global PHI
     if len(sys.argv) > 1 and sys.argv[1] == "corrugation":
-        global PHI
         PHI = float(sys.argv[3]) if len(sys.argv) > 3 else PHI
         return corrugation(float(sys.argv[2]) if len(sys.argv) > 2 else 48.0)
+    PHI = float(sys.argv[2]) if len(sys.argv) > 2 else PHI
     d_lex = float(sys.argv[1]) if len(sys.argv) > 1 else 48.0
     rows = {}
     for surface in ("voxel", "fraction"):

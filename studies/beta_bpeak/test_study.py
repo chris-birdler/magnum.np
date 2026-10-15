@@ -1384,3 +1384,36 @@ def test_long60_jobs_and_readings():
     assert EL.history_class(3e-6, True, False) == "same within the solver tolerance"
     assert EL.history_class(3e-6, False, False) == "differs"
     assert EL.history_class(2e-3, True, True) == "differs, restart"
+
+
+def test_newell_pbc_compensation_exact_and_fd_off_axis_error():
+    """Demag solver check (PROTOKOLL 7.105): uniform m in an aligned cube of edge a/2 in a periodic box has the exact
+    energy f (1 - f) / 3 K_d per box volume (f = 1/8, every direction of m: cubic symmetry, zero mean field). The Newell
+    demag with one image shell and compensated outer surface charges (check_mesh_energy.newell_pbc) gives it for every
+    direction; DemagFieldPBC gives it for m along an axis and deviates for m along (111) (+13.7 % for 4 cells per cube
+    edge; +4.6 / 1.4 / 0.43 % for 8 / 16 / 32 cells)."""
+    import torch
+    import check_mesh_energy as C
+    from magnumnp import Mesh, State
+    from magnumnp.field_terms.demagPBC import DemagFieldPBC
+    from units import units
+    old = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        U = units(1.5, 1e-11)
+        Ms, Kd, dx, n = U["Ms"], U["Kd"], 1e-9, 8
+        ms = torch.zeros((n, n, n, 1))
+        ms[:n // 2, :n // 2, :n // 2] = Ms
+        exact = (1 / 8) * (7 / 8) / 3
+        st_n, term_n = C.newell_pbc(n, dx, ms, 1)
+        st_f = State(Mesh((n, n, n), (dx,) * 3))
+        st_f.material = {"Ms": ms}
+        fd = DemagFieldPBC()
+        for u, fd_exact in (((1.0, 0.0, 0.0), True), ((1.0, 1.0, 1.0), False)):
+            m = torch.tensor(u).expand(n, n, n, 3) / math.sqrt(sum(x * x for x in u))
+            assert abs(C.energy_newell_pbc(st_n, term_n, m.clone(), Ms, Kd) / exact - 1) < 1e-3
+            st_f.m = m.clone()
+            e_fd = float(fd.E(st_f)) / (Kd * dx ** 3 * n ** 3)
+            assert (abs(e_fd / exact - 1) < 1e-9) if fd_exact else (e_fd / exact - 1 > 0.02)
+    finally:
+        torch.set_default_dtype(old)
