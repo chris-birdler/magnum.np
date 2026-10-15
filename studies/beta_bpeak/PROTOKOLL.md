@@ -4742,6 +4742,53 @@ results/b0b_check.md / .json):
 **Decision of Chris (2026-10-14):** no further evaluation of the wall area from VTI snapshots. The amount of wall does
 not set β (7.19, 7.46); the texture now comes from the per-cell accumulators.
 
+### 7.103 Long runs at 60 MHz after the C′ history (2026-10-15, decision Chris; reading fixed before the runs)
+
+- Question: are the C′ values at 60 MHz valid means where 7.99, 7.100 and 7.102 found irregular or drifting loops?
+  Tested: the large particle (K1A10_k, d/l_ex 300) at 9 mT, and the small particle (K1_k, d/l_ex 212) at 20 and 35 mT,
+  where the motion is irregular (7.99). For the large particle 7.100 reported a drift from 22 to 14 W/cm³. This is
+  seed 0 only, and its cycles 2 … 4 are events; the C′ value (14.1 W/cm³) comes from the cycles after them, and seeds
+  1 and 2 are flat at 12 … 15 W/cm³. The test checks whether the 9 mT value of the large particle holds over 40 cycles. The small particle at 9 mT holds
+  (atol60, 7.102). The factor 2 of 7.96 rests on the whole sweep at 9 mT; these runs test only the 60 MHz values of C′.
+- Jobs: jobs/long60.txt (pair_jobs.py --long60), 9 jobs. Each job is the C′ line of K1A10_k_f2 or K1_k_f2 (k 0 … 2)
+  with the amplitude list up to the tested amplitude. The earlier stages keep the C′ stop rule (≥ 2 calm cycles, at most
+  12 cycles); the tested stage runs exactly 40 cycles. There is no --init_from: C′ relaxed in the same process, so the
+  history repeats (7.59). rerun_jobs.cond is extended: it finds a tested amplitude by its place in the nominal list (so
+  the list may start above 9 mT) and takes the number of last cycles as a parameter. Test:
+  test_long60_jobs_and_readings.
+- Control of the history (fixed now): the cycles of the earlier stages and the first n cycles of the tested stage (n =
+  its cycles in C′) must repeat C′. Largest relative difference of w_loop: ≤ 1e-9 "bit-identical", ≤ 1e-4 "same within
+  the solver tolerance", above or with other cycle counts "differs". A restart inside a run ("[resume]" or "[init] m
+  from" in stdout.log) is flagged. Such a run still enters the readings; a group with this in at least 2 of 3 seeds is
+  marked "history not reproduced: the comparison with C′ is statistical only".
+- Completeness: a group reading needs all 3 runs of the group; the reading on the A effect needs all 9 runs. Else
+  "not determined (runs missing)".
+- Reading (eval_long60.py, synthetic test, fixed now). Per run, the tested stage from cycle 2 on: c_settle and class
+  as in atol60 (7.100). Per group (large particle 9 mT, small particle 20 mT, small particle 35 mT; 3 seeds):
+  - motion: "periodic" if periodic in at least 2 of 3 seeds; "stays irregular" if it stays irregular in at least 2 of
+    3 seeds; else not determined;
+  - loss value: P = mean of the last 10 cycles; "the C′ value holds" if within ±10 % of the C′ value in at least 2 of
+    3 seeds; "the C′ value is off" if outside ±10 % in at least 2 of 3 seeds; else not determined.
+  - secondary value (reported, not part of the readings): the event cycles among the last 10 cycles and P of the calm
+    cycles among them. The C′ value excludes event cycles (steady tail); in 3 of the 9 tested C′ stages it comes from
+    only 2 cycles after events (K1A10_0 at 9 mT, K1_2 at 20 mT, K1_0 at 35 mT), where the plain mean from cycle 2 lies
+    7.5 … 20 % above it. Thus "off" can come from the event rule and not from the length of the window.
+- Consequence for the A effect on β at 60 MHz (fixed now): per seed β over 9 … 150 mT (main-fit definition) of the
+  small and of the large particle, first with the C′ values, then with ln w of the tested stages replaced by the mean
+  of the last 10 cycles of the long run. A effect = β(small) − β(large), paired by seed, mean ± SE (n 3), 90 % CI with
+  t(2). "The sign change holds" if the corrected mean is below 0 and the CI excludes 0; "the sign change does not hold"
+  if the corrected mean is 0 or above; else not determined. C′ with the same code: −0.339 ± 0.016 (90 % CI −0.385 …
+  −0.292).
+- Limits: only the tested stages are replaced in the β fit; the other stages keep their C′ values. The ln w of a long
+  run is the raw value at its b (within 0.5 % of the nominal amplitude; the change of β is at most 0.003); the C′ values
+  are interpolated to the nominal amplitudes. All runs use dx 3, with the staircase limits of the main runs.
+- Chain instance/chain_long60.sh, pin /root/long60_commit. It stops if less than 6 GB are free, logs the exit code of
+  the evaluation and sets LONG60_DONE only if the queue and the evaluation end with code 0. The B0b chain is removed
+  from the onstart lines: it has no check of its done marker and would check out another commit after a restart. The
+  atol60 and atol30 lines stay; they end at once (their done markers exist).
+- Cost (estimate from the C′ times: large particle 39 min relaxation and 122 s per cycle, small particle 5 min and 48 s
+  per cycle): ≈ 11 GPU h, ≈ 3 h on 4 GPUs, ≈ 1.3 $.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

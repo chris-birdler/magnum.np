@@ -1345,3 +1345,42 @@ def test_eval_b0b_check_attempts_of_a_restarted_run(tmp_path):
     at = EB.attempts(tmp_path)
     assert len(at) == 2 and sorted(at[0]) == [0, 1] and sorted(at[1]) == [0]
     assert at[0][0] == (4.289e-07, 8.636e-07, 0.032) and at[1][0][1] == 8.7e-07
+
+
+def test_long60_jobs_and_readings():
+    """PROTOKOLL 7.103: rerun_jobs.cond finds a tested amplitude by its place in the nominal list (amps may start above
+    9 mT), the long60 lines equal the C′ lines up to b_list / n_amp / cycles_last_amp, and the fixed readings."""
+    import shlex
+    import analyze_design as AD
+    import eval_long60 as EL
+    import pair_jobs
+    from rerun_jobs import NOMINAL_MT, get_arg, job_lines, set_arg
+    assert tuple(NOMINAL_MT) == tuple(int(x) for x in AD.AMPS_MT)
+    here = pathlib.Path(__file__).resolve().parent
+    src = dict(job_lines(here / "jobs" / "freq_K1pair.txt"))
+    lines = pair_jobs.long60_lines()
+    assert [(n, a) for n, a in lines] == job_lines(here / "jobs" / "long60.txt")
+    assert sorted(n for n, _ in lines) == sorted(["cond_K1A10_%d_f2_b9" % k for k in range(3)] +
+                                                 ["cond_K1_%d_f2_b%d" % (k, m) for k in range(3) for m in (20, 35)])
+    for name, args in lines:
+        base, mT = name[5:].rsplit("_b", 1)
+        tok, ref = shlex.split(args), shlex.split(src[base])
+        k = NOMINAL_MT.index(int(mT))
+        assert get_arg(tok, "b_list") == get_arg(ref, "b_list")[:k + 1] and get_arg(tok, "n_amp") == [str(k + 1)]
+        assert get_arg(tok, "cycles_last_amp") == ["40"] and get_arg(tok, "init_from") is None
+        strip = lambda t: set_arg(set_arg(set_arg(list(t), "b_list", None), "n_amp", None), "cycles_last_amp", None)
+        assert sorted(strip(tok)) == sorted(strip(ref))
+    assert EL.motion_reading(["periodic", "periodic", "stays irregular"]) == "periodic"
+    assert EL.motion_reading(["stays irregular", "marginal", "stays irregular"]) == "stays irregular"
+    assert EL.motion_reading(["periodic", "marginal", None]) == "not determined"
+    assert EL.value_reading([10.0, 10.5, 12.0], [10.0, 10.0, 10.0]) == "the C′ value holds"
+    assert EL.value_reading([13.0, 13.5, 10.0], [10.0, 10.0, 10.0]) == "the C′ value is off"
+    assert EL.value_reading([10.0, None, 13.0], [10.0, 10.0, 10.0]) == "not determined"
+    assert EL.sign_reading([-0.35, -0.36, -0.31])[0] == "the sign change holds"
+    assert EL.sign_reading([0.10, -0.05, 0.02])[0] == "the sign change does not hold"
+    assert EL.sign_reading([-0.6, 0.1, -0.2])[0] == "not determined"
+    assert EL.sign_reading([-0.35, -0.36, None])[0] == "not determined (runs missing)"
+    assert EL.history_class(0.0, True, False) == "bit-identical"
+    assert EL.history_class(3e-6, True, False) == "same within the solver tolerance"
+    assert EL.history_class(3e-6, False, False) == "differs"
+    assert EL.history_class(2e-3, True, True) == "differs, restart"

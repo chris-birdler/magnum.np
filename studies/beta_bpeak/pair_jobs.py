@@ -10,6 +10,7 @@ same cells: the pair shares seed, stress axes, packing and history, not the cell
     python pair_jobs.py --freq > jobs/freq_K1pair.txt      # option C′: f/2 and 2 f
     python pair_jobs.py --atol60 > jobs/atol60.txt         # tolerance test at 60 MHz (7.100, 7.101)
     python pair_jobs.py --atol30 > jobs/atol30.txt         # tolerance twins of the main run at 30 MHz (7.101)
+    python pair_jobs.py --long60 > jobs/long60.txt         # long runs at 60 MHz after the C′ history (7.103)
 """
 import shlex
 
@@ -121,8 +122,24 @@ def atol30_lines():
     return [("K1_%d_L6" % k, set_arg(strip_snap(shlex.split(src["K1_%d" % k])), "atol", ["1e-06"])) for k in range(3)]
 
 
+def long60_lines():
+    """Long runs at 60 MHz after the C′ history (decision Chris 2026-10-15, point 5 of the open questions; PROTOKOLL
+    7.103): the large particle (K1A10_k_f2) at 9 mT and the small particle (K1_k_f2) at 20 and 35 mT, each with the C′
+    history up to the tested amplitude (earlier stages with the C′ stop rule, ≤ 12 cycles, ≥ 2 calm) and then exactly
+    40 cycles at it (rerun_jobs.cond). No --init_from: C′ relaxed in the same process, so the history repeats bit for bit
+    (7.59). Longest jobs (large particle: relaxation 39 min, 122 s per cycle) first."""
+    from rerun_jobs import cond
+    big = cond(["K1A10_%d_f2" % k for k in range(3)], "jobs/freq_K1pair.txt", amps=(9,), max_prev=12, last=40)
+    small = cond(["K1_%d_f2" % k for k in range(3)], "jobs/freq_K1pair.txt", amps=(35, 20), max_prev=12, last=40)
+    return [tuple(x.split(" ", 1)) for x in big + small]
+
+
 if __name__ == "__main__":
     import sys
+    if "--long60" in sys.argv:
+        for name, args in long60_lines():
+            print(name, args)
+        sys.exit(0)
     if "--atol60" in sys.argv or "--atol30" in sys.argv:
         for name, tok in (atol60_lines() if "--atol60" in sys.argv else atol30_lines()):
             print(name, " ".join(tok))

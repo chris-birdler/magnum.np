@@ -116,19 +116,25 @@ def reruns(specs, runs, cap_vh):
     return lines, skipped, cost
 
 
-def cond(names, source, amps=(9, 20, 35), max_prev=15):
-    """Conditioning runs: the design history up to each tested amplitude, then 30 cycles at it. max_prev caps the
-    earlier stages (15 at α 0.1, PLAN 4.5; 9 = the design length at α 0.01, decision Chris 2026-10-12)."""
+NOMINAL_MT = (9, 20, 35, 50, 70, 100, 150)        # the b_list of the design in this order (analyze_design.AMPS_MT)
+
+
+def cond(names, source, amps=(9, 20, 35), max_prev=15, last=30):
+    """Conditioning runs: the design history up to each tested amplitude, then `last` cycles at it. max_prev caps the
+    earlier stages (15 at α 0.1, PLAN 4.5; 9 = the design length at α 0.01, decision Chris 2026-10-12; 12 = the C′
+    runs). A tested amplitude is found by its place in the nominal list, so amps may start above 9 mT (PROTOKOLL
+    7.103)."""
     src = dict(job_lines(source))
     lines = []
     for n in names:
         tok = shlex.split(src[n])
         bl = get_arg(tok, "b_list")
-        for k, mT in enumerate(amps):
+        for mT in amps:
+            k = NOMINAL_MT.index(mT)
             t = strip_snap(list(tok))
             t = set_arg(t, "b_list", bl[:k + 1])
             t = set_arg(t, "n_amp", [str(k + 1)])
-            t = set_arg(t, "cycles_last_amp", ["30"])
+            t = set_arg(t, "cycles_last_amp", [str(last)])
             t = set_arg(t, "max_cycles_per_amp", [str(max_prev)])
             t = set_arg(t, "min_calm", [str(MIN_CALM)])
             lines.append("cond_%s_b%d %s" % (n, mT, " ".join(t)))
