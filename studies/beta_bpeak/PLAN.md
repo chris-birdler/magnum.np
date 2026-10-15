@@ -1001,7 +1001,9 @@ rules: calm tail, ln P at the measured b_peak). Reading, fixed now (mean over th
 Reported with SE and 90 % CI (t(3)), and the paired difference Δ_N − Δ_FD per seed. Information (not a reading): E_ref
 and E_FD of the new relaxed states (check_mesh_energy.py). Stage 2 needs a separate go after the report of stage 1.
 
-**Stage 2: F (dx 0.75), then T15 and T3, 4 seeds (12 runs).** Readings as 4.10 and eval_conv.py, at 9 mT only:
+**Stage 2: F (dx 0.75), then T15 and T3, 4 seeds (12 runs).** Change (go of Chris 2026-10-15, PROTOKOLL 7.107): the
+stage 2 lines also have --b_tol 0.01 (second drive correction after cycle 1); the stage 1 I arms ran without it, so the
+comparisons of I arms with F or T mix two drive rules (the comparisons inside stage 2 do not). Readings as 4.10 and eval_conv.py, at 9 mT only:
 "converged at dx 1.5" if the 90 % CI of Δ(1.5 − 0.75) lies inside ± 0.10; "converging" if the difference shrinks from
 (3 − 1.5) to (1.5 − 0.75) but is outside ± 0.10; "not converging" if it does not shrink or changes sign.
 

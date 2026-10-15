@@ -4191,7 +4191,9 @@ not depend on A at fixed K_eff (it does not explain the shift by the factor 2 of
 Transfer (estimate): real nanocrystalline powders have a much smaller K_eff (a few J/m³ from the grains, Herzer 1990;
 up to some 100 J/m³ with stress). Their internal time scale is then of the order of 0.1 … 5 MHz, and a drive at 30 MHz
 lies above it, in another regime than in the simulation. The frequency results of the simulation may not transfer to a real
-powder.
+powder. (Corrected in 7.106: with a small K_eff, exchange at the particle scale
+and the stress anisotropy are candidates for the restoring field; for particles of about 1 µm the internal frequency
+can lie at about 8 … 22 MHz (estimate); which field sets the onset is open.)
 
 ### 7.95 Frequency data at 9 mT: what was computed, and how accurate (2026-10-14, question of Chris)
 
@@ -5078,6 +5080,140 @@ finite-difference stencils (new numerics with its own null modes); (3) DemagFiel
   (not checked): on 48³ and 96³ many image cells lie within the Newell radius (20 cell diagonals, about 35 cells) and
   need the costly Newell formula; on 192³ all image cells lie beyond it.
 - The plan and the costs of the B0b runs follow in PLAN.md before any run.
+
+### 7.106 Correction of 7.94 (internal frequency of real powders); frequency test at the corner K3: prepared, design open (2026-10-15, decisions of Chris)
+
+Term: internal frequency f_int = γ μ0 H_r / 2π, the precession frequency in a restoring field H_r (γ/2π = 28 GHz/T,
+J_s 1.5 T). With α 0.1 the relaxation rate is α 2π f_int ≈ 0.63 f_int (the measure of 7.94 and 7.99). All values in this
+section are estimates.
+
+**Correction of 7.94.** Remark of Chris: a smaller K_eff would be even worse for us (the drive would lie even further
+above the time scale of the anisotropy).
+- 7.94 took only the anisotropy field as the restoring field (μ0 H_K = 2 K / M_s). For the anisotropy alone this holds:
+  f_int is about 0.5 / 5 / 14 MHz for K 10 / 100 / 300 J/m³. A drive at 30 … 60 MHz then lies 2 … 130 × above it.
+- With a small K_eff, other restoring fields remain:
+  - exchange at the scale of the particle, μ0 H_ex = (2 A / M_s)(2π / λ)² with A 10 pJ/m. For the lowest exchange mode
+    of a sphere with a free surface k ≈ 2.08 / R, thus λ ≈ 1.5 d: about 0.28 mT (8 MHz) at d 1 µm, about 0.02 mT
+    (0.5 MHz) at 4 µm (∝ 1/λ²). (With λ = d, as in 7.96: 0.64 mT, 18 MHz, at 1 µm.)
+  - the stress anisotropy (7.94: up to a few hundred J/m³; no measured value for our powders): about 9 … 14 MHz for
+    200 … 300 J/m³;
+  - magnetostatic restoring fields of textures (for example the gyration of a vortex): not estimated for spheres.
+- Sum of the fields (rough rule): exchange (sphere mode) plus stress gives about 8 … 22 MHz at 1 µm, near or in the
+  drive band. The sentence of 7.94 "Their internal time scale is then of the order of 0.1 … 5 MHz" is too simple.
+- Consequence: if a restoring field sets the onset of the irregular motion, the relevant quantity is f / f_int, and
+  the frequency results at K1 (7.98, 7.99) cannot be transferred as absolute frequencies. Which field sets the onset is
+  open: 7.99 found the lower onset for the smaller particle, whose exchange field (∝ A / d²) is larger; this goes
+  against a control by the exchange at the particle scale.
+- Wall width π √(A / K): real K 10 … 300 J/m³ at A 10 pJ/m gives about 3.1 … 0.57 µm, so a particle of 1 µm is
+  smaller than about 2 wall widths. In the model, K_eff 1.0 … 6.2 kJ/m³ at A 10 … 20 pJ/m gives about 0.13 … 0.44 µm;
+  with the stress anisotropy K_p = r_p K_eff, r_p 1.5 (as at the corners), about 0.08 … 0.28 µm: a particle of 0.71 … 1 µm is about 2 … 12 wall widths
+  across. This limits the
+  transfer to real powders (open, decision of Chris).
+
+**Frequency test at the corner K3: prepared, not run.** Go of Chris for the preparation. Code: commit aea8576 on
+feature/newell-pbc (pair_jobs.py --k3freq [newell]: K3 at 30, 42.4, 60, 84.9, 120, 169.7 MHz, seeds 2031 … 2033, C′
+settings; eval_k3freq.py; instance/chain_k3freq.sh). Idea: at K1 the motion of the small particle (d/l_ex 212) at
+9 mT stops repeating between 42 and 60 MHz (7.99; the large particle at 60 … 85 MHz); if the anisotropy field sets the
+onset, K3 (K_eff 2.76 kJ/m³ = 2.78 × K1) would shift it to about 118 … 167 MHz. The code (pair_jobs.py, eval_k3freq.py)
+still says 2.76 × K1 and 116 … 166 MHz; to be fixed with the design.
+A context-free review found faults and weaknesses; the design is open:
+- Fault: eval_k3freq.py did not switch on the steady-tail rule (analyze.STEADY_TAIL stays None). Runs with events at
+  the end of a stage would count, and β would not be comparable with C′. No run was evaluated with it.
+- K3 differs from K1 in more than K_eff:
+  - Herzer cubes 18 against 30 l_ex (about 1 200 against 320 per particle, config.json n_cubes_per_particle);
+  - φ 0.69 against 0.62; at 9 mT μ0 H_peak is 0.82 against 1.30 mT (from the runs) and H_peak / H_K 0.18 against 0.78:
+    the relative drive is about 4 × weaker at K3 (K_eff and φ both contribute; the share of each is not shown);
+  - wall parameter √(A / ((1 + r_p) K_eff)) 3.8 against 6.3 cells on dx 3 (wall width π × this: 12 against 20 cells),
+    thus stronger pinning at the mesh is possible;
+  - other seeds;
+  - for the newell variant the K1 reference was measured with DemagFieldPBC (another solver).
+- The K1 reference: the onset by the seed mean is 42 … 60 MHz; per seed it is 60 / 120 / 60 MHz, and RN falls from 60 to
+  85 MHz (0.201 to 0.086).
+- On the √2 grid the readings do not separate an anisotropy control (× 2.78) from a mixed restoring field (exchange does
+  not scale with K_eff: × 2.0 … 2.4).
+- At 120 … 170 MHz a stage of 7 … 12 cycles lasts only 41 … 100 ns; a start transient can look non-repeating.
+- The steady rule is validated only for K1 at 60 MHz and only for the loss value (7.105).
+- Options put to Chris: (A) K3 as prepared with the fixes; (B) a test at K1 with only K_eff × 4 (--Q_eff: the same
+  cubes, φ, seeds and particle size), K1 and K1 × 4 with the reference solver, 9 mT, 30 … 240 MHz, at the same B_peak
+  or at the same H_peak / H_K; (C) the frequency question after stage 2 of PLAN 4.11. Recommendation: B after stage 2.
+  Limits of B: K_eff × 4 halves the wall parameter (6.3 → 3.2 cells on dx 3), so the mesh-pinning confound stays; the
+  predicted onset 4 × (42 … 60) = 170 … 240 MHz gives stages of only 29 … 41 ns (7 cycles), the same start-transient
+  risk; a 40-cycle check at the onset frequency is needed.
+
+### 7.107 PLAN 4.11, stage 1: with the reference solver the mesh difference 3 → 1.5 l_ex is much smaller; second drive correction; stage 2 started (2026-10-15, decisions of Chris)
+
+**Stage 1 (go of Chris).** Runs N0b_I3 and N0b_I15, seeds 941 … 944 (jobs/newell_b0_s1.txt, commit 880fa54 on
+feature/newell-pbc; the B0b lines of 7.102 with --strayfield newell --strayfield_shells 4). Instance, 4 V100, 12:23 …
+13:21 UTC (30 MHz, 9 mT); all 8 runs DONE, all relaxations converged. Report: results/newell_b0_s1.md (eval_conv.py
+--prefix N0b; the first report stopped at a format fault of eval_conv.py, fixed in b1adab7 and written again by the
+chain). Raw data local
+(runs/MANIFEST_newell_s1.md5, 40 files, no .pt).
+
+| 9 mT, I arms, n 4 | DemagFieldPBC (B0b) | reference solver (N0b) |
+|---|---|---|
+| ln P(3 l_ex) − ln P(1.5 l_ex), mean ± SE (90 % CI) | −0.79 ± 0.31 (−1.51 … −0.07) | −0.19 ± 0.13 (−0.51 … +0.12) |
+| P(3 l_ex) / P(1.5 l_ex) as a factor (geometric mean) | × 0.45 | × 0.82 |
+| P on 1.5 l_ex, geometric mean of 4 seeds | 3.25 W/cm³ | 1.34 W/cm³ |
+| P on 3 l_ex, geometric mean of 4 seeds | 1.47 W/cm³ | 1.11 W/cm³ |
+| SD of ln P over the seeds, 1.5 / 3 l_ex | 0.65 / 0.09 | 0.53 / 0.29 |
+
+- **Reading (PLAN 4.11, pre-registered): "much smaller"** (|mean| 0.19 ≤ 0.30).
+- Paired by seed, the difference changes by +0.60 ± 0.20 (SE, n 4; 90 % CI +0.12 … +1.07) from DemagFieldPBC to the
+  reference solver: about 3/4 of the B0b difference (point estimate; the 90 % CI is 15 … 135 % of it).
+  ln P(N0b) − ln P(B0b) per seed (SE, n 4): −0.88 ± 0.16 on 1.5 l_ex (P × 0.41; 90 % CI × 0.28 … × 0.61) and −0.29 ±
+  0.15 on 3 l_ex (P × 0.75; 90 % CI × 0.52 … × 1.08, includes × 1). Per seed (941 / 942 / 943 / 944): Δ_N −0.32 /
+  −0.29 / −0.36 / +0.20; Δ_FD −0.92 / −0.66 / −1.53 / −0.06; Δ_N − Δ_FD +0.60 / +0.37 / +1.17 / +0.26.
+- Thus DemagFieldPBC raised the loss on 1.5 l_ex (× 2.4); on 3 l_ex a change is not shown. The cause is not shown
+  (candidate: the cell-scale null modes of 7.105 as an extra channel of loss). Limits: n 4; the seed scatter stays
+  large (independent relaxations select different states).
+- Drive amplitude: b_peak / b_target of the measured cycles 0.941 … 1.002 (N0b), 0.965 … 1.014 (B0b). ln P is taken at
+  the measured b_peak without a correction (as pre-registered); 6 % less b lowers ln P by about 0.12 at β 2. With a
+  correction to the target at β 2 (estimate): Δ_N changes by −0.005, Δ_FD by +0.045 (to about −0.75), the paired change
+  to about +0.55; the reading does not change.
+- Cost data of the reference solver against DemagFieldPBC (V100, single, atol 1e-6, d/l_ex 96; means of 4 seeds):
+
+| quantity | dx 1.5 | dx 3 |
+|---|---|---|
+| relaxation iterations | 10 000 / 5 375 (× 1.86) | 4 875 / 5 875 (× 0.83) |
+| wall time per iteration (with the one-time kernel of 2.4 min) | 0.095 / 0.055 s (× 1.74) | 0.071 / 0.025 s (× 2.8) |
+| wall time per cycle | 278 … 322 / 201 … 218 s (× 1.46) | 80 … 105 / 68 … 75 s (× 1.24) |
+| time step | 2.15 / 2.10 ps | 7.1 … 7.2 / 6.15 … 6.17 ps |
+
+
+**Drive amplitude: finding, cause, patch (go of Chris).**
+- Finding: N0b_I15_s941 stays at 94.1 % and N0b_I3_s944 at 95.0 % of the target amplitude in all measured cycles.
+  Smaller deviations: B0b I15 s943 +1.4 %, B0b I3 s942 / s943 / s944 −2.2 / −1.1 / −3.5 %, B0b F s941 and s944
+  −1.3 … −2 %.
+- Cause: run_loops.py corrects the drive once, with b of cycle 0. b/h of cycle 0 was 6 % (s941) and 5 % (s944) above
+  b/h of the later cycles, so the correction lowered the drive too much. Cycle 0 starts from the relaxed virgin state;
+  that it is a transient is an inference (a non-linear b(h) is not separated).
+- Patch (commit 4cd1c45, feature/newell-pbc): --b_tol (default 0: the old behaviour; an old config counts as 0). With
+  b_tol > 0 the drive is corrected again with b of cycle 1 (the first cycle at the corrected drive) if |b / b_target − 1|
+  > b_tol, at a zero crossing of the field, factor limited to 0.67 … 1.5. Then cycle 2 is discarded too (analyze.
+  first_measured, used by run_loops, analyze and eval_jumps_time), the stage gets one more cycle, the cycle limit rises
+  by one and the accumulators start one cycle later. The stage 2 jobs use --b_tol 0.01. Other evaluation scripts of
+  older studies keep the rule "from cycle 2 after a correction"; they see no runs with a second correction.
+- Tests: test_second_drive_correction_and_discard_rule (the helpers; the main-loop branch is covered only by the smoke
+  run); the full test_study.py passes (85 passed, 3 skipped, local CPU, exit code 0). Smoke run on the instance, GPU 0 (B0b geometry on dx 3, DemagFieldPBC, a short fixed relaxation with --allow_unconverged, b_tol
+  1e-6 to force the second correction): b of cycle 0 +4.4 % (first correction), of cycle 1 +1.4 % (second correction),
+  of cycles 2 and 3 −0.17 %; the stage ends after 4 cycles (3 + 1) with h_amp_initial and h_amp_second in the record;
+  exit code 0 (values from its stdout; the files were deleted afterwards, a local start on the CPU was stopped).
+- Design change of PLAN 4.11: the stage 2 lines have --b_tol 0.01, the stage 1 I arms ran without it. Comparisons of
+  I arms with F or T (I15 − F, I3 − F, T − I, SD_I) therefore mix two drive rules; the comparisons inside stage 2
+  (T15 − F, T3 − T15, T3 − F) do not. Option for Chris: run N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01.
+- Not yet reported (PLAN 4.11 stage 1, information): E_ref and E_FD of the new relaxed states (the init.pt files are on
+  the instance; check_mesh_energy.py after stage 2).
+
+**Stage 2 (go of Chris).** Runs N0b_F (dx 0.75), then N0b_T15 and N0b_T3, seeds 941 … 944 (jobs/newell_b0_s2.txt):
+4 F runs at the same time, one per GPU; the T runs wait for the init.pt of their F run (--init_wait_h 40). Relaxation:
+to convergence, at most 80 000 iterations; a run that does not converge is not used and is reported (estimate for F
+with the reference solver: 10 000 … 26 000 iterations, 5 … 13 h). Readings: PLAN 4.11 and eval_conv.py. Cost (estimate):
+relaxation of F 10 000 … 27 000 iterations (× 1.86 of B0b F) at the measured 1.3 s per iteration (17:20 UTC, all 4 runs
+at 8 000 … 8 500 iterations) = 4 … 10 h; 5 … 6 cycles of about 1.7 … 2.1 h (B0b F 1.4 h × 1.24 … 1.46; one more cycle
+for each run with a second correction); T arms about 1 h. Total about 15 … 24 h, about 6 … 10 $. A one-stage run has no
+checkpoint inside the stage: cycles done before a stop are lost. Started at 14:19 UTC (commit
+4cd1c45), 4 F runs on the 4 GPUs. Credit at 14:41 UTC: 5.73 $ at 0.405 $/h, about 14 h; less than the estimate of
+the stage. Chris must add credit, else the instance stops before the F runs end.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
