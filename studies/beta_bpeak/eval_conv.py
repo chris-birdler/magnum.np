@@ -234,12 +234,17 @@ def main():
     text, _ = report(recs)
     if prefix != CJ.PREFIX:
         lnP_fd = {k: r["lnP"] for k, r in collect(prefix=CJ.PREFIX).items()}
-        key, t, (p, q) = stage1_reading({k: r["lnP"] for k, r in recs.items()}, lnP_fd)
         text = text.replace("# B0: mesh", "# %s (reference stray-field solver, PLAN 4.11): mesh" % prefix, 1)
-        text += ("\n\n## Stage 1 reading (PLAN 4.11, pre-registered)\n\n| difference | mean ± SE (90 % CI) | SD of the "
-                 "difference (90 % CI) | n |\n|---|---|---|---|\n| ln P(I3) − ln P(I15), %s | %s |\n| Δ_N − Δ_FD (B0b, same "
-                 "seed) | %s |\n\n**%s**" % (prefix, fmt_p(p), fmt_p(q), t))
+        text += stage1_section(prefix, {k: r["lnP"] for k, r in recs.items()}, lnP_fd)[1]
     print(text)
+
+
+def stage1_section(prefix, lnP_n, lnP_fd):
+    """(key, markdown section) of the stage 1 reading of PLAN 4.11."""
+    key, t, (p, q) = stage1_reading(lnP_n, lnP_fd)
+    return key, ("\n\n## Stage 1 reading (PLAN 4.11, pre-registered)\n\n| difference | mean ± SE (90 %% CI) | SD of "
+                 "the difference (90 %% CI) | n |\n|---|---|---|---|\n| ln P(I3) − ln P(I15), %s | %s |\n| Δ_N − Δ_FD (B0b, "
+                 "same seed) | %s |\n\n**%s**" % (prefix, fmt_p(p), fmt_p(q), t))
 
 
 if __name__ == "__main__":

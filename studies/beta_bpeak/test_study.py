@@ -1550,3 +1550,13 @@ def test_eval_k3freq_reading():
     assert EK.reading(rn([0.01, 0.02, 0.03, 0.04, 0.05, 0.06]), nv)[0] == "none"
     assert EK.reading(rn([0.01, 0.02, 0.03, 0.04, 0.2, 0.3]), {**nv, 60.0: 1})[0] == "undetermined"
     assert EK.klass(0.05) == "repeating" and EK.klass(0.07) == "marginal" and EK.klass(0.11) == "non-repeating"
+
+
+def test_eval_conv_stage1_section_text():
+    """eval_conv.stage1_section builds the report section (the % signs of '90 % CI' are escaped)."""
+    import eval_conv as EC
+    fd = {(a, s): (0.0 if a == "I15" else -0.8 + 0.1 * (s % 2)) for a in ("I3", "I15") for s in EC.CJ.SEEDS}
+    nv = {(a, s): (0.0 if a == "I15" else -0.1 + 0.03 * (s % 3)) for a in ("I3", "I15") for s in EC.CJ.SEEDS}
+    key, text = EC.stage1_section("N0b", nv, fd)
+    assert key == "smaller" and "Stage 1 reading" in text and "90 % CI" in text and "much smaller" in text
+    assert text.count("|---|---|---|---|") == 1
