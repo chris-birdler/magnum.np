@@ -20,6 +20,15 @@ relaxation). The same physical state on three meshes shows which term carries th
 
     python check_mesh_energy.py states > runs/mesh_energy_states.md
 
+Mode "m300" (go of Chris 2026-10-15; 1 µm particles at A 10 pJ/m): the relaxed dx 1.5 states of M300_dx15_s92k_b9
+(base microstructure, d/l_ex 300, seeds 921 … 924) on their own mesh and after the block average onto dx 3, and the
+relaxed dx 3 states M300_dx3_s92k_b9 if their init.pt exists. Single precision as in production (memory). Reading fixed
+before the run: the B0b law (staircase error ≈ 0.22 (dx/d)^1.23 K_d) predicts a demag difference dx 3 − dx 1.5 of
+0.00044 K_d for the same state; "the law holds at 1 µm" if the mean over the seeds lies within ±30 % (0.00031 …
+0.00057); below: the error at 1 µm is smaller than predicted; above: larger.
+
+    python check_mesh_energy.py m300 > runs/mesh_energy_m300.md
+
 Mode "corrugation" (pinning by the surface): the vortex of each particle is shifted rigidly along x by δ = 0 … 2 dx in
 16 steps; the total energy E(δ) minus its quadratic fit (the smooth part of a sphere) gives the corrugation, peak to
 peak, for both surfaces and three meshes.
@@ -165,8 +174,60 @@ def states():
     print("\n".join(L))
 
 
+def m300():
+    """Energy terms of the M300 states (d/l_ex 300) on dx 1.5 and dx 3; one mesh and demag kernel per dx, the cube axes
+    per seed."""
+    import torch
+    import run_loops
+    from anisotropy_model import cube_axes
+    L = ["# Energy terms of the M300 states, d/l_ex 300 (check_mesh_energy.py m300)", "",
+         "Per box volume in units of K_d, single precision. 'dx15→3' = the relaxed dx 1.5 state, block-averaged onto dx 3, "
+         "not relaxed.", "", "| seed | state | dx | exchange | anisotropy | demag | total | init record E / K_d |",
+         "|---|---|---|---|---|---|---|---|"]
+    S = {dx: setup(300.0, dx, 921) for dx in (1.5, 3.0)}
+    out = {}
+    for seed in (921, 922, 923, 924):
+        for dx in (1.5, 3.0):
+            st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
+            ax, _ = cube_axes(ids, dx, a, d, LEFF, seed)
+            st.material["Ku_axis"] = T(ax)
+            del ax
+        R = HERE / "runs"
+        c15 = torch.load(R / ("M300_dx15_s%d_b9" % seed) / "init.pt", map_location="cpu", weights_only=False)
+        m15 = c15["m"].detach().cpu().double().numpy()
+        mc, _ = run_loops.transfer_m(m15, S[1.5][3], S[3.0][3])
+        cases = [("dx15", 1.5, m15, c15["init"]["E_over_Kd"]), ("dx15→3", 3.0, mc, float("nan"))]
+        f3 = R / ("M300_dx3_s%d_b9" % seed) / "init.pt"
+        if f3.exists():
+            c3 = torch.load(f3, map_location="cpu", weights_only=False)
+            cases.append(("dx3", 3.0, c3["m"], c3["init"]["E_over_Kd"]))
+        for name, dx, m, e0 in cases:
+            st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
+            V = float(st.mesh.dx[0] * st.mesh.dx[1] * st.mesh.dx[2]) * st.mesh.n[0] * st.mesh.n[1] * st.mesh.n[2]
+            m = m.detach().cpu().double().numpy() if torch.is_tensor(m) else np.asarray(m, dtype=np.float64)
+            st.m = T(m)
+            e = {t: float(term.E(st)) / (Kd * V) for t, term in terms.items()}
+            out[(seed, name)] = e
+            L.append("| %d | %s | %g | %.6f | %.6f | %.6f | %.6f | %.6f |" % (seed, name, dx, e["exchange"], e["anisotropy"],
+                                                                         e["demag"], sum(e.values()), e0))
+            print(L[-1], file=sys.stderr, flush=True)
+    dd = np.array([out[(s, "dx15→3")]["demag"] - out[(s, "dx15")]["demag"] for s in (921, 922, 923, 924)])
+    an = np.array([abs(out[(s, "dx15")]["anisotropy"]) for s in (921, 922, 923, 924)])
+    m, se = dd.mean(), dd.std(ddof=1) / 2.0
+    rd = "the law holds at 1 µm" if 0.00031 <= m <= 0.00057 else ("smaller than predicted" if m < 0.00031 else "larger than predicted")
+    e15 = dd / (2 ** 1.23 - 1)                        # staircase error at dx 1.5 with the order of B0b (estimate)
+    L += ["", "Demag difference dx 3 − dx 1.5 for the same state: %s K_d per seed, mean %.5f ± %.5f (SE, n 4). Prediction "
+          "0.00044. **Reading: %s.**" % (" / ".join("%.5f" % x for x in dd), m, se, rd),
+          "Estimate with the order 1.23 of B0b: staircase error / |anisotropy| = %.2f at dx 1.5 and %.2f at dx 3 (mean)."
+          % (np.mean(e15 / an), np.mean(e15 * 2 ** 1.23 / an))]
+    print("\n".join(L))
+
+
 def main():
     from magnumnp import set_precision
+    if len(sys.argv) > 1 and sys.argv[1] == "m300":
+        set_precision("single")                      # memory: 26 M cells at dx 1.5, as in production
+        return m300()
     set_precision("double")                          # once, before the first mesh
     if len(sys.argv) > 1 and sys.argv[1] == "states":
         return states()
