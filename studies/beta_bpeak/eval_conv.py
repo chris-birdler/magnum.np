@@ -27,16 +27,25 @@ Information only (9 mT, one amplitude, no β): mean Δ(1.5 − 0.75), Δ(3 − 1
 and whether the CI of Δ(1.5 − 0.75) lies inside ± 0.10 (the 4.10 criterion for "converged at dx 1.5", here at 9 mT only).
 
     python eval_conv.py > results/conv_b0.md      (on the instance, chain_conv.sh writes runs/conv_b0_report.md)
+
+Variant N0b (PLAN 4.11; the reference stray-field solver): python eval_conv.py --prefix N0b. Stage 1 reading (fixed
+2026-10-15): Δ_N = ln P(I3) − ln P(I15) per seed, mean over the seeds with a value in both (n ≥ 3):
+  much smaller   |mean Δ_N| ≤ 0.30 (DemagFieldPBC, B0b: −0.79 ± 0.31);
+  unchanged      |mean Δ_N| ≥ 0.60;
+  partial        otherwise.
+Also reported: Δ_N − Δ_FD per seed (Δ_FD from the B0b I arms of the same seed).
 """
 import json
 import math
 import pathlib
+import sys
 
 import numpy as np
 from scipy import stats
 
 import analyze
 import analyze_design as AD
+
 import conv_jobs as CJ
 
 R = pathlib.Path(__file__).resolve().parent / "runs"
@@ -89,8 +98,27 @@ def run_record(d):
     return rec
 
 
-def collect(root=R):
-    return {(arm, s): run_record(root / CJ.name(arm, s)) for arm, _, _ in CJ.ARMS for s in CJ.SEEDS}
+def collect(root=R, prefix=CJ.PREFIX):
+    return {(arm, s): run_record(root / CJ.name(arm, s, prefix)) for arm, _, _ in CJ.ARMS for s in CJ.SEEDS}
+
+
+STAGE1_SMALL, STAGE1_SAME = 0.30, 0.60
+
+
+def stage1_reading(lnP_n, lnP_fd, seeds=CJ.SEEDS):
+    """(key, text, statistics) of the stage 1 reading of PLAN 4.11 (module doc)."""
+    p = paired(lnP_n, "I3", "I15", seeds)
+    q = paired({("d", s): lnP_n.get(("I3", s), np.nan) - lnP_n.get(("I15", s), np.nan) for s in seeds} |
+               {("f", s): lnP_fd.get(("I3", s), np.nan) - lnP_fd.get(("I15", s), np.nan) for s in seeds},
+               "d", "f", seeds)
+    if p["n"] < MIN_N:
+        return "undetermined", "not determined: %d seeds with a value in I3 and I15 (need %d)" % (p["n"], MIN_N), (p, q)
+    m = abs(p["mean"])
+    if m <= STAGE1_SMALL:
+        return "smaller", "much smaller: |mean Δ_N| %.3f ≤ %.2f" % (m, STAGE1_SMALL), (p, q)
+    if m >= STAGE1_SAME:
+        return "unchanged", "unchanged: |mean Δ_N| %.3f ≥ %.2f" % (m, STAGE1_SAME), (p, q)
+    return "partial", "partial: %.2f < |mean Δ_N| %.3f < %.2f" % (STAGE1_SMALL, m, STAGE1_SAME), (p, q)
 
 
 def paired(lnP, a, b, seeds):
@@ -201,7 +229,16 @@ def report(recs, seeds=CJ.SEEDS):
 
 
 def main():
-    text, _ = report(collect())
+    prefix = sys.argv[sys.argv.index("--prefix") + 1] if "--prefix" in sys.argv else CJ.PREFIX
+    recs = collect(prefix=prefix)
+    text, _ = report(recs)
+    if prefix != CJ.PREFIX:
+        lnP_fd = {k: r["lnP"] for k, r in collect(prefix=CJ.PREFIX).items()}
+        key, t, (p, q) = stage1_reading({k: r["lnP"] for k, r in recs.items()}, lnP_fd)
+        text = text.replace("# B0: mesh", "# %s (reference stray-field solver, PLAN 4.11): mesh" % prefix, 1)
+        text += ("\n\n## Stage 1 reading (PLAN 4.11, pre-registered)\n\n| difference | mean ± SE (90 % CI) | SD of the "
+                 "difference (90 % CI) | n |\n|---|---|---|---|\n| ln P(I3) − ln P(I15), %s | %s |\n| Δ_N − Δ_FD (B0b, same "
+                 "seed) | %s |\n\n**%s**" % (prefix, fmt_p(p), fmt_p(q), t))
     print(text)
 
 

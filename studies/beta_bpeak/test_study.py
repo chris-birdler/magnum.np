@@ -1464,3 +1464,43 @@ def test_true_pbc_equals_the_solver_check_helper():
         assert e1 == pytest.approx(e2, rel=1e-12)
     finally:
         torch.set_default_dtype(old)
+
+
+def test_conv_jobs_newell_lines():
+    """conv_jobs.newell_lines (PLAN 4.11): stage 1 = I3 and I15, stage 2 = F (first), T15, T3; every line equals the
+    B0b line of the same arm and seed except --strayfield newell --strayfield_shells 4 and, for T, the transfer from
+    N0b_F of the same seed."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg
+    here = pathlib.Path(__file__).resolve().parent
+    src = str(here / "jobs" / "mesh212.txt")
+    b0b = dict(CJ.lines(src))
+    for stage, n_jobs in ((1, 8), (2, 12)):
+        jobs = CJ.newell_lines(stage, src)
+        assert len(jobs) == n_jobs
+        assert {n.split("_")[1] for n, _ in jobs} == set(CJ.NEWELL_STAGES[stage])
+        for n, a in jobs:
+            assert n.startswith("N0b_")
+            arm, s = n.split("_")[1], n.split("_s")[1]
+            tok, ref = shlex.split(a), shlex.split(b0b[CJ.name(arm, int(s))])
+            assert get_arg(tok, "strayfield") == ["newell"] and get_arg(tok, "strayfield_shells") == ["4"]
+            for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "init_transfer"}:
+                assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+            assert (get_arg(tok, "init_transfer") == ["N0b_F_s%s/init.pt" % s]) == arm.startswith("T")
+    assert CJ.newell_lines(2, src)[0][0].startswith("N0b_F_")
+
+
+def test_eval_conv_stage1_reading():
+    """eval_conv.stage1_reading (PLAN 4.11) on synthetic ln P: much smaller / partial / unchanged / not determined."""
+    import eval_conv as EC
+    fd = {(a, s): (0.0 if a == "I15" else -0.8) for a in ("I3", "I15") for s in EC.CJ.SEEDS}
+    def n_vals(d):
+        return {(a, s): (0.0 if a == "I15" else d + 0.02 * (s % 3)) for a in ("I3", "I15") for s in EC.CJ.SEEDS}
+    assert EC.stage1_reading(n_vals(-0.1), fd)[0] == "smaller"
+    assert EC.stage1_reading(n_vals(-0.45), fd)[0] == "partial"
+    assert EC.stage1_reading(n_vals(-0.8), fd)[0] == "unchanged"
+    nan = {(a, s): float("nan") for a in ("I3", "I15") for s in EC.CJ.SEEDS}
+    assert EC.stage1_reading(nan, fd)[0] == "undetermined"
+    key, text, (p, q) = EC.stage1_reading(n_vals(-0.1), fd)
+    assert p["n"] == 4 and abs(q["mean"] - (p["mean"] + 0.8)) < 1e-12

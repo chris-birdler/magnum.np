@@ -14,6 +14,12 @@ Order: the four F runs first (longest, one per GPU), then I, then T (the T runs 
 --init_wait_h covers a slow F relaxation).
 
     python conv_jobs.py > jobs/conv_b0.txt
+
+Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stray-field solver (--strayfield newell
+--strayfield_shells 4) and the prefix N0b; the T arms transfer from N0b_F. Stage 1: I3 and I15; stage 2: F, T15, T3.
+
+    python conv_jobs.py --newell 1 > jobs/newell_b0_s1.txt
+    python conv_jobs.py --newell 2 > jobs/newell_b0_s2.txt
 """
 import shlex
 
@@ -26,10 +32,13 @@ WAIT_H = 40.0
 CHANGED = ("d_lex", "dx_lex", "seed", "init_transfer", "init_wait_h", "atol")
 ATOL = "1e-06"          # PROTOKOLL 7.88: with atol 1e-5 the energy check fails on dx 0.75 (w_loop is not affected)
 PREFIX = "B0b"          # the rerun of B0 with atol 1e-6 (the stopped B0 runs keep their names)
+PREFIX_NEWELL = "N0b"   # B0b with the reference stray-field solver (PLAN 4.11)
+NEWELL_ARGS = (("strayfield", ["newell"]), ("strayfield_shells", ["4"]))
+NEWELL_STAGES = {1: ("I3", "I15"), 2: ("F", "T15", "T3")}
 
 
-def name(arm, s):
-    return "%s_%s_s%d" % (PREFIX, arm, s)
+def name(arm, s, prefix=PREFIX):
+    return "%s_%s_s%d" % (prefix, arm, s)
 
 
 def lines(src="jobs/mesh212.txt"):
@@ -45,6 +54,23 @@ def lines(src="jobs/mesh212.txt"):
                 t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", s)])
                 t = set_arg(t, "init_wait_h", ["%g" % WAIT_H])
             out.append((name(arm, s), " ".join(t)))
+    return out
+
+
+def newell_lines(stage, src="jobs/mesh212.txt"):
+    """The B0b lines of the arms of the stage with the reference stray-field solver (PLAN 4.11): prefix N0b,
+    --strayfield newell --strayfield_shells 4, the T arms transfer from N0b_F of the same seed."""
+    out = []
+    for n, a in lines(src):
+        arm, s = n.split("_")[1], int(n.split("_s")[1])
+        if arm not in NEWELL_STAGES[stage]:
+            continue
+        t = shlex.split(a)
+        for k, v in NEWELL_ARGS:
+            t = set_arg(t, k, v)
+        if arm.startswith("T"):
+            t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", s, PREFIX_NEWELL)])
+        out.append((name(arm, s, PREFIX_NEWELL), " ".join(t)))
     return out
 
 
@@ -72,5 +98,9 @@ def prec_lines(src="jobs/mesh212.txt"):
 
 if __name__ == "__main__":
     import sys
-    for n, a in (prec_lines() if "--prec" in sys.argv else lines()):
+    if "--newell" in sys.argv:
+        jobs = newell_lines(int(sys.argv[sys.argv.index("--newell") + 1]))
+    else:
+        jobs = prec_lines() if "--prec" in sys.argv else lines()
+    for n, a in jobs:
         print(n, a)
