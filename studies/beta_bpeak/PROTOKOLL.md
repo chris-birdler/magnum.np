@@ -4789,7 +4789,8 @@ not set β (7.19, 7.46); the texture now comes from the per-cell accumulators.
 - Cost (estimate from the C′ times: large particle 39 min relaxation and 122 s per cycle, small particle 5 min and 48 s
   per cycle): ≈ 11 GPU h, ≈ 3 h on 4 GPUs, ≈ 1.3 $.
 
-### 7.104 Energy checks after B0b: the staircase surface carries the mesh error; 10 % criterion (2026-10-15)
+### 7.104 Energy checks after B0b: the staircase surface carries the mesh error; 10 % criterion (2026-10-15) (limited in 7.105)
+Note (2026-10-15, 7.105): all stray-field energies in this section are DemagFieldPBC values; 7.105 lists the corrections.
 
 Question of Chris after the B0b reading "stop" (7.102): a loss that does not converge and scatters more on finer meshes
 cannot be physics; find the error. Order of the check: the measuring method, then the code, then the model. All
@@ -4806,7 +4807,8 @@ stress anisotropy of a particle in units of K_eff; the B0b arms F, I and T as in
   commit ecc9537; only a code test): each term converges with the cell size. The exchange energy of a helix approaches
   the continuum value as −10 / −5 / −2.1 % on 3 / 1.5 / 0.75 l_ex. This is the free boundary at the staircase, first
   order in Δx. The stray-field energy of a vortex falls by about half with each halving of Δx. No error is found in the
-  energy terms.
+  energy terms. (Corrected in 7.105: the sentence "No error is found in the energy terms" is wrong; DemagFieldPBC
+  has an error at edges and corners and cell-scale null modes.)
 - Not valid for B0b and not used: the comparison with the smoothed surface and the corrugation test of the same script
   (results/mesh_energy.md, results/mesh_corrugation.md). They used an invented geometry (d/l_ex 48, φ 0.45) and a
   synthetic vortex. Decision of Chris: checks use the geometry and the states of the result. The smoothed surface
@@ -4889,12 +4891,193 @@ with independent relaxation):
   expected to converge to the value of a cube; no cube run exists. A cube is a different model, not a correction of the
   sphere.
 
-**Status.** The code is not the cause. The staircase surface adds a stray-field energy that falls only about as fast as
+**Status.** The code is not the cause (limited in 7.105: the stray-field term DemagFieldPBC has an error). The staircase surface adds a stray-field energy that falls only about as fast as
 Δx. In the parameter study it is of the size of the anisotropy energy (estimate). Which part of the loss error it
 causes is not shown. The error of one frozen state is a proxy; the pinning comes from the part that differs between
 states. Open decision of Chris (re-scope after 7.102): a particle shape without a curved surface; the results on 3 l_ex
 as a staircase model with these limits; or a GPU with 80 GB (about 286 million cells; one relaxation iteration about
 22 s at the 10 % line; estimates).
+
+### 7.105 Results of the long runs at 60 MHz; demag solver check: DemagFieldPBC has an error at edges and corners and cell-scale null modes, and underestimates the stray-field energy of the B0b states (2026-10-15)
+
+**Long runs at 60 MHz (readings of 7.103).** Files: results/long60.md and results/long60.json; the raw data are local
+(runs/MANIFEST_long60.md5, 81 files, no .pt states). All 9 runs repeat the C′ history bit-identically (largest
+relative difference of w_loop 0). No run has a restart. c_settle and the motion classes are defined in 7.100.
+
+| group (3 seeds) | motion | P of the last 10 cycles / C′ value, seeds 0 / 1 / 2 | reading |
+|---|---|---|---|
+| large particle (K1A10_k, d/l_ex 300), 9 mT | periodic (c_settle 8 / 4 / 7) | 1.02 / 0.99 / 0.98 | the C′ value holds |
+| small particle (K1_k, d/l_ex 212), 20 mT | stays irregular (seed 0 periodic from cycle 34) | 1.01 / 0.98 / 1.01 | the C′ value holds |
+| small particle (K1_k, d/l_ex 212), 35 mT | stays irregular (seed 0 marginal) | 0.97 / 1.03 / 0.99 | the C′ value holds |
+
+The SD of P over the last 10 cycles of each run is in results/long60.md.
+- A effect on β at 60 MHz with the long-run values: −0.336 ± 0.013 (SE, n 3; 90 % CI −0.375 … −0.298). With the C′
+  values: −0.339 ± 0.016. **Reading: the sign change holds.**
+- Calm cycles (|w_dis / w_loop − 1| ≤ 0.2) in the cycles 2 … 39 of the tested stage: 31 … 38 of 38 per run. The event
+  cycles lie in the cycles 2 … 9 of three runs (K1A10_0 at 9 mT: 2 … 4; K1_2 at 20 mT: 2 … 6; K1_0 at 35 mT: 2 and
+  4 … 9). These are the three C′ stages that 7.103 names. No run has an event in its last 10 cycles.
+- The loops of the small particle do not repeat from one cycle to the next. Per-run median of the closure over the
+  cycles 2 … 39: large particle 0.00 … 0.01 %; small particle 0.06 … 0.18 % at 20 mT and 0.07 … 0.44 % at 35 mT. C′
+  (results/closure_state.md, section 6) has a different statistic, one median over the steady-tail cycles of all 21
+  stages (7 amplitudes, 3 seeds) of the small particle: 0.101 % at 60 MHz, 0.053 % at 30 MHz. SD of w over the last
+  10 cycles, relative to the mean: 0.0 … 1.8 % (large particle), 1.4 … 3.9 % (20 mT), 1.5 … 7.7 % (35 mT).
+- Exploratory (after the readings; second review of this section): a period scan over the cycles 24 … 39, largest
+  relative difference of w_loop between cycle c and cycle c − p for p = 1 … 16. Small particle: K1_2 at 20 mT and K1_0
+  at 35 mT repeat with period 2 (5e-4 and 4e-6; w_loop alternates, and ΔM alternates its sign); K1_1 at 35 mT
+  repeats approximately with period 8 (1.8e-2); K1_0 and K1_1 at 20 mT and K1_2 at 35 mT have no period up to 16
+  (best 5 %, 8 %, 5 %). Large particle: K1A10_1 repeats with period 6 (5e-4) and changes 4 % from cycle to cycle;
+  K1A10_0 and K1A10_2 repeat with period 1 (5e-5). The same scan of atol60 (7.102, small particle, 9 mT, 60 MHz, both
+  tolerances): seed 1 period 2 (3e-5), seed 2 period 4 (5e-4), seed 0 no period up to 16 (6 %). Thus the class "stays
+  irregular" of 7.100 also contains closed orbits of 2 … 8 cycles: RN and the closure test only compare one cycle with
+  the next. The pre-registered readings stay; for period-2 orbits the same-sign share of ΔM is 0.
+- P of the last 10 cycles agrees with the C′ value within 3.2 % in all 9 runs (largest deviation K1_0 at 35 mT:
+  0.968).
+- Tolerance: the long runs use atol 1e-5, because the history control needs the tolerance of C′. The tolerance test
+  at 60 MHz (atol60, 7.102) covers only the small particle at 9 mT.
+- Statements that this section closes or limits: 7.102 left "the factor 2 and the sign change at 60 MHz" open. The
+  sign change of the A effect at 60 MHz holds within the DemagFieldPBC model (n 3). The factor 2 of 7.96 is tested only
+  through the 60 MHz values of C′, not at the other frequencies.
+- Deck beta_powder_sobol: the frequency slide and the validity table show the 40-cycle check (slide_decks commit
+  959a6a6). The deck does not yet show the solver finding below.
+- All these runs use DemagFieldPBC (see below).
+
+**Demag solver: method.** Found while test A was prepared. Test A (go of Chris 2026-10-15, after the literature
+check of the staircase corrections): a static script check of a near-field correction of the staircase after Donahue
+& McMichael (IEEE Trans. Magn. 43, 2878, 2007: the FFT stray field of the coarse cells plus a local correction from a
+finer submesh) on the B0b states. Test A is stopped: its reference on the fine mesh carries the same solver error.
+- DemagFieldPBC is the stray-field term of all runs of this study. It is the finite-difference method of Bruckner et
+  al., Sci. Rep. 11, 9202 (2021), Eq. 4 (paper section "Finite difference discretization"): the potential u and div M
+  on the cell vertices, M and H in the cell centres, a backward difference for the divergence, a forward difference for
+  the gradient. Each term of the divergence sits at a different face centre, and each component of the gradient sits
+  half a cell off the cell centre in the two other directions.
+- Consequence in Fourier space (q: wave vector of a Fourier mode of m): the discrete kernel has the trace 1, as the
+  continuum. Thus m along a grid axis gives the exact energy for bodies with cubic symmetry. The coupling of two
+  components, e.g. x with y, keeps an even part ∝ (1 − cos(q_x Δx))(1 − cos(q_y Δx)) that the continuum does not have.
+- Validation in the paper (section "Numerical experiments"): one analytic test (films magnetised perpendicular to their
+  plane, a 1D field) and FE and FD hysteresis loops of a composite side by side (Fig. 6) without a numerical
+  comparison. The FD simulations of the paper used magnum.af with the same method. The invariant test of 7.40
+  (test_demag_pbc_slab_and_zero_mean) tests only 1D fields and the mean field.
+- Our code equals the upstream code (git fde0c62, the last upstream change, 2025-02-05): largest relative difference
+  of h 5.8e-16 for a random m (results/demag_uniform.md, section 3). Our commit 8654eb7 cached the spectral factors and
+  changed to the real FFT.
+- Exact reference for uniform m: an arrangement of bodies with cubic symmetry in a periodic cube with zero mean field
+  (the convention of DemagFieldPBC) has the energy φ_vox (1 − φ_vox) / 3 K_d per box volume for each direction of m
+  (φ_vox: magnetic volume fraction of the voxel model). The voxel spheres of our geometry have cubic symmetry (centres
+  on cell vertices, FCC sites). Thus the staircase changes this energy only through φ_vox.
+- Reference solver: DemagField of magnum.np (Newell cell coupling) with k image shells in a cube arrangement, plus the
+  compensation of the outer surface charges of the image block (field +<M>/3, energy −μ0 V |<M>|² / 6;
+  check_mesh_energy.newell_pbc). The 3D image sum is not absolutely convergent (the reason that Bruckner 2021 gives
+  against the integral form). This affects only the shape term, which is −<M>/3 for a cube-shaped sum (Ewald lattice
+  sums; de Leeuw, Perram & Smith, Proc. R. Soc. A 373, 27, 1980). Names below: E_FD = stray-field energy with
+  DemagFieldPBC; E_ref = with the reference solver (4 image shells); Δ = E_FD − E_ref.
+
+**Demag solver: tests with uniform m and with a pattern** (check_demag_uniform.py, results/demag_uniform.md;
+check_demag_alias.py, results/demag_alias.md; unit test test_newell_pbc_compensation_exact_and_fd_off_axis_error).
+- B0b geometry (d/l_ex 97.5, nominal 96, φ 0.65), DemagFieldPBC, relative error: m along (100) 0 (−2e-8 from the
+  void cells, which carry M_s 1e-8 M_s); along (110) +4.8 / 2.4 / 1.2 %; along (111) +9.5 / 4.7 / 2.4 % on 3 / 1.5 / 0.75 l_ex (first order in
+  Δx). Reference solver with 1 shell on 3 and 1.5 l_ex: relative error at most 1.4e-4 for all three directions.
+- Aligned cube (edge a/2, filling 1/8, exact 7/192), DemagFieldPBC, m along (111): +13.7 / 4.6 / 1.4 / 0.43 % for 4 / 8
+  / 16 / 32 cells per edge (order about 1.7); along (110) half of it. Reference solver with 1 shell: relative error at
+  most 2.4e-12.
+- Checkerboard m = (1, −1, 0)/√2 · (−1)^(i+j) in a full box (no surface): DemagFieldPBC 0; reference solver 0.50 K_d;
+  alias sum, extrapolated in 1/G, 0.499 K_d (truncated sums 0.456 / 0.476 / 0.488). The finite-difference stencil has cell-scale patterns with zero energy (null
+  modes).
+- Thus the error has two sources: (i) edges and corners of the body for m off the grid axes; (ii) cell-scale null
+  modes. Scaling (estimate): the error per edge length scales with Δx². A cube has a fixed edge length (order 2, 1.7
+  measured); the step-edge length of a staircase scales with 1/Δx (order 1, measured). Where the error sits in the
+  relaxed states is not measured.
+
+**Demag solver: check on the B0b states** (check_mesh_energy.py solver; on the instance, one V100, 27 min; files
+results/demag_solver.md and .json; readings fixed in the docstring, commit 35c3087, before the run in 952571c). Per box
+volume; mean ± SE over the 4 seeds (for two arms first the mean of the arms per seed):
+
+| state | Δx (l_ex) | E_FD (K_d) | E_ref (K_d) | E_ref / E_FD | abs(Δ) / abs(E_K) |
+|---|---|---|---|---|---|
+| F, relaxed | 0.75 | 0.00063 ± 0.00001 | 0.00152 ± 0.00001 | 2.41 ± 0.02 | 0.56 ± 0.01 |
+| F→1.5, block average of F | 1.5 | 0.00137 ± 0.00001 | 0.00296 ± 0.00001 | 2.16 ± 0.02 | 1.00 ± 0.01 |
+| F→3, block average of F | 3 | 0.00311 ± 0.00005 | 0.00592 ± 0.00001 | 1.90 ± 0.03 | 1.77 ± 0.02 |
+| I15 and T15, relaxed | 1.5 | 0.00082 ± < 0.00001 | 0.00304 ± 0.00001 | 3.70 ± 0.01 | 1.39 ± 0.02 |
+| I3 and T3, relaxed | 3 | 0.00090 ± < 0.00001 | 0.00669 ± 0.00002 | 7.45 ± 0.02 | 3.63 ± 0.06 |
+
+E_K is the anisotropy energy of the state. The arms are defined in 7.102: I relaxes from a random start on its own
+mesh; T starts from the block average of F.
+- Reading, convergence: the largest |E(2 shells) − E(4 shells)| is 2.3e-5 K_d, above the limit 1e-6: **not
+  converged**. Exploratory (after the reading): this is the change from 2 to 4 shells (seed 943, at most 2.6 % of the
+  smallest abs(Δ)). The other seeds change by at most 5e-6 K_d (state F: 941 1e-6, 942 5e-6, 944 1e-7); the cause of
+  the slow seed is not known. For seed 943 the ratio of the changes 1 → 2 and 2 → 4 shells is 2.7, nearer to a
+  1/(2k + 1)² law (2.6) than to 1/k (2.0); the remaining error is then about 1e-5 K_d (estimate): about 0.7 % of E_ref
+  at dx 0.75 and 0.2 % at dx 3, small against Δ.
+- Reading, solver share: s(dx) = [Δ(dx) − Δ(0.75)] / [E_FD(dx) − E_FD(0.75)] for the block-averaged F state;
+  s(3) = −0.78 ± 0.03 (SE, n 4). By the letter of the rule: **"the solver is minor"**. The rule did not foresee s < 0.
+  Meaning: with the reference the difference of the block-averaged F state between the meshes is larger, 0.00440 K_d
+  (dx 3 − dx 0.75) and 0.00144 K_d (dx 1.5 − dx 0.75), against 0.00248 and 0.00074 K_d with DemagFieldPBC
+  (s(1.5) = −0.95 ± 0.02). Thus this difference is not a solver artefact; DemagFieldPBC hides 44 % of it at dx 3 and
+  49 % at dx 1.5. Not separated: the part from the staircase and the part from the block-averaged, normalised m
+  (run_loops.transfer_m).
+- Reading, 10 % rule: abs(Δ) / abs(E_K) of the relaxed dx 3 states is 3.63 ± 0.05 (SE, n 8 as pre-set; with the seed
+  as unit 3.63 ± 0.06, n 4): **the solver error is relevant**.
+- Independent check of the reference (check_demag_alias.py, results/demag_alias.md, local CPU): the exact energy of
+  the piecewise constant M as a Fourier sum over the aliases G of the cell form factor (truncated at |G| ≤ 4, 8, 16,
+  extrapolated in 1/G). I3 and T3 of seed 941 (2 states): 0.00664 and 0.00677 K_d; reference 0.00666 and 0.00678 K_d
+  (within 0.3 %); DemagFieldPBC 0.00089 K_d for both.
+- The relaxation with DemagFieldPBC lowers E_FD and raises E_ref. From the block-averaged F state on dx 3 to the
+  relaxed T3 state (which starts from it): E_FD falls from 0.00311 ± 0.00005 to 0.000895 ± 0.000002 K_d, E_ref rises
+  from 0.00592 ± 0.00001 to 0.00670 ± 0.00005 K_d (mean ± SE, n 4). Candidate explanation: the relaxed states contain
+  structure that DemagFieldPBC does not penalise (the null modes above). Not shown: the rise of E_ref can also come from
+  changes that exchange or anisotropy drive; the total energy with the reference solver is not computed. For the
+  relaxed states, E_ref / E_FD grows with Δx: 2.4 (dx 0.75), 3.7 (dx 1.5), 7.5 (dx 3).
+- Consequence: all magnetisation states, losses and β values of this study are computed with DemagFieldPBC. The effect
+  on P and β is not measured. Bruckner 2021 and Ducevic et al., Sci. Rep. 15, 17782 (2025) use the same method; their
+  results may carry the error (not checked). The error depends on Δx and acts on the states. Thus it is a candidate for
+  the missing mesh convergence of the loss (B0b, 7.102).
+
+**Corrections to 7.104.**
+- The sentence "No error is found in the energy terms" is wrong. The rows with uniform m in results/mesh_energy.md
+  (code-test geometry d/l_ex 48, φ 0.45) show the solver error (m along (111): +11.6 / 5.9 / 2.9 % against
+  φ_vox (1 − φ_vox) / 3; on the B0b geometry +9.5 / 4.7 / 2.4 %). The check compared the meshes with each other, not
+  with the exact value.
+- The title ("the staircase surface carries the mesh error") and the status ("The code is not the cause") are limited.
+  The check code computes the same energies as the runs, but the stray-field term of the runs has the error above. The
+  mesh difference of the block-averaged state remains with the reference solver; its split into the staircase and the
+  coarsened m is open.
+- All stray-field energies of 7.104 are DemagFieldPBC values: the block-averaged states, the law E_st ≈ 0.221
+  (Δx/d)^1.23 K_d, the check at 1 µm, R_K, the 10 % line and the deck staircase_energy_map. The law and R_K must be
+  determined again with the reference solver.
+- The relaxed states of 7.104 (stray field +31 / +43 % on 1.5 / 3 l_ex; arm I3: exchange +16 %, stray field +43 %;
+  M300 +6 %) and the reading "the coarse states follow the steps and pay with exchange energy" are DemagFieldPBC
+  values. With the reference, the stray-field energy of the relaxed states is × 2.01 ± 0.01 (dx 1.5) and × 4.41 ± 0.01
+  (dx 3) against F (mean ± SE, n 4). The reading is open.
+- The relaxed energies of B0b in 7.102 (E/K_d per mesh) contain DemagFieldPBC values as well.
+- "Cubic particles ... the loss is expected to converge": this holds only with the reference solver. DemagFieldPBC has
+  the edge and corner error also on a cube (+13.7 % at 4 cells per edge, m along (111)).
+- The reading of the remark of Chris ("Strong pinning then keeps the state still: less loss.") is open.
+
+**Decision of Chris (2026-10-15).** Options put to Chris: (1) the reference solver (Newell with compensated outer
+surface charges) becomes the production solver, then a staged B0b test of the loss convergence; (2) a repair of the
+finite-difference stencils (new numerics with its own null modes); (3) DemagFieldPBC with the error as a model limit.
+**Decision: option 1.** Open for Chris: a report to the magnum.np authors.
+- Code (Chris: a new magnum.np branch): branch feature/newell-pbc (worktree magnum.np-newell, based on
+  study/beta-bpeak-pinning). Commit 3efb906 is 25d0308 of fix/preexisting-issues (on-axis dipole couplings to the
+  periodic images are kept; in the cube arrangement the dropped couplings sum to zero for each cell, thus the solver
+  check above is not affected). Commit fba0c4b: DemagField(true_pbc=True) adds +N_block <M> (N_block: demagnetization
+  tensor at the centre of the image block, 1/3 for a cubic block; a ValueError at the first field evaluation without
+  images in all three directions); run_loops.py --strayfield fd|newell and --strayfield_shells (default fd and 4; both
+  in INIT_KEYS; an old config counts as fd, so old runs resume). Commit 880fa54 removes three test functions that were
+  defined twice (an interrupted command had appended a first version; pytest ran only the final one). Commit c046160:
+  the jobs and the evaluation of PLAN 4.11.
+- Tests (local CPU, exit code 0): magnum.np tests/unit/demag_test.py -k "true_pbc or block_demag or truePBC or
+  pseudoPBC or far_layers": 11 passed (block factors; aligned cube exact for (100), (110), (111); checkerboard 0.50;
+  box mean of h below 1e-3 M_s). Study test_study.py -k "strayfield or true_pbc or newell_pbc or demag_pbc or init_from
+  or all_study_scripts_compile or atol_job or long60 or transfer_m or state_files": 13 passed (option and keys;
+  DemagField(true_pbc=True) equals check_mesh_energy.energy_newell_pbc within 1e-12); -k "conv_jobs or eval_conv or
+  strayfield or true_pbc or all_study_scripts_compile": 7 passed, 1 skipped (raw data not in the branch worktree).
+- Smoke run (local CPU, B0b geometry on dx 3, --strayfield newell, 1 shell, one saturation cycle): exit code 0, energy
+  balance w_dis / w_loop 1.06, time step 4.9 ps.
+- Kernel time of the reference solver (V100, double, from the solver check): 192³ cells 39 / 175 / 1011 s with 1 / 2 /
+  4 shells; 96³ 6 / 25 / 143 s; 48³ 8 / 27 / 145 s. The small meshes do not scale with the cell count. Probable reason
+  (not checked): on 48³ and 96³ many image cells lie within the Newell radius (20 cell diagonals, about 35 cells) and
+  need the costly Newell formula; on 192³ all image cells lie beyond it.
+- The plan and the costs of the B0b runs follow in PLAN.md before any run.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

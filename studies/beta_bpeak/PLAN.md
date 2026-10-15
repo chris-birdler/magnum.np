@@ -981,6 +981,51 @@ are fixed (PROTOKOLL 7.81).
   Thus a working transfer gives "go" with a probability of 0.81 … 1.00 (depending on the noise floor), and the old
   scatter (0.15 … 0.46) gives a false "go" with a probability of up to 0.28 (n 4) or 0.36 (n 3).
 
+### 4.11 B0b with the reference stray-field solver (2026-10-15, decision of Chris: option 1 of PROTOKOLL 7.105; the runs wait for the go of Chris)
+
+Goal: does the loss at 9 mT converge with the mesh when the stray field uses the reference solver (Newell cell
+coupling, image shells, compensated outer surface charges; DemagField(true_pbc=True), branch feature/newell-pbc)
+instead of DemagFieldPBC? Reference result with DemagFieldPBC (B0b, PROTOKOLL 7.102 / 7.104; Δ ln P = coarse − fine,
+mean ± SE, n 4): I arms 3 → 1.5 l_ex −0.79 ± 0.31, 1.5 → 0.75 l_ex −1.17 ± 0.17; T arms −0.98 ± 0.24 and −0.96 ± 0.67.
+
+**Design.** The B0b runs again (conv_jobs.py, jobs/conv_b0.txt: d/l_ex 96 (97.5 used), φ 0.65, L_eff 12 l_ex, r_p 0,
+α 0.1, 9 mT only, seeds 941 … 944, atol 1e-6, single precision, ≥ 2 calm cycles, ≤ 12 cycles, converged virgin
+relaxation). Only these change: the name prefix N0b, --strayfield newell --strayfield_shells 4, and the T arms transfer
+from N0b_F (the INIT_KEYS forbid a transfer from an FD state).
+
+**Stage 1 (first, cheap): I3 and I15, 4 seeds (8 runs).** Value: Δ_N = ln P(I3) − ln P(I15) per seed (eval_conv.py
+rules: calm tail, ln P at the measured b_peak). Reading, fixed now (mean over the seeds, n 4):
+- "much smaller": |mean Δ_N| ≤ 0.30 (the 3 → 1.5 difference of DemagFieldPBC was −0.79);
+- "unchanged": |mean Δ_N| ≥ 0.60;
+- else "partial".
+Reported with SE and 90 % CI (t(3)), and the paired difference Δ_N − Δ_FD per seed. Information (not a reading): E_ref
+and E_FD of the new relaxed states (check_mesh_energy.py). Stage 2 needs a separate go after the report of stage 1.
+
+**Stage 2: F (dx 0.75), then T15 and T3, 4 seeds (12 runs).** Readings as 4.10 and eval_conv.py, at 9 mT only:
+"converged at dx 1.5" if the 90 % CI of Δ(1.5 − 0.75) lies inside ± 0.10; "converging" if the difference shrinks from
+(3 − 1.5) to (1.5 − 0.75) but is outside ± 0.10; "not converging" if it does not shrink or changes sign.
+
+**Cost (estimates).** Basis: the B0b runs with DemagFieldPBC on the V100 (wall time per run, 4 seeds): F relaxation
+1.6 … 4.0 h and 1.3 … 1.4 h per cycle (5 cycles: 8.5 … 11 h); I15 4 … 6 min and 3.4 min per cycle; T15 2 … 3 min
+relaxation; I3 2 … 3 min and 1.2 min per cycle; T3 1 min relaxation. The reference solver needs the same number of FFTs
+per step. Its kernel takes once per run 17 min on 192³ cells (4 shells, double) and 2.4 min on 96³ and 48³. The
+time step can be smaller, because the reference solver has no null modes at the cell scale (factor 1 … 2, not
+measured). Instance 0.41 $/h (4 GPUs).
+
+| stage | runs | GPU h | time on 4 GPUs | cost |
+|---|---|---|---|---|
+| 1 (I3, I15) | 8 | 2.5 … 5 | 1 … 1.5 h | 0.4 … 0.6 $ |
+| 2 (F, T15, T3) | 12 | 40 … 90 | 11 … 23 h | 4.5 … 10 $ |
+
+**Before the runs (code, no GPU cost).** conv_jobs.py: a newell variant of lines() (prefix N0b, the two arguments,
+the transfer source) with a test that only the planned arguments change; eval_conv.py: the prefix as an argument and a
+test; a chain script for the instance (pin of the commit on feature/newell-pbc, stop below 6 GB free disk space, the
+exit codes in the log, a done marker); a smoke run of run_loops.py with --strayfield newell (local CPU).
+
+**Risks.** The time step of the reference solver (cost); 4 image shells leave an error of about 1 … 2 % in the stray-
+field energy (estimate, PROTOKOLL 7.105); the converged relaxation can take longer with the new energy landscape; with
+n 4 the readings resolve only large changes (the SE of Δ with DemagFieldPBC was 0.17 … 0.31).
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
