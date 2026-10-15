@@ -124,6 +124,13 @@ STEADY_TAIL = None
 STEADY_MIN = 1            # fewer kept cycles than this: the stage is missing (7.54: 1; check with 2)
 
 
+def first_measured(st):
+    """Index of the first measured cycle of a stage record: 1; 2 after the drive correction with b of cycle 0
+    (h_amp_initial); 3 after the second correction with b of cycle 1 (h_amp_second, run_loops --b_tol, PROTOKOLL
+    7.107)."""
+    return 3 if "h_amp_second" in st else (2 if "h_amp_initial" in st else 1)
+
+
 def steady_tail(cycles, tol):
     """The cycles after the last event cycle (w_loop <= 0 or |w_dis / w_loop - 1| > tol); may be empty."""
     ev = [i for i, c in enumerate(cycles) if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > tol]
@@ -144,7 +151,7 @@ def load_run(d):
     for si, st in enumerate(summ["stages"]):
         if not st.get("measure") or not st.get("complete") or not st["cycles"]:
             continue
-        skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP      # drive corrected after cycle 0
+        skip = max(SKIP, first_measured(st)) if "h_amp_initial" in st else SKIP   # drive corrected after cycle 0 (1)
         cyc = st["cycles"][skip:] if len(st["cycles"]) > skip else st["cycles"][-1:]
         n_meas_all = len(cyc)
         missing = False
@@ -488,10 +495,12 @@ def cycles(d):
         if not st.get("measure"):
             continue
         offs = cycle_offsets(d, si, st["name"], st["cycles"])
-        skip = max(SKIP, 2) if "h_amp_initial" in st else SKIP
-        print("   %s  h = %.4g%s" % (st["name"], st["h_amp"],
-                                    "  (corrected after cycle 0 from %.4g)" % st["h_amp_initial"]
-                                    if "h_amp_initial" in st else ""))
+        skip = max(SKIP, first_measured(st)) if "h_amp_initial" in st else SKIP
+        print("   %s  h = %.4g%s%s" % (st["name"], st["h_amp"],
+                                      "  (corrected after cycle 0 from %.4g)" % st["h_amp_initial"]
+                                      if "h_amp_initial" in st else "",
+                                      "  (again after cycle 1 from %.4g)" % st["h_amp_second"]
+                                      if "h_amp_second" in st else ""))
         print("     %3s %9s %11s %11s %7s %8s %7s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure",
                                                         "offset", "n60"))
         for c, off in zip(st["cycles"], offs):

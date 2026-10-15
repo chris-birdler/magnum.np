@@ -35,6 +35,7 @@ PREFIX = "B0b"          # the rerun of B0 with atol 1e-6 (the stopped B0 runs ke
 PREFIX_NEWELL = "N0b"   # B0b with the reference stray-field solver (PLAN 4.11)
 NEWELL_ARGS = (("strayfield", ["newell"]), ("strayfield_shells", ["4"]))
 NEWELL_STAGES = {1: ("I3", "I15"), 2: ("F", "T15", "T3")}
+B_TOL = "0.01"         # stage 2: drive corrected again after cycle 1 if b is more than 1 % off the target
 
 
 def name(arm, s, prefix=PREFIX):
@@ -70,6 +71,8 @@ def newell_lines(stage, src="jobs/mesh212.txt"):
             t = set_arg(t, k, v)
         if arm.startswith("T"):
             t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", s, PREFIX_NEWELL)])
+        if stage == 2:
+            t = set_arg(t, "b_tol", [B_TOL])              # second drive correction (Chris 2026-10-15, 7.107)
         out.append((name(arm, s, PREFIX_NEWELL), " ".join(t)))
     return out
 

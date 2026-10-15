@@ -89,7 +89,8 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
 NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
             "acc_harm": 0, "init_transfer": None,                  # without them is equal to these defaults
-            "strayfield": "fd", "strayfield_shells": 4}            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
+            "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
+            "b_tol": 0.0}                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -169,6 +170,9 @@ def parse_args(argv=None):
                         "h = b_target / mu, mu = b/h of the stage before (first stage: --mu_guess)")
     g.add_argument("--mu_guess", type=float, default=8.0, help="b/h for the first --b_list stage")
     g.add_argument("--cycles_per_amp", type=int, default=3, help="minimum cycles per amplitude (1st = transient)")
+    g.add_argument("--b_tol", type=float, default=0.0,
+                   help="second drive correction with b of cycle 1 if |b / b_target - 1| > b_tol (0: off); then "
+                        "cycle 2 is discarded too and the stage gets one more cycle (PROTOKOLL 7.107)")
     g.add_argument("--max_cycles_per_amp", type=int, default=4)
     g.add_argument("--min_calm", type=int, default=0,
                    help="PLAN 4.5: > 0 replaces the closure / dW stop rule: a measured stage continues after "
@@ -427,8 +431,23 @@ class HarmAcc:
 
 
 def measured_cycles(rec):
-    """The cycles that analyze.py measures: from 2 on after a drive correction, else from 1 on."""
-    return rec["cycles"][2:] if "h_amp_initial" in rec else rec["cycles"][1:]
+    """The cycles that analyze.py measures: from 1 on; from 2 on after a drive correction; from 3 on after a second
+    correction (analyze.first_measured)."""
+    from analyze import first_measured
+    return rec["cycles"][first_measured(rec):]
+
+
+def acc_first(rec):
+    """First cycle that the accumulators keep: ACC_FROM_CYCLE, one later after a second drive correction."""
+    return ACC_FROM_CYCLE + (1 if "h_amp_second" in rec else 0)
+
+
+def second_correction(h, b_target, b_peak, tol):
+    """New drive amplitude after cycle 1 (the first cycle at the drive corrected with cycle 0), or None if
+    |b_peak / b_target - 1| <= tol or tol <= 0. Factor limited to 0.67 ... 1.5 as the first correction."""
+    if tol <= 0 or abs(b_peak / b_target - 1.0) <= tol:
+        return None
+    return h * min(1.5, max(1.0 / 1.5, b_target / b_peak))
 
 
 def stop_stage(rec, ci, n_cycles, args):
@@ -437,12 +456,13 @@ def stop_stage(rec, ci, n_cycles, args):
     closed = cyc["closure"] < args.closure_tol
     in_scatter = cyc.get("dW_rel", 1.0) < args.dW_tol
     info = {"steady": bool(closed and in_scatter), "closed": bool(closed), "in_scatter": bool(in_scatter)}
-    max_cyc = max(args.max_cycles_per_amp, n_cycles)
+    extra = 1 if "h_amp_second" in rec else 0                 # one more discarded cycle after a second correction
+    max_cyc = max(args.max_cycles_per_amp + extra, n_cycles)
     if args.min_calm > 0:
         ct = calm_tail(measured_cycles(rec), args.calm_tol)
         info.update(calm_tail=ct, calm_ok=bool(ct >= args.min_calm))
         return ct >= args.min_calm or ci >= max_cyc, info
-    return info["steady"] or ci >= args.max_cycles_per_amp, info
+    return info["steady"] or ci >= args.max_cycles_per_amp + extra, info
 
 
 def is_multiple(x, q, tol=1e-9):
@@ -847,7 +867,7 @@ def main(argv=None):
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
 
             sample()
-            acc_on = args.acc and st["measure"] and ci >= ACC_FROM_CYCLE
+            acc_on = args.acc and st["measure"] and ci >= acc_first(rec)
             snap = args.snap_phases > 0 and st["measure"] and ci >= st["n_cycles"] - args.snap_cycles
             if snap and args.snap_mT and st.get("b_target") is not None:
                 bmT = 1000.0 * st["b_target"] * args.Js
@@ -931,6 +951,20 @@ def main(argv=None):
                 print("[%s] drive corrected: h %.4g -> %.4g (b target %.4g, b in cycle 0 %.4g)" %
                       (st["name"], rec["h_amp_initial"], h_new, st["b_target"], cyc["b_peak"]), flush=True)
 
+            if ci == 2 and "h_amp_initial" in rec and "h_amp_second" not in rec and st.get("b_target") is not None:
+                # cycle 0 is a transient from the start state, so its b can mislead the first correction (N0b_I15_s941:
+                # b of cycle 0 6 % above the later cycles, the stage then 6 % below the target; PROTOKOLL 7.107).
+                # Correct again with b of cycle 1, at a zero crossing; cycle 2 is then discarded too, and the stage
+                # gets one more cycle
+                h_new = second_correction(st["h_amp"], st["b_target"], cyc["b_peak"], args.b_tol)
+                if h_new is not None:
+                    rec["h_amp_second"] = st["h_amp"]
+                    st = dict(st, h_amp=h_new, n_cycles=st["n_cycles"] + 1)
+                    drive.H_amp = h_new * Ms
+                    rec["h_amp"], rec["H_amp"] = h_new, h_new * Ms
+                    print("[%s] drive corrected again: h %.4g -> %.4g (b target %.4g, b in cycle 1 %.4g)" %
+                          (st["name"], rec["h_amp_second"], h_new, st["b_target"], cyc["b_peak"]), flush=True)
+
             if ci >= st["n_cycles"]:
                 if not st["measure"]:
                     complete = True
@@ -975,7 +1009,7 @@ def main(argv=None):
                          m0=(harm.s["m0"][mask_t] / n).float().cpu().numpy(),
                          m1=((harm.s["re"][mask_t] + 1j * harm.s["im"][mask_t]) * (2.0 / n)).to(torch.complex64)
                          .cpu().numpy(),
-                         h1=np.complex128(harm.s_h1 * 2.0 / n), n_samples=n, cycles_from=ACC_FROM_CYCLE,
+                         h1=np.complex128(harm.s_h1 * 2.0 / n), n_samples=n, cycles_from=acc_first(rec),
                          p_box=p_box, p_dis_samples=harm.s_psum / n, freq=f_stage,
                          mk2=(harm.s_mk2[:, mask_t] / len(harm.kept)).T.contiguous().cpu().numpy(),
                          cycles_kept=np.array(harm.kept), cycles_acc=harm.n_cycles)
@@ -996,7 +1030,7 @@ def main(argv=None):
             np.savez(np_tmp, p=(acc["p"][mask_t] / n).float().cpu().numpy(),
                      m0=(acc["m0"][mask_t] / n).float().cpu().numpy(),
                      m1=((acc["re"][mask_t] + 1j * acc["im"][mask_t]) * (2.0 / n)).to(torch.complex64).cpu().numpy(),
-                     h1=np.complex128(acc["h1"] * 2.0 / n), n_samples=n, cycles_from=ACC_FROM_CYCLE,
+                     h1=np.complex128(acc["h1"] * 2.0 / n), n_samples=n, cycles_from=acc_first(rec),
                      p_box=p_box, p_dis_samples=acc["p_sum"] / n, freq=f_stage)
             replace_durable(np_tmp, out / ("acc_%02d_%s.npz" % (si, st["name"])))
             rec["acc"] = {"file": "acc_%02d_%s.npz" % (si, st["name"]), "n_samples": n,

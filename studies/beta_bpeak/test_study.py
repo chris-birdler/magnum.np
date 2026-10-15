@@ -1485,9 +1485,11 @@ def test_conv_jobs_newell_lines():
             arm, s = n.split("_")[1], n.split("_s")[1]
             tok, ref = shlex.split(a), shlex.split(b0b[CJ.name(arm, int(s))])
             assert get_arg(tok, "strayfield") == ["newell"] and get_arg(tok, "strayfield_shells") == ["4"]
-            for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "init_transfer"}:
+            for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "init_transfer",
+                                                                            "b_tol"}:
                 assert get_arg(tok, k) == get_arg(ref, k), (n, k)
             assert (get_arg(tok, "init_transfer") == ["N0b_F_s%s/init.pt" % s]) == arm.startswith("T")
+            assert get_arg(tok, "b_tol") == (["0.01"] if stage == 2 else None)
     assert CJ.newell_lines(2, src)[0][0].startswith("N0b_F_")
 
 
@@ -1560,3 +1562,29 @@ def test_eval_conv_stage1_section_text():
     key, text = EC.stage1_section("N0b", nv, fd)
     assert key == "smaller" and "Stage 1 reading" in text and "90 % CI" in text and "much smaller" in text
     assert text.count("|---|---|---|---|") == 1
+
+
+
+def test_second_drive_correction_and_discard_rule():
+    """run_loops --b_tol (PROTOKOLL 7.107): a second correction with b of cycle 1 only outside the tolerance, limited to
+    0.67 ... 1.5; after it the measurement starts at cycle 3 (run_loops.measured_cycles = analyze.first_measured), the
+    stage may run one cycle more, and the accumulators start one cycle later. Without it nothing changes."""
+    import types
+    import analyze
+    from run_loops import second_correction, measured_cycles, stop_stage, acc_first, ACC_FROM_CYCLE, NEW_KEYS, parse_args
+    assert second_correction(1.0, 0.006, 0.00603, 0.01) is None                   # 0.5 % off: no correction
+    assert second_correction(1.0, 0.006, 0.00565, 0.0) is None                    # tolerance 0: off
+    assert abs(second_correction(1.0, 0.006, 0.00565, 0.01) - 0.006 / 0.00565) < 1e-12
+    assert abs(second_correction(1.0, 0.006, 0.001, 0.01) - 1.5) < 1e-12           # limited
+    cyc = [{"i": i, "closure": 0.0, "dW_rel": 0.0, "w_loop": 1.0, "w_dis": 1.0} for i in range(8)]
+    for rec, first in (({"cycles": cyc}, 1), ({"h_amp_initial": 1.0, "cycles": cyc}, 2),
+                       ({"h_amp_initial": 1.0, "h_amp_second": 1.0, "cycles": cyc}, 3)):
+        assert analyze.first_measured(rec) == first and measured_cycles(rec) == cyc[first:]
+    assert acc_first({"h_amp_initial": 1.0}) == ACC_FROM_CYCLE
+    assert acc_first({"h_amp_initial": 1.0, "h_amp_second": 1.0}) == ACC_FROM_CYCLE + 1
+    args = types.SimpleNamespace(closure_tol=1e-3, dW_tol=0.02, max_cycles_per_amp=12, min_calm=2, calm_tol=0.2)
+    hard = [{"closure": 0.1, "dW_rel": 1.0, "w_loop": 1.0, "w_dis": 3.0}] * 13       # never calm
+    assert stop_stage({"h_amp_initial": 1.0, "cycles": hard[:12]}, 12, 5, args)[0]
+    assert not stop_stage({"h_amp_initial": 1.0, "h_amp_second": 1.0, "cycles": hard[:12]}, 12, 6, args)[0]
+    assert stop_stage({"h_amp_initial": 1.0, "h_amp_second": 1.0, "cycles": hard}, 13, 6, args)[0]
+    assert NEW_KEYS["b_tol"] == 0.0 and parse_args(["--out", "x", "--d_lex", "96"]).b_tol == 0.0

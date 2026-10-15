@@ -107,7 +107,7 @@ def measures(P, N60, dM=None):
 def steady(d, k):
     """Steady-tail rule (7.54): the last KEEP_LAST measured cycles of stage k have no event cycle."""
     st = json.loads((d / "summary.json").read_text())["stages"][k]
-    skip = 2 if "h_amp_initial" in st else 1                   # as analyze.load_run (drive corrected after cycle 0)
+    skip = analyze.first_measured(st)                          # as analyze.load_run (drive corrections)
     return len(analyze.steady_tail(st["cycles"][skip:], AD.BAL_EVENT)) >= KEEP_LAST
 
 
