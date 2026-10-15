@@ -265,3 +265,119 @@ def test_precision():
 
     torch.set_default_dtype(dtype)
     torch.testing.assert_close(h_demag[20:], ref[20:], atol=1e-2, rtol=1e-2)
+
+
+def test_block_demag_factors():
+    from magnumnp.field_terms.demag import block_demag_factors
+    torch.set_default_dtype(torch.float64)
+    N = block_demag_factors(State(Mesh((4, 4, 4), (1e-9, 1e-9, 1e-9), pbc=(2, 2, 2))))
+    assert N == pytest.approx([1./3.]*3, abs=1e-14)
+    N = block_demag_factors(State(Mesh((4, 2, 8), (1e-9, 2e-9, 3e-9), pbc=(1, 3, 2))))
+    assert sum(N) == pytest.approx(1., abs=1e-14)
+    N = block_demag_factors(State(Mesh((40, 1, 1), (1e-9, 1e-9, 1e-9), pbc=(1, 1, 1))))   # long along x
+    assert N[0] < 0.01 and N[1] == pytest.approx(N[2])
+    with pytest.raises(ValueError):
+        block_demag_factors(State(Mesh((4, 4, 4), (1e-9, 1e-9, 1e-9), pbc=(1, 1, 0))))
+
+
+@pytest.mark.parametrize("u", [[1., 0., 0.], [1., 1., 0.], [1., 1., 1.]])
+def test_true_pbc_newell_aligned_cube(u):
+    """Uniform m in an aligned cube of edge L/2 in a periodic cube: exact energy f (1 - f) / 3 * mu0 Ms^2 / 2 * V with
+    f = 1/8, for every direction of m (cubic symmetry, zero mean field). DemagField(true_pbc=True) gives it;
+    DemagFieldPBC (finite differences) gives it only for m along an axis."""
+    torch.set_default_dtype(torch.float64)
+    n, dx, Ms = (8, 8, 8), (1e-9, 1e-9, 1e-9), 1./constants.mu_0
+    V = 512 * 1e-27
+    Kd_V = 0.5 * constants.mu_0 * Ms**2 * V
+    ms = torch.zeros(n + (1,))
+    ms[:4, :4, :4] = Ms
+    m = (torch.tensor(u) / torch.tensor(u).norm()).expand(n + (3,)).clone()
+    state = State(Mesh(n, dx, pbc=(2, 2, 2)))
+    state.material = {"Ms": ms}
+    state.m = m
+    exact = (1/8) * (7/8) / 3
+    assert DemagField(true_pbc=True).E(state).cpu() / Kd_V == pytest.approx(exact, rel=1e-3)
+    e_fd = DemagFieldPBC().E(state).cpu() / Kd_V
+    if u.count(0.) == 2:
+        assert e_fd == pytest.approx(exact, rel=1e-9)
+    else:
+        assert e_fd / exact - 1 > 0.05
+
+
+def test_true_pbc_newell_checkerboard_and_zero_mean():
+    """A cell-scale pattern m = (1, -1, 0)/sqrt2 (-1)^(i+j) in a full box: DemagFieldPBC sees no charge (0); the exact
+    energy (Fourier sum over the aliases of the cell form factor) is 0.50 mu0 Ms^2 / 2 per volume. For a random m the
+    box mean of h is 0 (zero mean field of the infinite medium) within the image truncation."""
+    torch.set_default_dtype(torch.float64)
+    n, dx, Ms = (8, 8, 8), (1e-9, 1e-9, 1e-9), 1./constants.mu_0
+    Kd_V = 0.5 * constants.mu_0 * Ms**2 * 512 * 1e-27
+    i, j, k = torch.meshgrid(*[torch.arange(8)] * 3, indexing="ij")
+    s = (-1.)**(i + j)
+    state = State(Mesh(n, dx, pbc=(2, 2, 2)))
+    state.material = {"Ms": state.Constant(Ms)}
+    state.m = torch.stack([s, -s, 0. * s], -1) / 2**0.5
+    assert DemagField(true_pbc=True).E(state).cpu() / Kd_V == pytest.approx(0.50, rel=0.01)
+    assert abs(DemagFieldPBC().E(state).cpu() / Kd_V) < 1e-12
+    g = torch.Generator().manual_seed(0)
+    r = torch.randn(n + (3,), generator=g)
+    state.m = r / r.norm(dim=-1, keepdim=True)
+    h = DemagField(true_pbc=True).h(state)
+    assert float(h.mean(dim=(0, 1, 2)).abs().max()) < 1e-3 * Ms
+
+
+def test_block_demag_factors():
+    from magnumnp.field_terms.demag import block_demag_factors
+    torch.set_default_dtype(torch.float64)
+    N = block_demag_factors(State(Mesh((4, 4, 4), (1e-9, 1e-9, 1e-9), pbc=(2, 2, 2))))
+    assert N == pytest.approx([1./3.]*3, abs=1e-14)
+    N = block_demag_factors(State(Mesh((4, 2, 8), (1e-9, 2e-9, 3e-9), pbc=(1, 3, 2))))
+    assert sum(N) == pytest.approx(1., abs=1e-14)
+    N = block_demag_factors(State(Mesh((40, 1, 1), (1e-9, 1e-9, 1e-9), pbc=(1, 1, 1))))   # long along x
+    assert N[0] < 0.001 and N[1] == pytest.approx(N[2])
+    with pytest.raises(ValueError):
+        block_demag_factors(State(Mesh((4, 4, 4), (1e-9, 1e-9, 1e-9), pbc=(1, 1, 0))))
+
+
+@pytest.mark.parametrize("u", [[1., 0., 0.], [1., 1., 0.], [1., 1., 1.]])
+def test_true_pbc_newell_aligned_cube(u):
+    """Uniform m in an aligned cube of edge L/2 in a periodic cube: the exact energy is f (1 - f) / 3 * mu0 Ms^2 / 2 * V
+    with the filling f = 1/8, for every direction of m (cubic symmetry, zero mean field). DemagField(true_pbc=True)
+    gives it; DemagFieldPBC (finite differences) gives it only for m along an axis (+6.9 % along (110), +13.7 % along
+    (111) for 4 cells per cube edge)."""
+    torch.set_default_dtype(torch.float64)
+    n, dx, Ms = (8, 8, 8), (1e-9, 1e-9, 1e-9), 1./constants.mu_0
+    Kd_V = 0.5 * constants.mu_0 * Ms**2 * 512 * 1e-27
+    ms = torch.zeros(n + (1,))
+    ms[:4, :4, :4] = Ms
+    state = State(Mesh(n, dx, pbc=(1, 1, 1)))
+    state.material = {"Ms": ms}
+    state.m = (torch.tensor(u) / torch.tensor(u).norm()).expand(n + (3,)).clone()
+    exact = (1/8) * (7/8) / 3
+    assert float(DemagField(true_pbc=True).E(state)) / Kd_V == pytest.approx(exact, rel=1e-3)
+    e_fd = float(DemagFieldPBC().E(state)) / Kd_V
+    if u.count(0.) == 2:
+        assert e_fd == pytest.approx(exact, rel=1e-9)
+    else:
+        assert e_fd / exact - 1 > 0.05
+
+
+def test_true_pbc_newell_checkerboard_and_zero_mean():
+    """A cell-scale pattern m = (1, -1, 0)/sqrt2 (-1)^(i+j) in a full box: DemagFieldPBC sees no charge (energy 0);
+    the exact energy (Fourier sum over the aliases of the cell form factor) is 0.50 mu0 Ms^2 / 2 per volume. For a
+    random m the box mean of h is 0 (zero mean field of the infinite medium) within the image truncation; without
+    the compensation it is the field of the outer surface of the image block."""
+    torch.set_default_dtype(torch.float64)
+    n, dx, Ms = (8, 8, 8), (1e-9, 1e-9, 1e-9), 1./constants.mu_0
+    Kd_V = 0.5 * constants.mu_0 * Ms**2 * 512 * 1e-27
+    i, j, k = torch.meshgrid(*[torch.arange(8)] * 3, indexing="ij")
+    s = (-1.)**(i + j)
+    state = State(Mesh(n, dx, pbc=(1, 1, 1)))
+    state.material = {"Ms": state.Constant(Ms)}
+    state.m = torch.stack([s, -s, 0. * s], -1) / 2**0.5
+    assert float(DemagField(true_pbc=True).E(state)) / Kd_V == pytest.approx(0.50, rel=0.01)
+    assert abs(float(DemagFieldPBC().E(state)) / Kd_V) < 1e-12
+    g = torch.Generator().manual_seed(0)
+    r = torch.randn(n + (3,), generator=g)
+    state.m = r / r.norm(dim=-1, keepdim=True)
+    assert float(DemagField(true_pbc=True).h(state).mean(dim=(0, 1, 2)).abs().max()) < 1e-3 * Ms
+    assert float(DemagField().h(state).mean(dim=(0, 1, 2)).abs().max()) > 3e-3 * Ms

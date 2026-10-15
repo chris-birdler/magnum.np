@@ -88,8 +88,9 @@ _trapz = getattr(np, "trapezoid", None) or np.trapz   # numpy >= 2.0 renamed tra
 # arguments that do not change the physics or the protocol (allowed to differ on resume)
 ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, or 2 after a drive correction)
 NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
-            "acc_harm": 0, "init_transfer": None}                  # without them is equal to these defaults
-#                                                                    (acc_harm: 2026-10-12, PROTOKOLL 7.72)
+            "acc_harm": 0, "init_transfer": None,                  # without them is equal to these defaults
+            "strayfield": "fd", "strayfield_shells": 4}            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
+#                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
@@ -98,7 +99,7 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 # (the drive, the amplitudes and alpha can differ: the relaxation runs at alpha = 1 and H = 0)
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
-             "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol"]
+             "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells"]
 
 
 def parse_args(argv=None):
@@ -183,6 +184,12 @@ def parse_args(argv=None):
     g = p.add_argument_group("numerics")
     g.add_argument("--precision", choices=["single", "double"], default="single")
     g.add_argument("--atol", type=float, default=1e-5, help="RKF45 tolerance")
+    g.add_argument("--strayfield", choices=["fd", "newell"], default="fd",
+                   help="fd: DemagFieldPBC (finite differences, Bruckner 2021; error at surfaces and cell-scale null "
+                        "modes, PROTOKOLL 7.105); newell: DemagField with image shells and compensated outer surface "
+                        "charges (true_pbc)")
+    g.add_argument("--strayfield_shells", type=int, default=4,
+                   help="image shells per side for --strayfield newell")
 
     g = p.add_argument_group("run control / output")
     g.add_argument("--out", type=str, required=True)
@@ -271,6 +278,18 @@ def save_atomic(obj, path):
     tmp = path.with_name(path.name + ".tmp")
     torch.save(obj, tmp)
     replace_durable(tmp, path)
+
+
+def strayfield_setup(args):
+    """(mesh pbc, stray-field term) for --strayfield (PROTOKOLL 7.105). fd: DemagFieldPBC, true periodic by its k = 0 rule (the
+    pbc count only switches on the periodic exchange); newell: DemagField with --strayfield_shells image shells per side and
+    the compensation of the outer surface charges of the image block (true_pbc), the same zero mean field."""
+    from magnumnp import DemagField, DemagFieldPBC
+    if args.strayfield == "newell":
+        if args.strayfield_shells < 1:
+            raise ValueError("--strayfield newell needs --strayfield_shells >= 1")
+        return (args.strayfield_shells,) * 3, DemagField(true_pbc=True)
+    return (1, 1, 1), DemagFieldPBC()
 
 
 def transfer_m(m_f, ids_f, ids_c):
@@ -479,7 +498,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
 
     from magnumnp import (set_precision, set_log_level, Mesh, State, constants, Timer,
-                          DemagFieldPBC, ExchangeField, UniaxialAnisotropyField,
+                          ExchangeField, UniaxialAnisotropyField,
                           LLGSolver, accumulate_h, write_vti, normalize)
     import torch
     set_log_level(25)
@@ -508,7 +527,8 @@ def main(argv=None):
     mag = ids >= 0
     phi = geo["phi_vox"]
 
-    mesh = Mesh((N, N, N), (dx, dx, dx), pbc=(1, 1, 1))
+    pbc, strayfield = strayfield_setup(args)
+    mesh = Mesh((N, N, N), (dx, dx, dx), pbc=pbc)
     state = State(mesh)
     dt_ = state.dtype
     dev = state.device
@@ -536,7 +556,7 @@ def main(argv=None):
     if delta_min < 2.0 * args.dx_lex:
         warnings.warn("local wall width %.3g l_ex < 2 cells: walls are not resolved" % delta_min)
 
-    terms = [DemagFieldPBC(), ExchangeField()]
+    terms = [strayfield, ExchangeField()]
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
         ax_c, n_cubes = cube_axes(ids, args.dx_lex, a_lex, d_lex, L, args.seed)
@@ -657,11 +677,11 @@ def main(argv=None):
         src = str(src)
         c = torch.load(src, map_location=dev)
         if "init" in c:
-            diff = [k for k in INIT_KEYS if c["config"].get(k) != config.get(k)
+            diff = [k for k in INIT_KEYS if c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)
                     and not (k == "relax_maxiter" and c["init"].get("relax_converged"))]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
-                    "%s %r -> %r" % (k, c["config"].get(k), config.get(k)) for k in diff)))
+                    "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
             summary["init"] = dict(c["init"], source=src)
         elif args.protocol == "virgin_asc":
             sys.exit("ERROR: %s holds no relaxation record (old checkpoint format)" % src)
@@ -686,10 +706,11 @@ def main(argv=None):
             cf = torch.load(str(src), map_location="cpu")
             if args.surface != "voxel":
                 sys.exit("ERROR: --init_transfer needs --surface voxel")
-            diff = [k for k in INIT_KEYS if k not in ("dx_lex", "relax_maxiter") and cf["config"].get(k) != config.get(k)]
+            diff = [k for k in INIT_KEYS if k not in ("dx_lex", "relax_maxiter")
+                    and cf["config"].get(k, NEW_KEYS.get(k)) != config.get(k)]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
-                    "%s %r -> %r" % (k, cf["config"].get(k), config.get(k)) for k in diff)))
+                    "%s %r -> %r" % (k, cf["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
             if not cf.get("init", {}).get("relax_converged"):
                 sys.exit("ERROR: the relaxation of %s did not converge" % src)
             dxf = float(cf["config"]["dx_lex"])

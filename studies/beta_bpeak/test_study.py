@@ -1417,3 +1417,50 @@ def test_newell_pbc_compensation_exact_and_fd_off_axis_error():
             assert (abs(e_fd / exact - 1) < 1e-9) if fd_exact else (e_fd / exact - 1 > 0.02)
     finally:
         torch.set_default_dtype(old)
+
+
+def test_strayfield_setup_and_init_keys():
+    """--strayfield (PROTOKOLL 7.105): fd gives DemagFieldPBC on a mesh with pbc 1; newell gives DemagField with
+    true_pbc and --strayfield_shells image shells. Both keys set the relaxed state (INIT_KEYS); an old config without
+    them counts as fd with 4 shells (NEW_KEYS), so old runs resume and old init states stay usable for fd runs."""
+    import types
+    import run_loops
+    from magnumnp import DemagField, DemagFieldPBC
+    pbc, term = run_loops.strayfield_setup(types.SimpleNamespace(strayfield="fd", strayfield_shells=4))
+    assert pbc == (1, 1, 1) and isinstance(term, DemagFieldPBC)
+    pbc, term = run_loops.strayfield_setup(types.SimpleNamespace(strayfield="newell", strayfield_shells=2))
+    assert pbc == (2, 2, 2) and isinstance(term, DemagField) and term._true_pbc
+    with pytest.raises(ValueError):
+        run_loops.strayfield_setup(types.SimpleNamespace(strayfield="newell", strayfield_shells=0))
+    assert {"strayfield", "strayfield_shells"} <= set(run_loops.INIT_KEYS)
+    assert run_loops.NEW_KEYS["strayfield"] == "fd" and run_loops.NEW_KEYS["strayfield_shells"] == 4
+    a = run_loops.parse_args(["--out", "x", "--d_lex", "96"])
+    assert a.strayfield == "fd" and a.strayfield_shells == 4
+    a = run_loops.parse_args(["--out", "x", "--d_lex", "96", "--strayfield", "newell", "--strayfield_shells", "2"])
+    assert a.strayfield == "newell" and a.strayfield_shells == 2
+
+
+def test_true_pbc_equals_the_solver_check_helper():
+    """DemagField(true_pbc=True) of magnum.np gives the same energy as check_mesh_energy.energy_newell_pbc, which made
+    the solver check of PROTOKOLL 7.105 (random m, partly filled box, one image shell)."""
+    import torch
+    import check_mesh_energy as C
+    from magnumnp import Mesh, State, DemagField, constants
+    old = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        Ms = 1. / constants.mu_0
+        Kd = 0.5 * constants.mu_0 * Ms ** 2
+        ms = torch.full((8, 8, 8, 1), 1e-8 * Ms)
+        ms[1:6, 2:7, 0:5] = Ms
+        g = torch.Generator().manual_seed(1)
+        r = torch.randn((8, 8, 8, 3), generator=g)
+        m = r / r.norm(dim=-1, keepdim=True)
+        st = State(Mesh((8, 8, 8), (1e-9,) * 3, pbc=(1, 1, 1)))
+        st.material = {"Ms": ms}
+        st.m = m
+        e1 = float(DemagField(true_pbc=True).E(st)) / (Kd * 512e-27)
+        e2 = C.energy_newell_pbc(*C.newell_pbc(8, 1e-9, ms, 1), m, Ms, Kd)
+        assert e1 == pytest.approx(e2, rel=1e-12)
+    finally:
+        torch.set_default_dtype(old)

@@ -102,6 +102,24 @@ def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p):
     return res
 
 
+def block_demag_factors(state):
+    r"""
+    Diagonal demagnetization tensor at the centre of the block of periodic
+    images (a rectangular prism with half edges a_i = (2 pbc_i + 1) n_i dx_i / 2):
+
+    .. math::
+        N_{zz} = \frac{2}{\pi} \arctan \frac{a_x a_y}{a_z \sqrt{a_x^2 + a_y^2 + a_z^2}}
+
+    (field of the two charged faces from their solid angle), x and y cyclic;
+    the trace is 1, a cube gives 1/3 in each direction.
+    """
+    if any(int(state.mesh.pbc[i]) <= 0 for i in range(3)):
+        raise ValueError("true_pbc needs periodic images in all three directions (mesh.pbc > 0)")
+    a = [(2 * int(state.mesh.pbc[i]) + 1) * state.mesh.n[i] * state.mesh.dx[i] / 2. for i in range(3)]
+    r = np.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+    return [2. / np.pi * np.arctan(a[(i+1)%3] * a[(i+2)%3] / (a[i] * r)) for i in range(3)]
+
+
 class DemagField(LinearFieldTerm):
     r"""
     Demagnetization Field:
@@ -126,8 +144,17 @@ class DemagField(LinearFieldTerm):
         (default: the simulation device). Pass "cpu" to keep the device memory
         usage during setup at the size of the final kernel.
     :type kernel_device: str, optional
+    :param true_pbc: only with periodic images in all three directions
+        (mesh.pbc > 0). The images form a block of (2 pbc_i + 1) boxes per
+        direction. Its outer surface charges add the field -N_block <M> at the
+        box (N_block: demagnetization tensor of the rectangular block at its
+        centre, diagonal). true_pbc=True adds +N_block <M> and thus gives the
+        infinite periodic medium with zero mean field, the convention of
+        DemagFieldPBC (default = False: the finite block of images)
+    :type true_pbc: bool, optional
     """
-    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None, true_pbc = False):
+        self._true_pbc = true_pbc
         self._p = p
         self._cache_dir = cache_dir
         self._chunk_cells = chunk_cells
@@ -248,9 +275,14 @@ class DemagField(LinearFieldTerm):
         hy = torch.fft.irfftn(hy, dim = dim)
         hz = torch.fft.irfftn(hz, dim = dim)
 
-        return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                         hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                         hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        if self._true_pbc:
+            if not hasattr(self, "_N_block"):
+                self._N_block = torch.tensor(block_demag_factors(state), dtype=h.dtype, device=h.device)
+            h = h + self._N_block * M.mean(dim=(0,1,2))
+        return h
 
     def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
