@@ -1588,3 +1588,20 @@ def test_second_drive_correction_and_discard_rule():
     assert not stop_stage({"h_amp_initial": 1.0, "h_amp_second": 1.0, "cycles": hard[:12]}, 12, 6, args)[0]
     assert stop_stage({"h_amp_initial": 1.0, "h_amp_second": 1.0, "cycles": hard}, 13, 6, args)[0]
     assert NEW_KEYS["b_tol"] == 0.0 and parse_args(["--out", "x", "--d_lex", "96"]).b_tol == 0.0
+
+
+def test_conv_jobs_newell_rerun_lines():
+    """conv_jobs.newell_rerun_lines (PROTOKOLL 7.107): the two stage 1 runs with a low drive amplitude, each equal to its
+    stage 1 line plus --b_tol 0.01."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    s1 = dict(CJ.newell_lines(1, src))
+    jobs = CJ.newell_rerun_lines(src)
+    assert [n for n, _ in jobs] == sorted(CJ.S1B, key=[n for n, _ in CJ.newell_lines(1, src)].index)
+    for n, a in jobs:
+        tok, ref = shlex.split(a), shlex.split(s1[n])
+        assert get_arg(tok, "b_tol") == ["0.01"] and get_arg(ref, "b_tol") is None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"b_tol"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)

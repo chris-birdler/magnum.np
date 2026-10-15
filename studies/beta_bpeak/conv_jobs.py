@@ -20,6 +20,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
 
     python conv_jobs.py --newell 1 > jobs/newell_b0_s1.txt
     python conv_jobs.py --newell 2 > jobs/newell_b0_s2.txt
+    python conv_jobs.py --newell 1b > jobs/newell_b0_s1b.txt     # the two low stage 1 runs again with --b_tol
 """
 import shlex
 
@@ -36,6 +37,8 @@ PREFIX_NEWELL = "N0b"   # B0b with the reference stray-field solver (PLAN 4.11)
 NEWELL_ARGS = (("strayfield", ["newell"]), ("strayfield_shells", ["4"]))
 NEWELL_STAGES = {1: ("I3", "I15"), 2: ("F", "T15", "T3")}
 B_TOL = "0.01"         # stage 2: drive corrected again after cycle 1 if b is more than 1 % off the target
+S1B = ("N0b_I15_s941", "N0b_I3_s944")   # stage 1 runs 5 … 6 % below the target b: again with --b_tol after stage 2
+#                                         (decision Chris 2026-10-15, PROTOKOLL 7.107)
 
 
 def name(arm, s, prefix=PREFIX):
@@ -77,6 +80,11 @@ def newell_lines(stage, src="jobs/mesh212.txt"):
     return out
 
 
+def newell_rerun_lines(src="jobs/mesh212.txt"):
+    """The stage 1 lines of S1B with --b_tol B_TOL (the same drive rule as stage 2)."""
+    return [(n, " ".join(set_arg(shlex.split(a), "b_tol", [B_TOL]))) for n, a in newell_lines(1, src) if n in S1B]
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -102,7 +110,8 @@ def prec_lines(src="jobs/mesh212.txt"):
 if __name__ == "__main__":
     import sys
     if "--newell" in sys.argv:
-        jobs = newell_lines(int(sys.argv[sys.argv.index("--newell") + 1]))
+        st = sys.argv[sys.argv.index("--newell") + 1]
+        jobs = newell_rerun_lines() if st == "1b" else newell_lines(int(st))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:
