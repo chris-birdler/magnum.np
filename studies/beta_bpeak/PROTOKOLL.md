@@ -4581,6 +4581,167 @@ the run, at most 12 cycles):
 - Remark: B0 / B0b already give "physical" on dx 0.75 at 9 mT. The twins test the mesh of the main run (dx 3) and
   35 … 150 mT, where the closure of K1 is. Chris can remove them from the chain without cost before they start.
 
+### 7.102 Results of atol60, atol30 and B0b; restart of the instance; state files on the disk (2026-10-15)
+
+Terms used here: P = f K_d w_loop (W/cm³). R1, R2 … R7: share of the loss at k × the drive frequency (per-cell
+Fourier sums, 7.72); rest = 1 − Σ R_k (7.90). RN: share of the dissipation that changes from cycle to cycle; RF: share
+that is not smooth within the cycle (7.51, 7.99). Steady tail, event, closure, ΔM: 7.101. L5 / L6: atol 1e-5 / 1e-6.
+F, I15, I3, T15, T3: the B0b arms (below). Each pre-registered reading comes first; every later result is marked
+"exploratory".
+
+**Restart of the instance.** The instance restarted on 2026-10-14 at 18:47 UTC (cause not known). The chains resumed
+through the onstart lines.
+- B0b_T15_s941 had written its init.pt at 18:41. After the restart the file had 0 bytes: run_loops renamed the file
+  without os.fsync, and its data were still in the page cache. Both attempts after the restart stopped with EOFError
+  in torch.load.
+- F s941 and F s942 were inside their 9 mT stage and repeated it from init.pt (a run with one stage has no checkpoint
+  inside the stage). T15 s942 restarted during its relaxation. F s943, F s944 and the other runs had finished before
+  the restart.
+- Fix (patch, go of Chris), commit 515b260: run_loops.replace_durable flushes the file (os.fsync) before os.replace and
+  the directory after it. save_atomic (init.pt, checkpoint.pt), write_atomic (summary.json, config.json, DONE), the
+  accumulator files and run_queue.save_queue_state use it. The status file of run_queue (monitoring only) does not.
+  New test test_state_files_are_on_the_disk_before_the_rename.
+- Rerun of B0b_T15_s941 at commit 515b260 (only file writing differs from 371004f of the other B0b runs). The failed
+  folder is kept as runs/B0b_T15_s941.failed_reboot, the first report as runs/conv_b0_report_n19.md. The B0b chain was
+  started again with /root/sweep_commit 515b260; it skipped the finished runs. B0b_T15_s941 finished at 05:03 UTC (5
+  cycles, periodic, P 4.13 W/cm³), the queue ended with exit code 0, and eval_conv.py wrote the report with n = 4. The
+  local run of eval_conv.py gives the same report.
+- Check of all files on the instance after the restart (summary.json readable, all stages complete, rows of the
+  samples files = cycles × (samples + 1), every .pt loaded with torch.load): all 29 runs of B0b, atol60 and atol30 are
+  complete. Local copies without .pt: md5 equal (runs/MANIFEST_b0b.md5, MANIFEST_atol60.md5, MANIFEST_atol30.md5).
+- Reproducibility floor (exploratory, results/b0b_check.md): the first attempt of F s941 / s942 relaxed in the same
+  process, the second started from init.pt (another start path, 7.59). w_loop of cycles 0 … 3 is the same to the 4
+  printed digits, the closure to 2 digits. w_dis differs by up to 3·10⁻³ (s941) and 1.3·10⁻² (s942). The B0 / B0b
+  comparison of 7.101 with the final files: closure ratio 0.9998 … 1.0014 and W_loop within 5·10⁻⁵, as stated there
+  (results/closure_state.md).
+
+**atol60** (reading fixed in 7.100; L6 relaxes itself, 7.101; runs/atol60_report.md, md5 runs/MANIFEST_atol60.md5).
+Small particle (K1_k, A 20 runs), 60 MHz, 9 mT, 40 cycles:
+
+| seed | class 1e-6 / 1e-5 | P of the last 10 cycles (W/cm³, mean ± SD), 1e-6 / 1e-5 | C′ value (W/cm³) |
+|---|---|---|---|
+| 0 | stays irregular / stays irregular | 35.7 ± 1.8 / 35.7 ± 1.8 | 35.3 |
+| 1 | stays irregular / stays irregular | 28.5 ± 1.1 / 28.5 ± 1.1 | 28.9 |
+| 2 | marginal / marginal | 38.1 ± 4.4 / 38.1 ± 4.4 | 36.4 |
+
+- Start control: the two relaxations give the same state (E / K_d equal, w_loop of cycle 0 within 1·10⁻⁵).
+- **Reading (motion): stays irregular. Reading (loss value): the C′ value holds.**
+- The irregular motion is not an error of the time integrator (the mesh is not tested here). Over 40 cycles it stays
+  irregular in seeds 0 and 1 and marginal in seed 2. P scatters by 4 … 12 % (SD over the last 10 cycles). Its mean
+  agrees with the C′ value within 5 %.
+- Exploratory (after the readings, results/atol60.md): w_loop of L6 and L5 agree cycle by cycle to ≤ 1·10⁻⁵ in seeds 1
+  and 2 over all 40 cycles. In seed 0 the difference grows from 6·10⁻⁶ to 1.2·10⁻⁴ (cycles 30 … 39). The irregular
+  motion is reproducible. The running mean of P from cycle 2 on stays within ±5 % of the mean of the last 10 cycles
+  after cycle 2 / 10 / 6 (seeds 0 / 1 / 2), with both tolerances.
+- Exploratory: loss channels at 60 MHz, 9 mT. L6 and L5 agree to 0.003: R1 0.915 … 0.923, R2 0.033 … 0.053, R4 … R7
+  0.038 … 0.064. C′ K1_k_f2 kept 4 cycles (seed 0: 2, 4, 5, 6; seed 1: 3 … 6; seed 2: 4, 5, 8, 9): R1 0.854 … 0.882 and
+  R4 … R7 0.11 … 0.14. Candidate cause: the C′ window holds early cycles with more harmonic content. This is not
+  measured (R_k of L5 over the C′ cycles was not computed). The zone shares agree within 0.03.
+
+**atol30** (reading fixed in 7.101; runs/atol30_report.md, md5 runs/MANIFEST_atol30.md5). Main-run line of K1_k
+(30 MHz, 7 amplitudes, 7 cycles each) with atol 1e-6 against the main runs K1_k (atol 1e-5):
+- c (median closure of the measured cycles of all 7 stages) with 1e-5 / 1e-6: 0.0547 / 0.0545 %, 0.0570 / 0.0570 %,
+  0.0539 / 0.0538 %; r = 1.00 in all 3 seeds. The same start in all 3 seeds (E / K_d equal, w_loop of cycle 0 within
+  3·10⁻⁵).
+- **Reading: physical** (3 of 3 seeds). At K1, the loop closure of the main run is not an error of the time
+  integrator.
+- P with 1e-6 / 1e-5 (mean of 3 seeds): 1.000 at 9 … 100 mT; 0.992 at 150 mT, where the trajectories of the two
+  tolerances separate (median closure 0.0020 with 1e-5, 0.0019 with 1e-6). At K1 the loss values do not depend on the tolerance to 1 %.
+- w_dis / w_loop at 9 mT: 1.021 with 1e-5, 1.001 with 1e-6. This confirms the w_dis error of atol 1e-5 at 9 mT (7.88,
+  7.101) at K1 (n 3). The error acts only on the calm check.
+- Change of w_dis / w_loop from 1e-5 to 1e-6: −0.28 % at 20 mT, at most 0.07 % at 35 … 100 mT, +0.4 % at 150 mT. Thus
+  at 20 mT the tolerance gives part (≈ 0.3 %) of the mean Δe / w_loop of −0.68 % of 7.101. At 50 and 70 mT it does not
+  give the −0.3 % of 7.101; that cause is open (K1 only, n 3).
+- Exploratory (after the reading, results/atol30.md): the event cycles are the same with both tolerances in 21 of 21
+  stages, so at K1 the steady-tail rule does not depend on atol. β over 9 … 150 mT per seed (main-fit definition):
+  2.311 / 2.306, 2.553 / 2.553, 2.482 / 2.480 (1e-5 / 1e-6). The windows 9 … 35 and 35 … 70 mT are equal to 4 digits;
+  70 … 150 mT changes by −0.023 / 0.000 / −0.012. The lag of the fundamental is equal to 0.01°. The loss shares per
+  zone change by ≤ 0.003 at 20 … 150 mT and by 0.014 at 9 mT.
+- Exploratory: R1 at 9 mT is 0.971 with 1e-5 and 0.990 with 1e-6 (mean of 3 seeds); 0.804 / 0.806 at 20 mT; equal
+  to 0.001 at 35 … 150 mT. The denominator of R1 is the accumulated dissipation, which atol 1e-5 makes too large at
+  9 mT. Thus at 9 mT and 30 MHz the non-fundamental share 1 − R1 of the 1e-5 runs (0.029) is about 2/3 numerical (0.010
+  with 1e-6), at K1 (n 3).
+
+**B0b** (mesh convergence at 9 mT, PLAN 4.10, reading fixed before the runs; runs/conv_b0_report.md, md5
+runs/MANIFEST_b0b.md5). Base microstructure (L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1), d/l_ex 96, 9 mT, seeds 941 … 944,
+atol 1e-6. F: dx 0.75. I15 / I3: dx 1.5 / dx 3, independent relaxation. T15 / T3: dx 1.5 / dx 3, start from the relaxed
+F state, then relaxed again.
+
+| arm | runs | P (W/cm³), geometric mean (a) | SD of ln P over the seeds (a) | ln P per seed 941 / 942 / 943 / 944 (b) | median cycle SD of P (b) | median RN (b) |
+|---|---|---|---|---|---|---|
+| F, dx 0.75 | 4 | 10.5 | 0.96 | 2.51 / 1.97 / 3.59 / 1.33 | 5.2 % | 0.061 |
+| I15, dx 1.5 | 4 | 3.25 | 0.65 | 1.44 / 0.97 / 1.92 / 0.39 | 0.3 % | 0.004 |
+| I3, dx 3 | 4 | 1.47 | 0.09 | 0.52 / 0.31 / 0.39 / 0.33 | 0.0 % | 0.001 |
+| T15, dx 1.5 | 4 | 4.02 | 0.54 | 1.42 / 2.09 / 0.79 / 1.26 | 0.1 % | 0.001 |
+| T3, dx 3 | 4 | 1.51 | 0.07 | 0.48 / 0.47 / 0.33 / 0.39 | 0.0 % | 0.000 |
+
+(a) eval_conv.py: ln of the mean w_loop of the steady tail per run. (b) eval_b0b_check.py: mean of ln P over the tail
+cycles per run; it differs from (a) in the third digit (T15: 4.01 / 0.540).
+
+Paired differences of ln P (same seed, n 4, mean ± SE, 90 % CI with t(3)), from eval_conv.py:
+
+| difference | independent relaxation | start from the F state |
+|---|---|---|
+| dx 1.5 − dx 0.75 | −1.17 ± 0.17 (−1.57 … −0.77) | −0.96 ± 0.67 (−2.53 … +0.62) |
+| dx 3 − dx 1.5 | −0.79 ± 0.31 (−1.51 … −0.07) | −0.98 ± 0.24 (−1.55 … −0.41) |
+| dx 3 − dx 0.75 | −1.96 (unpaired Welch, −3.09 … −0.84) | −1.93 ± 0.50 (−3.10 … −0.77) |
+
+As factors on P: dx 1.5 gives × 0.31 of dx 0.75 (independent), dx 3 gives × 0.45 of dx 1.5 and × 0.14 of dx 0.75. The
+cycle noise is 0.038 (pooled SD of ln w_loop, dof 40). The SD over the seeds (0.54 … 0.96 on dx 1.5 and dx 0.75)
+dominates the errors. Transferred against independent start: dx 3 +0.03 ± 0.05, dx 1.5 +0.21 ± 0.51.
+
+**Reading (pre-registered): stop.** SD_T = 1.34 ≥ 0.10 (SD_T: SD of the paired difference dx 1.5 − dx 0.75 of the T
+arm). The transferred state does not remove the scatter: stop and re-scope (PLAN 4.10). With n 3 (before the rerun)
+the reading was the same (SD_T 1.64, runs/conv_b0_report_n19.md).
+
+**Check of the measuring method** (exploratory, after the reading; go of Chris; eval_b0b_check.py →
+results/b0b_check.md / .json):
+- All 20 runs: 5 cycles, no event, a steady tail of 3 cycles, b_peak / b_target 0.96 … 1.01.
+- dx 3: periodic loops in all 8 runs (closure ≤ 2·10⁻⁴, P equal within 0.1 % over the tail, RN ≤ 0.001, RF ≤ 0.014),
+  w_dis / w_loop 1.000 … 1.002.
+- dx 1.5: periodic in 7 of 8 runs (RN ≤ 0.009, w_dis / w_loop 0.98 … 1.01). In 4 of them RF is 0.15 … 0.23 with RN
+  ≤ 0.009: a jump that repeats in every cycle at the same phase. T15 s942 is not periodic (RN 0.19, closure up to
+  2·10⁻², P 7.5 … 9.5 W/cm³).
+- dx 0.75: 3 of 4 seeds are not periodic (RN 0.037 … 0.19, closure 2·10⁻³ … 9·10⁻³, cycle SD of P 5 … 7 %). These 3
+  seeds have the high values of P (7.1 / 12.3 / 36.1 W/cm³), in the order of their RN. The periodic seed s944 (RN
+  0.012, RF 0.025) has 3.8 W/cm³, still 2.6 × its dx 3 values (1.39 / 1.48 W/cm³). n 4: an observation, no effect
+  claim.
+- **w_dis is not reliable on dx 0.75.** F s944 is periodic (closure 7·10⁻⁵), and still w_dis / w_loop is 1.071 …
+  1.073 in all tail cycles. A closed loop does not change the energy of the state, so w_dis carries an error of about
+  7 % there, also with atol 1e-6 (7.88 measured 1.01 … 1.02 at d/l_ex 48). Thus the values 0.86 … 1.16 of the other
+  F seeds are not shown to be changes of the energy of the state. The cause is open. The reading uses w_loop and stays
+  valid; the calm check of the F runs (tolerance 20 %) carries this error.
+- Neighbour pairs above 60° in the relaxed state (structures that the grid does not resolve): 18 … 26 on dx 3, 0 … 11
+  on dx 1.5, 0 … 23 on dx 0.75. The relaxed energy falls with the cell size: E / K_d 0.00212 … 0.00226 on dx 3,
+  0.00182 … 0.00190 on dx 1.5, 0.00146 … 0.00157 on dx 0.75.
+- Reading of the check: on dx 3 and dx 1.5 the measuring method holds (all runs calm and on target, energy balance
+  within 0.2 % and 2 %). On dx 0.75, w_loop and thus P hold, w_dis does not. Jumps occur at 9 mT in 3 of 4 seeds on
+  dx 0.75, in some runs on dx 1.5 (mostly repeating ones) and in none on dx 3. The jumps do not explain the whole
+  mesh factor: the periodic seed s944 also has 2.6 × the loss of dx 3. The F values carry an extra uncertainty: the
+  stop rule ended them after 5 cycles, with 3 tail cycles of a motion that does not repeat (cycle SD 5 … 7 %, small
+  against the seed SD of 0.96 in ln P).
+- Earlier mesh checks, for comparison (hints only):
+  - d/l_ex 96, the same microstructure, old pairs with a relaxation that did not converge (7.64): at 50 mT dx 1 gave
+    × 1.64 and dx 3 × 0.33 of dx 1.5 (n 3, the 90 % CIs include 0).
+  - K3 at d/l_ex 212, another microstructure (7.63): the dx 3 grid cannot hold the states of dx 1.5; dx 3 gives × 0.61
+    of dx 1.5 at 9 mT.
+  - d/l_ex 300, the same microstructure (7.64): dx 3 gives × 1.48 of dx 1.5 at 9 mT, but the 90 % CI touches 0.
+- The B0b factors hold for this point only (base microstructure, d/l_ex 96, 9 mT). They are no rule for the design.
+
+**Statements that this section replaces or limits:**
+- 7.100, "the 60 MHz values at 9 mT rest on cycles that have not settled": for the small particle at 9 mT the C′ value
+  is a valid mean of a statistically steady irregular state (scatter of P 4 … 12 % SD over cycles). Its C′ channel
+  shares at 9 mT possibly depend on the cycle window (candidate). Still open: the small particle at 20 and 35 mT (7.99
+  shows irregular motion up to 35 mT) and the large particle at 60 MHz (P drift, 7.100). Thus the factor 2 and the
+  sign change of the A effect at 60 MHz (7.98, 7.100) stay open.
+- 7.101, candidate cause "integrator error of w_dis" for Δe / w_loop below 0: confirmed at 9 mT and in part at 20 mT;
+  not supported at 50 and 70 mT; all at K1 only (n 3).
+
+**Open decision for Chris:** the re-scope after the B0b reading "stop" (PLAN 4.10).
+
+**Decision of Chris (2026-10-14):** no further evaluation of the wall area from VTI snapshots. The amount of wall does
+not set β (7.19, 7.46); the texture now comes from the per-cell accumulators.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

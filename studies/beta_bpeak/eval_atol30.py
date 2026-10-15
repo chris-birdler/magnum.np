@@ -74,6 +74,64 @@ def per_b(st):
     return out
 
 
+ZONES = ("r<0.5", "0.5<=r<0.8", "r>=0.8", "texture top 10%", "p top 10%")
+
+
+def events(st):
+    """Measured cycles with an event: w_loop ≤ 0 or |w_dis / w_loop − 1| > 0.2 (7.53)."""
+    return [c["cycle"] for c in measured(st) if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > AD.BAL_EVENT]
+
+
+def exploratory(res):
+    """Exploratory, added after the reading (2026-10-15, PROTOKOLL 7.102): event cycles per stage, β per seed (main-fit
+    definition, steady-tail rule), and R1, lag and loss shares per zone (acc.json) with both tolerances."""
+    import analyze
+    analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
+    L = ["", "## Exploratory (not pre-registered; added 2026-10-15 after the reading)", ""]
+    ex = res["exploratory"] = {"event_diff": [], "beta": {}, "acc": {}}
+    same = tot = 0
+    for k in SEEDS:
+        a, b = load(R / ("K1_%d" % k)), load(R / ("K1_%d_L6" % k))
+        if a is None or b is None:
+            continue
+        for i, bm in enumerate(AMPS):
+            e5, e6 = events(a[0][i]), events(b[0][i])
+            tot += 1
+            same += e5 == e6
+            if e5 != e6:
+                ex["event_diff"].append("seed %d, %g mT: event cycles %s with 1e-5, %s with 1e-6" % (k, bm, e5, e6))
+    L += ["Event cycles per stage (measured cycles): the same with both tolerances in %d of %d stages." % (same, tot)]
+    L += ["- " + x for x in ex["event_diff"]]
+    L += ["", "β per seed (main-fit definition: ln w at the nominal amplitudes, steady-tail rule; n 3, no effect claim):",
+          "", "| seed | β 9 … 150 mT, 1e-5 / 1e-6 | β 9 … 35 mT | β 35 … 70 mT | β 70 … 150 mT |", "|---|---|---|---|---|"]
+    keys = ("beta_all", "beta@9-35mT", "beta@35-70mT", "beta@70-150mT")
+    for k in SEEDS:
+        r5, r6 = AD.run_record(R / ("K1_%d" % k)), AD.run_record(R / ("K1_%d_L6" % k))
+        if r5 is None or r6 is None:
+            continue
+        ex["beta"][k] = {key: [r5[key], r6[key]] for key in keys}
+        L.append("| %d | %s |" % (k, " | ".join("%.4f / %.4f" % (r5[key], r6[key]) for key in keys)))
+    L += ["", "R1 (share of the loss at the drive frequency), lag of the fundamental against the drive and loss shares per "
+          "zone (acc.json, calm cycles), mean over the seeds; 1e-5 / 1e-6:", "",
+          "| B (mT) | R1 | lag (deg) | largest abs. change of a zone share (zones %s) |" % ", ".join(ZONES),
+          "|---|---|---|---|"]
+    acc = {}
+    for k in SEEDS:
+        f5, f6 = R / ("K1_%d" % k) / "acc.json", R / ("K1_%d_L6" % k) / "acc.json"
+        if f5.exists() and f6.exists():
+            acc[k] = [json.loads(f.read_text())["stages"] for f in (f5, f6)]
+    for i, bm in enumerate(AMPS):
+        if not acc:
+            break
+        g = lambda j, key: float(np.mean([acc[k][j][i][key] for k in acc]))
+        dz = max(abs(acc[k][1][i]["where"][z]["p_share"] - acc[k][0][i]["where"][z]["p_share"]) for k in acc for z in ZONES)
+        ex["acc"]["%g" % bm] = {"R1": [g(0, "R1"), g(1, "R1")], "lag": [g(0, "lag_drive_deg"), g(1, "lag_drive_deg")],
+                                "max_zone_change": dz}
+        L.append("| %g | %.4f / %.4f | %.2f / %.2f | %.4f |" % (bm, g(0, "R1"), g(1, "R1"), g(0, "lag_drive_deg"),
+                                                             g(1, "lag_drive_deg"), dz))
+    return L
+
+
 def main():
     res, ratios = {"seeds": {}}, []
     L = ["# Tolerance twins of the main run at 30 MHz (reading fixed in PROTOKOLL 7.101)", "",
@@ -115,6 +173,7 @@ def main():
             pr = float(np.mean([tabs[k][1][i]["P"] / tabs[k][0][i]["P"] for k in tabs]))
             L.append("| %g | %.6f | %.6f | %.4f | %.4f | %.3g | %.3g | %.3f |" % (
                 bm, g(0, "closure"), g(1, "closure"), g(0, "wd_w"), g(1, "wd_w"), g(0, "P"), g(1, "P"), pr))
+    L += exploratory(res)
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "atol30.json").write_text(json.dumps(res, indent=1))
 

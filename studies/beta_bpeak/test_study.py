@@ -1332,3 +1332,16 @@ def test_state_files_are_on_the_disk_before_the_rename(tmp_path, monkeypatch):
     assert (tmp_path / "summary.json").read_text() == "{}" and len(calls) == 4
     run_queue.save_queue_state(tmp_path / "run", {"state": "done"})
     assert json.loads((tmp_path / "run" / "QUEUE_STATE.json").read_text()) == {"state": "done"} and len(calls) == 6
+
+
+def test_eval_b0b_check_attempts_of_a_restarted_run(tmp_path):
+    """PROTOKOLL 7.102: eval_b0b_check.attempts splits the cycle lines of stdout.log at each start of run_loops."""
+    import eval_b0b_check as EB
+    head = "2026-10-14 08:37:13  magnum.np:INFO magnum.np 2.2.0 (run_loops.py ...)"
+    cyc = "[amp00 c%d] h=0.00075  b_peak=0.006  w_loop=%s  w_dis=%s  closure=%s  dW=-  max_angle=57 deg"
+    lines = [head, "[relax] it 500", cyc % (0, "4.289e-07", "8.636e-07", "0.032"), cyc % (1, "5.967e-07", "1.13e-06", "0.011"),
+             head, cyc % (0, "4.289e-07", "8.7e-07", "0.032")]
+    (tmp_path / "stdout.log").write_text("\n".join(lines) + "\n")
+    at = EB.attempts(tmp_path)
+    assert len(at) == 2 and sorted(at[0]) == [0, 1] and sorted(at[1]) == [0]
+    assert at[0][0] == (4.289e-07, 8.636e-07, 0.032) and at[1][0][1] == 8.7e-07

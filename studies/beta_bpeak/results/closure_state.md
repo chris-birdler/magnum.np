@@ -84,8 +84,8 @@ Cycles per stage in the runs with min_calm > 0: 7 … 12.
 
 ## 8. B0 (atol 1e-5) against B0b (atol 1e-6): common complete cycles
 
-- s941, cycles [0, 1, 2]: closure 1e-6 / 1e-5 0.9999 / 1.0002 / 1.0003; W_loop 1e-6 / 1e-5 1.000006 / 1.000038 / 0.999982; median ratio 1.0002
-- s942, cycles [0, 1]: closure 1e-6 / 1e-5 1.0014 / 0.9999; W_loop 1e-6 / 1e-5 0.999988 / 0.999999; median ratio 1.0012
+- s941, cycles [0, 1, 2]: closure 1e-6 / 1e-5 0.9999 / 1.0001 / 1.0003; W_loop 1e-6 / 1e-5 1.000006 / 1.000039 / 0.999982; median ratio 1.0001
+- s942, cycles [0, 1]: closure 1e-6 / 1e-5 1.0014 / 1.0000; W_loop 1e-6 / 1e-5 0.999991 / 0.999998; median ratio 1.0012
 - s943, cycles [0, 1, 2]: closure 1e-6 / 1e-5 1.0013 / 1.0000 / 1.0000; W_loop 1e-6 / 1e-5 0.999952 / 0.999997 / 0.999999; median ratio 1.0013
 - s944, cycles [0, 1, 2, 3]: closure 1e-6 / 1e-5 1.0001 / 1.0001 / 0.9998 / 1.0011; W_loop 1e-6 / 1e-5 1.000022 / 0.999995 / 1.000002 / 1.000002; median ratio 1.0001
 

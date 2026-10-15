@@ -113,6 +113,47 @@ def start_diff(k, tag):
     return "%+.1e / %+.1e" % (dE, dw)
 
 
+def exploratory(res):
+    """Exploratory, added after the readings (2026-10-15, PROTOKOLL 7.102): (1) the cycle-by-cycle difference L6
+    against L5 (does it grow with the cycle number?); (2) the cycle from which the running mean of P (from cycle 2)
+    stays within ±5 % of the mean of the last 10 cycles; (3) the loss channels R_k, the rest and two zone shares of L6,
+    L5 and C′ K1_k_f2 (C′ kept other cycles: a window difference, not a tolerance difference)."""
+    L = ["", "## Exploratory (not pre-registered; added 2026-10-15 after the readings)", "",
+         "| seed | largest abs. w_loop(L6) / w_loop(L5) − 1 in cycles 0–9 / 10–19 / 20–29 / 30–39 | largest abs. closure "
+         "ratio − 1 in the same blocks | running mean of P within ±5 % from cycle (L6 / L5) |", "|---|---|---|---|"]
+    ex = res["exploratory"] = {"trajectory": {}, "channels": {}}
+    for k in SEEDS:
+        s6, s5 = [json.loads((R / ("K1_%d_sw060%s" % (k, t)) / "summary.json").read_text())["stages"][0]["cycles"]
+                  for t in ("L6", "L5")]
+        w6, w5 = np.array([c["w_loop"] for c in s6]), np.array([c["w_loop"] for c in s5])
+        c6, c5 = np.array([c["closure"] for c in s6]), np.array([c["closure"] for c in s5])
+        blk = [slice(0, 10), slice(10, 20), slice(20, 30), slice(30, 40)]
+        dw = [float(np.max(np.abs(w6[b] / w5[b] - 1))) for b in blk]
+        dc = [float(np.max(np.abs(c6[b] / np.maximum(c5[b], 1e-30) - 1))) for b in blk]
+
+        def settle(w):
+            ref = w[-LAST:].mean()
+            run = np.cumsum(w[FIRST:]) / np.arange(1, len(w) - FIRST + 1)
+            bad = np.nonzero(np.abs(run / ref - 1) > 0.05)[0]
+            return int(bad[-1] + 1 + FIRST) if len(bad) else FIRST
+        ex["trajectory"][k] = {"dw_blocks": dw, "dclosure_blocks": dc, "settle_L6": settle(w6), "settle_L5": settle(w5)}
+        L.append("| %d | %s | %s | %d / %d |" % (k, " / ".join("%.1e" % x for x in dw), " / ".join("%.1e" % x for x in dc),
+                                                 settle(w6), settle(w5)))
+    L += ["", "| seed | run | cycles kept | R1 | R2 | R3 | R4 … R7 | rest | loss share, texture top 10 % | loss share, "
+          "r ≥ 0.8 |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for k in SEEDS:
+        for name, lab in (("K1_%d_sw060L6" % k, "L6"), ("K1_%d_sw060L5" % k, "L5"), ("K1_%d_f2" % k, "C′ (window)")):
+            st = json.loads((R / name / "acc.json").read_text())["stages"][0]
+            h, wh = st["harm"], st["where"]
+            ex["channels"][name] = {"R_k": h["R_k"], "rest": h["R_rest"], "cycles": len(h["cycles_kept"]),
+                                    "texture": wh["texture top 10%"]["p_share"], "rim": wh["r>=0.8"]["p_share"]}
+            L.append("| %d | %s | %d | %.3f | %.3f | %.3f | %.3f | %+.3f | %.3f | %.3f |" % (
+                k, lab, len(h["cycles_kept"]), h["R_k"][0], h["R_k"][1], h["R_k"][2], sum(h["R_k"][3:]), h["R_rest"],
+                wh["texture top 10%"]["p_share"], wh["r>=0.8"]["p_share"]))
+    L += ["", "rest = 1 − Σ R_k; a negative rest is the per-cell over-completeness of the harmonic sum (7.90)."]
+    return L
+
+
 def main():
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     res, L = {}, ["# Long tolerance test at 60 MHz, 9 mT, small particle (reading fixed in PROTOKOLL 7.100)", "",
@@ -137,6 +178,7 @@ def main():
     rd, vr = reading(r["L6"], r["L5"]), value_reading(pv["L6"], pv["L5"], ref)
     res["reading"], res["value_reading"] = rd, vr
     L += ["", "**Reading (motion): %s**" % rd, "", "**Reading (loss value): %s**" % vr]
+    L += exploratory(res)
     print("\n".join(L))
     (pathlib.Path(__file__).resolve().parent / "results" / "atol60.json").write_text(json.dumps(res, indent=1))
 
