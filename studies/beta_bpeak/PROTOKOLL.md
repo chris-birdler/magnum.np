@@ -5400,6 +5400,63 @@ measured factors are × 7.2 and × 22.
   no float32 cause of the w_dis error at atol 1e-5 (double precision gave 2.49 … 2.51 against 1.96 … 1.99). Double
   precision at atol 1e-6 was not tested. A double-precision test is an option for Chris after the integrator test.
 
+**Check 2, result (information only; results/demag_solver_N0b.md, commit fd16cf6).** check_mesh_energy.py solver N0b
+ended 2026-10-16 between 06:40 and 06:52 UTC. Energies per box volume in units of K_d. E_N(k) is the reference solver
+with k image shells, and Δ = E_FD − E_N(4).
+- E_FD lies above E_N(4) in all 28 states, by 4 … 21 % of E_N(4). The sign is opposite to 7.105, where Δ < 0 in all
+  B0b states. The states differ: they were relaxed with different solvers.
+- The readings that 7.105 fixed for B0b give, here as information:
+  - frozen F state, dx 3 − dx 0.75: solver share s = 0.10 ± 0.02 (SE, n 4), "the solver is minor";
+  - relaxed dx 3 states (I3, T3): |Δ| / |E_K| = 0.37 ± 0.06 (SE over 8 states) or 0.37 ± 0.08 (SE, seed as the unit,
+    n 4), "the solver error is relevant for the 10 % criterion".
+- **New finding: the reference solver with 4 shells is not converged on the N0b states.** The largest
+  |E_N(4) − E_N(2)| is 1.7·10⁻⁴ K_d (limit 1·10⁻⁶). As a part of E_N(4) on the F states it is +1.5 / +12.3 / +9.6 /
+  +13.6 % (s941 … s944). On the B0b states (7.105) the largest change was 2.3·10⁻⁵ K_d, that is at most 1.5 % of E_N(4).
+- The ratio (E_N(2) − E_N(1)) / (E_N(4) − E_N(2)) is 2.65 … 2.70 in 26 of 28 states (941 T15 2.85 and 941 T3 2.74,
+  the two states with the smallest change). Thus the data agree with one law in k for all states. Only the amplitude
+  (the size of the change at a given k) depends on the state. The amplitude is negative in 2 states (941 I3, 944 I15).
+- The F state and its block averages on dx 1.5 and 3 have almost the same absolute change E_N(4) − E_N(2) (all 4 seeds
+  within 1.5 %; s942: 1.53 / 1.52 / 1.51·10⁻⁴ K_d on dx 0.75 / 1.5 / 3).
+- The remaining error of E_N(4) depends on the law (estimate). With 1 / (2k + 1)² it is 0.45 × (E_N(4) − E_N(2)), up to
+  6 % of E_N(4). With the power law k^−1.42 (fitted to the ratio 2.67) it is 0.6 × (E_N(4) − E_N(2)), up to 8 %. The
+  law 1 / (2k + 1)² alone gives the ratio 2.57; a 1 / (2k + 1)⁴ part raises it. Thus 2.67 does not favour the power law.
+- Against the extrapolated value (estimate) the error of DemagFieldPBC on the F states is 4 … 15 % (1 / (2k + 1)²) or
+  3 … 13 % (k^−1.42) instead of 9 … 21 %. The two readings above stay almost the same (s 0.105, |Δ| / |E_K| 0.35).
+- Check 1 and the integrator test compare N0b runs with 4 shells among themselves; this finding does not change them.
+  The error of the stage 2 loss values of N0b from the 4 shells is open. The "4 shells" reading of the shell test
+  decides it for the energy.
+
+**Shell test (decision of Chris 2026-10-16, option A; no new dynamics).**
+- Hypothesis (not proven): the field of the outer surface charges of a finite block of (2k + 1)³ boxes changes inside
+  the central box. After the compensation a field −(N(r) − I/3) <M> remains (N(r): demag tensor of the block at the
+  point r; N_block is its value at the centre). It couples the box mean <M> to the non-uniform part of M. The coupling
+  is linear in <M>, it can have either sign, and it falls as 1 / (2k + 1)². A cubic-symmetric arrangement with uniform
+  m has no such coupling.
+- A second term of the same order (review): the first moments ∫ r (M − <M>) dV of the far images also give a
+  1 / (2k + 1)² tail. Thus the zero-mean variant can have its own tail. The law reading cannot separate the two
+  terms, and the uniform test of 7.105 does not favour one of them.
+- Design (check_mesh_energy.py shells, commit 450547e, tested): the relaxed F states of N0b (seeds 941 … 944) on dx 0.75
+  and their block averages on dx 1.5 and dx 3, with k = 1, 2, 4, 6, 8, in double precision. The test also computes the
+  zero-mean variant of each state: M = Ms m minus its box mean <M>.
+- Readings (fixed in the code before the run):
+  - law: q = (E(6) − E(4)) / (E(8) − E(6)), mean over the states with |E(8) − E(4)| ≥ 1·10⁻⁶ K_d. The reading is the
+    nearer of 2.62 (1 / (2k + 1)²) and 2.32 (k^−1.42). Correction: the code had 2.30, a computing error. Commit 678befb
+    sets 2.32 (found by the review; the boundary moves from 2.46 to 2.47).
+  - cause: "coupling to the box mean" if the largest |E0(8) − E0(4)| is at most 0.1 × the largest |E(8) − E(4)|.
+    E0 is the energy of the zero-mean variant. Else "not the box mean".
+  - 4 shells: E∞ from the fit c0 + c1 x + c2 x² with x = 1 / (2k + 1)² over k = 2, 4, 6, 8. The fit assumes this law
+    also if the law reading gives the power law. r4 = max |E∞ − E(4)| / |E∞|: "4 shells adequate" if r4 ≤ 1 %,
+    "not adequate" if r4 ≥ 5 %, else "marginal".
+- Run: instance/chain_shells.sh on the CPU of the instance (the 4 GPUs run check 1 and the integrator test), one
+  process per mesh, own worktree /root/magnum.np-shells (at 678befb for the report). Start 2026-10-16 07:26 UTC.
+  Duration on the CPU: about 2.4 s per image box on dx 0.75 (65 s for k = 1). dx 0.75 needs 7 991 image boxes for all
+  k, thus about 5.3 h, end about 12:45 UTC (estimate). dx 1.5 and dx 3 end within 1 h. No extra cost: check 1 keeps
+  the instance busy until about 14:30 UTC.
+- Values seen before this text: for k = 1 and 2 the new values reproduce check 2 to 7 digits (for example 942 F
+  0.00068299), and in all 12 states E0 equals E to 8 digits. A local test of zero_mean on a random state (8³ cells,
+  <m> up to 0.22) gives E0 − E of about 2·10⁻⁶ K_d at k = 1, falling with k; the variant changes the energy where
+  <M> couples.
+
 **Open decision for Chris.** The re-scope after "not converging" (PLAN 4.10).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
