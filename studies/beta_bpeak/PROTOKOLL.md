@@ -5217,6 +5217,128 @@ checkpoint inside the stage: cycles done before a stop are lost. Started at 14:1
 4cd1c45), 4 F runs on the 4 GPUs. Credit at 14:41 UTC: 5.73 $ at 0.405 $/h, about 14 h; less than the estimate of
 the stage. Chris must add credit, else the instance stops before the F runs end.
 
+### 7.108 PLAN 4.11 stage 2: "not converging" from 1.5 to 0.75 l_ex; energy balance on the N0b meshes; checks 1 and 2 (2026-10-16, decisions of Chris)
+
+**Stage 2 and stage 1b (go of Chris, 7.107).** Instance with 4 V100.
+- Stage 2 ran 12 runs (F, T15, T3; seeds 941 … 944). The queue ended 2026-10-16 01:40 UTC.
+- Stage 1b ran N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01. The old folders stay as *_nobtol.
+- All runs ended with DONE. All virgin relaxations converged (F: 8 000 … 14 500 iterations, 2.8 … 4.8 h). One drive
+  cycle on dx 0.75 takes about 4 700 s.
+- The second drive correction did not occur in the 12 stage 2 runs. It occurred in both stage 1b runs, and their
+  measurement starts at cycle 3.
+- b_peak / b_target in the measured tails: N0b 0.993 … 1.008, B0b 0.965 … 1.014.
+- Reports: results/newell_b0_s2.md and results/newell_b0_s1b.md (the second report has all arms with the stage 1b
+  runs). The raw data are local (runs/MANIFEST_newell.md5, 110 files, no .pt).
+
+Loss density P at 9 mT (W/cm³): geometric mean over 4 seeds, in brackets the SD of ln P over the seeds:
+
+| arm | DemagFieldPBC (B0b) | reference solver (N0b) |
+|---|---|---|
+| F, dx 0.75 | 10.5 (0.96) | 4.5 (0.66) |
+| T15, dx 1.5, start from F | 4.0 (0.54) | 1.37 (0.16) |
+| T3, dx 3, start from F | 1.51 (0.07) | 1.79 (1.13) |
+| I15, dx 1.5 | 3.25 (0.65) | 1.38 (0.54) |
+| I3, dx 3 | 1.47 (0.09) | 1.13 (0.25) |
+
+- **Reading of PLAN 4.11 stage 2: "not converging".** ln P(T15) − ln P(F) is −1.19 ± 0.38 (SE, n 4; P × 0.31, 90 % CI
+  × 0.12 … × 0.75). This is outside ± 0.10. The step 1.5 → 0.75 is not smaller than the step 3 → 1.5
+  (+0.27 ± 0.50).
+- **Reading of PLAN 4.10 (eval_conv.py): "stop".** The SD of the paired difference T15 − F is 0.76 (≥ 0.10). The
+  transferred state does not remove the scatter.
+- **Consequence (PLAN 4.10).** At 9 mT the loss is not mesh-converged in this model. Only ensemble means over many
+  seeds can be used. The per-seed mesh errors so far are withdrawn. The plan names a re-scope.
+- **Stage 1 reading with the stage 1b runs: "much smaller"** (ln P(I3) − ln P(I15) is −0.19 ± 0.17, SE, n 4).
+- Facts, no interpretation yet:
+  - The step 3 → 1.5 of the T arm has a positive mean only because of one seed. Per seed, ln P(T3) − ln P(T15) is
+    −0.19 / −0.24 / +1.77 / −0.27 (s941 … s944). The mean without s943 is −0.23. T3 s943 (9.56 W/cm³, 8 × the other
+    seeds) has a periodic and calm loop (ε +0.0002, closure 9·10⁻⁵). Its relaxed energy (E / K_d 0.00546) lies inside
+    the range of the other seeds (0.00541 … 0.00552). The cause of this value is open.
+  - The point estimates of the step 1.5 → 0.75 agree for both solvers. ln P(I15) − ln P(F) is −1.17 ± 0.17 with B0b
+    (7.104) and −1.18 ± 0.55 with N0b (SE, n 4). The solver difference of this step, paired by seed, is
+    −0.01 ± 0.63 (SE, n 4; 90 % CI −1.49 … +1.46). Thus a solver effect on this step is not excluded.
+  - The F loops of N0b are periodic: closure ≤ 3·10⁻⁴, SD of w_loop over the tail cycles ≤ 0.6 %. But P of F changes
+    strongly with the seed: 2.15 / 3.55 / 5.14 / 10.40 W/cm³ (s941 … s944). T15 from the same states gives
+    1.10 … 1.63 W/cm³.
+
+**Energy balance on the N0b meshes.** Section 5 and run_loops.py define w_loop and w_dis: the loop work ∮ H dB and the
+LLG dissipation ∫ p_dis dt per cycle. Both are trapezoid sums over the 256 samples of a cycle. ε is w_dis / w_loop − 1,
+as a mean over the steady tail (7.101). In a periodic loop ε must be 0. The surplus S is f (W_dis − W_loop), with the
+means over the tail, in W/cm³ (the unit of P).
+- N0b F (dx 0.75): ε is +0.170 / +0.091 / +0.054 / +0.032 (s941 … s944), inside the calm limit (± 0.2). N0b dx 1.5:
+  −0.006 … +0.028. N0b dx 3: +0.000 … +0.003.
+- Surplus S (W/cm³) of the runs with a periodic loop (closure ≤ 3·10⁻⁴):
+
+| mesh, arm | N0b | B0b |
+|---|---|---|
+| dx 0.75, F | +0.365 / +0.324 / +0.279 / +0.331 | +0.272 (s944) |
+| dx 1.5, T15 | +0.0144 / +0.0155 / +0.0162 / +0.0134 | +0.0097 / +0.0106 / +0.0087 (s941, s943, s944) |
+| dx 1.5, I15 | +0.0157 / +0.0136 / +0.0174 (s941, s943, s944) | +0.0120 / +0.0037 / +0.0096 (s942 … s944) |
+| dx 3, T3 and I3 | +0.0016 … +0.0029 (8 runs) | +0.0013 … +0.0022 (8 runs) |
+
+- The table does not include the runs without a periodic loop (closure 1·10⁻³ … 2·10⁻²: B0b F s941 … s943, B0b T15
+  s942, B0b I15 s941, N0b I15 s942). In these runs the energy of the state changes from cycle to cycle, thus S
+  includes this change.
+- N0b: on dx 0.75 and dx 1.5, S of the periodic runs lies within ± 15 % of the mesh mean, while P of F changes by
+  × 4.8 over the seeds. On dx 3 S changes by a factor of 1.8. The mean of S increases by × 7.2 from dx 3 to dx 1.5
+  (T3 → T15) and by × 22 from dx 1.5 to dx 0.75 (T15 → F; per seed × 17 … × 25).
+- B0b gives values of the same order on each mesh (dx 1.5: +0.004 … +0.012 against +0.013 … +0.017 with N0b). On dx
+  0.75 7.102 found the same in B0b F s944 (w_dis / w_loop 1.071 … 1.073, "w_dis is not reliable on dx 0.75"; the cause
+  stayed open there).
+- Earlier results on the same question: 7.88 (d/l_ex 48, dx 0.75, DemagFieldPBC): w_dis / w_loop 1.96 … 1.99 at
+  atol 1e-5 and 1.01 … 1.02 at atol 1e-6, with w_loop the same to 4 digits. 7.75 test B (corner K1, dx 3, f/2): with
+  1024 instead of 256 samples w_dis / w_loop changed from 1.08 … 1.10 to 1.07 … 1.08.
+- Order of the check: the measuring method first.
+
+**Thinned samples (go of Chris 2026-10-16; no new simulation).** eval_subsample.py computes both energies from the
+sample files with all 256 samples, with every 2nd sample (128) and with every 4th sample (64). It does this for all 40
+N0b and B0b runs (results/eps_subsample.md).
+- Check of the method: with 256 samples the script gives the values of summary.json (largest relative deviation
+  1.5·10⁻⁸).
+- N0b F, ε at 256 / 128 / 64 samples: s941 +0.170 / +0.170 / +0.167; s942 +0.091 / +0.091 / +0.095; s943 +0.054 /
+  +0.055 / +0.056; s944 +0.032 / +0.032 / +0.033. S at 64 samples: +0.29 … +0.36 W/cm³.
+- ln w_loop changes by −0.0003 at 128 samples and by −0.0015 at 64 samples, in all runs.
+- One exception: N0b T3 s943 (the value 9.56 W/cm³) has ε +0.056 at 64 samples (+0.000 at 256). In this run a fast
+  event inside the cycle needs more than 64 samples.
+- Limit: thinning does not show the error of the signal components at multiples of the 256-sample rate. Only more
+  samples (check 1) show it.
+
+**Check 1, energy balance with 1024 samples (go of Chris 2026-10-16; reading fixed before the runs in eval_eps075.py,
+commit dee4961, tested).**
+- Design: the F runs of s941 and s942 (the largest ε) run again with 1024 instead of 256 samples per cycle
+  (conv_jobs.py --newell eps; runs N0b_F_s941_smp1024 and N0b_F_s942_smp1024). --init_from loads the relaxed m of the
+  stage 2 run without a new relaxation. The drive correction after cycle 0 runs as in the stage 2 runs.
+- Difference from the stage 2 runs: the start path. The stage 2 runs relaxed in the same process, and the new runs
+  load init.pt. In 7.102 this change of the start path changed w_dis by up to 1.3·10⁻² (B0b F s942, a loop that is not
+  periodic). For s942, |ε_256| / 3 is 0.030, the same as the limit 0.03.
+- Values per seed over the steady tail: ε_256, ε_1024 and d_w = ln w_loop(1024) − ln w_loop(256).
+- Reading per seed:
+  - "sampling" if |ε_1024| ≤ 0.03 and |ε_1024| ≤ |ε_256| / 3;
+  - "not sampling" if |ε_1024| ≥ 2/3 |ε_256| (the error is elsewhere: the time integration or the model);
+  - "partly" in all other cases;
+  - "not determined" if a tail has fewer than 2 cycles.
+- Overall reading: the class of both seeds if they agree, else "mixed". Loss value: "w_loop unaffected" if
+  |d_w| ≤ 0.02 in both seeds. Else the largest |d_w| is the size of the sampling error of the stage 2 F values.
+- Limit: n 2. The result applies to s941 and s942 only. It gives no effect claim.
+- Cost (estimate): 5 cycles of about 4 700 s, + 7 % steps with 1024 samples (7.75), about 7 … 8 h on GPUs 0 and 1.
+  The instance costs 0.405 $/h, thus about 3 $. Credit on 2026-10-16, 06:25 UTC: 24.4 $.
+
+**Check 2, stray-field energies of the N0b states (information item of PLAN 4.11 stage 1; go of Chris).**
+check_mesh_energy.py solver N0b runs at the same time on GPU 2. It gives E_FD and E_ref with 1, 2 and 4 image shells
+for the N0b relaxed states (runs/demag_solver_N0b.md). Information only, no reading. Duration about 30 … 40 min
+(estimate).
+
+Chain: instance/chain_eps075.sh on feature/newell-pbc, pinned to commit dee4961, started 2026-10-16 06:12 UTC.
+
+**Statements that this section replaces or limits (7.107, stage 1 with the stage 1b runs):**
+- ln P(3 l_ex) − ln P(1.5 l_ex) with N0b: −0.19 ± 0.13 → −0.19 ± 0.17 (90 % CI −0.59 … +0.20).
+- P on 1.5 l_ex with N0b, geometric mean: 1.34 → 1.38 W/cm³.
+- Change of this difference from DemagFieldPBC to N0b, paired: +0.60 ± 0.20 → +0.60 ± 0.19 (90 % CI +0.15 … +1.05).
+
+**Open decisions for Chris.**
+- Check 1 (options given 2026-10-16): A, check 1 to its end; B, stop check 1 and run the F runs of s941 and s942 with
+  atol 1e-7 (this needs a patch: a separate atol for the cycles); C, A and B at the same time on GPUs 0/1 and 2/3.
+- The re-scope after "not converging" (PLAN 4.10).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
