@@ -5334,10 +5334,73 @@ Chain: instance/chain_eps075.sh on feature/newell-pbc, pinned to commit dee4961,
 - P on 1.5 l_ex with N0b, geometric mean: 1.34 → 1.38 W/cm³.
 - Change of this difference from DemagFieldPBC to N0b, paired: +0.60 ± 0.20 → +0.60 ± 0.19 (90 % CI +0.15 … +1.05).
 
-**Open decisions for Chris.**
-- Check 1 (options given 2026-10-16): A, check 1 to its end; B, stop check 1 and run the F runs of s941 and s942 with
-  atol 1e-7 (this needs a patch: a separate atol for the cycles); C, A and B at the same time on GPUs 0/1 and 2/3.
-- The re-scope after "not converging" (PLAN 4.10).
+**Decision of Chris on check 1 (2026-10-16).** Options: A, check 1 to its end; B, stop check 1 and run the F runs of
+s941 and s942 with a tighter integrator tolerance (this needs a patch: a separate tolerance for the cycles); C, A and B
+at the same time on GPUs 0/1 and 2/3. Chris chose C, with the variant C2 (below).
+
+**Integrator test (decision of Chris 2026-10-16: option C, as variant C2).**
+- Finding before the patch: the RKF45 solver controls the step with the maximum over all components of
+  err / (atol + rtol |m_i|) (magnumnp/solvers/ode_solvers/rkf45.py). run_loops.py sets only atol, and rtol stays at the
+  RKF45 default 1e-5. Thus atol is the larger term only where |m_i| < atol / rtol (0.1 at atol 1e-6). In 7.88 a change
+  of atol alone moved w_dis / w_loop from 1.97 to 1.01.
+- Chris chose C2 (C1 was atol 1e-7 alone). In C2 the drive cycles use atol 1e-7 and rtol 1e-6, both 10 × tighter than
+  atol 1e-6 and rtol 1e-5. rtol 1e-6 is 8 × the float32 machine epsilon (2⁻²³ ≈ 1.2·10⁻⁷).
+- Patch (commit 4ec5ce4, tested): run_loops.py --atol_cycles and --rtol_cycles set the RKF45 tolerance of the drive
+  cycles. They are not INIT_KEYS. The relaxation keeps --atol, and an --init_from state can run its cycles with another
+  tolerance. The run prints "[cycles] RKF45 atol … rtol …".
+- Design: the F runs of s941 and s942 run again from their relaxed state (init.pt, the start path of check 1). They
+  use --atol_cycles 1e-07 --rtol_cycles 1e-06 and 256 samples. All other arguments are as in stage 2
+  (conv_jobs.py --newell tol; runs N0b_F_s941_atol1e-07_rtol1e-06 and N0b_F_s942_atol1e-07_rtol1e-06).
+- Values per seed over the steady tail: ε_256 of the stage 2 run, ε_tol of the new run, and
+  d_w = ln w_loop(new run) − ln w_loop(stage 2 run).
+- Reading (fixed before the runs, eval_eps075.py tol):
+  - "integrator" if |ε_tol| ≤ 0.03 and |ε_tol| ≤ |ε_256| / 3;
+  - "not integrator" if |ε_tol| ≥ 2/3 |ε_256|;
+  - "partly" in all other cases; "not determined" if a run has no DONE or its tail has fewer than 2 cycles
+    (commit 118a8be, tested).
+  - Overall reading: the class of both seeds if they agree, else "mixed". Loss value: "w_loop unaffected" if
+    |d_w| ≤ 0.02 in both seeds.
+  - Read together with check 1 (both use the start path from init.pt).
+- Abort rules (fixed before the runs): the watchdog stops a run whose stdout.log has no new line for 3 × 4 700 s (one
+  cycle 3 × longer than in stage 2). run_queue stops a job after 24 h (--job_timeout_h 24). A stopped run gives no value.
+- Run: instance/chain_tol075.sh (the version of commit 4ec5ce4) runs in its own worktree on the instance
+  (/root/magnum.np-tol). Its runs/ is a link to the shared run folder. Start 2026-10-16 06:40 UTC: s941 on GPU 3, s942
+  on GPU 2. Check 1 runs on GPUs 0 and 1 at commit dee4961 without change.
+- Two deviations of the chain:
+  - The chain had to start s942 only after check 2. Its process pattern did not match, because magnum.np sets the
+    process title without the arguments. Thus s942 started at once and shares GPU 2 with check 2 until check 2 ends.
+    This changes the wall time, not the computed values. Fix in the repository: commit 78cf1eb.
+  - For the same reason, the abort rule of the chain cannot find the PID of a run. instance/watchdog_tol075.sh (commit
+    7b2e246, started 06:43 UTC) applies the rule. It finds the PID by the link of the stdout of the run.
+- Cost (estimate): a tighter tolerance needs up to 10^(1/5) ≈ 1.6 × more steps, because the local error of RKF45
+  scales with the fifth power of the step (if the accuracy limits the step; in 7.88 the step count did not change).
+  Thus one cycle takes 4 700 … 7 500 s, and 5 cycles take 7 … 11 h. Worst case: the steady rule allows up to 12 cycles,
+  and the job timeout stops a run after 24 h. Check 1 keeps the instance busy until about 14:30 UTC (estimate). Extra
+  cost after that: about 1.6 $ for 11 h, at most about 6.5 $ for 24 h (0.405 $/h).
+
+**Question of Chris: can the float32 resolution cause the problem (the energy-balance surplus S)?** Estimate, no
+measurement. A cell-scale error δm per component of m gives an exchange field noise with the rms per component
+
+    H_n = (2A / (μ0 M_s)) · √42 · δm / Δx²
+
+and a dissipation surplus, as a box mean with the volume fraction φ,
+
+    S ≈ α γ μ0 / (1 + α²) · M_s · 2 H_n² · φ
+
+(A 10 pJ/m, J_s 1.5 T, α 0.1, γ 2.213·10⁵ m/(A s), φ 0.65; √42 δm / Δx² is the rms of the discrete Laplacian of white
+noise; 2 H_n² approximates |m × H|²). The surplus scales with Δx⁻⁴, thus × 16 for each halving of the cell size; the
+measured factors are × 7.2 and × 22.
+- float32: one rounding per step with δm = 2⁻²⁴ / √12 up to an accumulation over the damping time of the cell-scale
+  mode (about 3 steps) with δm = 2⁻²⁴ √3. This gives S ≈ 0.002 … 0.09 W/cm³ on Δx 0.75 l_ex, that is 1 … 30 % of the
+  measured 0.28 … 0.37 W/cm³ (n 4).
+- The measured S corresponds to δm ≈ 1.6 … 3.0·10⁻⁷ on all three meshes (Δx 0.75 / 1.5 / 3 l_ex: 1.9 … 2.1 /
+  1.6 … 1.9 / 2.3 … 3.0·10⁻⁷, from the periodic N0b runs of the table above). This is about 3 … 5 float32 steps (2⁻²⁴)
+  or about 0.2 × atol 1e-6. The estimate does not separate the two causes.
+- The loss value w_loop did not depend on the precision in 7.3 and 7.88 (d/l_ex 48: the same to 4 digits). 7.88 found
+  no float32 cause of the w_dis error at atol 1e-5 (double precision gave 2.49 … 2.51 against 1.96 … 1.99). Double
+  precision at atol 1e-6 was not tested. A double-precision test is an option for Chris after the integrator test.
+
+**Open decision for Chris.** The re-scope after "not converging" (PLAN 4.10).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
