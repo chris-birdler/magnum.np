@@ -91,7 +91,8 @@ ACC_FROM_CYCLE = 2      # --acc: cycles kept from this index (analyze skips 1, o
 NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 2026-10-11 (PLAN 4.5): an old config
             "acc_harm": 0, "init_transfer": None,                  # without them is equal to these defaults
             "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
-            "b_tol": 0.0}                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
+            "b_tol": 0.0,                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
+            "atol_cycles": None, "rtol_cycles": None}              # 2026-10-16, PROTOKOLL 7.108
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -189,6 +190,11 @@ def parse_args(argv=None):
     g = p.add_argument_group("numerics")
     g.add_argument("--precision", choices=["single", "double"], default="single")
     g.add_argument("--atol", type=float, default=1e-5, help="RKF45 tolerance")
+    g.add_argument("--atol_cycles", type=float, default=None,
+                   help="RKF45 atol of the drive cycles (default: --atol). Not an INIT_KEY: the relaxation uses --atol, "
+                        "so a state of --init_from can run its cycles with another tolerance (PROTOKOLL 7.108)")
+    g.add_argument("--rtol_cycles", type=float, default=None,
+                   help="RKF45 rtol of the drive cycles (default: the RKF45 default 1e-5; PROTOKOLL 7.108)")
     g.add_argument("--strayfield", choices=["fd", "newell"], default="fd",
                    help="fd: DemagFieldPBC (finite differences, Bruckner 2021; error at surfaces and cell-scale null "
                         "modes, PROTOKOLL 7.105); newell: DemagField with image shells and compensated outer surface "
@@ -297,6 +303,17 @@ def strayfield_setup(args):
             raise ValueError("--strayfield newell needs --strayfield_shells >= 1")
         return (args.strayfield_shells,) * 3, DemagField(true_pbc=True)
     return (1, 1, 1), DemagFieldPBC()
+
+
+def cycle_tolerances(args):
+    """Keyword arguments of the RKF45 solver for the drive cycles (PROTOKOLL 7.108), or None if the cycles use the
+    solver of the relaxation (--atol, RKF45 default rtol). The error norm of RKF45 is err / (atol + rtol |m_i|)."""
+    if args.atol_cycles is None and args.rtol_cycles is None:
+        return None
+    kw = {"atol": args.atol if args.atol_cycles is None else args.atol_cycles}
+    if args.rtol_cycles is not None:
+        kw["rtol"] = args.rtol_cycles
+    return kw
 
 
 def transfer_m(m_f, ids_f, ids_c):
@@ -813,6 +830,10 @@ def main(argv=None):
         sys.exit(3)
 
     # --- protocol ----------------------------------------------------------
+    kw_cyc = cycle_tolerances(args)
+    if kw_cyc is not None:
+        llg = LLGSolver(terms, **kw_cyc)      # p_dis and the diagnostics use the terms, not the solver
+        print("[cycles] RKF45 %s" % " ".join("%s %g" % kv for kv in sorted(kw_cyc.items())), flush=True)
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
 
     for si in range(first_stage, len(stages)):

@@ -22,6 +22,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell 2 > jobs/newell_b0_s2.txt
     python conv_jobs.py --newell 1b > jobs/newell_b0_s1b.txt     # the two low stage 1 runs again with --b_tol
     python conv_jobs.py --newell eps > jobs/newell_eps075.txt    # energy balance on dx 0.75 with 1024 samples
+    python conv_jobs.py --newell tol > jobs/newell_tol075.txt    # the same with a 10 x tighter RKF45 tolerance
 """
 import shlex
 
@@ -104,6 +105,26 @@ def newell_eps_lines(src="jobs/mesh212.txt"):
     return out
 
 
+TOL_CYCLES = (("atol_cycles", "1e-07"), ("rtol_cycles", "1e-06"))    # 10 x tighter than atol 1e-6 / rtol 1e-5
+TOL_SUFFIX = "_atol1e-07_rtol1e-06"
+
+
+def newell_tol_lines(src="jobs/mesh212.txt"):
+    """Integrator test on dx 0.75 (decision Chris 2026-10-16, option C2, PROTOKOLL 7.108): the stage 2 F line of
+    EPS_SEEDS with the RKF45 tolerance of the drive cycles 10 x tighter (--atol_cycles 1e-07 --rtol_cycles 1e-06),
+    started from the relaxed state of the same F run (--init_from; no new relaxation; 256 samples as in stage 2)."""
+    out = []
+    for n, a in newell_lines(2, src):
+        if not n.startswith(PREFIX_NEWELL + "_F_") or int(n.split("_s")[1]) not in EPS_SEEDS:
+            continue
+        t = shlex.split(a)
+        for k, v in TOL_CYCLES:
+            t = set_arg(t, k, [v])
+        t = set_arg(t, "init_from", ["%s/init.pt" % n])
+        out.append((n + TOL_SUFFIX, " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -130,7 +151,8 @@ if __name__ == "__main__":
     import sys
     if "--newell" in sys.argv:
         st = sys.argv[sys.argv.index("--newell") + 1]
-        jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else newell_lines(int(st)))
+        jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
+                newell_tol_lines() if st == "tol" else newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:

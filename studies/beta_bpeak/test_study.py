@@ -1228,11 +1228,14 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
     import run_loops
     from rerun_jobs import job_lines
     jobs = pathlib.Path(__file__).resolve().parent / "jobs"
+    parse = lambda a: vars(run_loops.parse_args(shlex.split(a) + ["--out", "x"]))
     src = {}
     for f in sorted(jobs.glob("*.txt")):
         for name, a in job_lines(f):
-            assert src.setdefault(name, a) == a, "two different lines for %s" % name
-    parse = lambda a: vars(run_loops.parse_args(shlex.split(a) + ["--out", "x"]))
+            # a rerun under the same name (e.g. jobs/newell_b0_s1b.txt, PROTOKOLL 7.107) may change other arguments,
+            # not the INIT_KEYS of its relaxed state
+            p, q = parse(src.setdefault(name, a)), parse(a)
+            assert all(p[k] == q[k] for k in run_loops.INIT_KEYS), "two lines with other INIT_KEYS for %s" % name
     n = 0
     for f in sorted(jobs.glob("*.txt")):
         for name, a in job_lines(f):
@@ -1626,3 +1629,44 @@ def test_newell_eps_lines_and_reading():
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
     assert EE.klass(0.16, 0.01) == "sampling" and EE.klass(0.16, 0.12) == "not sampling"
     assert EE.klass(0.16, 0.08) == "partly" and EE.klass(0.09, 0.025) == "sampling" and EE.klass(0.09, 0.04) == "partly"
+
+
+def test_cycle_tolerances_and_tol_lines():
+    """run_loops --atol_cycles / --rtol_cycles (PROTOKOLL 7.108, option C2): not INIT_KEYS, old configs equal the
+    defaults, the cycle solver gets the given tolerances; conv_jobs.newell_tol_lines change only these two arguments and
+    --init_from; eval_eps075 reading with the cause "integrator"."""
+    import shlex
+    import types
+    import run_loops
+    import conv_jobs as CJ
+    import eval_eps075 as EE
+    from rerun_jobs import get_arg
+    from magnumnp import LLGSolver
+    assert not {"atol_cycles", "rtol_cycles"} & set(run_loops.INIT_KEYS)
+    assert run_loops.NEW_KEYS["atol_cycles"] is None and run_loops.NEW_KEYS["rtol_cycles"] is None
+    a = run_loops.parse_args(["--out", "x", "--d_lex", "96", "--atol", "1e-06"])
+    assert a.atol_cycles is None and a.rtol_cycles is None and run_loops.cycle_tolerances(a) is None
+    a = run_loops.parse_args(["--out", "x", "--d_lex", "96", "--atol", "1e-06", "--atol_cycles", "1e-07",
+                              "--rtol_cycles", "1e-06"])
+    kw = run_loops.cycle_tolerances(a)
+    assert kw == {"atol": 1e-07, "rtol": 1e-06}
+    s = LLGSolver([], **kw)._solver
+    assert s._atol == 1e-07 and s._rtol == 1e-06
+    assert run_loops.cycle_tolerances(types.SimpleNamespace(atol=1e-6, atol_cycles=None, rtol_cycles=1e-6)) == \
+        {"atol": 1e-6, "rtol": 1e-6}
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    s2 = dict(CJ.newell_lines(2, src))
+    jobs = CJ.newell_tol_lines(src)
+    assert [n for n, _ in jobs] == ["N0b_F_s941_atol1e-07_rtol1e-06", "N0b_F_s942_atol1e-07_rtol1e-06"]
+    for n, line in jobs:
+        base = n.replace(CJ.TOL_SUFFIX, "")
+        tok, ref = shlex.split(line), shlex.split(s2[base])
+        assert get_arg(tok, "atol_cycles") == ["1e-07"] and get_arg(tok, "rtol_cycles") == ["1e-06"]
+        assert get_arg(tok, "init_from") == [base + "/init.pt"] and get_arg(tok, "atol") == ["1e-06"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"atol_cycles", "rtol_cycles", "init_from"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+        assert run_loops.cycle_tolerances(run_loops.parse_args(tok + ["--out", "x"])) == {"atol": 1e-07, "rtol": 1e-06}
+    assert EE.klass(0.17, 0.01, "integrator") == "integrator"
+    assert EE.klass(0.17, 0.12, "integrator") == "not integrator"
+    assert EE.klass(0.17, 0.08, "integrator") == "partly"
+    assert EE.VARIANTS["tol"][0] == CJ.TOL_SUFFIX
