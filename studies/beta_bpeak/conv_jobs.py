@@ -86,7 +86,7 @@ def newell_rerun_lines(src="jobs/mesh212.txt"):
     return [(n, " ".join(set_arg(shlex.split(a), "b_tol", [B_TOL]))) for n, a in newell_lines(1, src) if n in S1B]
 
 
-EPS_SEEDS = (941, 942)    # the F runs with the largest energy-balance error (+0.16, +0.09; PROTOKOLL 7.108)
+EPS_SEEDS = (941, 942)    # the F runs with the largest energy-balance error (+0.170, +0.091; PROTOKOLL 7.108)
 EPS_SAMPLES = "1024"
 
 

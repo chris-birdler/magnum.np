@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
 Energy balance on dx 0.75 with the reference solver (decision Chris 2026-10-16, PROTOKOLL 7.108; rules fixed before the
-runs). In the stage 2 F runs of PLAN 4.11 the steady cycles have ε = w_dis / w_loop − 1 of +0.16 (s941), +0.09 (s942),
-+0.05 (s943), +0.03 (s944), although the loops close (closure 0.0000); on dx 1.5 and 3 ε is 0.00 … 0.01. In a closed
-periodic loop ε must be 0. Test: the F runs of s941 and s942 again from their relaxed state with 1024 samples per cycle
+runs). In the stage 2 F runs of PLAN 4.11 the steady tail has ε = w_dis / w_loop − 1 of +0.170 (s941), +0.091 (s942),
++0.054 (s943), +0.032 (s944), although the loops close (closure 0.0000); on dx 1.5 ε is −0.006 … +0.028, on dx 3
++0.000 … +0.003. In a closed periodic loop ε must be 0. Both energies are trapezoid sums over the samples of a cycle. Test: the F runs of s941 and s942 again from their relaxed state with 1024 samples per cycle
 instead of 256, all else equal (conv_jobs.py --newell eps).
 Per seed, over the measured steady tail (analyze rules, ≥ 2 calm cycles): ε_256, ε_1024 (mean ε) and
 Δ = ln w_loop(1024) − ln w_loop(256) (means of the tail).
