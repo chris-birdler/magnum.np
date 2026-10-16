@@ -72,6 +72,13 @@ report (mode "shells_report <prefix>"). Readings fixed before the run:
 
     CUDA_DEVICE=-1 python check_mesh_energy.py shells N0b 3 > runs/shells_N0b_dx3.log      # one process per mesh
     python check_mesh_energy.py shells_report N0b > runs/shells_N0b.md
+
+Static check of the extrapolated kernel (option 1' of Chris 2026-10-16, PROTOKOLL 7.108): mode "shells_ext <prefix>
+<dx>" adds E(4x), the energy with DemagField(true_pbc=True, extrapolate=True) and 4 shells, to
+runs/shells_<prefix>_dx<dx>.json; the report adds the column E(4x). Reading fixed before the run: "extrapolated
+kernel valid" if max |E(4x) − E∞| / |E∞| ≤ 0.1 % over the 12 states, else "not valid".
+
+    CUDA_DEVICE=-1 python check_mesh_energy.py shells_ext N0b 1.5 > runs/shells_ext_N0b_dx1.5.log
 """
 import math
 import pathlib
@@ -92,25 +99,29 @@ PHI = 0.65                                            # the default mode sets it
 SHELLS = (1, 2, 4)
 
 
-def newell_pbc(n, dx, ms, shells):
+def newell_pbc(n, dx, ms, shells, extrapolate=False):
     """Newell demag of magnum.np (DemagField) on an n³ box with `shells` image shells per side (a cube of (2 shells + 1)³
     boxes). The cube of images adds the field −<M>/3 of its outer surface charges at the box; energy_newell_pbc removes
     it, which gives the zero mean field of the true periodic medium (as DemagFieldPBC). ms: Ms per cell [n, n, n, 1].
     In the cube arrangement the image couplings that the dipole branch of DemagField drops at the local origin sum to
-    zero for each cell (cubic symmetry). Returns (state, term); the kernel is computed once at the first call."""
+    zero for each cell (cubic symmetry). extrapolate: DemagField(true_pbc=True, extrapolate=True), the kernel
+    extrapolated in the number of shells (PROTOKOLL 7.108); its field already has the compensation.
+    Returns (state, term); the kernel is computed once at the first call."""
     import torch
     from magnumnp import Mesh, State, DemagField
     st = State(Mesh((n, n, n), (dx,) * 3, pbc=(shells,) * 3))
     st.material = {"Ms": ms if torch.is_tensor(ms) else torch.tensor(ms, dtype=torch.get_default_dtype())}
-    return st, DemagField()
+    return st, (DemagField(true_pbc=True, extrapolate=True) if extrapolate else DemagField())
 
 
 def energy_newell_pbc(st, term, m, Ms, Kd):
     """Demag energy per box volume in K_d of m [n, n, n, 3] with the outer surface charges compensated:
-    E = E_images − μ0 V |<M>|² / 6, i.e. E / (K_d V) − |<M> / Ms|² / 3."""
+    E = E_images − μ0 V |<M>|² / 6, i.e. E / (K_d V) − |<M> / Ms|² / 3 (a term with true_pbc has it in its field)."""
     import torch
     st.m = m if torch.is_tensor(m) else torch.tensor(m, dtype=torch.get_default_dtype())
     V = float(np.prod(st.mesh.dx)) * float(np.prod(st.mesh.n))
+    if getattr(term, "_true_pbc", False):
+        return float(term.E(st)) / (Kd * V)
     mean = (st.material["Ms"] * st.m).mean(dim=(0, 1, 2)) / Ms
     return float(term.E(st)) / (Kd * V) - float((mean ** 2).sum()) / 3.0
 
@@ -409,7 +420,8 @@ def shells(prefix, dx, ks=SHELLS_EXT):
     for k in ks:
         if str(k) in out:
             continue
-        stk, term = newell_pbc(st.mesh.n[0], float(st.mesh.dx[0]), ms, k)
+        kk, ext = int(str(k).rstrip("x")), str(k).endswith("x")       # "4x": 4 shells, extrapolated kernel
+        stk, term = newell_pbc(st.mesh.n[0], float(st.mesh.dx[0]), ms, kk, extrapolate=ext)
         res = {}
         for seed, m in cases:
             e = energy_newell_pbc(stk, term, m, Ms, Kd)
@@ -418,7 +430,7 @@ def shells(prefix, dx, ks=SHELLS_EXT):
             e0 = energy_newell_pbc(stk, term, m0, Ms, Kd)
             stk.material["Ms"] = ms
             res[str(seed)] = {"E": e, "E0": e0}
-            print("dx %g k %d seed %d E %.8f E0 %.8f" % (dx, k, seed, e, e0), file=sys.stderr, flush=True)
+            print("dx %g k %s seed %d E %.8f E0 %.8f" % (dx, k, seed, e, e0), file=sys.stderr, flush=True)
         out[str(k)] = res
         f.write_text(json.dumps(out, indent=1))
         del term, stk
@@ -447,6 +459,7 @@ def shell_readings(rows):
 
 def shells_report(prefix):
     import json
+    ext = []
     rows, L = [], ["# Shell convergence of the reference solver on the %s F states (check_mesh_energy.py shells, "
                    "PROTOKOLL 7.108)" % prefix, "",
                    "Per box volume in units of K_d, double precision. E(k) = Newell with k image shells and compensated "
@@ -468,6 +481,8 @@ def shells_report(prefix):
             r = {"E": {k: out[str(k)][str(seed)]["E"] for k in SHELLS_EXT},
                  "E0": {k: out[str(k)][str(seed)]["E0"] for k in SHELLS_EXT}}
             einf = shell_fit((2, 4, 6, 8), [r["E"][k] for k in (2, 4, 6, 8)])
+            if "4x" in out:
+                ext.append((seed, name, out["4x"][str(seed)]["E"], einf))
             rows.append(r)
             L.append("| %d | %s | " % (seed, name) + " | ".join("%.7f" % r["E"][k] for k in SHELLS_EXT)
                      + " | %.7f | %+.2f %% | " % (einf, 100 * (einf - r["E"][4]) / einf)
@@ -480,6 +495,15 @@ def shells_report(prefix):
               % (R["d"], R["d0"], R["cause"]),
               "4 shells: r4 = max |E∞ − E(4)| / |E∞| = %.2f %% over %d states. **Reading: %s.**"
               % (100 * R["r4"], len(rows), R["adequacy"])]
+        if ext:
+            L += ["", "Extrapolated kernel (DemagField(extrapolate=True), 4 shells): " + "; ".join(
+                "%d %s E(4x) %.7f, (E(4x) − E∞) / E∞ %+.3f %%" % (s, nm, e, 100 * (e - ei) / ei) for s, nm, e, ei in ext)]
+            mx = max(abs(e - ei) / abs(ei) for _, _, e, ei in ext)
+            R["ext_max_rel"] = mx
+            R["ext_reading"] = ("extrapolated kernel valid" if mx <= 0.001 and len(ext) == len(rows)
+                                else "not valid" if mx > 0.001 else "not determined (not all states)")
+            L.append("max |E(4x) − E∞| / |E∞| = %.4f %% over %d states. **Reading: %s.**" % (100 * mx, len(ext),
+                                                                                            R["ext_reading"]))
         (HERE / "runs" / ("shells_%s.json" % prefix)).write_text(json.dumps(R, indent=1))
     print("\n".join(L))
 
@@ -496,6 +520,8 @@ def main():
         return solver(sys.argv[2] if len(sys.argv) > 2 else "B0b")
     if len(sys.argv) > 3 and sys.argv[1] == "shells":
         return shells(sys.argv[2], float(sys.argv[3]))
+    if len(sys.argv) > 3 and sys.argv[1] == "shells_ext":
+        return shells(sys.argv[2], float(sys.argv[3]), ks=("4x",))
     if len(sys.argv) > 2 and sys.argv[1] == "shells_report":
         return shells_report(sys.argv[2])
     global PHI

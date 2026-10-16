@@ -323,3 +323,35 @@ def test_true_pbc_newell_checkerboard_and_zero_mean():
     state.m = r / r.norm(dim=-1, keepdim=True)
     assert float(DemagField(true_pbc=True).h(state).mean(dim=(0, 1, 2)).abs().max()) < 1e-3 * Ms
     assert float(DemagField().h(state).mean(dim=(0, 1, 2)).abs().max()) > 3e-3 * Ms
+
+
+def test_true_pbc_extrapolated_kernel():
+    """DemagField(true_pbc=True, extrapolate=True) with k shells: the kernel N_k + (N_k - N_i) x_k / (x_i - x_k),
+    x_j = 1/(2j+1)^2, k_i = k // 2. The energy is linear in the kernel, so E_ext = E_k + (E_k - E_i) x_k / (x_i - x_k).
+    For two domains (zero mean, large first moment) the image sum converges as 1/(2k+1)^2: the extrapolated
+    energies with 2 and 4 shells agree much better than the plain ones (PROTOKOLL 7.108). p = 2 keeps the test fast."""
+    torch.set_default_dtype(torch.float64)
+    n, dx, Ms = (4, 4, 4), (1e-9, 1e-9, 1e-9), 1./constants.mu_0
+    m = torch.zeros(n + (3,))
+    m[:2, ..., 2] = 1.
+    m[2:, ..., 2] = -1.
+
+    def energy(k, ext=False):
+        state = State(Mesh(n, dx, pbc=(k, k, k)))
+        state.material = {"Ms": state.Constant(Ms)}
+        state.m = m.clone()
+        return float(DemagField(p=2, true_pbc=True, extrapolate=ext).E(state))
+
+    E = {k: energy(k) for k in (1, 2, 4)}
+    X = {k: energy(k, True) for k in (2, 4)}
+    assert X[4] == pytest.approx(E[4] + (E[4] - E[2]) * (1/81) / (1/25 - 1/81), rel=1e-10)
+    assert X[2] == pytest.approx(E[2] + (E[2] - E[1]) * (1/25) / (1/9 - 1/25), rel=1e-10)
+    assert abs(E[4] - E[2]) > 1e-3 * abs(E[4])
+    assert abs(X[4] - X[2]) < 0.1 * abs(E[4] - E[2])
+    with pytest.raises(ValueError):
+        DemagField(extrapolate=True)
+    state = State(Mesh(n, dx, pbc=(1, 1, 1)))
+    state.material = {"Ms": state.Constant(Ms)}
+    state.m = m.clone()
+    with pytest.raises(ValueError):
+        DemagField(true_pbc=True, extrapolate=True).h(state)

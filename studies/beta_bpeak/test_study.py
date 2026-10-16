@@ -1717,3 +1717,59 @@ def test_shell_check_helpers():
     a0, s0 = C.zero_mean(m1, st.material["Ms"])
     st.material["Ms"] = s0
     assert abs(C.energy_newell_pbc(st, term, a0, 1.0, 1.0)) < 1e-12
+
+
+def test_kext_lines_strayfield_cycles_and_reading():
+    """Option 1' of PROTOKOLL 7.108: --strayfield newell_ext and --strayfield_cycles (not an INIT_KEY, only between the
+    Newell forms); conv_jobs.newell_kext_lines change only --strayfield_cycles, --init_from and --init_transfer of the
+    lines of the current N0b dx 1.5 runs; eval_kext.reading; check_mesh_energy.newell_pbc with the extrapolated kernel
+    has the compensation in its field (the same energy as the manual compensation without extrapolation, 1 shell
+    apart)."""
+    import shlex
+    import types
+    import torch
+    import run_loops
+    import conv_jobs as CJ
+    import eval_kext as EK
+    import check_mesh_energy as C
+    from rerun_jobs import get_arg
+    from magnumnp import DemagField
+    assert "strayfield_cycles" not in run_loops.INIT_KEYS and run_loops.NEW_KEYS["strayfield_cycles"] is None
+    ns = lambda sf, cyc, k=4: types.SimpleNamespace(strayfield=sf, strayfield_cycles=cyc, strayfield_shells=k)
+    pbc, term = run_loops.strayfield_setup(ns("newell_ext", None))
+    assert pbc == (4, 4, 4) and isinstance(term, DemagField) and term._true_pbc and term._extrapolate
+    with pytest.raises(ValueError):
+        run_loops.strayfield_setup(ns("newell_ext", None, 1))
+    assert run_loops.cycle_strayfield(ns("newell", None)) is None
+    assert run_loops.cycle_strayfield(ns("newell", "newell")) is None
+    t = run_loops.cycle_strayfield(ns("newell", "newell_ext"))
+    assert t._true_pbc and t._extrapolate
+    with pytest.raises(ValueError):
+        run_loops.cycle_strayfield(ns("fd", "newell_ext"))
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    cur = dict(CJ.newell_lines(1, src))
+    cur.update(CJ.newell_rerun_lines(src))
+    cur.update(CJ.newell_lines(2, src))
+    jobs = CJ.newell_kext_lines(src)
+    assert [n for n, _ in jobs] == ["N0b_%s_s%d_kext" % (a, s) for a in ("T15", "I15") for s in range(941, 945)]
+    for n, line in jobs:
+        base = n.replace(CJ.KEXT_SUFFIX, "")
+        tok, ref = shlex.split(line), shlex.split(cur[base])
+        assert get_arg(tok, "strayfield_cycles") == ["newell_ext"] and get_arg(tok, "init_from") == [base + "/init.pt"]
+        assert get_arg(tok, "init_transfer") is None and get_arg(tok, "strayfield") == ["newell"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield_cycles", "init_from", "init_transfer"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    assert get_arg(shlex.split(dict(jobs)["N0b_I15_s941_kext"]), "b_tol") == ["0.01"]      # the stage 1b line
+    assert EK.reading([0.01, -0.02, 0.0, 0.015])[0] == "no effect at dx 1.5"
+    assert EK.reading([0.3, 0.25, 0.4, 0.35])[0] == "effect"
+    assert EK.reading([0.3, -0.25, 0.1, 0.0])[0] == "not determined"
+    assert EK.reading([0.3, float("nan"), float("nan"), 0.0])[0] == "not determined"
+    torch.set_default_dtype(torch.float64)
+    g = torch.Generator().manual_seed(2)
+    n, Ms = 4, 1.5 / (4e-7 * math.pi)
+    Kd = 4e-7 * math.pi * Ms ** 2 / 2
+    ms = torch.where(torch.rand(n, n, n, 1, generator=g) > 0.4, Ms, 0.0).double()
+    m = torch.nn.functional.normalize(torch.randn(n, n, n, 3, generator=g).double() + 0.5, dim=-1)
+    E = {k: C.energy_newell_pbc(*C.newell_pbc(n, 1e-9, ms, k), m, Ms, Kd) for k in (1, 2)}
+    e_ext = C.energy_newell_pbc(*C.newell_pbc(n, 1e-9, ms, 2, extrapolate=True), m, Ms, Kd)
+    assert e_ext == pytest.approx(E[2] + (E[2] - E[1]) * (1 / 25) / (1 / 9 - 1 / 25), rel=1e-9)

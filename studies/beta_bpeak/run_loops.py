@@ -92,7 +92,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "acc_harm": 0, "init_transfer": None,                  # without them is equal to these defaults
             "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
             "b_tol": 0.0,                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
-            "atol_cycles": None, "rtol_cycles": None}              # 2026-10-16, PROTOKOLL 7.108
+            "atol_cycles": None, "rtol_cycles": None,              # 2026-10-16, PROTOKOLL 7.108
+            "strayfield_cycles": None}
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -195,12 +196,16 @@ def parse_args(argv=None):
                         "so a state of --init_from can run its cycles with another tolerance (PROTOKOLL 7.108)")
     g.add_argument("--rtol_cycles", type=float, default=None,
                    help="RKF45 rtol of the drive cycles (default: the RKF45 default 1e-5; PROTOKOLL 7.108)")
-    g.add_argument("--strayfield", choices=["fd", "newell"], default="fd",
+    g.add_argument("--strayfield", choices=["fd", "newell", "newell_ext"], default="fd",
                    help="fd: DemagFieldPBC (finite differences, Bruckner 2021; error at surfaces and cell-scale null "
                         "modes, PROTOKOLL 7.105); newell: DemagField with image shells and compensated outer surface "
-                        "charges (true_pbc)")
+                        "charges (true_pbc); newell_ext: the same with the kernel extrapolated in the number of shells "
+                        "(1 / (2k + 1)^2 law of the image sum, PROTOKOLL 7.108)")
     g.add_argument("--strayfield_shells", type=int, default=4,
                    help="image shells per side for --strayfield newell")
+    g.add_argument("--strayfield_cycles", choices=["newell", "newell_ext"], default=None,
+                   help="stray-field form of the drive cycles (default: --strayfield). Not an INIT_KEY: an --init_from "
+                        "state relaxed with newell can run its cycles with newell_ext (PROTOKOLL 7.108)")
 
     g = p.add_argument_group("run control / output")
     g.add_argument("--out", type=str, required=True)
@@ -298,11 +303,24 @@ def strayfield_setup(args):
     pbc count only switches on the periodic exchange); newell: DemagField with --strayfield_shells image shells per side and
     the compensation of the outer surface charges of the image block (true_pbc), the same zero mean field."""
     from magnumnp import DemagField, DemagFieldPBC
-    if args.strayfield == "newell":
-        if args.strayfield_shells < 1:
-            raise ValueError("--strayfield newell needs --strayfield_shells >= 1")
-        return (args.strayfield_shells,) * 3, DemagField(true_pbc=True)
+    if args.strayfield in ("newell", "newell_ext"):
+        ext = args.strayfield == "newell_ext"
+        if args.strayfield_shells < (2 if ext else 1):
+            raise ValueError("--strayfield %s needs --strayfield_shells >= %d" % (args.strayfield, 2 if ext else 1))
+        return (args.strayfield_shells,) * 3, DemagField(true_pbc=True, extrapolate=ext)
     return (1, 1, 1), DemagFieldPBC()
+
+
+def cycle_strayfield(args):
+    """The stray-field term of the drive cycles if --strayfield_cycles differs from --strayfield, else None
+    (PROTOKOLL 7.108). Only between the Newell forms: the mesh keeps the pbc of --strayfield_shells."""
+    import types
+    if args.strayfield_cycles is None or args.strayfield_cycles == args.strayfield:
+        return None
+    if args.strayfield == "fd":
+        raise ValueError("--strayfield_cycles needs a Newell form in --strayfield (the mesh pbc stays)")
+    return strayfield_setup(types.SimpleNamespace(strayfield=args.strayfield_cycles,
+                                                  strayfield_shells=args.strayfield_shells))[1]
 
 
 def cycle_tolerances(args):
@@ -831,9 +849,15 @@ def main(argv=None):
 
     # --- protocol ----------------------------------------------------------
     kw_cyc = cycle_tolerances(args)
-    if kw_cyc is not None:
-        llg = LLGSolver(terms, **kw_cyc)      # p_dis and the diagnostics use the terms, not the solver
-        print("[cycles] RKF45 %s" % " ".join("%s %g" % kv for kv in sorted(kw_cyc.items())), flush=True)
+    sf_cyc = cycle_strayfield(args)
+    if sf_cyc is not None:
+        terms[terms.index(strayfield)] = sf_cyc   # the diagnostics (p_dis) use the same list
+        strayfield = sf_cyc
+        print("[cycles] strayfield %s" % args.strayfield_cycles, flush=True)
+    if kw_cyc is not None or sf_cyc is not None:
+        llg = LLGSolver(terms, **(kw_cyc or {"atol": args.atol}))   # p_dis and the diagnostics use the terms
+        if kw_cyc is not None:
+            print("[cycles] RKF45 %s" % " ".join("%s %g" % kv for kv in sorted(kw_cyc.items())), flush=True)
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
 
     for si in range(first_stage, len(stages)):

@@ -152,9 +152,21 @@ class DemagField(LinearFieldTerm):
         infinite periodic medium with zero mean field, the convention of
         DemagFieldPBC (default = False: the finite block of images)
     :type true_pbc: bool, optional
+    :param extrapolate: only with true_pbc and the same number k >= 2 of
+        image shells in all three directions. The image sum without the
+        uniform part converges as 1 / (2k + 1)^2 with the number k of shells
+        (cube arrangement). The kernel N_k and the partial sum N_i over the
+        inner k_i = k // 2 shells (the same loop, no extra cost) give the
+        extrapolated kernel N_k + (N_k - N_i) x_k / (x_i - x_k) with
+        x_j = 1 / (2j + 1)^2 (default = False)
+    :type extrapolate: bool, optional
     """
-    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None, true_pbc = False):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None, true_pbc = False,
+                 extrapolate = False):
+        if extrapolate and not true_pbc:
+            raise ValueError("extrapolate needs true_pbc")
         self._true_pbc = true_pbc
+        self._extrapolate = extrapolate
         self._p = p
         self._cache_dir = cache_dir
         self._chunk_cells = chunk_cells
@@ -194,14 +206,27 @@ class DemagField(LinearFieldTerm):
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
         Nc = torch.zeros(shape, dtype=torch.float64, device=device)
+        if self._extrapolate:
+            k = int(state.mesh.pbc[0])
+            if any(int(state.mesh.pbc[i]) != k for i in range(3)) or k < 2:
+                raise ValueError("extrapolate needs the same number k >= 2 of image shells in all three directions")
+            k_in = k // 2
+            inner = [bool(o.abs().max() <= k_in) for o in offsets]
+            Nc_in = torch.zeros(shape, dtype=torch.float64, device=device)
         # evaluate in chunks along the first grid axis to bound the size of
         # the elementwise temporaries (~10 temporaries of chunk size)
         nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
         for i0 in range(0, shape[0], nc):
             xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]
-            for offset in offsets:
-                Nc[i0:i0+nc] += func(xs + offset[0]*Lx[0], ys + offset[1]*Lx[1], zs + offset[2]*Lx[2],
-                                     *dx, *dx, self._p)
+            for io, offset in enumerate(offsets):
+                v = func(xs + offset[0]*Lx[0], ys + offset[1]*Lx[1], zs + offset[2]*Lx[2], *dx, *dx, self._p)
+                Nc[i0:i0+nc] += v
+                if self._extrapolate and inner[io]:
+                    Nc_in[i0:i0+nc] += v
+
+        if self._extrapolate:
+            x_k, x_in = 1. / (2*k + 1)**2, 1. / (2*k_in + 1)**2
+            Nc = Nc + (Nc - Nc_in) * (x_k / (x_in - x_k))
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -210,7 +235,7 @@ class DemagField(LinearFieldTerm):
 
 
     def _init_N(self, state):
-        name = "/N_%s.pt" % str(state.mesh).replace(" ","")
+        name = "/N_%s%s.pt" % (str(state.mesh).replace(" ",""), "_ext" if self._extrapolate else "")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = torch.load(self._cache_dir + name, map_location=state.device)
             dtype = torch.get_default_dtype()
