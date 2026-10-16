@@ -5539,7 +5539,83 @@ commit 6444184).**
   and take about 2 h (estimate). The integrator test ends about 14:45 UTC (estimate). Extra instance time after it:
   about 1.3 h, about 0.5 $ (estimate).
 
-**Open decision for Chris.** The re-scope after "not converging" (PLAN 4.10).
+**Check 1, result (results/eps075_report.md, commit 05cbd58).** Runs N0b_F_s941_smp1024 and N0b_F_s942_smp1024 ended
+2026-10-16 13:14 UTC (7.0 h each, all exit codes 0). **Reading: "not sampling"; loss value: "w_loop unaffected".**
+
+| seed | ε, 256 samples | ε, 1024 samples | ln w_loop(1024) − ln w_loop(256) | class |
+|---|---|---|---|---|
+| 941 | +0.170 | +0.163 | −0.0001 | not sampling |
+| 942 | +0.091 | +0.088 | +0.0001 | not sampling |
+
+- The surplus S changes from 0.365 to 0.351 W/cm³ (s941) and from 0.324 to 0.311 W/cm³ (s942). P is the same to 4
+  digits (2.150 and 3.551 W/cm³). The start from init.pt thus does not change w_loop either.
+- Limit: n 2; the result applies to s941 and s942 only.
+
+**Integrator test, result (results/tol075_report.md, commit 3285add).** Runs N0b_F_s941_atol1e-07_rtol1e-06 and
+N0b_F_s942_atol1e-07_rtol1e-06 ended 2026-10-16 14:34 UTC (7.9 h, all exit codes 0; the abort rule did not act).
+**Reading: "integrator"; loss value: "w_loop unaffected".**
+
+| seed | ε, stage 2 run | ε, atol 1e-7 / rtol 1e-6 | ln w_loop(new) − ln w_loop(stage 2) | class |
+|---|---|---|---|---|
+| 941 | +0.170 | +0.028 | +0.0001 | integrator |
+| 942 | +0.091 | +0.011 | −0.0000 | integrator |
+
+- The surplus S falls from 0.365 to 0.060 W/cm³ (s941) and from 0.324 to 0.039 W/cm³ (s942). P is the same to 4 digits.
+- The tighter tolerance needs 20 % more steps (about 69 900 instead of 58 150 per cycle; mean step 0.477 ps instead of
+  0.573 ps) and 16 % more wall time per cycle (5 450 s instead of 4 690 s).
+- Read together with check 1: both tests start from the same init.pt, and check 1 keeps ε at 0.163 / 0.088. Thus the
+  start path does not cause the drop of ε.
+- Consequence for N0b F s941 and s942: the energy-balance error comes mainly from the RKF45 tolerance. It affects
+  w_dis, and thus the calm check of the steady rule, but not w_loop. In these two runs P is the same to 4 digits with
+  1024 samples and with the tighter tolerance. F s943, F s944 and the T15 runs are not tested. That the same holds for
+  the B0b error of 7.102 is an inference, not a test.
+- Limit: n 2; the result applies to s941 and s942 only.
+- A rest of ε remains: per tail cycle (cycles 2 / 3 / 4) 0.044 / 0.019 / 0.020 (s941) and 0.006 / 0.013 / 0.014
+  (s942). Cycle 2 of s941 still has a closure of 2.7·10⁻⁴ (a change of the stored energy), and s941 lies only 0.002
+  below the limit 0.03. Possible causes of the rest: a still too coarse tolerance, float32, the sampling (check 1:
+  −0.007 / −0.004) or the change of state in cycle 2. No test separates them.
+- Estimate, not a measurement: the mean step lies near the stability limit of the explicit integrator for the
+  cell-scale exchange mode,
+
+      Δt_max ≈ 3 / (γ H_k),   H_k = (2A / (μ0 M_s)) · 12 / Δx²,
+
+  that is 0.53 / 2.1 / 8.5 ps on dx 0.75 / 1.5 / 3 against the measured 0.573 / 2.15 / 7.2 ps (stage 2 runs; −16 …
+  +8 %). The measured step count grows × 3.3 (dx 3 → 1.5) and × 3.8 (dx 1.5 → 0.75).
+
+**Code check of the extrapolated kernel, result (results/shells_N0b.md).** Ended 13:13 UTC, exit codes 0. Largest
+|E(4x) − E∞| / |E∞| over the 12 states: 0.0095 %. **Reading: "extrapolated kernel valid".**
+
+**Loss test on dx 1.5: not run yet.**
+- First start (13:15 UTC): all 8 runs stopped at once with exit code 1 (TypeError: DemagField.__init__() got an
+  unexpected keyword argument 'extrapolate').
+- Cause: on the instance, magnumnp is an editable install of /root/magnum.np (commit dee4961). run_loops.py put only
+  its study folder on sys.path. Thus a run in the worktree /root/magnum.np-kext loaded the magnumnp of /root/magnum.np,
+  which has no patch. check_mesh_energy.py puts the root of its checkout on sys.path, so the code check used the
+  patch. The local tests set PYTHONPATH and did not show the fault.
+- Check of the earlier runs: check 1 and the N0b runs ran in /root/magnum.np itself. The integrator test ran in the
+  worktree at 4ec5ce4 and loaded the magnumnp of dee4961; between these two commits magnumnp/ has no change. All
+  results above thus used the recorded code.
+- Fix (go of Chris; commit 7f7349b; study tests 92 passed): run_loops.py puts the root of its own checkout first on
+  sys.path, and config.json records magnumnp_path. A test with a fake magnumnp on PYTHONPATH fails without the fix and
+  passes with it. chain_kext.sh now uses the 4 GPUs after check 1 and the integrator test.
+- Second start: not possible. The instance 53995473 has the status "offline" on vast.ai since about 14:50 UTC
+  (ssh: time-out, later "no route to host"); still offline at 22:01 UTC. No run was active at that time. The copy of
+  the new chain script to the instance failed, so the restart changed nothing on the instance. The relaxed states (init.pt) of the N0b runs are only on the
+  instance; all reports and the run folders without .pt are local. Credit: 23.00 $ at 09:49 UTC, 20.84 $ at 22:01 UTC.
+
+**NeuralMag (question of Chris 2026-10-16; independent review, not a test).** NeuralMag (Abert et al., npj Comput.
+Mater. 11, 193 (2025); code gitlab.com/neuralmag/neuralmag, commit e691c31) uses the same Newell kernel and image sum
+as magnum.np. Its true-PBC solver is the finite-difference scalar potential of Bruckner 2021 (checked in
+neuralmag/common/convolution_runtime.py). Thus it gives no independent stray field and no better surface. Possible
+levers for the cost: implicit and IMEX integrators and the polynomial extrapolation of the demag field in time
+(Lepadatu, IEEE Trans. Magn. 58 (2022)) in its JAX backend. Risks: its nodal and cell modes have softer cell-scale
+modes, and its PBC code is from 2026-04.
+
+**Open decisions for Chris.**
+- The instance: wait, or start a new one. The loss test needs the init.pt files of the instance. Without them, option 2
+  is the alternative.
+- The re-scope after "not converging" (PLAN 4.10).
+- A NeuralMag pilot (proposed 2026-10-16, after the loss test).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
