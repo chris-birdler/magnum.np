@@ -1684,3 +1684,36 @@ def test_eval_eps075_run_without_done_gives_no_value(tmp_path):
     (tmp_path / "DONE").write_text("0\n")
     e, w, n = EE.tail(tmp_path)
     assert n >= 2 and abs(e - 0.1) < 1e-12 and abs(w - 1.0) < 1e-12
+
+
+def test_shell_check_helpers():
+    """check_mesh_energy mode "shells" (PROTOKOLL 7.108, option A): zero_mean removes the box mean of Ms m; shell_fit
+    recovers E∞ of c0 + c1 x + c2 x² with x = 1 / (2k + 1)²; shell_readings on synthetic series; a full box with
+    uniform m has a zero-mean variant with zero Newell energy."""
+    import torch
+    import check_mesh_energy as C
+    g = torch.Generator().manual_seed(1)
+    ms = torch.where(torch.rand(6, 6, 6, 1, generator=g) > 0.4, 1.0, 0.0).double()
+    m = torch.nn.functional.normalize(torch.randn(6, 6, 6, 3, generator=g).double(), dim=-1)
+    m0, ms0 = C.zero_mean(m, ms)
+    M0 = ms0 * m0
+    assert torch.allclose(M0.mean(dim=(0, 1, 2)), torch.zeros(3, dtype=torch.float64), atol=1e-15)
+    assert torch.allclose(M0, ms * m - (ms * m).mean(dim=(0, 1, 2), keepdim=True), atol=1e-15)
+    ks = (2, 4, 6, 8)
+    x = 1.0 / (2.0 * np.array(ks) + 1.0) ** 2
+    assert abs(C.shell_fit(ks, 0.0012 - 0.03 * x + 0.5 * x * x) - 0.0012) < 1e-12
+    inv2 = lambda c0, a: {k: c0 - a / (2 * k + 1) ** 2 for k in C.SHELLS_EXT}
+    rows = [{"E": inv2(0.00124, 0.004), "E0": inv2(0.0012, 0.0)}, {"E": inv2(0.0045, -0.001), "E0": inv2(0.0044, 0.0)}]
+    R = C.shell_readings(rows)
+    assert abs(R["q_mean"] - C.Q_INV2) < 0.01 and R["law"] == "1 / (2k + 1)²"
+    assert R["cause"] == "coupling to the box mean" and R["adequacy"] == "marginal"     # 0.004 / 81 / 0.00124 = 4 %
+    pw = lambda c0, a: {k: c0 - a * k ** -1.42 for k in C.SHELLS_EXT}
+    R = C.shell_readings([{"E": pw(0.0012, 0.0002), "E0": pw(0.0012, 0.0002)}])
+    assert R["law"] == "power law k^−1.42" and R["cause"] == "not the box mean"
+    from magnumnp import set_precision
+    st, term = C.newell_pbc(4, 1e-9, torch.ones(4, 4, 4, 1, dtype=torch.float64), 1)
+    m1 = torch.zeros(4, 4, 4, 3, dtype=torch.float64)
+    m1[..., 2] = 1.0
+    a0, s0 = C.zero_mean(m1, st.material["Ms"])
+    st.material["Ms"] = s0
+    assert abs(C.energy_newell_pbc(st, term, a0, 1.0, 1.0)) < 1e-12

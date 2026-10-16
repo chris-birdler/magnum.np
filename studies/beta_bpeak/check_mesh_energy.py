@@ -51,6 +51,27 @@ of m; on the B0b geometry the Newell form gives it within 1e-4 with one shell, D
 
     python check_mesh_energy.py solver > runs/demag_solver.md
     python check_mesh_energy.py solver N0b > runs/demag_solver_N0b.md      # states of the reference-solver runs (4.11)
+
+Mode "shells" (decision Chris 2026-10-16, option A of PROTOKOLL 7.108; on the instance, CPU): convergence of the
+reference solver in the number k of image shells. In check 2 (results/demag_solver_N0b.md) E_N(4) − E_N(2) reached
+13.6 % of E_N(4) on the N0b F states (B0b states: at most 2.6 %), with the same ratio (E_N(2) − E_N(1)) /
+(E_N(4) − E_N(2)) = 2.65 … 2.85 in all 28 states. States: the relaxed F state of <prefix> (seeds 941 … 944) on dx 0.75
+and its block averages on dx 1.5 and dx 3; k = 1, 2, 4, 6, 8. Each state also as its zero-mean variant: the
+magnetisation M = Ms m minus its box mean <M> (zero_mean). Hypothesis: after the compensation with N_block = 1/3 the
+outer surface charges of the image block leave a non-uniform field (N_block(r) − 1/3) <M> in the central box; it
+couples the box mean to the non-uniform part of M, falls with the block size as 1 / (2k + 1)² and has either sign.
+One process per mesh (mode "shells <prefix> <dx>", JSON runs/shells_<prefix>_dx<dx>.json after each k), then the
+report (mode "shells_report <prefix>"). Readings fixed before the run:
+  law          q = (E(6) − E(4)) / (E(8) − E(6)) over the states with |E(8) − E(4)| ≥ 1e-6 K_d: the mean is nearer to
+               2.62 (law 1 / (2k + 1)²) or to 2.30 (power law k^−1.42, fitted to the ratio 2.67 of check 2);
+  cause        "coupling to the box mean" if max |E0(8) − E0(4)| ≤ 0.1 max |E(8) − E(4)| over the states (E0: the
+               zero-mean variant), else "not the box mean";
+  4 shells     E∞ from the least-squares fit E(k) = c0 + c1 x + c2 x², x = 1 / (2k + 1)², over k = 2, 4, 6, 8;
+               r4 = max |E∞ − E(4)| / |E∞| over the states: "4 shells adequate" if r4 ≤ 1 %, "not adequate" if
+               r4 ≥ 5 %, else "marginal". Information: r4 against the FD error Δ / E_N(4) of check 2.
+
+    CUDA_DEVICE=-1 python check_mesh_energy.py shells N0b 3 > runs/shells_N0b_dx3.log      # one process per mesh
+    python check_mesh_energy.py shells_report N0b > runs/shells_N0b.md
 """
 import math
 import pathlib
@@ -348,6 +369,119 @@ def m300():
     print("\n".join(L))
 
 
+SHELLS_EXT = (1, 2, 4, 6, 8)
+Q_POWER, Q_INV2 = 2.30, 2.62          # (E(6) − E(4)) / (E(8) − E(6)) for k^−1.42 and for 1 / (2k + 1)²
+
+
+def zero_mean(m, ms):
+    """(m0, ms0): the magnetisation Ms m without its box mean, as a field m0 with the constant Ms0 = max Ms in every
+    cell (the void cells carry the negative mean): ms0 · m0 = ms · m − <ms · m>. m [n, n, n, 3], ms [n, n, n, 1]."""
+    import torch
+    M = ms * m
+    M0 = M - M.mean(dim=(0, 1, 2), keepdim=True)
+    s = float(ms.max())
+    return M0 / s, torch.full_like(ms, s)
+
+
+def shells(prefix, dx, ks=SHELLS_EXT):
+    """E_N(k) of the relaxed F states of <prefix> on mesh dx (0.75: the state itself; 1.5, 3: its block average) and of
+    their zero-mean variants, for the shells ks; the JSON is written after each k."""
+    import json
+    import torch
+    import run_loops
+    U = units(JS, A)
+    Ms = U["Ms"]
+    S = {d: setup(96.0, d, SEED) for d in sorted({0.75, dx})}
+    st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
+    ms = st.material["Ms"]
+    cases = []
+    for seed in (941, 942, 943, 944):
+        mF = torch.load(HERE / "runs" / ("%s_F_s%d" % (prefix, seed)) / "init.pt", map_location="cpu", weights_only=False)
+        if dx == 0.75:
+            m = mF["m"].double().cpu().numpy()
+        else:
+            m, _ = run_loops.transfer_m(mF["m"].double().cpu().numpy(), S[0.75][3], S[dx][3])
+        cases.append((seed, T(np.asarray(m, dtype=np.float64))))
+    f = HERE / "runs" / ("shells_%s_dx%g.json" % (prefix, dx))
+    out = json.loads(f.read_text()) if f.exists() else {}
+    for k in ks:
+        if str(k) in out:
+            continue
+        stk, term = newell_pbc(st.mesh.n[0], float(st.mesh.dx[0]), ms, k)
+        res = {}
+        for seed, m in cases:
+            e = energy_newell_pbc(stk, term, m, Ms, Kd)
+            m0, ms0 = zero_mean(m, ms)
+            stk.material["Ms"] = ms0
+            e0 = energy_newell_pbc(stk, term, m0, Ms, Kd)
+            stk.material["Ms"] = ms
+            res[str(seed)] = {"E": e, "E0": e0}
+            print("dx %g k %d seed %d E %.8f E0 %.8f" % (dx, k, seed, e, e0), file=sys.stderr, flush=True)
+        out[str(k)] = res
+        f.write_text(json.dumps(out, indent=1))
+        del term, stk
+
+
+def shell_fit(ks, E):
+    """E∞ of the least-squares fit E(k) = c0 + c1 x + c2 x², x = 1 / (2k + 1)², over ks (at least 3 values)."""
+    x = 1.0 / (2.0 * np.asarray(ks, dtype=float) + 1.0) ** 2
+    return float(np.linalg.lstsq(np.stack([np.ones_like(x), x, x * x], 1), np.asarray(E, dtype=float), rcond=None)[0][0])
+
+
+def shell_readings(rows):
+    """Readings of mode "shells" (module doc). rows: [{"E": {k: E}, "E0": {k: E}}] with k = 1, 2, 4, 6, 8."""
+    big = [r for r in rows if abs(r["E"][8] - r["E"][4]) >= 1e-6]
+    q = [(r["E"][6] - r["E"][4]) / (r["E"][8] - r["E"][6]) for r in big]
+    qm = float(np.mean(q)) if q else float("nan")
+    law = ("not determined" if not q else "1 / (2k + 1)²" if abs(qm - Q_INV2) < abs(qm - Q_POWER) else "power law k^−1.42")
+    d = max(abs(r["E"][8] - r["E"][4]) for r in rows)
+    d0 = max(abs(r["E0"][8] - r["E0"][4]) for r in rows)
+    cause = "coupling to the box mean" if d0 <= 0.1 * d else "not the box mean"
+    r4 = max(abs(shell_fit((2, 4, 6, 8), [r["E"][k] for k in (2, 4, 6, 8)]) - r["E"][4]) /
+             abs(shell_fit((2, 4, 6, 8), [r["E"][k] for k in (2, 4, 6, 8)])) for r in rows)
+    ad = "4 shells adequate" if r4 <= 0.01 else ("not adequate" if r4 >= 0.05 else "marginal")
+    return {"q_mean": qm, "q": q, "law": law, "d": d, "d0": d0, "cause": cause, "r4": r4, "adequacy": ad}
+
+
+def shells_report(prefix):
+    import json
+    rows, L = [], ["# Shell convergence of the reference solver on the %s F states (check_mesh_energy.py shells, "
+                   "PROTOKOLL 7.108)" % prefix, "",
+                   "Per box volume in units of K_d, double precision. E(k) = Newell with k image shells and compensated "
+                   "outer surface charges; E0(k) = the same for the zero-mean variant (box mean of M removed); E∞ = fit "
+                   "c0 + c1 x + c2 x², x = 1 / (2k + 1)², over k = 2, 4, 6, 8.", "",
+                   "| seed | state | " + " | ".join("E(%d)" % k for k in SHELLS_EXT) + " | E∞ | (E∞ − E(4)) / E∞ | "
+                   + " | ".join("E0(%d)" % k for k in SHELLS_EXT) + " |",
+                   "|---|---|" + "---|" * (2 * len(SHELLS_EXT) + 2)]
+    for dx, name in ((0.75, "F"), (1.5, "F→1.5"), (3.0, "F→3")):
+        f = HERE / "runs" / ("shells_%s_dx%g.json" % (prefix, dx))
+        if not f.exists():
+            L.append("| – | %s | not computed |" % name)
+            continue
+        out = json.loads(f.read_text())
+        if not all(str(k) in out for k in SHELLS_EXT):
+            L.append("| – | %s | only k = %s |" % (name, ", ".join(sorted(out, key=int))))
+            continue
+        for seed in (941, 942, 943, 944):
+            r = {"E": {k: out[str(k)][str(seed)]["E"] for k in SHELLS_EXT},
+                 "E0": {k: out[str(k)][str(seed)]["E0"] for k in SHELLS_EXT}}
+            einf = shell_fit((2, 4, 6, 8), [r["E"][k] for k in (2, 4, 6, 8)])
+            rows.append(r)
+            L.append("| %d | %s | " % (seed, name) + " | ".join("%.7f" % r["E"][k] for k in SHELLS_EXT)
+                     + " | %.7f | %+.2f %% | " % (einf, 100 * (einf - r["E"][4]) / einf)
+                     + " | ".join("%.7f" % r["E0"][k] for k in SHELLS_EXT) + " |")
+    if rows:
+        R = shell_readings(rows)
+        L += ["", "Law: q = (E(6) − E(4)) / (E(8) − E(6)) = %.2f (mean over %d states; 1 / (2k + 1)² gives %.2f, k^−1.42 "
+              "gives %.2f). **Reading: %s.**" % (R["q_mean"], len(R["q"]), Q_INV2, Q_POWER, R["law"]),
+              "Cause: max |E(8) − E(4)| = %.1e K_d, zero-mean variant max |E0(8) − E0(4)| = %.1e K_d. **Reading: %s.**"
+              % (R["d"], R["d0"], R["cause"]),
+              "4 shells: r4 = max |E∞ − E(4)| / |E∞| = %.2f %% over %d states. **Reading: %s.**"
+              % (100 * R["r4"], len(rows), R["adequacy"])]
+        (HERE / "runs" / ("shells_%s.json" % prefix)).write_text(json.dumps(R, indent=1))
+    print("\n".join(L))
+
+
 def main():
     from magnumnp import set_precision
     if len(sys.argv) > 1 and sys.argv[1] == "m300":
@@ -358,6 +492,10 @@ def main():
         return states()
     if len(sys.argv) > 1 and sys.argv[1] == "solver":
         return solver(sys.argv[2] if len(sys.argv) > 2 else "B0b")
+    if len(sys.argv) > 3 and sys.argv[1] == "shells":
+        return shells(sys.argv[2], float(sys.argv[3]))
+    if len(sys.argv) > 2 and sys.argv[1] == "shells_report":
+        return shells_report(sys.argv[2])
     global PHI
     if len(sys.argv) > 1 and sys.argv[1] == "corrugation":
         PHI = float(sys.argv[3]) if len(sys.argv) > 3 else PHI
