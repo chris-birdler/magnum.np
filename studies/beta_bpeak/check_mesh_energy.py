@@ -54,7 +54,7 @@ of m; on the B0b geometry the Newell form gives it within 1e-4 with one shell, D
 
 Mode "shells" (decision Chris 2026-10-16, option A of PROTOKOLL 7.108; on the instance, CPU): convergence of the
 reference solver in the number k of image shells. In check 2 (results/demag_solver_N0b.md) E_N(4) − E_N(2) reached
-13.6 % of E_N(4) on the N0b F states (B0b states: at most 2.6 %), with the same ratio (E_N(2) − E_N(1)) /
+13.6 % of E_N(4) on the N0b F states (B0b states: at most 1.5 % of E_N(4)), with the same ratio (E_N(2) − E_N(1)) /
 (E_N(4) − E_N(2)) = 2.65 … 2.85 in all 28 states. States: the relaxed F state of <prefix> (seeds 941 … 944) on dx 0.75
 and its block averages on dx 1.5 and dx 3; k = 1, 2, 4, 6, 8. Each state also as its zero-mean variant: the
 magnetisation M = Ms m minus its box mean <M> (zero_mean). Hypothesis: after the compensation with N_block = 1/3 the
@@ -63,7 +63,7 @@ couples the box mean to the non-uniform part of M, falls with the block size as 
 One process per mesh (mode "shells <prefix> <dx>", JSON runs/shells_<prefix>_dx<dx>.json after each k), then the
 report (mode "shells_report <prefix>"). Readings fixed before the run:
   law          q = (E(6) − E(4)) / (E(8) − E(6)) over the states with |E(8) − E(4)| ≥ 1e-6 K_d: the mean is nearer to
-               2.62 (law 1 / (2k + 1)²) or to 2.30 (power law k^−1.42, fitted to the ratio 2.67 of check 2);
+               2.62 (law 1 / (2k + 1)²) or to 2.32 (power law k^−1.42, fitted to the ratio 2.67 of check 2);
   cause        "coupling to the box mean" if max |E0(8) − E0(4)| ≤ 0.1 max |E(8) − E(4)| over the states (E0: the
                zero-mean variant), else "not the box mean";
   4 shells     E∞ from the least-squares fit E(k) = c0 + c1 x + c2 x², x = 1 / (2k + 1)², over k = 2, 4, 6, 8;
@@ -370,7 +370,9 @@ def m300():
 
 
 SHELLS_EXT = (1, 2, 4, 6, 8)
-Q_POWER, Q_INV2 = 2.30, 2.62          # (E(6) − E(4)) / (E(8) − E(6)) for k^−1.42 and for 1 / (2k + 1)²
+Q_POWER, Q_INV2 = 2.32, 2.62          # (E(6) − E(4)) / (E(8) − E(6)) for k^−1.42 and for 1 / (2k + 1)²
+#                                       (2.32: corrected 2026-10-16 07:40 UTC from 2.30, a computing error; the
+#                                       boundary between the two laws moves from 2.46 to 2.47)
 
 
 def zero_mean(m, ms):
