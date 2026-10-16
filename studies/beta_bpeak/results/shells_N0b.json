@@ -19,5 +19,7 @@
  "d0": 5.404910634312964e-05,
  "cause": "not the box mean",
  "r4": 0.057454144392019596,
- "adequacy": "not adequate"
+ "adequacy": "not adequate",
+ "ext_max_rel": 9.499306841977881e-05,
+ "ext_reading": "extrapolated kernel valid"
 }

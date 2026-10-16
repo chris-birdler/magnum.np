@@ -20,3 +20,6 @@ Per box volume in units of K_d, double precision. E(k) = Newell with k image she
 Law: q = (E(6) − E(4)) / (E(8) − E(6)) = 2.62 (mean over 12 states; 1 / (2k + 1)² gives 2.62, k^−1.42 gives 2.32). **Reading: 1 / (2k + 1)².**
 Cause: max |E(8) − E(4)| = 5.4e-05 K_d, zero-mean variant max |E0(8) − E0(4)| = 5.4e-05 K_d. **Reading: not the box mean.**
 4 shells: r4 = max |E∞ − E(4)| / |E∞| = 5.75 % over 12 states. **Reading: not adequate.**
+
+Extrapolated kernel (DemagField(extrapolate=True), 4 shells): 941 F E(4x) 0.0013033, (E(4x) − E∞) / E∞ +0.005 %; 942 F E(4x) 0.0013101, (E(4x) − E∞) / E∞ -0.007 %; 943 F E(4x) 0.0012923, (E(4x) − E∞) / E∞ -0.005 %; 944 F E(4x) 0.0013071, (E(4x) − E∞) / E∞ -0.009 %; 941 F→1.5 E(4x) 0.0026136, (E(4x) − E∞) / E∞ +0.002 %; 942 F→1.5 E(4x) 0.0026260, (E(4x) − E∞) / E∞ -0.003 %; 943 F→1.5 E(4x) 0.0025957, (E(4x) − E∞) / E∞ -0.002 %; 944 F→1.5 E(4x) 0.0026214, (E(4x) − E∞) / E∞ -0.005 %; 941 F→3 E(4x) 0.0052615, (E(4x) − E∞) / E∞ +0.001 %; 942 F→3 E(4x) 0.0052946, (E(4x) − E∞) / E∞ -0.002 %; 943 F→3 E(4x) 0.0052302, (E(4x) − E∞) / E∞ -0.001 %; 944 F→3 E(4x) 0.0052857, (E(4x) − E∞) / E∞ -0.002 %
+max |E(4x) − E∞| / |E∞| = 0.0095 % over 12 states. **Reading: extrapolated kernel valid.**
