@@ -1605,3 +1605,24 @@ def test_conv_jobs_newell_rerun_lines():
         assert get_arg(tok, "b_tol") == ["0.01"] and get_arg(ref, "b_tol") is None
         for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"b_tol"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+
+
+def test_newell_eps_lines_and_reading():
+    """conv_jobs.newell_eps_lines and eval_eps075.klass (PROTOKOLL 7.108): the F lines of seeds 941 / 942 with 1024 samples
+    and --init_from their own relaxed state, all else equal; the reading classes."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_eps075 as EE
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    s2 = dict(CJ.newell_lines(2, src))
+    jobs = CJ.newell_eps_lines(src)
+    assert [n for n, _ in jobs] == ["N0b_F_s941_smp1024", "N0b_F_s942_smp1024"]
+    for n, a in jobs:
+        base = n.replace("_smp1024", "")
+        tok, ref = shlex.split(a), shlex.split(s2[base])
+        assert get_arg(tok, "samples") == ["1024"] and get_arg(tok, "init_from") == [base + "/init.pt"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"samples", "init_from"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    assert EE.klass(0.16, 0.01) == "sampling" and EE.klass(0.16, 0.12) == "not sampling"
+    assert EE.klass(0.16, 0.08) == "partly" and EE.klass(0.09, 0.025) == "sampling" and EE.klass(0.09, 0.04) == "partly"

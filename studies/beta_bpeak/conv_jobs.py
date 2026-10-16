@@ -21,6 +21,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell 1 > jobs/newell_b0_s1.txt
     python conv_jobs.py --newell 2 > jobs/newell_b0_s2.txt
     python conv_jobs.py --newell 1b > jobs/newell_b0_s1b.txt     # the two low stage 1 runs again with --b_tol
+    python conv_jobs.py --newell eps > jobs/newell_eps075.txt    # energy balance on dx 0.75 with 1024 samples
 """
 import shlex
 
@@ -85,6 +86,24 @@ def newell_rerun_lines(src="jobs/mesh212.txt"):
     return [(n, " ".join(set_arg(shlex.split(a), "b_tol", [B_TOL]))) for n, a in newell_lines(1, src) if n in S1B]
 
 
+EPS_SEEDS = (941, 942)    # the F runs with the largest energy-balance error (+0.16, +0.09; PROTOKOLL 7.108)
+EPS_SAMPLES = "1024"
+
+
+def newell_eps_lines(src="jobs/mesh212.txt"):
+    """Check of the energy balance on dx 0.75 (decision Chris 2026-10-16, PROTOKOLL 7.108): the stage 2 F line of
+    EPS_SEEDS with --samples 1024 (instead of 256), started from the relaxed state of the same F run (--init_from;
+    no new relaxation). Name <F run>_smp1024."""
+    out = []
+    for n, a in newell_lines(2, src):
+        if not n.startswith(PREFIX_NEWELL + "_F_") or int(n.split("_s")[1]) not in EPS_SEEDS:
+            continue
+        t = set_arg(shlex.split(a), "samples", [EPS_SAMPLES])
+        t = set_arg(t, "init_from", ["%s/init.pt" % n])
+        out.append((n + "_smp" + EPS_SAMPLES, " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -111,7 +130,7 @@ if __name__ == "__main__":
     import sys
     if "--newell" in sys.argv:
         st = sys.argv[sys.argv.index("--newell") + 1]
-        jobs = newell_rerun_lines() if st == "1b" else newell_lines(int(st))
+        jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:

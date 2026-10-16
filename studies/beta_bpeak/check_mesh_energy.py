@@ -50,6 +50,7 @@ of m; on the B0b geometry the Newell form gives it within 1e-4 with one shell, D
                 dx 3 states (I3, T3) exceeds 0.1 (E_K = anisotropy energy of the state).
 
     python check_mesh_energy.py solver > runs/demag_solver.md
+    python check_mesh_energy.py solver N0b > runs/demag_solver_N0b.md      # states of the reference-solver runs (4.11)
 """
 import math
 import pathlib
@@ -214,8 +215,9 @@ def states():
     print("\n".join(L))
 
 
-def solver():
-    """DemagFieldPBC against Newell with compensated outer surface charges on the B0b states (readings: module doc)."""
+def solver(prefix="B0b"):
+    """DemagFieldPBC against Newell with compensated outer surface charges on the states of the runs <prefix>_* (B0b:
+    readings in the module doc; N0b, the runs with the reference solver, PLAN 4.11: information only)."""
     import json
     import torch
     import run_loops
@@ -233,13 +235,13 @@ def solver():
             st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
             ax, _ = cube_axes(ids, dx, a, d, LEFF, seed)
             st.material["Ku_axis"] = T(ax)
-        mF = torch.load(HERE / "runs" / ("B0b_F_s%d" % seed) / "init.pt", map_location="cpu", weights_only=False)
+        mF = torch.load(HERE / "runs" / ("%s_F_s%d" % (prefix, seed)) / "init.pt", map_location="cpu", weights_only=False)
         cases = [("F", 0.75, mF["m"])]
         for dx in (1.5, 3.0):
             mc, _ = run_loops.transfer_m(mF["m"].double().cpu().numpy(), S[0.75][3], S[dx][3])
             cases.append(("F→%g" % dx, dx, mc))
         for arm, dx in (("I15", 1.5), ("T15", 1.5), ("I3", 3.0), ("T3", 3.0)):
-            c = torch.load(HERE / "runs" / ("B0b_%s_s%d" % (arm, seed)) / "init.pt", map_location="cpu", weights_only=False)
+            c = torch.load(HERE / "runs" / ("%s_%s_s%d" % (prefix, arm, seed)) / "init.pt", map_location="cpu", weights_only=False)
             cases.append((arm, dx, c["m"]))
         for name, dx, m in cases:
             st, terms, T, ids, XYZ, a, d, Kd, phi = S[dx]
@@ -255,7 +257,8 @@ def solver():
             print("%d %s %g %.7f %.7f %+.2e" % (seed, name, dx, r["E_FD"], r["E_N%d" % SHELLS[-1]], r["delta"]),
                   file=sys.stderr, flush=True)
     sh = SHELLS[-1]
-    L = ["# Demag solver check on the B0b states (check_mesh_energy.py solver)", "",
+    L = ["# Demag solver check on the %s states (check_mesh_energy.py solver %s)%s" % (
+        prefix, prefix, "" if prefix == "B0b" else "; the readings below were fixed for B0b, here information only"), "",
          "Per box volume in units of K_d, double precision. E_FD = DemagFieldPBC (production); E_N(k) = Newell with k "
          "image shells and compensated outer surface charges; Δ = E_FD − E_N(%d); E_K = anisotropy energy. "
          "'F→dx' = the relaxed F state, block-averaged onto dx, not relaxed." % sh, "",
@@ -291,7 +294,8 @@ def solver():
     out["delta_over_EK_dx3_relaxed"] = q.tolist()
     L.append("Relaxed dx 3 states (I3, T3): |Δ| / |E_K| = %.2f ± %.2f (mean ± SE, n %d). **Reading: the solver error "
              "is %s for the 10 %% criterion.**" % (q.mean(), q.std(ddof=1) / math.sqrt(len(q)), len(q), rd))
-    (HERE / "runs" / "demag_solver.json").write_text(json.dumps(out, indent=1))
+    (HERE / "runs" / ("demag_solver.json" if prefix == "B0b" else "demag_solver_%s.json" % prefix)).write_text(
+        json.dumps(out, indent=1))
     print("\n".join(L))
 
 
@@ -353,7 +357,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == "states":
         return states()
     if len(sys.argv) > 1 and sys.argv[1] == "solver":
-        return solver()
+        return solver(sys.argv[2] if len(sys.argv) > 2 else "B0b")
     global PHI
     if len(sys.argv) > 1 and sys.argv[1] == "corrugation":
         PHI = float(sys.argv[3]) if len(sys.argv) > 3 else PHI
