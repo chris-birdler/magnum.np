@@ -1670,3 +1670,17 @@ def test_cycle_tolerances_and_tol_lines():
     assert EE.klass(0.17, 0.12, "integrator") == "not integrator"
     assert EE.klass(0.17, 0.08, "integrator") == "partly"
     assert EE.VARIANTS["tol"][0] == CJ.TOL_SUFFIX
+
+
+def test_eval_eps075_run_without_done_gives_no_value(tmp_path):
+    """eval_eps075.tail: a run without DONE (abort rule or job timeout of PROTOKOLL 7.108) gives no value, so its class
+    is "not determined"."""
+    import json
+    import eval_eps075 as EE
+    cyc = [{"cycle": i, "w_loop": 1.0, "w_dis": 1.1, "closure": 0.0, "dW_rel": 0.0} for i in range(5)]
+    (tmp_path / "summary.json").write_text(json.dumps({"stages": [{"measure": True, "cycles": cyc}]}))
+    e, w, n = EE.tail(tmp_path)
+    assert n == 0 and not np.isfinite(e) and not np.isfinite(w) and EE.klass(0.17, e, "integrator") == "not determined"
+    (tmp_path / "DONE").write_text("0\n")
+    e, w, n = EE.tail(tmp_path)
+    assert n >= 2 and abs(e - 0.1) < 1e-12 and abs(w - 1.0) < 1e-12

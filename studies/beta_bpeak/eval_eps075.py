@@ -40,7 +40,10 @@ VARIANTS = {"smp1024": ("_smp1024", "Energy balance on dx 0.75 with 1024 samples
 
 
 def tail(d):
-    """(mean ε, mean w_loop, n cycles) over the steady tail of the measured stage."""
+    """(mean ε, mean w_loop, n cycles) over the steady tail of the measured stage; a run without DONE (stopped by the
+    abort rule or by the job timeout) gives no value."""
+    if not (d / "DONE").exists():
+        return float("nan"), float("nan"), 0
     st = [x for x in json.loads((d / "summary.json").read_text())["stages"] if x.get("measure")][-1]
     cyc = analyze.steady_tail(st["cycles"][analyze.first_measured(st):], AD.BAL_EVENT)
     if len(cyc) < 2:
