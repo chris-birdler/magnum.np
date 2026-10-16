@@ -53,7 +53,10 @@ while true; do
         { [ -f $f ] && [ ! -f $B/runs/$r/DONE ] && [ ! -f $B/runs/$r/ABORTED_SLOW ]; } || continue
         age=$(( $(date +%s) - $(stat -c %Y $f) ))
         if [ $age -gt $LIMIT ]; then
-            pid=$(pgrep -f "[r]un_loops\.py .*runs/$r\$")
+            pid=""
+            for p in $(pgrep -f "[m]agnumnp .*run_loops.py"); do      # the process title has no arguments:
+                [ "$(readlink /proc/$p/fd/1)" = "$f" ] && pid=$p      # find the run by the link of its stdout
+            done
             echo "$(date '+%F %T') ABORT $r: no new line in stdout.log for $age s (limit $LIMIT s), kill PID $pid" >> $L
             touch $B/runs/$r/ABORTED_SLOW
             [ -n "$pid" ] && kill $pid
