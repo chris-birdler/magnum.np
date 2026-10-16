@@ -5457,6 +5457,73 @@ with k image shells, and Δ = E_FD − E_N(4).
   <m> up to 0.22) gives E0 − E of about 2·10⁻⁶ K_d at k = 1, falling with k; the variant changes the energy where
   <M> couples.
 
+**Shell test, result (results/shells_N0b.md, commit 0a4f49f).** Run 2026-10-16 07:26 … 12:04 UTC on the CPU of the
+instance, all exit codes 0. 12 states: the N0b F states (dx 0.75) and their block averages on dx 1.5 and dx 3, seeds
+941 … 944. Energies per box volume in units of K_d.
+- **Law: "1 / (2k + 1)²".** q = (E(6) − E(4)) / (E(8) − E(6)) is 2.616 … 2.621 in all 12 states (the law gives 2.62,
+  the power law k^−1.42 gives 2.32).
+- **Cause: "not the box mean".** The zero-mean variant gives the same energies as the state itself for all k (largest
+  relative difference 2.8·10⁻⁸). The largest |E(8) − E(4)| is 5.4·10⁻⁵ K_d. The compensation of the outer surface
+  charges is thus correct, and the hypothesis of the box-mean coupling is rejected. The slow part is the image sum of
+  the non-uniform part of M (the second term that the review named).
+- **4 shells: "not adequate"** (r4 = 5.75 % ≥ 5 %). E∞ is the fit c0 + c1 x + c2 x² with x = 1 / (2k + 1)² over
+  k = 2, 4, 6, 8. (E∞ − E(4)) / E∞ per seed (s941 … s944):
+
+| state | s941 | s942 | s943 | s944 |
+|---|---|---|---|---|
+| F, dx 0.75 | +0.67 % | +5.20 % | +4.12 % | +5.75 % |
+| F→1.5 | +0.33 % | +2.59 % | +2.05 % | +2.86 % |
+| F→3 | +0.17 % | +1.27 % | +1.01 % | +1.41 % |
+
+- The absolute difference E∞ − E(4) of one seed is the same on the three meshes (s941 8.7·10⁻⁶, s944 7.5·10⁻⁵ K_d).
+  It is at most 4.6 % of |E_K| (s944). With 8 shells at most 1.6 % of E∞ remains.
+- The extrapolation from k = 2 and k = 4 alone, E(4) + 0.447 (E(4) − E(2)), agrees with E∞ within 0.01 percentage
+  points (s944, dx 0.75: 5.74 % against 5.75 %).
+- Against E∞ the error of DemagFieldPBC on the F states is 4 … 15 % (this confirms the estimate above).
+- E∞ of the F states lies at 0.0012924 … 0.0013102 K_d over the seeds (spread 1.4 % of the mean), E(4) at 0.0012322 … 0.0012945
+  (5.0 %).
+- Consequence: the stray-field energies of the N0b states have an error of up to 5.75 % from the 4 shells. Its effect
+  on the loss values of N0b is not known.
+
+**Decision of Chris (2026-10-16): option 1′.** Options given: (1) the 4 F runs from init.pt with a corrected kernel in
+the cycles, about 7 h on 4 GPUs, about 2.8 $; (2) stage 1 and 2 of N0b again with the corrected kernel, about 13 h,
+about 5.5 $ (the N0b runs used 48 GPU-hours, 41 of them for the 4 F runs); (3) keep 4 shells and state the limit;
+(4) 8 shells instead of the extrapolation. Question of Chris: option 1 costs more than half of option 2. Option 1′,
+chosen: the same paired test on dx 1.5, about 1 h, about 0.4 $. Reason: the missing energy has the same absolute size
+on all meshes, so dx 1.5 sees the same field error at about 1/16 of the cost. Limit: the relative error on dx 0.75 is
+2 × that on dx 1.5, and the dynamics differ. Thus a small effect on dx 1.5 does not prove a small effect on dx 0.75.
+Plan after the result: "no effect" → option 3, or option 2 only as a safeguard; "effect" → option 2.
+
+**Patch (commit fe0b501, tests pass).**
+- magnumnp/field_terms/demag.py: DemagField(true_pbc=True, extrapolate=True). The kernel loop adds the partial sum
+  over the inner k_i = k // 2 shells in the same loop (no extra cost) and gives N_k + (N_k − N_i) x_k / (x_i − x_k)
+  with x_j = 1 / (2j + 1)². It needs true_pbc and the same k ≥ 2 in all three directions. The kernel cache has its own
+  name. The energy is linear in the kernel; thus each state gets E(k) + (E(k) − E(k_i)) x_k / (x_i − x_k). Unit test:
+  this identity, and two domains with 2 and 4 shells.
+- run_loops.py: --strayfield newell_ext (the extrapolated kernel as an INIT_KEY, for option 2) and
+  --strayfield_cycles newell_ext (only in the drive cycles; not an INIT_KEY, so an --init_from state of N0b can use
+  it; only between the Newell forms).
+
+**Static check (reading fixed before the run).** check_mesh_energy.py shells_ext N0b <dx> computes E(4x), the energy
+with the extrapolated kernel and 4 shells, for the 12 states. "Extrapolated kernel valid" if max |E(4x) − E∞| / |E∞|
+≤ 0.1 % over the 12 states, else "not valid".
+
+**Loss test on dx 1.5 (eval_kext.py, reading fixed before the runs).**
+- Runs: T15 (from stage 2) and I15 (from stage 1; s941 with its stage 1b line), seeds 941 … 944, again from their own
+  relaxed state (--init_from) with --strayfield_cycles newell_ext. All other arguments are those of the run that gave
+  the current value; --init_transfer is removed (conv_jobs.py --newell kext; runs <run>_kext).
+- Value per run: d = ln P(extrapolated kernel) − ln P(4 shells) over the steady tail (eval_conv.run_record). The seed
+  is the unit: d_s is the mean of the T15 and I15 values of seed s (n 4), with SE and 90 % CI from t(3).
+- Reading:
+  - "no effect at dx 1.5" if the 90 % CI of mean d_s lies inside ± 0.10;
+  - "effect" if the 90 % CI excludes 0 and |mean d_s| > 0.10;
+  - "not determined" in all other cases, or with fewer than 3 seeds.
+- Start path: the new runs load init.pt, the old runs relaxed in the same process. In 7.102 this change left w_loop
+  the same to 4 printed digits, so d measures the kernel.
+- Run: instance/chain_kext.sh in its own worktree (/root/magnum.np-kext). The static check runs at once on the CPU.
+  The 8 runs start on GPUs 0 and 1 after check 1 ends (about 13:15 UTC, estimate), about 2 h. Cost: the instance
+  runs until about 14:45 UTC for the integrator test; the extra time is about 0.5 h, about 0.2 $.
+
 **Open decision for Chris.** The re-scope after "not converging" (PLAN 4.10).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
