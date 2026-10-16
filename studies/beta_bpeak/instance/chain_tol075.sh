@@ -2,7 +2,7 @@
 # Integrator test on dx 0.75 (decision Chris 2026-10-16, option C2, PROTOKOLL 7.108): the F runs of seeds 941 and 942
 # from their relaxed state with a 10 x tighter RKF45 tolerance of the drive cycles (atol 1e-7, rtol 1e-6;
 # jobs/newell_tol075.txt). s941 on GPU 3 at once, s942 on GPU 2 after check 2 (check_mesh_energy.py solver N0b) has
-# ended. GPUs 0 and 1 run check 1 (chain_eps075.sh) from /root/magnum.np at its own commit; this chain uses its own
+# ended (magnum.np sets the process title to "magnumnp check_mesh_energy.py", without the arguments). GPUs 0 and 1 run check 1 (chain_eps075.sh) from /root/magnum.np at its own commit; this chain uses its own
 # worktree /root/magnum.np-tol at /root/tol075_commit, with runs/ as a link to the shared run folder.
 # Abort rule (fixed before the runs): a run whose stdout.log has no new line for 3 x 4 700 s (one cycle 3 x longer than
 # in stage 2) is stopped by the kill of its PID; run_queue does not repeat it (--retries 0).
@@ -43,7 +43,7 @@ qa=$!
 qb=""
 started_b=0
 while true; do
-    if [ $started_b -eq 0 ] && ! pgrep -f "[c]heck_mesh_energy.py solver" > /dev/null; then
+    if [ $started_b -eq 0 ] && ! pgrep -f "[c]heck_mesh_energy.py" > /dev/null; then
         python run_queue.py jobs/newell_tol075.txt --gpus 2 --shard 1/2 --status status_tol075_b.json $Q >> $L 2>&1 &
         qb=$!
         started_b=1
