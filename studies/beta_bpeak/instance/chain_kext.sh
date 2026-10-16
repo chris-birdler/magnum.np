@@ -1,8 +1,8 @@
 #!/bin/bash
 # Option 1' of PROTOKOLL 7.108 (decision Chris 2026-10-16): (1) static check of the extrapolated kernel on the CPU
 # (check_mesh_energy.py shells_ext N0b <dx> for dx 3, 1.5, 0.75, then the report runs/shells_N0b.md with the column
-# E(4x)); (2) the 8 dx 1.5 runs with the extrapolated kernel in the drive cycles (jobs/newell_kext15.txt) on GPUs 0 and
-# 1 after check 1 (chain_eps075.sh) has ended; report runs/kext15_report.md (eval_kext.py). Own worktree
+# E(4x)); (2) the 8 dx 1.5 runs with the extrapolated kernel in the drive cycles (jobs/newell_kext15.txt) on the 4 GPUs
+# after check 1 and the integrator test have ended; report runs/kext15_report.md (eval_kext.py). Own worktree
 # /root/magnum.np-kext at /root/kext_commit, runs/ is a link to the shared run folder. Logs every exit code; KEXT_DONE
 # only if all are 0.
 #   start: echo <commit> > /root/kext_commit; cp chain_kext.sh /root/; add "nohup bash /root/chain_kext.sh >>
@@ -42,8 +42,9 @@ if ! grep -q "Reading: extrapolated kernel valid\|Reading: not valid" runs/shell
     python check_mesh_energy.py shells_report N0b > runs/shells_N0b.md 2>> $L
     r=$?; echo "$(date '+%F %T') shells report exit code $r" >> $L; [ $r -eq 0 ] || rs=$r
 fi
-until grep -q "[e]ps075 queue exit code" $B/queue_eps075.log 2> /dev/null; do sleep 120; done
-python run_queue.py jobs/newell_kext15.txt --gpus 0,1 --min_free_gb 3 --retries 1 --job_timeout_h 6 --gate_maxiter 0 \
+until grep -q "[e]ps075 queue exit code" $B/queue_eps075.log 2> /dev/null && \
+      grep -q "[t]ol075 queue exit codes" $B/queue_tol075.log 2> /dev/null; do sleep 120; done
+python run_queue.py jobs/newell_kext15.txt --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 6 --gate_maxiter 0 \
     --status status_kext.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 rq=$?; echo "$(date '+%F %T') kext queue exit code $rq" >> $L
 python eval_kext.py > runs/kext15_report.md 2>> $L

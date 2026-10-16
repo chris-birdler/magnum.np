@@ -80,6 +80,8 @@ import numpy as np
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent.parent))   # magnumnp of this checkout (git_commit records it), not an installed copy
+#                                               (PROTOKOLL 7.108: a worktree run had loaded the magnumnp of /root/magnum.np)
 
 from units import units, F_REL_DEFAULT, JS_REF, A_REF, MU0   # noqa: E402
 
@@ -683,8 +685,9 @@ def main(argv=None):
     stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
     if args.cycles_last_amp:
         [s for s in stages if s["measure"]][-1]["n_cycles"] = args.cycles_last_amp
+    import magnumnp
     config = dict(vars(args))
-    config.update({"units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
+    config.update({"magnumnp_path": str(pathlib.Path(magnumnp.__file__).resolve().parent), "units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
                    "a_lex": a_lex, "d_lex_used": d_lex, "d": d, "dx": dx, "a": geo["a"],
                    "gap_nom_lex": geo["gap_nom"] / lex, "gap_cells": geo["gap_nom"] / dx,
                    "freq": freq, "anisotropy": aniso_info, "stages": stages, "git_commit": git_commit(),

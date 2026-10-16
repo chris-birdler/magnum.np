@@ -1773,3 +1773,21 @@ def test_kext_lines_strayfield_cycles_and_reading():
     E = {k: C.energy_newell_pbc(*C.newell_pbc(n, 1e-9, ms, k), m, Ms, Kd) for k in (1, 2)}
     e_ext = C.energy_newell_pbc(*C.newell_pbc(n, 1e-9, ms, 2, extrapolate=True), m, Ms, Kd)
     assert e_ext == pytest.approx(E[2] + (E[2] - E[1]) * (1 / 25) / (1 / 9 - 1 / 25), rel=1e-9)
+
+
+def test_run_loops_uses_magnumnp_of_its_checkout(tmp_path):
+    """run_loops puts the root of its own checkout first on sys.path, so a run uses the magnumnp of the commit that
+    git_commit records, not another copy on the path (PROTOKOLL 7.108: a worktree run on the instance loaded the
+    editable install of /root/magnum.np). A fake magnumnp on PYTHONPATH must lose."""
+    import os
+    import subprocess
+    import sys
+    here = pathlib.Path(__file__).resolve().parent
+    fake = tmp_path / "magnumnp"
+    fake.mkdir()
+    (fake / "__init__.py").write_text("FAKE = True\n")
+    env = dict(os.environ, PYTHONPATH=str(tmp_path), CUDA_DEVICE="-1")
+    code = "import run_loops, magnumnp, pathlib; print(pathlib.Path(magnumnp.__file__).resolve())"
+    out = subprocess.run([sys.executable, "-c", code], cwd=here, env=env, capture_output=True, text=True, timeout=600)
+    assert out.returncode == 0, out.stderr
+    assert pathlib.Path(out.stdout.strip().splitlines()[-1]).parent == here.parent.parent / "magnumnp"
