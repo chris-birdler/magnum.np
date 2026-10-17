@@ -260,7 +260,7 @@ def v1_report(prefix, gms=GMS_V1):
          "the linear extrapolation from the two largest Gm. dE = (E − E_ref) / E_ref; dH = RMS over the magnetic cells of "
          "|H − H_ref| / RMS |H_ref|. Largest trace error of the alias kernels: %.1e." % (
              ", ".join(map(str, gms)), float(R["trace_err"].max())), "",
-         "## Calibration", "", "| case | E(8) | E(16) | E(32) | E_ref | u | exact | E_ref / exact − 1 | dH vs exact |",
+         "## Calibration", "", "| case | " + " | ".join("E(%d)" % g for g in gms) + " | E_ref | u | exact | E_ref / exact − 1 | dH vs exact |",
          "|---|---|---|---|---|---|---|---|---|"]
     ref = []
     for i, (name, ms, m, mask, dx, exact) in enumerate(states):
@@ -362,8 +362,28 @@ def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE), device=None):
     print("u ratio %.1f. **Reading: %s.**" % (r, "finer reference works" if ok else "stop"))
 
 
+def v1_uniform075(k=4, ext=True):
+    """PLAN 4.12 code path at dx 0.75 (192^3 cells, the kernel loop has more than one chunk): B0b geometry, uniform m
+    along (111), DemagField(true_pbc=True, extrapolate=ext) with k shells. Reading fixed before the run: "valid at
+    dx 0.75" if E agrees with Var(M_s) / (3 M_s^2) (= φ_vox (1 − φ_vox) / 3 up to M_s of the void) within 0.01 %."""
+    from magnumnp import DemagField
+    S = C.setup(96.0, 0.75, C.SEED)
+    ms = S[0].material["Ms"][..., 0].double().cpu().numpy()
+    N, dx = ms.shape[0], float(S[0].mesh.dx[0])
+    st = State(Mesh((N, N, N), (dx,) * 3, pbc=(k, k, k)))
+    st.material = {"Ms": torch.tensor(ms[..., None], dtype=st.dtype, device=st.device)}
+    st.m = torch.tensor(np.broadcast_to(np.ones(3) / math.sqrt(3), (N, N, N, 3)).copy(), dtype=st.dtype, device=st.device)
+    e = float(DemagField(true_pbc=True, extrapolate=ext).E(st)) / (Kd * dx ** 3 * N ** 3)
+    exact = float((ms / Ms).var()) / 3.0
+    print("B0b dx 0.75 uniform (111), %d shells%s: E %.8f, exact %.8f, E / exact − 1 %+.5f %%. **Reading: %s.**" % (
+        k, ", extrapolated" if ext else "", e, exact, 100 * (e / exact - 1),
+        "valid at dx 0.75" if abs(e / exact - 1) <= 1e-4 else "not valid at dx 0.75"))
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "v1_cb":
+    if len(sys.argv) > 1 and sys.argv[1] == "v1_u075":
+        v1_uniform075()
+    elif len(sys.argv) > 1 and sys.argv[1] == "v1_cb":
         v1_checkerboard(device=sys.argv[2] if len(sys.argv) > 2 else None)
     elif len(sys.argv) > 2 and sys.argv[1] == "v1_ref":
         a = sys.argv[3:]
