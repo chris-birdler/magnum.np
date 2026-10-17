@@ -26,6 +26,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell kext > jobs/newell_kext15.txt   # dx 1.5 runs with the extrapolated kernel
     python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b (replaced by V3g)
     python conv_jobs.py --newell locked > jobs/locked_n1g.txt   # PLAN 4.12 V3g, prefix N1g, geometry locked at dx 3
+    python conv_jobs.py --newell tolbench > jobs/tolbench.txt   # cost of the cycle tolerance on the main-study mesh
 """
 import shlex
 
@@ -192,6 +193,36 @@ def locked_lines(src="jobs/mesh212.txt"):
     return out
 
 
+TB_CORNERS = ("K1_0", "K2_0")      # d/l_ex 212 and 300 at dx 3 (the mesh of the main study)
+TB_VARIANTS = (("a5", ()), ("a6", (("atol_cycles", ["1e-06"]),)),
+               ("tight", (("atol_cycles", ["1e-07"]), ("rtol_cycles", ["1e-06"]))))
+
+
+def tolbench_lines(src="jobs/sobol_corners.txt"):
+    """Cost of the cycle tolerance on the mesh of the main study (decision Chris 2026-10-17: measure, then decide): the
+    corner lines K1_0 and K2_0 with the final stray-field setting (newell_ext, 4 shells), one amplitude (9 mT), 3
+    cycles, no snapshots; variant a5 relaxes with the tolerance of the main study (atol 1e-5) and runs its cycles with
+    it; a6 (atol 1e-6) and tight (atol 1e-7, rtol 1e-6) run the cycles from the same relaxed state (--init_from)."""
+    lines = dict(job_lines(src))
+    out = []
+    for c in TB_CORNERS:
+        t = shlex.split(lines[c])
+        for k in ("snap_phases", "snap_cycles", "snap_mT"):
+            t = set_arg(t, k, None)
+        for k, v in (("strayfield", ["newell_ext"]), ("strayfield_shells", ["4"]), ("n_amp", ["1"]),
+                     ("b_list", ["0.006"]), ("cycles_per_amp", ["3"]), ("max_cycles_per_amp", ["3"])):
+            t = set_arg(t, k, v)
+        for v, extra in TB_VARIANTS:
+            u = list(t)
+            for k, val in extra:
+                u = set_arg(u, k, val)
+            if v != "a5":
+                u = set_arg(u, "init_from", ["TB_%s_a5/init.pt" % c])
+                u = set_arg(u, "init_wait_h", ["3"])
+            out.append(("TB_%s_%s" % (c, v), " ".join(u)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -220,7 +251,8 @@ if __name__ == "__main__":
         st = sys.argv[sys.argv.index("--newell") + 1]
         jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
-                final_lines() if st == "final" else locked_lines() if st == "locked" else newell_lines(int(st)))
+                final_lines() if st == "final" else locked_lines() if st == "locked" else
+                tolbench_lines() if st == "tolbench" else newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:

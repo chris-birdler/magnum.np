@@ -1904,3 +1904,27 @@ def test_locked_geometry_and_lines():
             assert get_arg(tok, "init_transfer") == ["N1g_F_s%s/init.pt" % n[-3:]]
         for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"geom_dx_lex", "init_transfer"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+
+
+def test_tolbench_lines():
+    """conv_jobs.tolbench_lines: per corner a5 / a6 / tight; only the planned arguments differ from the corner line."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg, job_lines
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(job_lines(src))
+    jobs = CJ.tolbench_lines(src)
+    assert [n for n, _ in jobs] == ["TB_%s_%s" % (c, v) for c in ("K1_0", "K2_0") for v in ("a5", "a6", "tight")]
+    planned = {"snap_phases", "snap_cycles", "snap_mT", "strayfield", "strayfield_shells", "n_amp", "b_list",
+               "cycles_per_amp", "max_cycles_per_amp", "atol_cycles", "rtol_cycles", "init_from", "init_wait_h"}
+    for n, line in jobs:
+        tok, ref = shlex.split(line), shlex.split(corners[n.split("_", 1)[1].rsplit("_", 1)[0]])
+        assert get_arg(tok, "strayfield") == ["newell_ext"] and get_arg(tok, "b_list") == ["0.006"]
+        assert get_arg(tok, "snap_mT") is None
+        if n.endswith("_a5"):
+            assert get_arg(tok, "init_from") is None and get_arg(tok, "atol_cycles") is None
+        else:
+            assert get_arg(tok, "init_from") == ["%s_a5/init.pt" % n.rsplit("_", 1)[0]]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - planned:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    assert get_arg(shlex.split(dict(jobs)["TB_K2_0_tight"]), "rtol_cycles") == ["1e-06"]
