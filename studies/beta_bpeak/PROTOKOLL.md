@@ -5659,6 +5659,69 @@ extrapolation) against an independent reference, and then its mesh convergence: 
 **Open decisions for Chris.** The re-scope after "not converging" (PLAN 4.10); a NeuralMag pilot (proposed
 2026-10-16).
 
+### 7.109 PLAN 4.12 V1: k = 1 … 8 not valid; the kernel extrapolated from (2, 4) agrees within 0.1 %, reading "not determined"; stop (2026-10-17)
+
+**Run.** Chris decided on 2026-10-17 to run V1 on the instance (PLAN 4.12 had the local computer); the instance ran
+anyway. instance/chain_v1.sh at commit c38a398 in the worktree /root/magnum.np-v1, 2026-10-17 01:18 … 01:53 UTC, all
+exit codes 0. The alias reference ran on the CPU (the Gm 32 kernel on 48³ cells took 1 450 s), the Newell candidates on
+GPUs 0 … 2. Report: results/v1_N0b.md (commit 732b5ba). Energies per box volume in units of K_d.
+
+**Calibration: "reference calibrated".** E_ref is the interpolation c0 + c1 / Gm + c2 / Gm² through Gm = 8, 16, 32.
+u is its relative difference to the linear extrapolation 2 E(32) − E(16).
+
+| case | E_ref / exact − 1 | u |
+|---|---|---|
+| aligned cube f = 1/8, m along (111) (exact 7/192) | −0.0002 % | 0.0039 % |
+| checkerboard (exact 1/2) | −0.0042 % (field: 0.0042 % RMS) | 0.040 % |
+| B0b geometry, uniform m along (111) (exact φ_vox (1 − φ_vox) / 3) | −0.0003 % | 0.0038 % |
+
+Code checks: the largest trace error of the alias kernels is 9.2·10⁻¹⁵; the energy from the Fourier form and
+−½ μ0 ⟨M · H⟩ / K_d differ by at most 5.6·10⁻¹⁷.
+
+**Candidates (12 N0b states on dx 3: F→3, I3, T3, seeds 941 … 944).**
+
+| candidate | max dE | max (dE + 2u) | max dH | max (dH + 2u_H) | reading |
+|---|---|---|---|---|---|
+| k = 1 | −14.91 % | 15.00 % | 5.30 % | 5.38 % | not valid |
+| k = 2 | −5.25 % | 5.34 % | 1.87 % | 1.94 % | not valid |
+| k = 4 | −1.62 % | 1.71 % | 0.58 % | 0.65 % | not valid |
+| k = 8 | −0.45 % | 0.54 % | 0.16 % | 0.24 % | not valid |
+| extrapolated from (1, 2) | +0.19 % | 0.28 % | 0.067 % | 0.14 % | not valid |
+| extrapolated from (2, 4) | +0.0063 % | 0.097 % | 0.0039 % | 0.0791 % | not determined |
+
+- Predictions of PLAN 4.12: confirmed for k = 4 (about 1.4 %, measured 1.62 %) and k = 8 (about 0.4 %, measured
+  0.45 %); for extrapolated from (1, 2) (0.14 … 0.23 %, measured 0.19 %) the value is larger than 2u. For extrapolated
+  from (2, 4) (≤ 0.01 %) the value 0.0063 % agrees, but it is smaller than u, so the test cannot confirm it. The
+  negative controls k = 1, 2, 4 are "not valid".
+- Extrapolated from (2, 4): dE is +0.0005 … +0.0063 % on the 12 states, dH at most 0.0039 %. u is 0.042 … 0.046 %, so
+  2u alone exceeds the energy threshold 0.025 %. The test thus shows agreement only within 0.1 % (max (|dE| + 2u)
+  0.097 %). By the rule the reading is "not determined". The field part passes (max (dH + 2 u_H) 0.0791 % against
+  0.25 %).
+- **Final setting: none. By the rule of PLAN 4.12 and the delegation of Chris, V3 does not start.**
+- Fact on the measuring method: on the three calibration cases the real error of E_ref is smaller than u: 9.4 ×
+  (checkerboard) and about 15 × (cube, uniform B0b). These are three synthetic cases. For the 12 states the real error
+  is not known.
+- With 4 shells, I3 s941 has dE = +0.50 % (E(4) above the reference), the other 11 states −0.08 … −1.62 %. This agrees
+  with the negative amplitude of I3 s941 in check 2 (7.108).
+
+**Cause of "not determined".** PLAN 4.12 set the energy threshold on dx 3 to 0.025 % (0.1 % on dx 0.75) and required
+|dE| + 2u below it. At Gm 32, u is about 0.045 % for these states. PLAN 4.12 names this risk. The 7.105 data at
+Gm = 4, 8, 16 permitted an estimate of u before the run, but nobody made it.
+
+**Open decision for Chris.** Options (estimates):
+1. A more precise reference. This changes the Gm set of PLAN 4.12, but not its thresholds. First a cheap check on the
+   CPU: the 16³ checkerboard (the same u and the same ratio of the Gm steps as the states) at Gm 64 and 128. If u falls
+   as the fit model predicts (u ≈ c2 / (2 Gm²), about 16 × from Gm 32 to 128; estimate), the 12 states follow at Gm 32,
+   64, 128 with u = relative difference to 2 E(128) − E(64). The CPU time grows as (2 Gm + 1)³ (Gm 128 about 62 × the
+   1 450 s of Gm 32), thus a port of alias_kernel to torch on a GPU. With only 4 × smaller u, I3 s944 would give
+   0.029 % > 0.025 %, and the reading would stay "not determined". Cost: about 1 … 2 h of work, minutes of GPU time;
+   the instance runs anyway.
+2. Chris selects the kernel extrapolated from (2, 4) as the final setting with the present data. This does not follow
+   the rule of PLAN 4.12; for the 12 states the real error is not known.
+3. Measure the energy and field ratios between dx 3 and dx 0.75 and revise the thresholds. This also does not follow
+   the rule.
+4. Stop here: the final setting stays open, V3 does not start, and the 4-shell error of the N0b loss values stays open.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
