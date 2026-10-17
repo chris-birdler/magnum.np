@@ -1121,6 +1121,303 @@ Readings and cost as V3 (eval_v3.py --prefix N1g). Details and limits: PROTOKOLL
   is large and the reading is "not determined".
 - The thresholds on dx 3 come from an estimate of the energy and field ratios between dx 3 and dx 0.75.
 
+### 4.13 One production setup for the corner test and a new main study (2026-10-17, draft for the approval of Chris; two context-free reviews applied)
+
+Goal: one setup for the corner test and for a possible new main study. Requirements of Chris (2026-10-17):
+- the corner runs give the data for all evaluations of the old main study;
+- the corner runs are, without a change, 12 runs of a new main study.
+
+Thus the corner test uses the setup of the new main study. The new main study then adds only its other runs. This is
+true only under three conditions:
+1. The new main study keeps dx 3 l_ex and the model of spheres built of cubic voxels. (The size and roughness question
+   of 7.110 can change this.)
+2. The precision test (part 5, step 4) gives "fp32 sufficient".
+3. The new main study uses the same code commit and the same job settings, D1 and D2 included.
+
+If one condition fails, the corner runs are a test only, and the new main study runs the corners again (about 4 … 6 $).
+
+**Part 1. Terms.**
+- Stage: one amplitude of a run. Measured cycles: the cycles from 2 on, from 3 on after a second drive correction
+  (setup item S2). Event: a cycle with w_loop ≤ 0 or |ε| > 0.20, with ε = w_dis / w_loop − 1 (PROTOKOLL 7.53). Calm
+  cycle: a cycle that is not an event. Calm tail: the number of calm cycles at the end of the measured cycles of a
+  stage. Steady-tail rule: the value of a stage is the mean over its calm tail, if the calm tail has ≥ 2 cycles
+  (PROTOKOLL 7.54, PLAN 4.5).
+- Stop threshold: the value that ends the relaxation (D1). Maximum number of cycles: the cap of S1. "Restriction"
+  marks what a check cannot show.
+- b = B / J_s and h = H / M_s are the reduced induction and drive field. P is the loss density in W/cm³ (P = f K_d w).
+- Chunk: one block of 500 relaxation steps of 10 ps (5 ns). E / (K_d V) is the energy of the box divided by K_d and
+  the box volume V. w_loop and w_dis use the same unit (energy density per cycle divided by K_d). In the old main study
+  E is negative in 86 runs and positive in 30 runs, so |E| can be very small.
+- init.pt: the relaxed virgin state of a run. Gate retry: run_queue starts a run again once with 200 000 relaxation
+  iterations if its relaxation did not converge in 80 000 (exit code 3).
+- V100-h: one GPU for one hour on the 4 × V100 instance (0.405 $/h for the 4 GPUs).
+- Old corner runs: K1_0 … K4_2 of the old main study (DemagFieldPBC, atol 1e-5).
+
+**Part 2. Settings from earlier decisions (no new decision).**
+
+| Item | Setting | Source |
+|---|---|---|
+| stray field | DemagField(true_pbc=True, extrapolate=True), 4 image shells (`--strayfield newell_ext --strayfield_shells 4`) | PLAN 4.12 V1, PROTOKOLL 7.109 |
+| tolerance of the drive cycles | `--atol_cycles 1e-7 --rtol_cycles 1e-6` (tight tolerance) | decision of Chris 2026-10-17 after the cost benchmark (7.110) |
+| mesh | dx 3 l_ex, as the old main study | condition 1 above |
+| precision | fp32; the energy of each field term is summed in fp64 (commit 6c1e539) | decision of Chris 2026-10-17; the precision test is part 5, step 4 |
+| damping | α 0.1 only; the α 0.01 arm is dropped | decision of Chris 2026-10-17 |
+| design points, seeds, amplitudes | as the old main study: 96 Sobol points, 8 centre runs, 4 corners × 3 seeds; 9 / 20 / 35 / 50 / 70 / 100 / 150 mT; 256 samples per cycle; virgin state on 6 l_ex blocks; ascending amplitudes | PLAN 4.0 |
+| relaxation | `--relax_mode converge --relax_chunk 500 --relax_confirm 2 --relax_maxiter 80000`, gate retry with 200 000 | PLAN 4.0; the stop threshold is D1, the tolerance D2 |
+| snapshots | 16 phase points in the last 2 cycles of the stages at 9, 50 and 150 mT (`--snap_phases 16 --snap_cycles 2 --snap_mT 9 50 150`) | as the old main study; confirmed by Chris 2026-10-17 |
+| accumulators | `--acc` | as the old main study |
+| post-processing on the instance | instance_postproc.py under a supervisor loop: phasemap_batch, phase_extra, domains_batch (wall measure A_w, switched volume, l_C), acc_reduce; md5 of the results; then the snapshot and accumulator files are deleted | as the old main study (chain_sobol.sh) |
+
+**Part 3. New setup items.** Costs are estimates unless marked "from the old data" or "from the cost benchmark".
+
+S1. Online stop (the rule of PLAN 4.5 inside the run): `--cycles_per_amp 7 --min_calm 2 --max_cycles_per_amp 15`.
+   - A stage runs at least 7 cycles, as before. Then it continues until its calm tail is ≥ 2.
+   - The maximum number of cycles is 15, 16 after a second drive correction. A stage without 2 calm cycles at the
+     maximum has no value (steady-tail rule).
+   - Reason: the old study completed 13 runs afterwards with reruns (PLAN 4.5). Now the run completes itself.
+   - Cost (from the old data, 812 stages): 13 … 14 stages (1.7 %) had a calm tail < 2 after 7 cycles (13 with the
+     rule of 7.54, 14 with ext.py). The reruns needed 21 more cycles, 0.4 % of all cycles.
+S2. Second drive correction `--b_tol 0.01`, as in N1g (the convergence series V3g, PROTOKOLL 7.110).
+   - If b of cycle 1 deviates from the target by more than 1 %, the drive is corrected again. Then cycle 2 is
+     discarded too, and the stage gets one more cycle (PROTOKOLL 7.107).
+   - Reason: the same drive protocol as V3g; P is then measured at the target B_peak.
+   - Cost (from the old data, 812 stages): after cycle 1, 4 % of the stages deviated by more than 1 % (median
+     0.09 %, largest 8.3 %). Thus about 0.6 % more cycles.
+S3. Harmonics per cell `--acc_harm 7`. The accumulators add |m_k|² of the harmonics k = 1 … 7 per cell.
+   - Reason: the evaluations of the harmonics and of the loss location per cell (PROTOKOLL 7.72).
+   - Change against the old study: with this option only calm cycles enter the accumulators. A calm cycle before the
+     last event of a stage also enters. The steady-tail rule does not use such a cycle. Thus an accumulator map of a
+     new run and of an old run do not use the same cycles.
+   - Cost: no measurable GPU time; the accumulator files with the harmonics need about 1 GB per run of the largest box
+     until the post-processing (estimate).
+S4. A state file after each stage `--keep_stage_ckpt`.
+   - Reason: a later test can start from the exact state of each stage.
+   - Cost: 0.09 … 0.32 GB per run (7 states of 1.1 … 3.8·10⁶ cells × 12 B). The corners (about 2.4 GB) stay on the
+     instance. The new main study needs about 18 GB (about 24 GB with init.pt and checkpoint.pt). A disk plan for it is
+     part of the main-study decision.
+S5. Patch "energy terms": each cycle record gets the energy of each field term at the start of the cycle. The end of
+   cycle k is the start of cycle k + 1. Thus one evaluation per cycle is sufficient, plus one at the end of each
+   stage. The sums are fp64.
+   - Reason: a check of the energy balance that is independent of ε. For one cycle the balance is
+     W_loop = W_dis + ΔE_int.
+     ΔE_int is the change of the internal energy over the cycle (all terms without the drive; at the start and the end
+     of a cycle the drive field is 0).
+   - Use: if the state drifts or jumps in a cycle, ε and −ΔE_int / W_loop agree. Their difference is the numerical
+     error of the balance (integration and quadrature). Thus the check separates a change of the state from a
+     numerical error, also at 20 … 150 mT, where the audit found that ε does not come from the integrator (7.110).
+   - Restriction: each term is computed from fp32 fields. An estimate: the relative error of a term is about 10⁻⁷, and a
+     term is at most about 10⁻² K_d V. Thus the absolute error is about 10⁻⁹ K_d V. This is about 1.5 % of the smallest
+     w_loop at 9 mT (6.7·10⁻⁸) and about 0.6 % of the median (1.65·10⁻⁷). The smoke test measures this precision.
+   - Cost: no measurable GPU time; about 1 h code and a test.
+S6. Patch "snapshot cleanup". Today the code writes the snapshots of all measured cycles from cycle n_cycles − 2 on
+   (run_loops.py: the condition has no upper bound), thus from cycle 5 on also in a stage that runs longer. The post-processing
+   then uses all of them.
+   - The patch deletes after each cycle the snapshots that are older than the last 2 cycles. When a run starts again
+     from its checkpoint, it also deletes such old snapshots.
+   - Result: the snapshots are always in the last 2 cycles of a stage. If the stage stops by the rule of S1, these
+     are its 2 last calm cycles. A stage that stops at 7 cycles keeps cycles 5 and 6, as before.
+   - Cost: during a stage at most 3 cycles of snapshots on the disk; no measurable GPU time; about 1 h code and a test.
+S7. Patch "stop threshold" `--relax_tol_E_abs` (value: D1). A chunk is quiet if |ΔE| / (K_d V) over the chunk is at
+   most this value. A rise of E smaller than the threshold thus counts as quiet. The relaxation stops after 2 quiet
+   chunks in a row. The option replaces the relative threshold `--relax_tol_E`. It is added to INIT_KEYS (it changes
+   the relaxed state) and to NEW_KEYS (default: not set, so an old config keeps the relative threshold).
+S8. Relaxation tolerance `--atol` (value: D2). Reason and cost: see D2.
+S9. Flags of the evaluation (no change of the runs). Per stage, on its calm tail: flag ε if the mean |ε| is > 0.02;
+   flag w if the SD of ln w_loop is > 0.05.
+   - Reason: in about 10 % of the cycles of the calm tails w changed by more than 8 % from cycle to cycle, with a
+     small ε (audit, 7.110).
+   - The flags remove no data. They add to the sensitivity analysis of PLAN 4.3a: that rule (a run is flagged if
+     |ε| > 0.20 at an amplitude) stays. The main fit is made once with all stages and once without the flagged
+     stages; the report gives the change of β.
+   - The loop closure is reported only. It is not a rule (audit, 7.110).
+S10. Run names `<old name>_nx`: K1_0_nx … K4_2_nx, S000_nx … S095_nx, C0_nx … C7_nx. The seeds are those of the old
+   runs; each new run thus pairs with its old run. Before the start the 4 folders K1_0_nx, K1_1_nx, K1_2_nx and K2_0_nx
+   of the stopped start (7.110) are renamed to `<name>_stopped`.
+S11. Operation on the instance (changes against chain_sobol.sh and chain_corners_nx.sh):
+   - Disk: a run of the largest box (d/l_ex 300) needs up to about 8.6 GB until its post-processing (estimate from
+     the byte constants of run_queue: snapshots of 3 stages about 5.5 GB plus a third snapshot cycle during a stage
+     about 0.9 GB, accumulators with harmonics about 1 GB, stage states 0.3 GB, init.pt and checkpoint.pt 0.1 GB). A
+     run of d/l_ex 212 needs about 3 GB. The instance has 32 GB free.
+   - run_queue.expected_bytes (the disk reservation per job) also counts the stage states, the harmonic maps and the
+     third snapshot cycle. `--min_free_gb` stays 3. run_queue starts a job only if the free disk minus the reservations
+     of the running jobs minus the need of the new job is ≥ 3 GB. Thus at most 3 runs of d/l_ex 300 run at the same
+     time; a fourth waits, and its GPU is idle. The job order alternates d/l_ex 212 and 300 to make this rare.
+   - `--job_timeout_h 24` instead of 12. Reason: the relaxation has no intermediate checkpoint. A gate retry of a
+     large box (200 000 iterations) takes about 4.5 … 6.4 h (estimate: 0.072 … 0.080 s per iteration in the old K4
+     runs, × 1.1 … 1.45 for the stray field), plus the unknown effect of D2, plus about 4 … 5 h of cycles (old K4
+     cycles 3.3 h × 1.1 … 1.45). This is near 12 h. After a timeout the job would start from zero again.
+   - The gate retry is on (it was off in chain_corners_nx.sh).
+   - The onstart line and /root/cx_commit of the stopped chain change to the new chain and the new commit.
+S12. One code commit for the corner test and the new main study. A later change of run_loops.py or of the field terms
+   for these runs needs a new go of Chris; condition 3 then fails. Runs outside the corner test and the main study (the
+   precision test, arm (b) of D3) can use a later commit.
+
+**Part 4. Decisions for Chris.**
+
+D1. Stop threshold of the relaxation. Data: the 116 runs at α 0.1 of the old main study (relax_abs.py, relax_small.py).
+- Reason for a decision: the fp64 sum changes the effect of the old relative threshold (10⁻⁶ |E| per chunk).
+  - In 29 of 116 old runs the energy change was exactly 0 in one of the 2 last chunks. This is rounding of the fp32
+    sum. In these runs the rounding, not the physics, stopped the relaxation.
+  - With the fp64 sum such zeros do not occur. Then the relative threshold is very strict where |E| is small: in 10 of
+    116 runs it is below 10⁻¹⁰, in 2 runs below 10⁻¹¹ per chunk.
+  - Risk without a change: very long relaxations or a failed gate retry at the design points with E near 0. These
+    points could then be missing, and the design would lose them selectively.
+- Size of the drift: a drift of the energy adds to W_dis and thus to ε. A threshold δ per chunk allows at α 1 a drift of
+  about 6.7 δ per cycle (one cycle at 30 MHz is 6.7 chunks). The smallest w_loop at 9 mT in the old study was
+  6.7·10⁻⁸, the median 1.65·10⁻⁷.
+- Evidence that the drift at the end of the relaxation does not reach the measured cycles (n 2, 9 mT only): the
+  runs TB_K1_0 and TB_K2_0 (7.110) relaxed with the old threshold. Their last chunks allowed a drift of 8 % and 22 % of
+  w_loop per cycle (at α 1). Their ε in cycle 2 was +0.006 and +0.001 (tight tolerance).
+
+| Option | Threshold per chunk | Allowed drift per cycle at α 1, divided by w_loop(9 mT) | Runs of 116 above the threshold in their last chunks (fp32 sums) | Pro | Con |
+|---|---|---|---|---|---|
+| (a) | δ = 1·10⁻¹⁰ | at most 1 % (median 0.4 %) | 96 | very small drift | longest relaxation |
+| (b) | δ = 3·10⁻¹⁰ | at most 3 % (median 1.2 %) | 62 | the same rule for all design points; drift far below the 8 … 22 % that did not show in TB | relaxation longer than before for about half of the runs |
+| (c) | 10⁻⁶ \|E\| (old rule, now with the fp64 sum) | 0.01 % … 45 % (median 3.6 %) | – | the same rule as the old study | very strict near E = 0 (risk above); loose at large \|E\| |
+
+Recommendation (b). The relaxation time with (b) is not known; the old fp32 values include rounding noise. An
+extrapolation of the old relaxation histories for δ = 10⁻¹⁰ (estimate; context-free review of this plan, 2026-10-17)
+gives a 90 % quantile of 67 chunks and a maximum of 98 chunks, against the maximum of 160 chunks (80 000
+iterations). The corner test measures
+the time. If a corner needs the gate retry, I report it before the main-study decision.
+
+D2. Tolerance of the relaxation.
+
+| Option | Setting | Pro | Con |
+|---|---|---|---|
+| (a) | `--atol 1e-6` | the same atol as V3g (N1g) | relaxation time with atol 1e-6 not known (not measured) |
+| (b) | `--atol 1e-5` | the same atol as the old main study | the convergence series V3g used another atol |
+
+Recommendation (a). Note: V3g used the old relative threshold with fp32 sums. Thus no option makes the relaxation fully
+the same as in V3g.
+
+D3. Sensitivity of the corner test.
+- The setup changes the relaxation (solver, D1, D2). A new run can thus select another virgin state than its old
+  run. The old corner runs give the scale: the SD of β over the 3 seeds of a corner is 0.085 … 0.137 (β as in
+  eval_corners_nx.py; the value depends on the old runs used, original or _mc2: beta_sd.py and the review).
+- If the new run keeps the state of its old run, the SD of Δβ is small. If it selects an independent state, the SD of
+  Δβ is at most about √2 × (0.10 … 0.137) ≈ 0.14 … 0.19. This is an upper bound: the seed also sets the cube axes,
+  thus the SD over the seeds includes the scatter of the microstructure, and the same seed keeps the microstructure.
+- Estimates for n 12 and a true Δβ of 0 (normal approximation):
+
+| SD of Δβ | half-width of the 90 % CI | chance of the reading "β robust" | chance that one of the 4 corner means exceeds 0.20 |
+|---|---|---|---|
+| 0.05 | 0.026 | about 100 % | about 0 % |
+| 0.10 | 0.052 | about 90 % | about 0.2 % |
+| 0.14 | 0.073 | about 50 % | about 5 % |
+| 0.19 | 0.099 | about 2 % | about 25 % |
+
+- Thus, if the new relaxation selects independent states, "not determined" is likely even without a real shift.
+
+| Option | What | Pro | Con | Cost (estimate) |
+|---|---|---|---|---|
+| (a) | the 12 paired runs only, reading as fixed (eval_corners_nx.py) | the runs are reusable in the main study | "not determined" is likely; Δβ mixes the solver and the change of the virgin state | as part 6 |
+| (b) | (a), plus a second arm: the 12 corners from the old init.pt (relaxed with DemagFieldPBC, local on this computer), drive cycles with the new setup, from its own commit (S12) | the same start state: Δβ of arm (b) measures the solver and the cycle tolerance only, with a small SD | needs a code change (today the cycles with newell_ext accept only a start state relaxed with newell); upload of 12 init.pt (about 0.3 GB); runs of arm (b) are not reusable in the main study | about 30 … 40 V100-h, about 3 … 4 $; a credit top-up is necessary |
+| (c) | (a) first; arm (b) only if (a) does not give "β robust" | money only when needed | one more step and a new go | as (a), later as (b) |
+
+Recommendation (c).
+
+**Part 5. Order of the work.**
+
+1. Code (feature branch, tests, commit, push):
+   - patches "energy terms", "snapshot cleanup" and "stop threshold" (S5 … S7);
+   - conv_jobs.py `--newell corners` with the full setup, and the job lines of the precision test;
+   - analyze_design.PATTERN and the post-processing pattern accept the `_nx` names: `^(S\d{3}|C\d|K\d_\d)_nx$`;
+   - run_queue.expected_bytes (S11); chain_corners_nx.sh with the post-processing supervisor, the gate retry,
+     `--job_timeout_h 24` and the job order of S11;
+   - eval_corners_nx.py:
+     - the label "β robust to the solver" becomes "β robust to the setup change", and the header text "Δβ measures the
+       solver" becomes "Δβ measures the setup change";
+     - the old partner of a new run is its _mc2 run where it exists (K1_0, K4_0, K4_1), as in the old main result
+       (PLAN 4.5 C); today the script uses the original runs;
+     - the criteria stay as fixed before the runs (commit a3363b4);
+     - new information parts: the flags (S9) and the energy-terms check (S5);
+   - eval_precision.py for the precision test (step 4).
+2. Smoke test on the instance: one corner (the settings of K1_0_nx, the smallest box), 9 mT only (`--b_list 0.006`),
+   `--cycles_per_amp 4 --min_calm 3 --max_cycles_per_amp 8`, no `--max_cycles`. The measured cycles start at cycle 2
+   and the calm tail must reach 3; thus the stage runs at least 5 cycles, and the snapshot cleanup runs at least once.
+   The smoke run is not in the pattern of the post-processing supervisor. Pass if, before the post-processing: DONE is
+   written; only the snapshots of the last 2 cycles exist; acc_00 has the harmonic data (mk2); ckpt_00 exists; each
+   cycle record has the energy terms. Then `instance_postproc.py --once` with the name of the smoke run as pattern ends
+   without an error. Information:
+   the scatter of ε + ΔE_int / W_loop over the calm cycles (the precision of S5).
+3. Corner test: the 12 runs K1_0_nx … K4_2_nx on the 4 GPUs.
+   - Reading of eval_corners_nx.py, fixed before the runs: "β robust to the setup change", "β shifted" or "not
+     determined" (criteria in the script header, commits a3363b4 and 21c863e). Δβ measures all changes of the setup together
+     (solver, tolerances, relaxation, stop rules); the test cannot split them (see D3).
+   - Consequence of each reading:
+     - "β robust to the setup change": the mean β of the 12 corner runs holds within ± 0.10, and the mean of each
+       corner within ± 0.20. The corner differences (the levers) are information only; the reading does not test
+       them. The absolute P of the old study is not used (error of DemagFieldPBC, 7.105 and 7.107). Chris decides if
+       a new main study is necessary for P, for the levers and for the dissipation evaluations at 9 mT.
+     - "β shifted": the β results of the old main study are not usable. A new main study is necessary for β; the
+       12 corner runs are part of it (if the conditions above hold).
+     - "not determined": the old β results stay unconfirmed. With D3 (c), arm (b) is the next proposal.
+   - Information: the relaxation time with D1 and D2; the extension rate of S1; the flags; the energy-terms check;
+     the disk use per run.
+4. Precision test (after the corner test, before the main-study decision).
+   - Runs: from the init.pt of K1_0_nx, K2_0_nx, K3_0_nx and K4_0_nx (one seed per corner, n 4), the 9 mT stage only
+     (`--b_list 0.006`), all other settings as the corner runs, without snapshots and accumulators (they do not
+     change the dynamics). Per corner two runs from the same init.pt: `<run>_p64` with `--precision_cycles double`
+     and `<run>_p32` with fp32. The 9 mT stage of the corner run itself is information (start in the same process
+     after the relaxation; 7.108 check 1 found no effect of this, n 2).
+   - Value per pair: Δ_p = ln P(p64) − ln P(p32) on the calm tails (steady-tail rule). A pair counts only if both runs
+     have a value.
+   - Reading (fixed now; 90 % CI with t(n − 1), as 7.108):
+     - "fp32 sufficient" if n ≥ 3 and the 90 % CI of the mean Δ_p lies inside ± 0.05;
+     - "fp32 not sufficient" if n ≥ 3, the 90 % CI excludes 0 and |mean Δ_p| > 0.05;
+     - "not determined" in all other cases.
+   - The threshold ± 0.05 is 2 × the scatter from cycle to cycle (2.5 %, PLAN 4.5). It is small against the scatter
+     between realisations (16 … 35 %).
+   - Restriction: a small change of the dynamics can make a run select another state (example: after the kernel
+     change T15 s941 moved by +0.23 in ln P, 7.108). The test cannot separate this from a precision error. It widens
+     the CI; the report gives each pair.
+   - Information: ε of p64 against p32; the wall time per cycle.
+   - Consequence: "fp32 sufficient": the main study in fp32. "fp32 not sufficient": the main study runs its cycles in
+     fp64 (about 1.7 × the time per cycle; an estimate from 7.88 with DemagFieldPBC at d/l_ex 48); the corner runs are then a test only (condition 2). "not
+     determined": Chris decides (more pairs, or fp64 to be safe).
+   - The test on dx 0.75 from the N1g F states (the cause of the ε rest of 0.02 … 0.045, 7.110) is not part of this
+     plan. It does not change the setting on dx 3 and needs its own go.
+5. Report to Chris; decision on the new main study, with the size and roughness question (7.110).
+
+**Part 6. Cost (estimates).**
+
+Factors:
+- Drive cycles: the tight tolerance with the new stray field needs about the same number of steps per cycle as the
+  old runs (measured, n 2: 5272 against 5381 at K1_0, 5453 against 5376 at K2_0). The time per step rises by 42 %
+  (n 2), but it changes with the load on the node. The wall time per cycle against the old runs, both without
+  snapshots, is × 1.31 (K1_0, 111 s against 85 s) and × 1.11 (K2_0, 238 s against 214 s). Thus × 1.1 … 1.45. S1 and
+  S2 add about 1 %.
+- Relaxation: × 1.1 … 1.3 per iteration (cost benchmark, TB_K1_0_a5 and TB_K2_0_a5 against K1_0 and K2_0, n 2, with
+  the kernel time removed), and × 1 … 2 iterations for D1 (b) and D2 (a) (estimate, not measured).
+- Stray-field kernel and first compilation: once per run, about 6 … 11 min (cost benchmark: about 340 s and 640 s).
+- The cost-benchmark numbers (5272, 5381 …, 111 s, 85 s …) come from results/tolbench_report.md and the summary.json of
+  the old runs.
+
+| Part | Old runs (measured) | New (estimate) | Wall on 4 GPUs | Cost |
+|---|---|---|---|---|
+| smoke test | – | about 0.5 V100-h | about 0.5 h | about 0.2 $ |
+| corner test, 12 runs | 30.9 V100-h (relaxation 4.2, cycles 26.7) | 36 … 52 V100-h | 9 … 13 h, more if a d/l_ex 300 run waits for disk (S11) | 3.6 … 5.3 $ |
+| precision test, 8 runs of one stage | – | 5 … 6 V100-h | about 2 h | about 0.8 $ |
+| arm (b) of D3, if chosen | – | 30 … 40 V100-h | 8 … 10 h | 3 … 4 $ |
+| new main study, 104 more runs | 225 V100-h (relaxation 26.7, cycles 198.7) | 260 … 380 V100-h | 2.7 … 4 days | 26 … 38 $ |
+
+- The instance costs 0.405 $/h also when it is idle. The code work of part 5, step 1 takes about 4 … 6 h (estimate),
+  thus about 1.6 … 2.4 $ of idle time.
+- The new main-study estimate replaces the earlier rough estimates (about 500 V100-h and 50 $, then 380 … 400 V100-h):
+  the α 0.01 arm is dropped, and the cycle factor is now measured against the old runs.
+- Credit 2026-10-17 20:50 UTC: 11.74 $. The idle time of the code work, the smoke test, the corner test and the
+  precision test need about 6.2 … 8.7 $; this fits into the credit. Arm (b) of D3 and the new main study need a
+  top-up.
+
+**Part 7. Risks.**
+- D1 (b) can make the relaxation much longer. The corner test shows this before the main study.
+- The corner test changes several things at once (D3). Only the effect of the tolerance is known: no effect on P
+  (cost benchmark, n 2) and on β (7.102: ≤ 0.005 with the same start state).
+- The online stop gives a different number of cycles per stage in different runs. The steady-tail rule is the same as
+  before.
+- At most 3 runs of d/l_ex 300 fit on the disk at the same time (S11). A fourth waits, and its GPU is idle.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,

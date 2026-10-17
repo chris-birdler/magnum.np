@@ -5780,6 +5780,104 @@ Gm = 4, 8, 16 permitted an estimate of u before the run, but nobody made it.
 - Start 2026-10-17 07:40 UTC (/root/n1g_commit 8831bcb, own worktree /root/magnum.np-n1g): the 4 F runs on the
   4 GPUs; config.json records geom_dx_lex 3.0 and magnumnp_path /root/magnum.np-n1g/magnumnp.
 
+### 7.110 V3g: with a locked voxel geometry the loss converges; cost benchmark on dx 3; corner test started and stopped; audit of the setup; decisions of Chris (2026-10-17)
+
+**V3g result (results/v3g_n1g_report.md, eval_v3.py --prefix N1g; rules fixed before the runs, PLAN 4.12).**
+- 20 runs, all with a calm tail of ≥ 2 cycles. Base microstructure (L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1), d/l_ex 96,
+  9 mT, seeds 941 … 944, voxel geometry of dx 3 on all meshes, final stray-field setting, tight cycle tolerance.
+- P (W/cm³) per arm, geometric mean over the 4 seeds, and the SD of ln P over the seeds: F (dx 0.75) 1.42, SD 0.17;
+  T15 1.41, SD 0.16; T3 1.19, SD 0.22; I15 1.30, SD 0.23; I3 1.11, SD 0.18.
+- T arm (decisive): Δ(1.5 − 0.75) = −0.008 ± 0.011 (SE, n 4, 90 % CI −0.033 … +0.018). **Reading: "converged at
+  dx 1.5".**
+- Δ(3 − 1.5) = −0.168 ± 0.059 (SE, n 4, 90 % CI −0.307 … −0.029). Thus at this point dx 3 gives a P about 15 % lower
+  than dx 1.5 (factor 0.85). This is one point (d/l_ex 96, 9 mT); it is not a rule for the design range.
+- I arm (information): Δ(1.5 − 0.75) = −0.092 ± 0.086; reading "not determined". The independent relaxations select
+  different states (SD of the paired difference 0.17 against 0.02 in the T arm).
+- μ_r converges too: ln μ_r(T15) − ln μ_r(F) = −0.0020 ± 0.0002, ln μ_r(T3) − ln μ_r(T15) = −0.0198 ± 0.0031 (SE, n 4).
+- ε of the F tails: +0.025 / +0.031 / +0.024 / +0.045. The cause of this rest on dx 0.75 is not known.
+
+**Free control and the place of the old non-convergence** (N1g against N0b, same seed, ln P; mean ± SE, n 4, 90 % CI
+with t(3)). N0b used 4 shells without the extrapolation, atol 1e-6 in the relaxation and in the cycles
+(jobs/newell_b0_s*.txt), and the voxel geometry of its own mesh. N1g used the tight tolerance in the cycles.
+
+| arm | N1g − N0b | what changes |
+|---|---|---|
+| I3 | −0.023 ± 0.055 (−0.152 … +0.107) | kernel and cycle tolerance only (the same dx 3 geometry) |
+| T15 | +0.026 ± 0.041 (−0.070 … +0.122) | kernel, cycle tolerance, and dx 3 geometry against dx 1.5 geometry |
+| F | −1.152 ± 0.410 (−2.118 … −0.186) | kernel, cycle tolerance, and dx 3 geometry against dx 0.75 geometry |
+
+- On dx 3 the kernel and the cycle tolerance do not move P detectably (I3).
+- The large change is in F: N0b F, with the finer staircase of the dx 0.75 voxel geometry, had a P higher by a factor
+  of about 3. This points to the change of the voxel geometry to dx 0.75 as the cause of the non-convergence of
+  B0b / N0b (7.107, 7.108). It is an inference: the kernel effect on dx 0.75 was not tested (7.109), and the I3
+  control is on dx 3 only. On a fixed voxel geometry the numerics converge (V3g).
+- Consequence: the loss at 9 mT depends strongly on the shape of the particle surface. The staircase of the voxels is
+  part of the model, not only a discretisation error. This is a model question for Chris.
+- Size and roughness question: at a fixed dx 3 l_ex the step of the staircase relative to the particle diameter
+  changes with the size (dx / d = 0.010 at d/l_ex 300, 0.014 at d/l_ex 212). This can bias the effect of the particle
+  size in the main study. Open; Chris decides after the corner test (PLAN 4.13).
+
+**Cost benchmark on dx 3 (results/tolbench_report.md, eval_tolbench.py).** Corners K1_0 (d/l_ex 212) and K2_0
+(d/l_ex 300), 9 mT, 3 cycles, final stray-field setting, from the same relaxed state. Variants: a5 (atol 1e-5),
+a6 (atol 1e-6), tight (atol 1e-7, rtol 1e-6).
+
+| | K1_0 | K2_0 |
+|---|---|---|
+| steps per cycle, tight against a5 | +14 % | +13 % |
+| steps per cycle, tight against the old run (DemagFieldPBC, atol 1e-5) | 5272 against 5381 (−2 %) | 5453 against 5376 (+1 %) |
+| wall per cycle, tight against a5 | +7 % | −13 % |
+| P, all 3 variants | 2.705 W/cm³ | 4.496 W/cm³ |
+| ε of cycle 2, a5 → tight | +0.035 → +0.006 | +0.003 → +0.001 |
+| wall per step, final setting against DemagFieldPBC (old run) | +42 % | +42 % |
+
+- The wall time per cycle changes with the load on the node; the number of steps is the reliable measure.
+- Decision of Chris (2026-10-17, "Feiner"): the tight cycle tolerance in the production setup.
+
+**Corner test: started and stopped.**
+- Decision of Chris (2026-10-17): first the corners, then the decision on a new main study.
+- Start 19:40 UTC (commit 21c863e, jobs/corners_nx.txt, chain_corners_nx.sh): the 12 corner runs with the final
+  stray-field setting and the tight cycle tolerance, without snapshots and without post-processing.
+- Requirement of Chris (20:00 UTC): the corner runs must give the data for all evaluations and must be usable without a
+  change as runs of a new main study. The started setup did not meet this. I stopped the 4 running jobs at 20:00 UTC by
+  their PIDs (about 20 min on 4 GPUs, about 0.15 $). The folders K1_0_nx, K1_1_nx, K1_2_nx and K2_0_nx stay on the
+  instance; no result of them is used.
+
+**Audit of the setup (context-free agent, 2026-10-17; scan of the old main study, read only).**
+- Calm rule. Stricter thresholds on ε change β only a little and remove many cycles (4 081 cycles; mean change of β
+  ± SE): ε ≤ 0.05: 22 % of the cycles removed, −0.004 ± 0.004; ε ≤ 0.02: 49 %, +0.003 ± 0.007. Thus |ε| ≤ 0.20 stays.
+- Cause of ε: the tight tolerance lowers ε mainly at 9 mT. At 20 … 150 mT the scatter of ε does not come from the
+  integrator; its cause is not known.
+- Loop closure as a rule: closure ≤ 10⁻³ removes 41 % of the cycles (β +0.010 ± 0.005), ≤ 10⁻⁴ 77 % (β
+  −0.046 ± 0.023). The closure fails as a rule: period-2 orbits have a large closure but are calm; a slow drift has a
+  small closure but is not calm; a jump shows only with a net change of M. The closure is reported only.
+- A gap of ε: in about 10 % of the cycles of the calm tails w changes by more than 8 % from cycle to cycle, with a
+  small ε. Thus two flags (PLAN 4.13 S9).
+- Relaxation: the 116 relaxations of the old main study at α 0.1 all converged. The relative stop threshold (10⁻⁶ |E|
+  per chunk) was near the rounding error of the fp32 sum of the energy:
+  - in 14 of the 116 runs the energy rose in one of the 2 last chunks;
+  - in 29 of the 116 runs the energy change was exactly 0 in one of the 2 last chunks (my recount, relax_small.py).
+    Thus in these runs the rounding, not the physics, stopped the relaxation.
+  A residual drift is possible. The discarded cycles 0 and 1 absorb most of it: the cost-benchmark runs TB_K1_0 and
+  TB_K2_0 relaxed with this threshold and had ε of +0.006 and +0.001 in cycle 2 (n 2, 9 mT).
+- The α 0.01 runs: 63 % of their cycles fail the calm rule (energy oscillates over the end of the cycle).
+- The stopped corner setup differed from N1g (relaxation atol, b_tol, number of cycles) and had no snapshots, no
+  post-processing and no online stop. Thus one setup for the corners and a new main study is necessary (PLAN 4.13).
+- More information per run at small cost: energy terms per cycle, harmonics per cell (--acc_harm 7), a state after
+  each stage (--keep_stage_ckpt), snapshots as in the old main study.
+
+**Decisions of Chris (2026-10-17).**
+- The α 0.01 arm is dropped.
+- The state files (.pt) of the finished studies with DemagFieldPBC are deleted on the instance without a download:
+  522 files (old mesh studies MK3, M300, M212; frequency, corner, cond, R300, B300 and other runs). Before the
+  deletion no run was active. Kept on the instance: 145 files of N0b, B0b, N1g and TB, 3.3 GB. Free disk: 32 GB (before
+  13 GB). All results, summaries and logs stay local and on the instance.
+- The energy of each field term is summed in fp64 (all field terms of magnumnp and the drive; commit 6c1e539; test
+  tests/unit/energy_sum_test.py; unit suite 146 passed, 1 failed: the known TypeError of rkky_test::test_intergrain_exchange;
+  study tests 99 passed). The simulation stays in fp32. The relaxation test now resolves energy changes
+  below the rounding error of the fp32 sum. The stop threshold of the relaxation is decision D1 of PLAN 4.13.
+- Snapshots as in the old main study, with the measure of the domain walls (domains_batch.py).
+- Next: PLAN 4.13 (one production setup for the corner test and a new main study), for the approval of Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
