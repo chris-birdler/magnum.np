@@ -1,9 +1,9 @@
 #!/bin/bash
-# Gate of PLAN 4.13 (part 5, step 2 -> step 3), so that the GPUs do not stay idle overnight (Chris 2026-10-18):
-# wait for the smoke run runs/SMOKE_nx_K1, check its pass criteria before the post-processing, run the post-processing
-# once on it, and start chain_corners_nx.sh only if all checks pass. Else write runs/ALERT and start nothing.
+# Smoke check of PLAN 4.13 (part 5, step 2) as an early warning. Chris 2026-10-18: idle GPUs waste money, so the corner
+# chain starts at once and does not wait for this check. The script waits for the smoke run runs/SMOKE_nx_K1, checks
+# its pass criteria before the post-processing, runs the post-processing once on it, and writes the result to its log;
+# a failure goes to runs/ALERT (the corner chain goes on).
 #   start: setsid nohup bash /root/cx_gate.sh > /root/cx_gate.log 2>&1 < /dev/null &
-COMMIT=e5998f5
 W=/root/magnum.np-cx/studies/beta_bpeak
 R=/root/magnum.np/studies/beta_bpeak/runs
 S=$R/SMOKE_nx_K1
@@ -47,13 +47,8 @@ else
     c2=1
 fi
 if [ $c1 -eq 0 ] && [ $c2 -eq 0 ]; then
-    echo $COMMIT > /root/cx_commit
-    cp $W/instance/chain_corners_nx.sh /root/chain_corners_nx.sh
-    grep -q "chain_corners_nx.sh" /root/onstart.sh || \
-        echo 'nohup bash /root/chain_corners_nx.sh >> /root/cx_chain.out 2>&1 &' >> /root/onstart.sh
-    setsid nohup bash /root/chain_corners_nx.sh >> /root/cx_chain.out 2>&1 < /dev/null &
-    log "smoke PASS: corner chain started (commit $COMMIT)"
+    log "smoke PASS"
 else
-    echo "$(date '+%F %T') smoke test of PLAN 4.13 FAILED (see /root/cx_gate.log): corner chain not started" >> $R/ALERT
-    log "smoke FAIL: corner chain not started"
+    echo "$(date '+%F %T') smoke test of PLAN 4.13 FAILED (see /root/cx_gate.log); the corner chain goes on" >> $R/ALERT
+    log "smoke FAIL (corner chain goes on)"
 fi
