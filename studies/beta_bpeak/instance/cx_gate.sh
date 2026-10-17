@@ -9,7 +9,13 @@ R=/root/magnum.np/studies/beta_bpeak/runs
 S=$R/SMOKE_nx_K1
 log() { echo "$(date '+%F %T') $*"; }
 log "gate start: wait for $S"
-while [ ! -f $S/DONE ] && pgrep -f "[m]agnumnp run_loops" > /dev/null; do sleep 60; done
+smoke_alive() {      # the smoke process by the link of its stdout (the corner runs also match "magnumnp run_loops")
+    for p in $(pgrep -f "magnumnp run_loops"); do
+        [ "$(readlink /proc/$p/fd/1)" = "$R/SMOKE_nx_K1_stdout.log" ] && return 0
+    done
+    return 1
+}
+while [ ! -f $S/DONE ] && smoke_alive; do sleep 60; done
 sleep 30
 cd $W || exit 1
 python - "$S" <<'EOF'
