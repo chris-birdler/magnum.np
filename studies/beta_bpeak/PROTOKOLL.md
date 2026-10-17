@@ -5878,6 +5878,57 @@ a6 (atol 1e-6), tight (atol 1e-7, rtol 1e-6).
 - Snapshots as in the old main study, with the measure of the domain walls (domains_batch.py).
 - Next: PLAN 4.13 (one production setup for the corner test and a new main study), for the approval of Chris.
 
+### 7.111 PLAN 4.13: code of the production setup, smoke tests, start of the corner test (2026-10-17 … 18)
+
+**Decisions of Chris and one change of the plan** (all times UTC).
+- 2026-10-17, about 21:50: PLAN 4.13 approved with D1 (b) (absolute stop threshold 3·10⁻¹⁰ K_d V per chunk), D2 (a)
+  (relaxation atol 1e-6), D3 (c) (arm (b) only if the corner test does not give "β robust") and a credit top-up.
+- 2026-10-17, about 22:05, before the night: "Die GPUs dürfen über Nacht nicht leer bleiben" and "Leere GPUs sind
+  Geldverschwendung" (the GPUs must not stay empty overnight; empty GPUs waste money).
+- Change of PLAN 4.13 part 5 that I made after this remark: the corner test (step 3) started before the result of
+  the smoke test (step 2). The smoke check ran beside it as an early warning (instance/cx_gate.sh; a failure goes to
+  runs/ALERT, the corner test goes on). Chris has not confirmed this change of the order explicitly.
+
+**Code** (feature/newell-pbc, commit e5998f5; cx_gate.sh b78c030, 4532be0, 7b2e6e0): patches "energy terms" (S5), "snapshot
+cleanup" (S6) and "stop threshold" (S7, `--relax_tol_E_abs`, an INIT_KEY); run_queue.expected_bytes (S11);
+conv_jobs.py `--newell corners` (full setup, d/l_ex 212 and 300 alternate) and `--newell precision`; eval_corners_nx.py
+(label "β robust to the setup change", _mc2 partners, flags, energy-terms check; criteria unchanged); eval_precision.py;
+analyze_design.design_pattern (the `_nx` names); chain_corners_nx.sh. Study tests 105 passed, 3 skipped (exit code 0).
+
+**Local smoke run** (CPU, d/l_ex 24, φ 0.3, 16³ cells, 64 samples per cycle, 9 mT): exit code 0. The relaxation
+stopped by the absolute threshold; the online stop extended the stage to 6 cycles; only the snapshots of the last
+2 cycles were left; acc_00 with the harmonics, ckpt_00 and the energy terms were written.
+
+**Smoke test on the instance** (settings of K1_0_nx, 9 mT only, `--cycles_per_amp 4 --min_calm 3
+--max_cycles_per_amp 8`, GPU 0, about 21:59 … 22:33 UTC; runs/SMOKE_nx_K1): all 7 checks PASS (DONE, relaxation
+converged, the stage longer than the minimum, snapshots only of the last 2 cycles, acc_00 with 7 harmonics, ckpt_00,
+energy terms per cycle and at the stage end); post-processing without an error.
+- Relaxation: 8 000 iterations, 653 s (stray field newell_ext, atol 1e-6, absolute threshold with the fp64 sum). For
+  information only, n 1 each, other settings: the old run K1_0 10 500 iterations (DemagFieldPBC, atol 1e-5, relative
+  threshold with the fp32 sum); TB_K1_0_a5 7 500 iterations (newell_ext, atol 1e-5, relative threshold with the fp32
+  sum). The difference is not an estimate of the effect of D1 or D2.
+- From cycle 1 on, the smoke run shared GPU 0 with K1_0_nx (wall time per cycle 172 … 198 s against 107 s in cycle 0).
+
+Energy-terms check of the smoke run (S5). d = ε + ΔE_int / w_loop is the residual of the energy balance:
+
+| cycle | w_loop (per K_d) | ε | −ΔE_int / w_loop | d |
+|---|---|---|---|---|
+| 0 | 1.07·10⁻⁷ | −0.154 | −0.152 | −0.001 |
+| 1 | 1.06·10⁻⁷ | −0.092 | −0.104 | +0.012 |
+| 2 | 0.95·10⁻⁷ | +0.006 | +0.020 | −0.014 |
+| 3 | 0.95·10⁻⁷ | +0.015 | +0.013 | +0.001 |
+| 4 | 0.96·10⁻⁷ | +0.012 | +0.009 | +0.003 |
+
+- In cycle 0 the state changes; ε and −ΔE_int / w_loop differ by 0.0014.
+- In the calm tail (cycles 2 … 4) the SD of d is 0.009 (n 3); this is the measured precision of the check at this
+  point (PLAN 4.13 part 5, step 2; the estimate was about 0.015). The means agree: ε +0.011 and −ΔE_int / w_loop
+  +0.014. In one cycle the check cannot separate ε (about 0.01) from its own error (cycle 2: |d| 0.014 > ε 0.006).
+  3 cycles of one run: information only.
+
+**Start of the corner test:** 2026-10-17 22:07, chain_corners_nx.sh at e5998f5 on the 4 GPUs (first K1_0_nx,
+K2_0_nx, K3_0_nx, K4_0_nx); then the precision test and the two reports. The chain is in /root/onstart.sh. Before the
+start the 4 folders of the stopped start (7.110) were renamed to `<name>_stopped`.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
