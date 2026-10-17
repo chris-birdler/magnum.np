@@ -62,18 +62,255 @@ def report(name, ms, m, dx, exact=None, shells=(1, 2), gms=(4, 8, 16)):
         name, gms, " ".join("%.7f" % a for a in al), ext, fd, " ".join("%.7f" % x for x in nw),
         "%.7f" % exact if exact is not None else "-", time.time() - t), flush=True)
 
-# (1) aligned cube
-n = 16; ms = np.zeros((n, n, n)); ms[:8, :8, :8] = Ms
-report("cube f=1/8, m (111)", ms, np.broadcast_to(np.ones(3) / math.sqrt(3), (n, n, n, 3)).copy(), lex, exact=7 / 192)
-# (4) checkerboard in a full box
-n = 16; ms = np.full((n, n, n), Ms); i, j, k = np.meshgrid(*[np.arange(n)] * 3, indexing="ij")
-s = (-1.0) ** (i + j); m = np.stack([s, -s, 0 * s], -1) / math.sqrt(2)
-report("checkerboard (1,-1,0)", ms, m, lex)
-# (2), (3) B0b dx 3
-a_lex, d_used = box_edge(96.0, 0.65, 12.0); N = 48; dx = 3 * lex
-chi = fcc_box(N, d_used * lex, dx)["ids"] >= 0; ms = np.where(chi, Ms, 1e-8 * Ms)
-f = chi.mean()
-report("B0b uniform (111)", ms, np.broadcast_to(np.ones(3) / math.sqrt(3), (N, N, N, 3)).copy(), dx, exact=f * (1 - f) / 3)
-for arm in ("I3", "T3"):
-    m = torch.load(HERE / "runs" / ("B0b_%s_s941" % arm) / "init.pt", map_location="cpu", weights_only=False)["m"].double().numpy()
-    report("B0b %s s941 (box: FD/N4)" % arm, ms, m, dx, shells=(1, 2, 4))
+def legacy():
+    """The report of PROTOKOLL 7.105 (results/demag_alias.md)."""
+    # (1) aligned cube
+    n = 16; ms = np.zeros((n, n, n)); ms[:8, :8, :8] = Ms
+    report("cube f=1/8, m (111)", ms, np.broadcast_to(np.ones(3) / math.sqrt(3), (n, n, n, 3)).copy(), lex, exact=7 / 192)
+    # (4) checkerboard in a full box
+    n = 16; ms = np.full((n, n, n), Ms); i, j, k = np.meshgrid(*[np.arange(n)] * 3, indexing="ij")
+    s = (-1.0) ** (i + j); m = np.stack([s, -s, 0 * s], -1) / math.sqrt(2)
+    report("checkerboard (1,-1,0)", ms, m, lex)
+    # (2), (3) B0b dx 3
+    a_lex, d_used = box_edge(96.0, 0.65, 12.0); N = 48; dx = 3 * lex
+    chi = fcc_box(N, d_used * lex, dx)["ids"] >= 0; ms = np.where(chi, Ms, 1e-8 * Ms)
+    f = chi.mean()
+    report("B0b uniform (111)", ms, np.broadcast_to(np.ones(3) / math.sqrt(3), (N, N, N, 3)).copy(), dx, exact=f * (1 - f) / 3)
+    for arm in ("I3", "T3"):
+        m = torch.load(HERE / "runs" / ("B0b_%s_s941" % arm) / "init.pt", map_location="cpu", weights_only=False)["m"].double().numpy()
+        report("B0b %s s941 (box: FD/N4)" % arm, ms, m, dx, shells=(1, 2, 4))
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# PLAN 4.12, V1 (decision Chris 2026-10-17): validation of the final stray-field setting against the alias sum.
+# Readings fixed before the run (PLAN 4.12):
+#   calibration  "reference calibrated" if the cube and the uniform B0b state agree with the exact energies within
+#                0.01 %, and the checkerboard energy and field within 0.05 % and 0.1 % RMS; else stop;
+#   candidate    "valid" if |dE| + 2 u <= 0.025 % and dH + 2 u_H <= 0.25 % for all 12 N0b states on dx 3;
+#                "not valid" if |dE| - 2 u > 0.025 % or dH - 2 u_H > 0.25 % for one state or more;
+#                else "not determined"; the final setting is the most accurate valid candidate.
+# dE = (E - E_ref) / E_ref; dH = RMS over the magnetic cells of |H - H_ref| / RMS of |H_ref|; E_ref, H_ref: fit
+# c0 + c1 / Gm + c2 / Gm^2 over Gm = 8, 16, 32; u, u_H: difference to the linear extrapolation 2 v(32) - v(16).
+#     python check_demag_alias.py v1_ref N0b              # reference (CPU), runs/v1_ref_N0b.npz
+#     CUDA_DEVICE=0 python check_demag_alias.py v1_newell N0b 1 2 4 2x 4x 8     # candidates, runs/v1_newell_N0b_<c>.npz
+#     python check_demag_alias.py v1_report N0b > runs/v1_N0b.md
+GMS_V1 = (8, 16, 32)
+LIM_E, LIM_H = 0.025e-2, 0.25e-2
+CANDIDATES = ("1", "2", "4", "8", "2x", "4x")      # "kx": k shells, kernel extrapolated with the inner k // 2 shells
+
+
+def alias_kernel(N, Gm):
+    """Cell-averaged periodic demag tensor K(q) [N^3, 6] (xx, yy, zz, xy, xz, yz) of the alias sum, |G_a| <= Gm, k = 0
+    excluded. It does not depend on M; the gz sum is a vector axis."""
+    m1 = np.fft.fftfreq(N, 1.0 / N) / N
+    QX, QY, QZ = [g.reshape(-1) for g in np.meshgrid(m1, m1, m1, indexing="ij")]
+    gz = np.arange(-Gm, Gm + 1, dtype=float)[:, None]
+    tz = QZ[None, :] + gz
+    sz = np.sinc(tz) ** 2
+    K = np.zeros((QX.size, 6))
+    for gx in range(-Gm, Gm + 1):
+        tx = QX + gx
+        sx = np.sinc(tx) ** 2
+        for gy in range(-Gm, Gm + 1):
+            ty = QY + gy
+            sxy = sx * np.sinc(ty) ** 2
+            t2 = tx ** 2 + ty ** 2 + tz ** 2
+            ok = t2 > 0
+            w = np.where(ok, sxy * sz / np.where(ok, t2, 1.0), 0.0)
+            K[:, 0] += (w * tx ** 2).sum(0)
+            K[:, 1] += (w * ty ** 2).sum(0)
+            K[:, 2] += (w * tz ** 2).sum(0)
+            K[:, 3] += (w * tx * ty).sum(0)
+            K[:, 4] += (w * tx * tz).sum(0)
+            K[:, 5] += (w * ty * tz).sum(0)
+    return K
+
+
+def kernel_trace_error(N, Gm, K):
+    """max |tr K(q) - prod_a sum_G sinc^2(t_a)| / prod over q != 0 (the box sum factorises)."""
+    m1 = np.fft.fftfreq(N, 1.0 / N) / N
+    g = np.arange(-Gm, Gm + 1, dtype=float)
+    s1 = (np.sinc(m1[:, None] + g[None, :]) ** 2).sum(1)
+    P = (s1[:, None, None] * s1[None, :, None] * s1[None, None, :]).reshape(-1)
+    tr = K[:, 0] + K[:, 1] + K[:, 2]
+    return float(np.max(np.abs(tr[1:] - P[1:]) / P[1:]))
+
+
+def alias_energy_field(M, K):
+    """(E / (K_d V), H [N, N, N, 3] in A/m) of M [N, N, N, 3] (A/m) with the kernel K; H = −K M~ in Fourier space."""
+    N = M.shape[0]
+    Mt = np.fft.fftn(M, axes=(0, 1, 2)).reshape(-1, 3)
+    Ht = -np.stack([K[:, 0] * Mt[:, 0] + K[:, 3] * Mt[:, 1] + K[:, 4] * Mt[:, 2],
+                    K[:, 3] * Mt[:, 0] + K[:, 1] * Mt[:, 1] + K[:, 5] * Mt[:, 2],
+                    K[:, 4] * Mt[:, 0] + K[:, 5] * Mt[:, 1] + K[:, 2] * Mt[:, 2]], -1)
+    e = -(np.conj(Mt) * Ht).sum().real / (N ** 6 * Ms ** 2)
+    H = np.fft.ifftn(Ht.reshape(N, N, N, 3), axes=(0, 1, 2)).real
+    return float(e), H
+
+
+def gm_fit(v8, v16, v32):
+    """(fit c0 of c0 + c1 / Gm + c2 / Gm^2 over Gm = 8, 16, 32; linear extrapolation 2 v32 − v16), elementwise."""
+    c0 = (v8 - 6.0 * v16 + 8.0 * v32) / 3.0
+    return c0, 2.0 * v32 - v16
+
+
+def rms_rel(H, Href, mask):
+    d = np.sqrt(((H - Href) ** 2).sum(-1))[mask]
+    r = np.sqrt((Href ** 2).sum(-1))[mask]
+    return float(np.sqrt((d ** 2).mean()) / np.sqrt((r ** 2).mean()))
+
+
+def v1_states(prefix):
+    """[(name, ms [N,N,N] A/m, m [N,N,N,3], mask, dx, exact energy or None)]: the calibration cases and the 12 states."""
+    import run_loops
+    out = []
+    n = 16
+    ms = np.zeros((n, n, n))
+    ms[:8, :8, :8] = Ms
+    out.append(("cube f=1/8 (111)", ms, np.broadcast_to(np.ones(3) / math.sqrt(3), (n, n, n, 3)).copy(),
+                ms > 0, lex, 7 / 192))
+    ms = np.full((n, n, n), Ms)
+    i, j, k = np.meshgrid(*[np.arange(n)] * 3, indexing="ij")
+    s = (-1.0) ** (i + j)
+    out.append(("checkerboard (1,-1,0)", ms, np.stack([s, -s, 0 * s], -1) / math.sqrt(2), ms > 0, lex, 0.5))
+    S3, S075 = C.setup(96.0, 3.0, C.SEED), C.setup(96.0, 0.75, C.SEED)
+    ms3 = S3[0].material["Ms"][..., 0].double().cpu().numpy()
+    dx3 = float(S3[0].mesh.dx[0])
+    mag3 = S3[3] >= 0
+    out.append(("B0b geometry uniform (111)", ms3, np.broadcast_to(np.ones(3) / math.sqrt(3), ms3.shape + (3,)).copy(),
+                mag3, dx3, float((ms3 / Ms).var()) / 3.0))
+    for seed in (941, 942, 943, 944):
+        mF = torch.load(HERE / "runs" / ("%s_F_s%d" % (prefix, seed)) / "init.pt", map_location="cpu",
+                        weights_only=False)["m"].double().numpy()
+        mc, _ = run_loops.transfer_m(mF, S075[3], S3[3])
+        out.append(("%s F→3 s%d" % (prefix, seed), ms3, np.asarray(mc, dtype=np.float64), mag3, dx3, None))
+        for arm in ("I3", "T3"):
+            m = torch.load(HERE / "runs" / ("%s_%s_s%d" % (prefix, arm, seed)) / "init.pt", map_location="cpu",
+                           weights_only=False)["m"].double().numpy()
+            out.append(("%s %s s%d" % (prefix, arm, seed), ms3, m, mag3, dx3, None))
+    return out
+
+
+def v1_ref(prefix):
+    """Alias reference: per state E and H at Gm 8, 16, 32 (runs/v1_ref_<prefix>.npz), the code checks."""
+    t0 = time.time()
+    states = v1_states(prefix)
+    kern, res = {}, {}
+    for name, ms, m, mask, dx, exact in states:
+        N = ms.shape[0]
+        M = ms[..., None] * m
+        vals = []
+        for g in GMS_V1:
+            if (N, g) not in kern:
+                kern[(N, g)] = alias_kernel(N, g)
+                print("kernel N %d Gm %d: trace error %.1e [%.0f s]" % (N, g, kernel_trace_error(N, g, kern[(N, g)]),
+                                                                        time.time() - t0), file=sys.stderr, flush=True)
+            e, H = alias_energy_field(M, kern[(N, g)])
+            e_mh = float(-(M * H).sum() / (Ms ** 2 * N ** 3))          # -1/2 mu0 <M.H> / K_d
+            vals.append((e, H, e_mh))
+        res[name] = vals
+        print("%s: E %s, -1/2<M.H>/Kd - E = %.1e [%.0f s]" % (name, " ".join("%.8f" % v[0] for v in vals),
+              max(abs(v[2] - v[0]) for v in vals), time.time() - t0), file=sys.stderr, flush=True)
+    np.savez(HERE / "runs" / ("v1_ref_%s.npz" % prefix),
+             **{"E_%d_%d" % (i, g): res[st[0]][j][0] for i, st in enumerate(states) for j, g in enumerate(GMS_V1)},
+             **{"H_%d_%d" % (i, g): res[st[0]][j][1] for i, st in enumerate(states) for j, g in enumerate(GMS_V1)},
+             names=np.array([st[0] for st in states]),
+             trace_err=np.array([kernel_trace_error(N, g, K) for (N, g), K in kern.items()]))
+
+
+def v1_newell(prefix, cands):
+    """Newell candidates (DemagField(true_pbc=True[, extrapolate])): E and H per state (runs/v1_newell_<prefix>_<c>.npz)."""
+    from magnumnp import DemagField
+    states = v1_states(prefix)
+    for c in cands:
+        t0 = time.time()
+        k, ext = int(c.rstrip("x")), c.endswith("x")
+        terms, out = {}, {}
+        for i, (name, ms, m, mask, dx, exact) in enumerate(states):
+            N = ms.shape[0]
+            if (N, dx) not in terms:
+                st = State(Mesh((N, N, N), (dx,) * 3, pbc=(k, k, k)))
+                terms[(N, dx)] = (st, DemagField(true_pbc=True, extrapolate=ext))
+            st, term = terms[(N, dx)]
+            st.material = {"Ms": torch.tensor(ms[..., None], dtype=st.dtype, device=st.device)}
+            st.m = torch.tensor(m, dtype=st.dtype, device=st.device)
+            out["E_%d" % i] = float(term.E(st)) / (Kd * dx ** 3 * N ** 3)
+            out["H_%d" % i] = term.h(st).double().cpu().numpy()
+        np.savez(HERE / "runs" / ("v1_newell_%s_%s.npz" % (prefix, c)), **out)
+        print("candidate %s done [%.0f s]" % (c, time.time() - t0), file=sys.stderr, flush=True)
+
+
+def v1_classify(dE, uE, dH, uH):
+    """Reading of one candidate from the per-state arrays (PLAN 4.12)."""
+    if np.all(np.abs(dE) + 2 * uE <= LIM_E) and np.all(dH + 2 * uH <= LIM_H):
+        return "valid"
+    if np.any(np.abs(dE) - 2 * uE > LIM_E) or np.any(dH - 2 * uH > LIM_H):
+        return "not valid"
+    return "not determined"
+
+
+def v1_report(prefix):
+    states = v1_states(prefix)
+    R = np.load(HERE / "runs" / ("v1_ref_%s.npz" % prefix))
+    L = ["# PLAN 4.12 V1: Newell candidates against the alias sum (check_demag_alias.py v1_report %s)" % prefix, "",
+         "Energies per box volume in K_d. Reference: fit c0 + c1 / Gm + c2 / Gm² over Gm = 8, 16, 32; u: difference to "
+         "the linear extrapolation from 16 and 32. dE = (E − E_ref) / E_ref; dH = RMS over the magnetic cells of "
+         "|H − H_ref| / RMS |H_ref|. Largest trace error of the alias kernels: %.1e." % float(R["trace_err"].max()), "",
+         "## Calibration", "", "| case | E(8) | E(16) | E(32) | E_ref | u | exact | E_ref / exact − 1 | dH vs exact |",
+         "|---|---|---|---|---|---|---|---|---|"]
+    ref = []
+    for i, (name, ms, m, mask, dx, exact) in enumerate(states):
+        E = [float(R["E_%d_%d" % (i, g)]) for g in GMS_V1]
+        H = [R["H_%d_%d" % (i, g)] for g in GMS_V1]
+        e0, el = gm_fit(*E)
+        h0, hl = gm_fit(*H)
+        ref.append((e0, abs(e0 - el) / abs(e0), h0, rms_rel(hl, h0, mask)))
+        if exact is not None:
+            dh = "–"
+            if name.startswith("checkerboard"):
+                dh = "%.4f %%" % (100 * rms_rel(h0, -0.5 * ms[..., None] * m, mask))
+            L.append("| %s | %.7f | %.7f | %.7f | %.7f | %.1e | %.7f | %+.4f %% | %s |" % (
+                name, E[0], E[1], E[2], e0, ref[-1][1], exact, 100 * (e0 / exact - 1), dh))
+    cal = [(s, r) for s, r in zip(states, ref) if s[5] is not None]
+    ok = all(abs(r[0] / s[5] - 1) <= (5e-4 if s[0].startswith("checkerboard") else 1e-4) for s, r in cal)
+    cb = [(s, r) for s, r in cal if s[0].startswith("checkerboard")][0]
+    ok = ok and rms_rel(cb[1][2], -0.5 * cb[0][1][..., None] * cb[0][2], cb[0][3]) <= 1e-3
+    L += ["", "**Calibration: %s.**" % ("reference calibrated" if ok else "not calibrated: stop"), ""]
+    idx = [i for i, s in enumerate(states) if s[5] is None]
+    L += ["## Candidates (%d states)" % len(idx), "",
+          "| candidate | max dE | max (dE + 2u) | max dH | max (dH + 2u_H) | reading |", "|---|---|---|---|---|---|"]
+    out = {}
+    for c in CANDIDATES:
+        f = HERE / "runs" / ("v1_newell_%s_%s.npz" % (prefix, c))
+        if not f.exists():
+            L.append("| %s | not computed | | | | |" % c)
+            continue
+        Z = np.load(f)
+        dE = np.array([(float(Z["E_%d" % i]) - ref[i][0]) / ref[i][0] for i in idx])
+        uE = np.array([ref[i][1] for i in idx])
+        dH = np.array([rms_rel(Z["H_%d" % i], ref[i][2], states[i][3]) for i in idx])
+        uH = np.array([ref[i][3] for i in idx])
+        cls = v1_classify(dE, uE, dH, uH)
+        out[c] = {"dE": dE.tolist(), "dH": dH.tolist(), "reading": cls}
+        L.append("| %s | %+.4f %% | %.4f %% | %.4f %% | %.4f %% | %s |" % (
+            c, 100 * dE[np.argmax(np.abs(dE))], 100 * np.max(np.abs(dE) + 2 * uE), 100 * dH.max(),
+            100 * np.max(dH + 2 * uH), cls))
+    valid = [c for c in out if out[c]["reading"] == "valid"]
+    best = min(valid, key=lambda c: max(np.max(np.abs(out[c]["dE"])) / LIM_E, np.max(out[c]["dH"]) / LIM_H)) \
+        if (valid and ok) else None
+    L += ["", "**Final setting: %s.**" % (best if best else "none (stop and report)")]
+    import json
+    (HERE / "runs" / ("v1_%s.json" % prefix)).write_text(json.dumps(
+        {"calibrated": ok, "candidates": out, "final": best}, indent=1))
+    print("\n".join(L))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "v1_ref":
+        v1_ref(sys.argv[2])
+    elif len(sys.argv) > 2 and sys.argv[1] == "v1_newell":
+        v1_newell(sys.argv[2], sys.argv[3:] or CANDIDATES)
+    elif len(sys.argv) > 2 and sys.argv[1] == "v1_report":
+        v1_report(sys.argv[2])
+    else:
+        legacy()

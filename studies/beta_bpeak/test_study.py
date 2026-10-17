@@ -1791,3 +1791,31 @@ def test_run_loops_uses_magnumnp_of_its_checkout(tmp_path):
     out = subprocess.run([sys.executable, "-c", code], cwd=here, env=env, capture_output=True, text=True, timeout=600)
     assert out.returncode == 0, out.stderr
     assert pathlib.Path(out.stdout.strip().splitlines()[-1]).parent == here.parent.parent / "magnumnp"
+
+
+def test_alias_v1_helpers():
+    """check_demag_alias (PLAN 4.12 V1): the trace of the alias kernel factorises; E from the Fourier form equals
+    -1/2 mu0 <M.H> / K_d; the checkerboard field is -c M in every cell with c -> 1/2 after the Gm fit; gm_fit removes
+    1/Gm and 1/Gm^2 terms; the reading of a candidate."""
+    import check_demag_alias as A
+    K = A.alias_kernel(4, 2)
+    assert A.kernel_trace_error(4, 2, K) < 1e-12
+    g = np.random.default_rng(3)
+    M = g.normal(size=(4, 4, 4, 3)) * A.Ms
+    e, H = A.alias_energy_field(M, K)
+    assert e == pytest.approx(-(M * H).sum() / (A.Ms ** 2 * 64), rel=1e-12)
+    i, j, k = np.meshgrid(*[np.arange(4)] * 3, indexing="ij")
+    s = (-1.0) ** (i + j)
+    Mc = A.Ms * np.stack([s, -s, 0 * s], -1) / math.sqrt(2)
+    res = [A.alias_energy_field(Mc, A.alias_kernel(4, gm)) for gm in A.GMS_V1]
+    e0, el = A.gm_fit(*[r[0] for r in res])
+    h0, hl = A.gm_fit(*[r[1] for r in res])
+    assert e0 == pytest.approx(0.5, rel=5e-4)
+    assert A.rms_rel(h0, -0.5 * Mc, np.ones((4, 4, 4), bool)) < 1e-3
+    x = 1.0 / np.array(A.GMS_V1, float)
+    v = 0.3 + 0.2 * x - 0.7 * x * x
+    assert A.gm_fit(*v)[0] == pytest.approx(0.3, abs=1e-14)
+    z = np.zeros(3)
+    assert A.v1_classify(z + 1e-4, z + 1e-5, z + 1e-3, z + 1e-4) == "valid"
+    assert A.v1_classify(z + 1e-2, z + 1e-5, z + 1e-3, z + 1e-4) == "not valid"
+    assert A.v1_classify(z + 2e-4, z + 1e-4, z + 1e-3, z + 1e-4) == "not determined"
