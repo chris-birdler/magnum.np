@@ -51,6 +51,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 B_SNAP_CELL = 15.0      # bytes per cell of one snapshot (vti, fp32, measured 47.7 MB / 148^3 on the instance)
 B_PT_CELL = 12.0        # bytes per cell of init.pt / checkpoint.pt (measured 38.9 MB / 148^3)
 B_ACC_CELL = 40.0       # bytes per cell of one acc_*.npz (p 4 + m0 12 + m1 24; particle cells only: upper bound)
+B_HARM_CELL = 4.0       # bytes per cell and harmonic of mk2 in acc_*.npz with --acc_harm (float32; PLAN 4.13 S11)
 
 
 def job_args(args):
@@ -66,7 +67,9 @@ def job_args(args):
 
 
 def expected_bytes(args):
-    """Upper estimate of the bytes that a job writes into its run folder (snapshots + state files)."""
+    """Upper estimate of the bytes that a job writes into its run folder (snapshots + state files). PLAN 4.13 S11:
+    with --min_calm (online stop) one more snapshot cycle during a stage (snapshot cleanup, S6); --keep_stage_ckpt one
+    state file per stage; --acc_harm K the harmonic maps."""
     from anisotropy_model import box_edge
     d = job_args(args)
     a_lex, _ = box_edge(float(d["d_lex"][0]), float(d["phi"][0]))
@@ -75,9 +78,13 @@ def expected_bytes(args):
     n_snap = 0
     if phases > 0:
         n_amp = len(d["snap_mT"]) if "snap_mT" in d else len(d.get("b_list", [])) or int(d.get("n_amp", ["7"])[0])
-        n_snap = phases * int(d.get("snap_cycles", ["1"])[0]) * n_amp
-    n_acc = (len(d.get("b_list", [])) or int(d.get("n_amp", ["7"])[0])) if "acc" in d else 0
-    return cells * (n_snap * B_SNAP_CELL + 2 * B_PT_CELL + n_acc * B_ACC_CELL)
+        n_snap = phases * (int(d.get("snap_cycles", ["1"])[0]) * n_amp + (1 if int(d.get("min_calm", ["0"])[0]) > 0
+                                                                            else 0))
+    n_stage = len(d.get("b_list", [])) or int(d.get("n_amp", ["7"])[0])
+    n_acc = n_stage if "acc" in d else 0
+    k_harm = int(d.get("acc_harm", ["0"])[0]) if n_acc else 0
+    n_pt = 2 + (n_stage if "keep_stage_ckpt" in d else 0)
+    return cells * (n_snap * B_SNAP_CELL + n_pt * B_PT_CELL + n_acc * (B_ACC_CELL + k_harm * B_HARM_CELL))
 
 
 def folder_bytes(p):

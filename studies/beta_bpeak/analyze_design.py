@@ -132,12 +132,20 @@ def rerun_dir(d):
     return r if (r / "DONE").exists() else None
 
 
-def load_runs(runs, alpha=0.1, reruns=False):
+def design_pattern(suffix=""):
+    """Run names of the design: PATTERN, or with a suffix (PLAN 4.13 S10: "_nx" for the new setup). The old and the
+    new runs never mix in one load."""
+    return PATTERN if not suffix else re.compile(r"^(S\d{3}|C\d|K\d_\d)%s$" % re.escape(suffix))
+
+
+def load_runs(runs, alpha=0.1, reruns=False, suffix=""):
     """Records of the design runs. reruns=True (PLAN 4.5, steady analysis only): a finished X_mc2 replaces X;
-    rec["name"] is then the folder used (X_mc2), rec["orig"] the design name X."""
+    rec["name"] is then the folder used (X_mc2), rec["orig"] the design name X. suffix (PLAN 4.13): load the runs
+    <design name><suffix> instead."""
     recs, skipped = [], []
+    pat = design_pattern(suffix)
     for d0 in sorted(pathlib.Path(runs).iterdir()):
-        if not d0.is_dir() or not PATTERN.match(d0.name):
+        if not d0.is_dir() or not pat.match(d0.name):
             continue
         d = (rerun_dir(d0) or d0) if reruns else d0
         try:

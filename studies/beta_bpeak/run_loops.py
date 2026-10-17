@@ -71,6 +71,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import time
@@ -96,7 +97,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "b_tol": 0.0,                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
             "atol_cycles": None, "rtol_cycles": None,              # 2026-10-16, PROTOKOLL 7.108
             "strayfield_cycles": None, "geom_dx_lex": None,       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
-            "precision_cycles": None}                             # 2026-10-17, decision Chris (fp64 test)
+            "precision_cycles": None,                             # 2026-10-17, decision Chris (fp64 test)
+            "relax_tol_E_abs": None}                              # 2026-10-17, PLAN 4.13 S7 (D1)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -107,7 +109,7 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
-             "geom_dx_lex"]
+             "geom_dx_lex", "relax_tol_E_abs"]
 
 
 def parse_args(argv=None):
@@ -169,6 +171,9 @@ def parse_args(argv=None):
                         "chunk < relax_tol_E (the max torque stays large at unresolved structures)")
     g.add_argument("--relax_chunk", type=int, default=500)
     g.add_argument("--relax_tol_E", type=float, default=1e-6)
+    g.add_argument("--relax_tol_E_abs", type=float, default=None,
+                   help="converge (PLAN 4.13 S7, D1): a chunk is quiet if |dE| / (K_d V) over the chunk is at most "
+                        "this value (an absolute threshold; a rise below it counts as quiet). Replaces relax_tol_E")
     g.add_argument("--relax_confirm", type=int, default=2,
                    help="converge: number of consecutive chunks with a relative energy change < relax_tol_E "
                         "(one quiet chunk can come before an avalanche)")
@@ -437,6 +442,32 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
     return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
 
 
+def quiet_chunk(E, E_prev, norm, tol_rel, tol_abs=None):
+    """Relaxation test of one chunk (PLAN 4.13 S7): (quiet, relative change, |dE| / norm). With tol_abs the chunk is
+    quiet if |dE| / norm <= tol_abs, else if the relative change < tol_rel. The first chunk (E_prev None) is never
+    quiet."""
+    if E_prev is None:
+        return False, float("nan"), float("nan")
+    rel = abs(E - E_prev) / abs(E) if E != 0 else float("nan")
+    d_abs = abs(E - E_prev) / norm
+    return (d_abs <= tol_abs) if tol_abs is not None else (rel < tol_rel), rel, d_abs
+
+
+SNAP_RE = re.compile(r"m_(.+)_c(\d+)_ph\d+\.vti$")
+
+
+def clean_snapshots(out, stage, keep_from):
+    """PLAN 4.13 S6: delete the snapshots of a stage with a cycle index < keep_from (keep_from None: all of them).
+    Returns the deleted names."""
+    gone = []
+    for f in pathlib.Path(out).glob("m_%s_c*_ph*.vti" % stage):
+        m = SNAP_RE.match(f.name)
+        if m and m.group(1) == stage and (keep_from is None or int(m.group(2)) < keep_from):
+            f.unlink(missing_ok=True)
+            gone.append(f.name)
+    return sorted(gone)
+
+
 def is_calm(c, tol):
     """Calm cycle: w_loop > 0 and |w_dis / w_loop - 1| <= tol (PLAN 4.5; the opposite of an event, PROTOKOLL 7.53)."""
     return c["w_loop"] > 0 and abs(c["w_dis"] / c["w_loop"] - 1.0) <= tol
@@ -679,12 +710,14 @@ def main(argv=None):
         warnings.warn("local wall width %.3g l_ex < 2 cells: walls are not resolved" % delta_min)
 
     terms = [strayfield, ExchangeField()]
+    term_names = ["demag", "exchange"]                    # PLAN 4.13 S5: names of the energy terms, same order
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
         ax_c, n_cubes = locked_cube_axes(ids, rep, args.dx_lex, a_lex, d_lex, L, args.seed)
         state.material["Ku"] = T(np.where(mag4, frac4 * K_eff, 0.0))
         state.material["Ku_axis"] = T(ax_c)
         terms.append(UniaxialAnisotropyField())
+        term_names.append("aniso_cube")
         del ax_c
     ax_p = particle_axes(e_d)
     if K_p > 0.0:
@@ -694,6 +727,7 @@ def main(argv=None):
         state.material["Kp"] = T(np.where(mag4, frac4 * K_p, 0.0))
         state.material["Kp_axis"] = T(kp_ax)
         terms.append(UniaxialAnisotropyField(Ku="Kp", Ku_axis="Kp_axis"))
+        term_names.append("aniso_particle")
         del kp_ax
     aniso_info = {"Q_eff": Q_eff, "K_eff": K_eff, "L_eff": L * lex, "L_over_dx": L / args.dx_lex,
                   "K_p": K_p, "Q_p": args.r_p * Q_eff, "cos_theta_p": np.abs(ax_p @ e_d).tolist(),
@@ -707,7 +741,13 @@ def main(argv=None):
         write_vti(geo_f, str(out / "geometry.vti"), state)
     drive = SinusoidalDrive(state, tuple(e_d))
     terms.append(drive)
+    term_names.append("drive")
     llg = LLGSolver(terms, atol=args.atol)
+
+    def term_energies():
+        """PLAN 4.13 S5: energy of each field term / (K_d V), fp64 sums (the swapped stray-field term included)."""
+        with torch.no_grad():
+            return {nm: float(tm.E(state)) / (Kd * N**3 * dx**3) for nm, tm in zip(term_names, terms)}
 
     # --- diagnostics -------------------------------------------------------
     Ms_t = state.material["Ms"]
@@ -853,7 +893,8 @@ def main(argv=None):
         t_w = time.time()
         if args.protocol == "virgin_asc" and args.relax_mode == "converge":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
-            # energy does not change any more (relative change per chunk < relax_tol_E)
+            # energy does not change any more (relative change per chunk < relax_tol_E, or with relax_tol_E_abs an
+            # absolute change per chunk <= relax_tol_E_abs, PLAN 4.13 S7)
             magf = torch.tensor(mag.reshape(-1), device=dev)
             hist, E_prev, it, converged, quiet = [], None, 0, False, 0
             while it < args.relax_maxiter:
@@ -865,12 +906,13 @@ def main(argv=None):
                     tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
                           / constants.gamma)
                     E = float(llg.E(state))
-                rel = abs(E - E_prev) / abs(E) if E_prev is not None and E != 0 else float("nan")
-                hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel,
+                q, rel, d_abs = quiet_chunk(E, E_prev, Kd * N**3 * dx**3, args.relax_tol_E, args.relax_tol_E_abs)
+                hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel, "dE_over_KdV": d_abs,
                              "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max())})
-                print("[relax] it %6d  E/K_d %.6g  rel dE %.2e  torque rms %.3g  max %.3g A/m" %
-                      (it, hist[-1]["E_over_Kd"], rel, hist[-1]["torque_rms"], hist[-1]["torque_max"]), flush=True)
-                quiet = quiet + 1 if rel < args.relax_tol_E else 0
+                print("[relax] it %6d  E/K_d %.10g  rel dE %.2e  |dE|/(K_d V) %.2e  torque rms %.3g  max %.3g A/m" %
+                      (it, hist[-1]["E_over_Kd"], rel, d_abs, hist[-1]["torque_rms"], hist[-1]["torque_max"]),
+                      flush=True)
+                quiet = quiet + 1 if q else 0
                 if quiet >= args.relax_confirm:
                     converged = True
                     break
@@ -951,6 +993,8 @@ def main(argv=None):
                "measure": st["measure"], "git_commit": config["git_commit"], "cycles": []}
         if st.get("b_target") is not None:
             rec["b_target"] = st["b_target"]
+        if args.snap_phases > 0:
+            clean_snapshots(out, st["name"], None)        # PLAN 4.13 S6: files of an earlier attempt of this stage
         fcsv = open(out / ("samples_%02d_%s.csv" % (si, st["name"])), "w")
         if harm is not None and st["measure"]:
             harm.new_stage()
@@ -980,6 +1024,7 @@ def main(argv=None):
                 cmin_c, n60_c = min(cmin_c, cmin), max(n60_c, n60)
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
 
+            e_start = term_energies()                     # PLAN 4.13 S5; the drive field is 0 at the cycle start
             sample()
             acc_on = args.acc and st["measure"] and ci >= acc_first(rec)
             snap = args.snap_phases > 0 and st["measure"] and ci >= st["n_cycles"] - args.snap_cycles
@@ -1034,7 +1079,7 @@ def main(argv=None):
                    "M_mid": M_mid, "offset": M_mid / max(M_peak, 1e-30),
                    "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin_c))))),
                    "n_pairs_gt60": int(n60_c), "frac_pairs_gt60": n60_c / max(n_pairs, 1),
-                   "steps": int(steps), "wall_s": wall, "mean_dt": period / max(steps, 1)}
+                   "steps": int(steps), "wall_s": wall, "mean_dt": period / max(steps, 1), "E_start": e_start}
             if ci > 0:
                 W_prev = rec["cycles"][-1]["W_loop"]
                 cyc["dW_rel"] = float(abs(W_loop - W_prev) / max(abs(W_loop), 1e-300))
@@ -1044,6 +1089,8 @@ def main(argv=None):
             for r in rows:
                 fcsv.write("%d," % ci + ",".join("%.9e" % v for v in (*r[:3], *r[3:6], MU0 * (r[1] + r[2]), *r[6:])) + "\n")
             fcsv.flush()
+            if snap:
+                clean_snapshots(out, st["name"], ci - args.snap_cycles + 1)   # PLAN 4.13 S6: keep the last cycles
             cycles_done += 1
             print("[%s c%d] h=%.4g  b_peak=%.4g  w_loop=%.4g  w_dis=%.4g  closure=%.2g  dW=%s  "
                   "max_angle=%.0f deg  steps=%d  dt=%.3g ps  wall=%.0f s" %
@@ -1089,6 +1136,8 @@ def main(argv=None):
                     complete = True
                     break
         fcsv.close()
+        if complete:
+            rec["E_end"] = term_energies()                # PLAN 4.13 S5: the end of the last cycle
 
         if complete and st["measure"] and args.ringdown_periods > 0:
             # ring-down test: drive on for a quarter period (to H max), then H constant; record the decay of the

@@ -27,7 +27,8 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b (replaced by V3g)
     python conv_jobs.py --newell locked > jobs/locked_n1g.txt   # PLAN 4.12 V3g, prefix N1g, geometry locked at dx 3
     python conv_jobs.py --newell tolbench > jobs/tolbench.txt   # cost of the cycle tolerance on the main-study mesh
-    python conv_jobs.py --newell corners > jobs/corners_nx.txt  # the 12 corner runs with the final stray-field setting
+    python conv_jobs.py --newell corners > jobs/corners_nx.txt  # the 12 corner runs, production setup of PLAN 4.13
+    python conv_jobs.py --newell precision > jobs/precision_nx.txt   # PLAN 4.13 precision test (fp64 against fp32)
 """
 import shlex
 
@@ -229,20 +230,43 @@ NX_SUFFIX = "_nx"
 
 
 def corner_newell_lines(src="jobs/sobol_corners.txt"):
-    """Corner test (decision Chris 2026-10-17: first the corners, then decide on a new main study): the 12 corner runs
-    of the main study again with the final setting: --strayfield newell_ext --strayfield_shells 4 and the tighter
-    tolerance of the drive cycles (--atol_cycles 1e-7 --rtol_cycles 1e-6; Chris: "auf Nummer sicher" if it costs
-    little; tolbench K1_0: +14 % steps, w_loop the same to 4 digits; 7.102: β within 0.005 for atol 1e-5 / 1e-6). The
-    relaxation keeps atol 1e-5 of the old runs; the snapshots are removed (disk space, not used for β). Name <run>_nx."""
+    """Corner test with the production setup of PLAN 4.13 (approved by Chris 2026-10-17): the 12 corner runs of the
+    old main study (same seeds and design values, name <run>_nx) with the final stray-field setting (newell_ext,
+    4 shells), the tight cycle tolerance, the relaxation with atol 1e-6 (D2) and the absolute stop threshold 3e-10
+    (D1, S7), the online stop (S1: >= 7 cycles, until 2 calm cycles, at most 15), the second drive correction (S2),
+    --acc_harm 7 (S3), --keep_stage_ckpt (S4) and the snapshots of the old main study (16 phases, 2 cycles, 9 / 50 /
+    150 mT). Order: by seed, then corner, so that d/l_ex 212 (K1, K3) and 300 (K2, K4) alternate (S11)."""
     out = []
     for n, a in job_lines(src):
         t = shlex.split(a)
-        for k in ("snap_phases", "snap_cycles", "snap_mT"):
-            t = set_arg(t, k, None)
-        for k, v in (("strayfield", ["newell_ext"]), ("strayfield_shells", ["4"]), ("atol_cycles", ["1e-07"]),
-                     ("rtol_cycles", ["1e-06"])):
+        for k, v in NX_SET:
             t = set_arg(t, k, v)
         out.append((n + NX_SUFFIX, " ".join(t)))
+    return sorted(out, key=lambda x: (x[0].split("_")[1], x[0].split("_")[0]))
+
+
+NX_SET = (("strayfield", ["newell_ext"]), ("strayfield_shells", ["4"]), ("atol", ["1e-06"]),
+          ("relax_tol_E_abs", ["3e-10"]), ("atol_cycles", ["1e-07"]), ("rtol_cycles", ["1e-06"]),
+          ("cycles_per_amp", ["7"]), ("min_calm", ["2"]), ("max_cycles_per_amp", ["15"]), ("b_tol", ["0.01"]),
+          ("acc", []), ("acc_harm", ["7"]), ("keep_stage_ckpt", []),
+          ("snap_phases", ["16"]), ("snap_cycles", ["2"]), ("snap_mT", ["9.0", "50.0", "150.0"]))
+PRECISION_RUNS = ("K1_0_nx", "K2_0_nx", "K3_0_nx", "K4_0_nx")
+
+
+def precision_lines(src="jobs/sobol_corners.txt"):
+    """Precision test of PLAN 4.13 (part 5, step 4): from the init.pt of one corner run per corner, the 9 mT stage only,
+    all other settings as the corner run, without snapshots and accumulators; <run>_p64 with --precision_cycles
+    double, <run>_p32 in fp32. Both start from the same init.pt."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in PRECISION_RUNS:
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+        t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % n]), "init_wait_h", ["0.0"])
+        out.append((n + "_p64", " ".join(set_arg(t, "precision_cycles", ["double"]))))
+        out.append((n + "_p32", " ".join(t)))
     return out
 
 
@@ -276,6 +300,7 @@ if __name__ == "__main__":
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
                 tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
+                precision_lines() if st == "precision" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

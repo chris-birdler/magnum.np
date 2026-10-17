@@ -1947,8 +1947,8 @@ def test_precision_cycles():
 
 
 def test_corner_newell_lines_and_reading():
-    """Corner test: only --strayfield, --strayfield_shells and the snapshots differ from the old corner lines;
-    eval_corners_nx.reading on synthetic values."""
+    """Corner test with the production setup of PLAN 4.13: only the keys of conv_jobs.NX_SET differ from the old
+    corner lines; d/l_ex 212 and 300 alternate; eval_corners_nx.reading on synthetic values."""
     import shlex
     import conv_jobs as CJ
     import eval_corners_nx as EN
@@ -1957,17 +1957,21 @@ def test_corner_newell_lines_and_reading():
     old = dict(job_lines(src))
     jobs = CJ.corner_newell_lines(src)
     assert len(jobs) == 12 and all(n.endswith("_nx") for n, _ in jobs)
+    assert [n for n, _ in jobs][:4] == ["K1_0_nx", "K2_0_nx", "K3_0_nx", "K4_0_nx"]
+    d = [float(get_arg(shlex.split(a), "d_lex")[0]) for _, a in jobs]
+    assert all(d[k] != d[k + 1] for k in range(11))
+    keys = {k for k, _ in CJ.NX_SET}
     for n, line in jobs:
         tok, ref = shlex.split(line), shlex.split(old[n[:-3]])
-        assert get_arg(tok, "strayfield") == ["newell_ext"] and get_arg(tok, "strayfield_shells") == ["4"]
-        assert get_arg(tok, "atol_cycles") == ["1e-07"] and get_arg(tok, "rtol_cycles") == ["1e-06"]
-        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "snap_phases",
-                                                                     "snap_cycles", "snap_mT", "atol_cycles",
-                                                                     "rtol_cycles"}:
+        for k, v in CJ.NX_SET:
+            assert get_arg(tok, k) == v, (n, k)
+        assert get_arg(tok, "relax_tol_E_abs") == ["3e-10"] and get_arg(tok, "atol") == ["1e-06"]
+        assert get_arg(tok, "snap_mT") == get_arg(ref, "snap_mT") and get_arg(tok, "acc") == []
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - keys:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
     c = {"K1": [0.01] * 3, "K2": [0.0] * 3, "K3": [0.02] * 3, "K4": [-0.01] * 3}
     assert EN.reading([0.01, 0.0, 0.02, -0.01, 0.03, -0.02, 0.0, 0.01, 0.02, -0.01, 0.0, 0.01], c)[0] == \
-        "β robust to the solver"
+        "β robust to the setup change"
     assert EN.reading([0.3, 0.25, 0.35, 0.3, 0.28, 0.32, 0.3, 0.27, 0.33, 0.29, 0.31, 0.3], c)[0] == "β shifted"
     assert EN.reading([0.3, -0.2] * 6, c)[0] == "not determined"
     assert EN.reading([0.0] * 5, c)[0] == "not determined"
@@ -1976,3 +1980,114 @@ def test_corner_newell_lines_and_reading():
     bo, bn = EN.beta_pair(o, nw)
     assert np.isfinite(bo) and bn == pytest.approx(bo)
     assert np.isnan(EN.beta_pair(o, np.where(np.arange(7) == 0, np.nan, nw))[0])
+
+
+def test_precision_lines_and_reading():
+    """PLAN 4.13 precision test: per corner a p64 and a p32 run from the same init.pt, 9 mT only, without snapshots
+    and accumulators, all other settings as the corner run; eval_precision.reading on synthetic values."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_precision as EP
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    jobs = CJ.precision_lines(src)
+    assert [n for n, _ in jobs] == [r + s for r in CJ.PRECISION_RUNS for s in ("_p64", "_p32")]
+    removed = {"snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"}
+    changed = {"b_list", "n_amp", "init_from", "init_wait_h", "precision_cycles"}
+    for n, line in jobs:
+        run = n.rsplit("_", 1)[0]
+        tok, ref = shlex.split(line), shlex.split(corners[run])
+        assert get_arg(tok, "init_from") == ["%s/init.pt" % run] and get_arg(tok, "b_list") == ["0.006"]
+        assert get_arg(tok, "precision_cycles") == (["double"] if n.endswith("_p64") else None)
+        for k in removed:
+            assert get_arg(tok, k) is None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - removed - changed:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    assert EP.reading([0.001, -0.002, 0.0, 0.003])[0] == "fp32 sufficient"
+    assert EP.reading([0.10, 0.12, 0.09, 0.11])[0] == "fp32 not sufficient"
+    assert EP.reading([0.10, -0.12, 0.09, -0.11])[0] == "not determined"
+    assert EP.reading([0.0, 0.0, float("nan"), float("nan")])[0] == "not determined"
+
+
+def test_relaxation_stop_threshold():
+    """PLAN 4.13 S7 (D1): --relax_tol_E_abs is an INIT_KEY (default None in old configs); quiet_chunk uses the absolute
+    change if it is set (a rise below the threshold is quiet), else the relative change; the first chunk is never quiet."""
+    import run_loops as RL
+    assert "relax_tol_E_abs" in RL.INIT_KEYS and RL.NEW_KEYS["relax_tol_E_abs"] is None
+    assert RL.parse_args(["--out", "x", "--d_lex", "96"]).relax_tol_E_abs is None
+    assert RL.parse_args(["--out", "x", "--d_lex", "96", "--relax_tol_E_abs", "3e-10"]).relax_tol_E_abs == 3e-10
+    norm = 2.0
+    assert RL.quiet_chunk(1.0, None, norm, 1e-6, 3e-10)[0] is False
+    q, rel, d = RL.quiet_chunk(-1e-3, -1e-3 + 5e-10, norm, 1e-6, 3e-10)
+    assert q and d == pytest.approx(2.5e-10) and rel == pytest.approx(5e-7)
+    assert RL.quiet_chunk(-1e-3 + 5e-10, -1e-3, norm, 1e-6, 3e-10)[0]            # a rise below the threshold
+    assert not RL.quiet_chunk(-1e-3, -1e-3 + 7e-10, norm, 1e-6, 3e-10)[0]
+    assert RL.quiet_chunk(1e-6, 1e-6 + 1e-12, norm, 1e-6, None)[0] is False      # relative: 1e-6 not < 1e-6
+    assert RL.quiet_chunk(1e-6, 1e-6 + 1e-13, norm, 1e-6, None)[0]
+
+
+def test_clean_snapshots(tmp_path):
+    """PLAN 4.13 S6: clean_snapshots deletes the snapshots of one stage below a cycle index (None: all of the stage);
+    other stages and other files stay."""
+    import run_loops as RL
+    for st in ("amp00", "amp03"):
+        for c in (5, 6, 7):
+            for deg in (22, 360):
+                (tmp_path / ("m_%s_c%d_ph%03d.vti" % (st, c, deg))).touch()
+    (tmp_path / "geometry.vti").touch()
+    gone = RL.clean_snapshots(tmp_path, "amp00", 6)
+    assert gone == ["m_amp00_c5_ph022.vti", "m_amp00_c5_ph360.vti"]
+    left = sorted(f.name for f in tmp_path.glob("m_amp00_*"))
+    assert left == ["m_amp00_c%d_ph%03d.vti" % (c, d) for c in (6, 7) for d in (22, 360)]
+    assert len(list(tmp_path.glob("m_amp03_*"))) == 6 and (tmp_path / "geometry.vti").exists()
+    assert len(RL.clean_snapshots(tmp_path, "amp03", None)) == 6 and not list(tmp_path.glob("m_amp03_*"))
+
+
+def test_expected_bytes_production_setup():
+    """PLAN 4.13 S11: the disk reservation counts one more snapshot cycle (online stop), the stage states and the
+    harmonic maps."""
+    import run_queue
+    import conv_jobs as CJ
+    from anisotropy_model import box_edge
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    n, args = CJ.corner_newell_lines(src)[1]                       # K2_0_nx, d/l_ex 300
+    d = run_queue.job_args(args)
+    N = round(box_edge(float(d["d_lex"][0]), float(d["phi"][0]))[0] / float(d["dx_lex"][0]))
+    per_cell = (16 * (2 * 3 + 1) * run_queue.B_SNAP_CELL + (2 + 7) * run_queue.B_PT_CELL
+                + 7 * (run_queue.B_ACC_CELL + 7 * run_queue.B_HARM_CELL))
+    assert run_queue.expected_bytes(args) == pytest.approx(N ** 3 * per_cell)
+
+
+def test_corner_flags_and_energy_balance():
+    """eval_corners_nx (PLAN 4.13 S5, S9): balance() gives d = ε + ΔE_int / w_loop = 0 for a consistent synthetic
+    stage (the drive term is left out); stage_flags on synthetic calm tails."""
+    import eval_corners_nx as EN
+    cyc, E = [], 0.0
+    for c in range(6):
+        w, eps = 1e-7, 0.01 * (c % 2)
+        dE = -eps * w                                       # W_loop = W_dis + ΔE_int
+        cyc.append({"cycle": c, "w_loop": w, "w_dis": w * (1 + eps), "closure": 0.0,
+                    "E_start": {"demag": 0.5 + E, "exchange": 0.1, "drive": 7.0 * c}})
+        E += dE
+    st = {"cycles": cyc, "E_end": {"demag": 0.5 + E, "exchange": 0.1, "drive": 0.0}, "measure": True}
+    r = EN.balance(st)
+    assert len(r) == 6 and max(abs(x[3]) for x in r) < 1e-8          # double cancellation of 0.5 + 1e-9
+    assert [x[1] for x in r] == pytest.approx([x[2] for x in r], abs=1e-8)
+    assert EN.balance({"cycles": [{"cycle": 0, "w_loop": 1.0, "w_dis": 1.0}]}) == []
+    calm = [{"cycle": c, "w_loop": 1e-7 * (1 + 0.001 * c), "w_dis": 1.005e-7, "closure": 0.0} for c in range(7)]
+    assert EN.stage_flags({"cycles": calm, "measure": True}) == (False, False)
+    eps_hi = [dict(c, w_dis=c["w_loop"] * 1.05) for c in calm]
+    assert EN.stage_flags({"cycles": eps_hi, "measure": True}) == (True, False)
+    w_sc = [dict(c, w_loop=1e-7 * (1.0 if c["cycle"] % 2 else 1.2), w_dis=1e-7 * (1.0 if c["cycle"] % 2 else 1.2))
+            for c in calm]
+    assert EN.stage_flags({"cycles": w_sc, "measure": True}) == (False, True)
+
+
+def test_design_pattern_suffix():
+    """analyze_design.design_pattern (PLAN 4.13 S10): the old names without a suffix, the new names only with it."""
+    import analyze_design as AD
+    old, new = AD.design_pattern(), AD.design_pattern("_nx")
+    assert old.match("S012") and old.match("K3_1") and not old.match("S012_nx") and not old.match("K3_1_mc2")
+    assert new.match("S012_nx") and new.match("C4_nx") and new.match("K3_1_nx") and not new.match("S012")
+    assert not new.match("K1_0_nx_p64") and not new.match("K1_0_nx_stopped")
