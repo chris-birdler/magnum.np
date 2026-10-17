@@ -1960,8 +1960,10 @@ def test_corner_newell_lines_and_reading():
     for n, line in jobs:
         tok, ref = shlex.split(line), shlex.split(old[n[:-3]])
         assert get_arg(tok, "strayfield") == ["newell_ext"] and get_arg(tok, "strayfield_shells") == ["4"]
+        assert get_arg(tok, "atol_cycles") == ["1e-07"] and get_arg(tok, "rtol_cycles") == ["1e-06"]
         for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "snap_phases",
-                                                                     "snap_cycles", "snap_mT"}:
+                                                                     "snap_cycles", "snap_mT", "atol_cycles",
+                                                                     "rtol_cycles"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
     c = {"K1": [0.01] * 3, "K2": [0.0] * 3, "K3": [0.02] * 3, "K4": [-0.01] * 3}
     assert EN.reading([0.01, 0.0, 0.02, -0.01, 0.03, -0.02, 0.0, 0.01, 0.02, -0.01, 0.0, 0.01], c)[0] == \

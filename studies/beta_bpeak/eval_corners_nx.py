@@ -2,7 +2,9 @@
 """
 Corner test (decision Chris 2026-10-17: first the corners, then decide on a new main study; rules fixed before the
 runs). The 12 corner runs of the main study (K1 … K4, 3 seeds each, dx 3 l_ex, 9 … 150 mT) again with the final
-stray-field setting (newell_ext, 4 shells; conv_jobs.py --newell corners; runs <run>_nx). Only the solver changes.
+stray-field setting (newell_ext, 4 shells) and the tighter cycle tolerance (conv_jobs.py --newell corners; runs
+<run>_nx). The tolerance does not move P (tolbench: w_loop the same to 4 digits) nor β (7.102: ≤ 0.005), so Δβ
+measures the solver.
 Value per run: β = slope of ln w over ln B at the nominal amplitudes (main-fit definition; analyze_design.run_record
 with the steady-tail rule ≥ 2 calm cycles). Paired per run: both fits use the amplitudes with a value in the old and the
 new run, at least 6 of 7 (3 old runs miss one amplitude by the steady-tail rule); Δβ = β(new) − β(old).

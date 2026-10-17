@@ -230,16 +230,18 @@ NX_SUFFIX = "_nx"
 
 def corner_newell_lines(src="jobs/sobol_corners.txt"):
     """Corner test (decision Chris 2026-10-17: first the corners, then decide on a new main study): the 12 corner runs
-    of the main study again with the final stray-field setting (--strayfield newell_ext --strayfield_shells 4); only
-    the snapshots are removed (disk space, not used for β). All other arguments are those of the old runs, also atol
-    1e-5, so that only the solver changes. Name <run>_nx."""
+    of the main study again with the final setting: --strayfield newell_ext --strayfield_shells 4 and the tighter
+    tolerance of the drive cycles (--atol_cycles 1e-7 --rtol_cycles 1e-6; Chris: "auf Nummer sicher" if it costs
+    little; tolbench K1_0: +14 % steps, w_loop the same to 4 digits; 7.102: β within 0.005 for atol 1e-5 / 1e-6). The
+    relaxation keeps atol 1e-5 of the old runs; the snapshots are removed (disk space, not used for β). Name <run>_nx."""
     out = []
     for n, a in job_lines(src):
         t = shlex.split(a)
         for k in ("snap_phases", "snap_cycles", "snap_mT"):
             t = set_arg(t, k, None)
-        t = set_arg(t, "strayfield", ["newell_ext"])
-        t = set_arg(t, "strayfield_shells", ["4"])
+        for k, v in (("strayfield", ["newell_ext"]), ("strayfield_shells", ["4"]), ("atol_cycles", ["1e-07"]),
+                     ("rtol_cycles", ["1e-06"])):
+            t = set_arg(t, k, v)
         out.append((n + NX_SUFFIX, " ".join(t)))
     return out
 
