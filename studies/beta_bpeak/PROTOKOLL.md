@@ -5611,11 +5611,53 @@ levers for the cost: implicit and IMEX integrators and the polynomial extrapolat
 (Lepadatu, IEEE Trans. Magn. 58 (2022)) in its JAX backend. Risks: its nodal and cell modes have softer cell-scale
 modes, and its PBC code is from 2026-04.
 
-**Open decisions for Chris.**
-- The instance: wait, or start a new one. The loss test needs the init.pt files of the instance. Without them, option 2
-  is the alternative.
-- The re-scope after "not converging" (PLAN 4.10).
-- A NeuralMag pilot (proposed 2026-10-16, after the loss test).
+**Loss test on dx 1.5, result (results/kext15_report.md, commit 7ecd351).**
+- The instance was online again at 2026-10-16 22:16 UTC after a restart (uptime 9 min at 22:25 UTC). The init.pt files
+  were intact. The onstart script had started the old chain_kext.sh at commit fe0b501, and its runs stopped again at
+  once with the same TypeError. I ended that chain and its queue by their PIDs. I moved the failed run folders (logs
+  only) to *_kext_fail1 and started the chain at commit 7f7349b at 22:26 UTC.
+- All 8 runs ended with exit code 0 (0.46 … 0.55 h each): the T15 runs at 22:55 … 22:59 UTC, the I15 runs at
+  23:26 … 23:29 UTC. Each run loaded its own init.pt, printed "[cycles] strayfield newell_ext", and recorded
+  magnumnp_path /root/magnum.np-kext/magnumnp.
+- d = ln P(extrapolated kernel) − ln P(4 shells) per seed (s941 … s944):
+  - T15: +0.230 / +0.009 / +0.015 / −0.063; mean +0.048 ± 0.063 (SE, n 4; 90 % CI −0.101 … +0.197).
+    **Reading T15 (decisive): "not determined".**
+  - I15: +0.008 / +0.018 / −0.109 / +0.004; mean −0.020 ± 0.030 (SE, n 4; 90 % CI −0.090 … +0.050).
+    **Reading I15: "no effect at dx 1.5".** Limit: in I15 s942 and s943 (no --b_tol) the first drive correction used
+    the b of the disturbed cycle 0. Their b_peak / b_target is 0.968 and 0.975 (old runs 1.001 and 0.998). Against the
+    old runs this shifts ln P by about −0.07 and −0.05 (estimate with β ≈ 2).
+- Facts on the measuring method:
+  - The new runs start from a state relaxed with the 4-shell kernel. In cycles 0 and 1 they show large transients
+    (closure up to 0.149, |ε| up to 360). The old T15 runs had |ε| ≤ 0.12 in cycle 0; the old I15 runs s941 and s942
+    (no change of kernel, the cycles directly after the virgin relaxation) had transients of the same size.
+  - T15 s941: tail P 1.752 against 1.391 W/cm³ (+26 %).
+  - Observation (n 4, not a test): in the order of the estimated 4-shell error of the T15 states (s941 0.05 %, s943
+    1.9 %, s942 2.8 %, s944 3.1 %), d falls: +0.230, +0.015, +0.009, −0.063.
+- μ_r = b_peak / h (b = B / J_s, h = H / M_s) with the extrapolated kernel against 4 shells, same relaxed state:
+  T15 +0.33 ± 0.15 %, I15 −0.01 ± 0.11 % (SE, n 4). The I15 runs s942 and s943 compare drives with an h 3.6 % and
+  2.0 % lower.
+- Interpretation (n 4, not a test): the large d of T15 s941 can come from a change to another metastable state that
+  the transient of the kernel change caused. The test cannot separate the kernel effect from this disturbance.
+- Scatter over the seeds, 9 mT, 4 seeds per arm, B0b and N0b: SD of ln μ_r 0.004 … 0.013, SD of ln P 0.07 … 1.13. The
+  seed also sets the cube axes and the offsets of the grains, so this scatter includes the realisation; it is not a
+  measure of the state dependence alone.
+- Mesh steps of μ_r in the T arm (ratio − 1, mean ± SE over the seeds, n 4): N0b −2.8 ± 0.2 % (dx 3 → 1.5) and
+  −1.1 ± 0.3 % (dx 1.5 → 0.75); B0b −4.9 ± 0.4 % and −2.9 ± 0.4 %.
+- Check of an earlier result (7.105 data, recomputed 2026-10-17). The alias sum truncates the Fourier sum over the
+  aliases at |G_a| ≤ Gm. An interpolation c0 + c1 / Gm + c2 / Gm² through Gm = 4, 8, 16 (3 points, 3 parameters)
+  gives c0 within 0.002 % of the exact cube and uniform energies, and −0.028 % from 0.5 K_d for the checkerboard
+  (the exact value of a cell checkerboard, PLAN 4.12). Newell extrapolated from (2, 4) deviates from c0 by +0.019 %
+  (B0b I3 s941) and +0.016 % (B0b T3 s941), thus they agree within about 0.03 %; Newell with 4 shells by +0.13 % and
+  +0.04 %. This replaces the statement of 7.105 "within 0.3 %" (0.26 %, linear extrapolation in 1 / Gm).
+- Consequence: the error of the N0b loss values from the 4 shells stays open.
+
+**Decision of Chris (2026-10-17).** The goal is the validation of the final stray-field setting (shells,
+extrapolation) against an independent reference, and then its mesh convergence: PLAN 4.12 (approved by Chris
+2026-10-17; Chris delegated the decision after V1 to the plan readings: continue with V3 only if a candidate is
+"valid" and the reference is calibrated).
+
+**Open decisions for Chris.** The re-scope after "not converging" (PLAN 4.10); a NeuralMag pilot (proposed
+2026-10-16).
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 

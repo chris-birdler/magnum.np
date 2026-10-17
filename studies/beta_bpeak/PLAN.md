@@ -1028,7 +1028,7 @@ exit codes in the log, a done marker); a smoke run of run_loops.py with --strayf
 field energy (estimate, PROTOKOLL 7.105); the converged relaxation can take longer with the new energy landscape; with
 n 4 the readings resolve only large changes (the SE of Δ with DemagFieldPBC was 0.17 … 0.31).
 
-### 4.12 Validation of the final stray-field solver (2026-10-17, decision of Chris; draft, waits for the approval of Chris)
+### 4.12 Validation of the final stray-field solver (2026-10-17, decision of Chris; approved 2026-10-17, Chris delegated the decision after V1 to its readings)
 
 Goal: select the final stray-field setting and validate it against an independent reference. The setting is the
 Newell cell coupling with k image shells per side, with or without the extrapolation in k. After that, a separate step
