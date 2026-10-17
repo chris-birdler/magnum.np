@@ -1829,3 +1829,38 @@ def test_alias_torch_kernel_and_fine_gm():
     assert np.allclose(A.alias_kernel_torch(4, 3, "cpu"), A.alias_kernel(4, 3), rtol=1e-12, atol=1e-15)
     x = 1.0 / np.array(A.GMS_FINE, float)
     assert A.gm_fit(*(0.3 + 0.2 * x - 0.7 * x * x))[0] == pytest.approx(0.3, abs=1e-14)
+
+
+def test_final_lines_and_v3_reading():
+    """PLAN 4.12 V3: conv_jobs.final_lines change only the planned arguments against N0b (strayfield newell_ext, the
+    cycle tolerances, --b_tol on all lines, the T transfer from N1b_F); eval_v3.conv_reading on synthetic values."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_v3 as V
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    n0 = dict(CJ.newell_lines(1, src))
+    n0.update(CJ.newell_lines(2, src))
+    jobs = CJ.final_lines(src)
+    assert len(jobs) == 20 and [n for n, _ in jobs][:4] == ["N1b_F_s%d" % s for s in range(941, 945)]
+    for n, line in jobs:
+        tok, ref = shlex.split(line), shlex.split(n0[n.replace("N1b", "N0b")])
+        assert get_arg(tok, "strayfield") == ["newell_ext"] and get_arg(tok, "strayfield_shells") == ["4"]
+        assert get_arg(tok, "b_tol") == ["0.01"] and get_arg(tok, "atol_cycles") == ["1e-07"]
+        assert get_arg(tok, "rtol_cycles") == ["1e-06"]
+        if "_T" in n:
+            assert get_arg(tok, "init_transfer") == ["N1b_F_s%s/init.pt" % n[-3:]]
+        planned = {"strayfield", "b_tol", "atol_cycles", "rtol_cycles", "init_transfer"}
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - planned:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    S = range(941, 945)
+    mk = lambda f, t15, t3: {**{("F", s): f[i] for i, s in enumerate(S)}, **{("T15", s): t15[i] for i, s in enumerate(S)},
+                             **{("T3", s): t3[i] for i, s in enumerate(S)}}
+    assert V.conv_reading(mk([0, 0, 0, 0], [0.01, -0.01, 0.02, 0.0], [0.5, 0.4, 0.6, 0.5]), "T15", "F", "T3")[0] == \
+        "converged at dx 1.5"
+    assert V.conv_reading(mk([0, 0, 0, 0], [0.3, 0.25, 0.35, 0.3], [1.0, 0.9, 1.1, 1.0]), "T15", "F", "T3")[0] == \
+        "converging"
+    assert V.conv_reading(mk([0, 0, 0, 0], [-1.2, -1.0, -1.3, -1.1], [-1.0, -0.8, -1.2, -1.0]), "T15", "F", "T3")[0] == \
+        "not converging"
+    assert V.conv_reading(mk([0, 0, 0, 0], [0.5, -0.4, 0.3, -0.2], [0.2, 0.1, 0.3, 0.2]), "T15", "F", "T3")[0] == \
+        "not determined"

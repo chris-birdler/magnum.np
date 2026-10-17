@@ -10,7 +10,6 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent.parent))
 sys.path.insert(0, str(HERE))
 from magnumnp import Mesh, State, DemagFieldPBC, set_precision
-set_precision("double")
 import check_mesh_energy as C
 from anisotropy_model import box_edge
 from geometry import fcc_box
@@ -381,6 +380,7 @@ def v1_uniform075(k=4, ext=True):
 
 
 if __name__ == "__main__":
+    set_precision("double")                     # here, not at import (a test process may already have a State)
     if len(sys.argv) > 1 and sys.argv[1] == "v1_u075":
         v1_uniform075()
     elif len(sys.argv) > 1 and sys.argv[1] == "v1_cb":

@@ -24,6 +24,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell eps > jobs/newell_eps075.txt    # energy balance on dx 0.75 with 1024 samples
     python conv_jobs.py --newell tol > jobs/newell_tol075.txt    # the same with a 10 x tighter RKF45 tolerance
     python conv_jobs.py --newell kext > jobs/newell_kext15.txt   # dx 1.5 runs with the extrapolated kernel
+    python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b
 """
 import shlex
 
@@ -149,6 +150,30 @@ def newell_kext_lines(src="jobs/mesh212.txt"):
     return out
 
 
+PREFIX_FINAL = "N1b"     # PLAN 4.12 V3: the final stray-field setting (PROTOKOLL 7.109: extrapolated from 4 shells)
+FINAL_ARGS = (("strayfield", ["newell_ext"]), ("strayfield_shells", ["4"]), ("b_tol", [B_TOL]),
+              ("atol_cycles", ["1e-07"]), ("rtol_cycles", ["1e-06"]))
+FINAL_ORDER = ("F", "I3", "I15", "T15", "T3")    # the long F runs first; the T arms wait for N1b_F/init.pt
+
+
+def final_lines(src="jobs/mesh212.txt"):
+    """PLAN 4.12 V3: stage 1 and 2 of N0b again with the final setting (prefix N1b): --strayfield newell_ext
+    --strayfield_shells 4, --b_tol 0.01 on all lines, the tighter tolerance of the drive cycles, the T arms transfer
+    from N1b_F of the same seed. All other arguments as N0b."""
+    cur = dict(newell_lines(1, src))
+    cur.update(newell_lines(2, src))
+    out = []
+    for arm in FINAL_ORDER:
+        for s in SEEDS:
+            t = shlex.split(cur[name(arm, s, PREFIX_NEWELL)])
+            for k, v in FINAL_ARGS:
+                t = set_arg(t, k, v)
+            if arm.startswith("T"):
+                t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", s, PREFIX_FINAL)])
+            out.append((name(arm, s, PREFIX_FINAL), " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -176,7 +201,8 @@ if __name__ == "__main__":
     if "--newell" in sys.argv:
         st = sys.argv[sys.argv.index("--newell") + 1]
         jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
-                newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else newell_lines(int(st)))
+                newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
+                final_lines() if st == "final" else newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:
