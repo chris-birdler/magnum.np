@@ -39,4 +39,4 @@ class SinusoidalDrive(object):
 
     def E(self, state, domain=Ellipsis):
         E = -constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
-        return E[domain].sum()
+        return E[domain].sum(dtype=torch.float64)

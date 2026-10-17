@@ -197,7 +197,7 @@ class RKKYField(object):
             m1 += 0.25 * (3*state.m[:,:,(self._id1,),:] - 4*state.m[:,:,(self._id1-1,),:] + state.m[:,:,(self._id1-2,),:])
             m2 += 0.25 * (3*state.m[:,:,(self._id2,),:] - 4*state.m[:,:,(self._id2+1,),:] + state.m[:,:,(self._id2+2,),:])
 
-        E = -(dx * dy * self._J_rkky * m1 * m2).sum()
+        E = -(dx * dy * self._J_rkky * m1 * m2).sum(dtype=torch.float64)
         return E
 
 
@@ -254,4 +254,4 @@ class BiquadraticRKKYField(object):
         dy = state.mesh.dx_tensor[1].reshape(1,-1,1)
 
         E = -dx * dy * self._J_rkky_BQ * (m1*m2).sum(dim=-1,keepdim=True)**2
-        return E.sum()
+        return E.sum(dtype=torch.float64)

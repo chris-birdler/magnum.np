@@ -82,7 +82,7 @@ class UniaxialAnisotropyField2(FieldTerm):
         Ku_axis = state.material[self.Ku_axis]
 
         E = -Ku2 * torch.sum(Ku_axis * state.m, dim=3, keepdim=True)**4 * state.mesh.cell_volumes
-        return E[domain].sum()
+        return E[domain].sum(dtype=torch.float64)
 
 
 class CubicAnisotropyField(FieldTerm):
@@ -158,7 +158,7 @@ class CubicAnisotropyField(FieldTerm):
         mx, my, mz = torch.einsum('...a, ...ab-> ...b', state.m, R).unbind(dim=-1) # matmult
 
         return ((state.material[self.Kc1] * (mx**2 * my**2 + mx**2 * mz**2 + my**2 * mz**2) +
-                 state.material[self.Kc2] * (mx**2 * my**2 * mz**2)) * state.mesh.cell_volumes).sum()
+                 state.material[self.Kc2] * (mx**2 * my**2 * mz**2)) * state.mesh.cell_volumes).sum(dtype=torch.float64)
 
 
 class CubicAnisotropyField2(FieldTerm):
@@ -240,4 +240,4 @@ class CubicAnisotropyField2(FieldTerm):
             Kc3 * ((c1m**4 * c2m**4) +       \
                    (c1m**4 * c3m**4) +       \
                    (c2m**4 * c3m**4))
-        return (E * state.mesh.cell_volumes).sum()
+        return (E * state.mesh.cell_volumes).sum(dtype=torch.float64)

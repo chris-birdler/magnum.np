@@ -114,7 +114,7 @@ class MagnetoElasticField(object):
         zeta = (0.5*eps_m - eps)*sig_m
 
         E =  zeta * state.mesh.cell_volumes
-        return E[domain].sum()
+        return E[domain].sum(dtype=torch.float64)
     
 class LinearMagnetoElasticField(LinearFieldTerm):
     r"""

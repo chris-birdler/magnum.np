@@ -37,4 +37,4 @@ class LinearFieldTerm(FieldTerm):
     @torch.compile
     def E(self, state, domain = Ellipsis):
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
-        return E[domain].sum()
+        return E[domain].sum(dtype=torch.float64)   # float64 accumulation (relaxation test, PROTOKOLL 7.110)
