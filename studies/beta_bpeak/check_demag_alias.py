@@ -191,8 +191,9 @@ def v1_states(prefix):
     return out
 
 
-def v1_ref(prefix):
-    """Alias reference: per state E and H at Gm 8, 16, 32 (runs/v1_ref_<prefix>.npz), the code checks."""
+def v1_ref(prefix, gms=GMS_V1, device=None):
+    """Alias reference: per state E and H at the Gm set (runs/v1_ref_<prefix>[_<gms>].npz), the code checks. device:
+    a torch device for the kernel (alias_kernel_torch), else numpy."""
     t0 = time.time()
     states = v1_states(prefix)
     kern, res = {}, {}
@@ -200,9 +201,9 @@ def v1_ref(prefix):
         N = ms.shape[0]
         M = ms[..., None] * m
         vals = []
-        for g in GMS_V1:
+        for g in gms:
             if (N, g) not in kern:
-                kern[(N, g)] = alias_kernel(N, g)
+                kern[(N, g)] = alias_kernel_torch(N, g, device) if device else alias_kernel(N, g)
                 print("kernel N %d Gm %d: trace error %.1e [%.0f s]" % (N, g, kernel_trace_error(N, g, kern[(N, g)]),
                                                                         time.time() - t0), file=sys.stderr, flush=True)
             e, H = alias_energy_field(M, kern[(N, g)])
@@ -211,9 +212,10 @@ def v1_ref(prefix):
         res[name] = vals
         print("%s: E %s, -1/2<M.H>/Kd - E = %.1e [%.0f s]" % (name, " ".join("%.8f" % v[0] for v in vals),
               max(abs(v[2] - v[0]) for v in vals), time.time() - t0), file=sys.stderr, flush=True)
-    np.savez(HERE / "runs" / ("v1_ref_%s.npz" % prefix),
-             **{"E_%d_%d" % (i, g): res[st[0]][j][0] for i, st in enumerate(states) for j, g in enumerate(GMS_V1)},
-             **{"H_%d_%d" % (i, g): res[st[0]][j][1] for i, st in enumerate(states) for j, g in enumerate(GMS_V1)},
+    tag = "" if tuple(gms) == GMS_V1 else "_" + "_".join(map(str, gms))
+    np.savez(HERE / "runs" / ("v1_ref_%s%s.npz" % (prefix, tag)),
+             **{"E_%d_%d" % (i, g): res[st[0]][j][0] for i, st in enumerate(states) for j, g in enumerate(gms)},
+             **{"H_%d_%d" % (i, g): res[st[0]][j][1] for i, st in enumerate(states) for j, g in enumerate(gms)},
              names=np.array([st[0] for st in states]),
              trace_err=np.array([kernel_trace_error(N, g, K) for (N, g), K in kern.items()]))
 
@@ -249,19 +251,21 @@ def v1_classify(dE, uE, dH, uH):
     return "not determined"
 
 
-def v1_report(prefix):
+def v1_report(prefix, gms=GMS_V1):
     states = v1_states(prefix)
-    R = np.load(HERE / "runs" / ("v1_ref_%s.npz" % prefix))
+    tag = "" if tuple(gms) == GMS_V1 else "_" + "_".join(map(str, gms))
+    R = np.load(HERE / "runs" / ("v1_ref_%s%s.npz" % (prefix, tag)))
     L = ["# PLAN 4.12 V1: Newell candidates against the alias sum (check_demag_alias.py v1_report %s)" % prefix, "",
-         "Energies per box volume in K_d. Reference: fit c0 + c1 / Gm + c2 / Gm² over Gm = 8, 16, 32; u: difference to "
-         "the linear extrapolation from 16 and 32. dE = (E − E_ref) / E_ref; dH = RMS over the magnetic cells of "
-         "|H − H_ref| / RMS |H_ref|. Largest trace error of the alias kernels: %.1e." % float(R["trace_err"].max()), "",
+         "Energies per box volume in K_d. Reference: fit c0 + c1 / Gm + c2 / Gm² over Gm = %s; u: difference to "
+         "the linear extrapolation from the two largest Gm. dE = (E − E_ref) / E_ref; dH = RMS over the magnetic cells of "
+         "|H − H_ref| / RMS |H_ref|. Largest trace error of the alias kernels: %.1e." % (
+             ", ".join(map(str, gms)), float(R["trace_err"].max())), "",
          "## Calibration", "", "| case | E(8) | E(16) | E(32) | E_ref | u | exact | E_ref / exact − 1 | dH vs exact |",
          "|---|---|---|---|---|---|---|---|---|"]
     ref = []
     for i, (name, ms, m, mask, dx, exact) in enumerate(states):
-        E = [float(R["E_%d_%d" % (i, g)]) for g in GMS_V1]
-        H = [R["H_%d_%d" % (i, g)] for g in GMS_V1]
+        E = [float(R["E_%d_%d" % (i, g)]) for g in gms]
+        H = [R["H_%d_%d" % (i, g)] for g in gms]
         e0, el = gm_fit(*E)
         h0, hl = gm_fit(*H)
         ref.append((e0, abs(e0 - el) / abs(e0), h0, rms_rel(hl, h0, mask)))
@@ -300,17 +304,74 @@ def v1_report(prefix):
         if (valid and ok) else None
     L += ["", "**Final setting: %s.**" % (best if best else "none (stop and report)")]
     import json
-    (HERE / "runs" / ("v1_%s.json" % prefix)).write_text(json.dumps(
+    (HERE / "runs" / ("v1_%s%s.json" % (prefix, tag))).write_text(json.dumps(
         {"calibrated": ok, "candidates": out, "final": best}, indent=1))
     print("\n".join(L))
 
 
+# PLAN 4.12 V1, finer reference (decision Chris 2026-10-17, PROTOKOLL 7.109 option 1). Reading of the checkerboard
+# check, fixed before the run: "finer reference works" if u of the checkerboard with Gm = 32, 64, 128 is at least 8 x
+# smaller than with Gm = 8, 16, 32 (prediction about 16 x, u ~ c2 / (2 Gm^2)) and |E_ref / 0.5 − 1| ≤ 0.005 %; else stop.
+# Then the 12 states with Gm = 32, 64, 128 on a GPU (v1_ref <prefix> 32 64 128), the readings of PLAN 4.12 unchanged.
+GMS_FINE = (32, 64, 128)
+
+
+def alias_kernel_torch(N, Gm, device="cuda"):
+    """alias_kernel on a torch device (float64); the gy and gz sums are vector axes."""
+    m1 = torch.fft.fftfreq(N, 1.0 / N, dtype=torch.float64, device=device) / N
+    QX, QY, QZ = [g.reshape(-1) for g in torch.meshgrid(m1, m1, m1, indexing="ij")]
+    g = torch.arange(-Gm, Gm + 1, dtype=torch.float64, device=device)[:, None]
+    tz = QZ[None, :] + g
+    sz = torch.sinc(tz) ** 2
+    K = torch.zeros((QX.numel(), 6), dtype=torch.float64, device=device)
+    for gx in range(-Gm, Gm + 1):
+        tx = QX + gx
+        sx = torch.sinc(tx) ** 2
+        for gy in range(-Gm, Gm + 1):
+            ty = QY + gy
+            sxy = sx * torch.sinc(ty) ** 2
+            t2 = tx ** 2 + ty ** 2 + tz ** 2
+            w = torch.where(t2 > 0, sxy * sz / torch.where(t2 > 0, t2, torch.ones_like(t2)), torch.zeros_like(t2))
+            K[:, 0] += (w * tx ** 2).sum(0)
+            K[:, 1] += (w * ty ** 2).sum(0)
+            K[:, 2] += (w * tz ** 2).sum(0)
+            K[:, 3] += (w * tx * ty).sum(0)
+            K[:, 4] += (w * tx * tz).sum(0)
+            K[:, 5] += (w * ty * tz).sum(0)
+    return K.cpu().numpy()
+
+
+def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE)):
+    """E_ref, u and the field error of the 16^3 checkerboard for the Gm sets; the reading of the finer reference."""
+    n = 16
+    i, j, k = np.meshgrid(*[np.arange(n)] * 3, indexing="ij")
+    s = (-1.0) ** (i + j)
+    M = Ms * np.stack([s, -s, 0 * s], -1) / math.sqrt(2)
+    mask = np.ones((n, n, n), bool)
+    res = {}
+    for gms in gms_list:
+        vals = [alias_energy_field(M, alias_kernel(n, g)) for g in gms]
+        e0, el = gm_fit(*[v[0] for v in vals])
+        h0, hl = gm_fit(*[v[1] for v in vals])
+        res[gms] = (e0, abs(e0 - el) / abs(e0), rms_rel(h0, -0.5 * M, mask))
+        print("Gm %s: E %s E_ref %.8f (E_ref / 0.5 − 1 %+.5f %%), u %.5f %%, field vs exact %.5f %%" % (
+            gms, " ".join("%.8f" % v[0] for v in vals), e0, 100 * (e0 / 0.5 - 1), 100 * res[gms][1],
+            100 * res[gms][2]), flush=True)
+    r = res[gms_list[0]][1] / res[gms_list[-1]][1]
+    ok = r >= 8 and abs(res[gms_list[-1]][0] / 0.5 - 1) <= 5e-5
+    print("u ratio %.1f. **Reading: %s.**" % (r, "finer reference works" if ok else "stop"))
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 2 and sys.argv[1] == "v1_ref":
-        v1_ref(sys.argv[2])
+    if len(sys.argv) > 1 and sys.argv[1] == "v1_cb":
+        v1_checkerboard()
+    elif len(sys.argv) > 2 and sys.argv[1] == "v1_ref":
+        a = sys.argv[3:]
+        dev = a.pop() if a and not a[-1].isdigit() else None
+        v1_ref(sys.argv[2], tuple(int(x) for x in a) or GMS_V1, dev)
     elif len(sys.argv) > 2 and sys.argv[1] == "v1_newell":
         v1_newell(sys.argv[2], sys.argv[3:] or CANDIDATES)
     elif len(sys.argv) > 2 and sys.argv[1] == "v1_report":
-        v1_report(sys.argv[2])
+        v1_report(sys.argv[2], tuple(int(x) for x in sys.argv[3:]) or GMS_V1)
     else:
         legacy()

@@ -1819,3 +1819,13 @@ def test_alias_v1_helpers():
     assert A.v1_classify(z + 1e-4, z + 1e-5, z + 1e-3, z + 1e-4) == "valid"
     assert A.v1_classify(z + 1e-2, z + 1e-5, z + 1e-3, z + 1e-4) == "not valid"
     assert A.v1_classify(z + 2e-4, z + 1e-4, z + 1e-3, z + 1e-4) == "not determined"
+
+
+def test_alias_torch_kernel_and_fine_gm():
+    """check_demag_alias (PROTOKOLL 7.109, option 1): the torch kernel equals the numpy kernel; gm_fit removes 1/Gm and
+    1/Gm^2 terms also for Gm = 32, 64, 128 (the same ratio 2)."""
+    import torch
+    import check_demag_alias as A
+    assert np.allclose(A.alias_kernel_torch(4, 3, "cpu"), A.alias_kernel(4, 3), rtol=1e-12, atol=1e-15)
+    x = 1.0 / np.array(A.GMS_FINE, float)
+    assert A.gm_fit(*(0.3 + 0.2 * x - 0.7 * x * x))[0] == pytest.approx(0.3, abs=1e-14)
