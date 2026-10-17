@@ -1028,6 +1028,94 @@ exit codes in the log, a done marker); a smoke run of run_loops.py with --strayf
 field energy (estimate, PROTOKOLL 7.105); the converged relaxation can take longer with the new energy landscape; with
 n 4 the readings resolve only large changes (the SE of Δ with DemagFieldPBC was 0.17 … 0.31).
 
+### 4.12 Validation of the final stray-field solver (2026-10-17, decision of Chris; draft, waits for the approval of Chris)
+
+Goal: select the final stray-field setting and validate it against an independent reference. The setting is the
+Newell cell coupling with k image shells per side, with or without the extrapolation in k. After that, a separate step
+measures the mesh convergence with the final setting.
+
+Terms. An image box is one periodic copy of the simulation box in the image sum of DemagField (a cube of (2k + 1)³
+boxes). The alias sum (check_demag_alias.py, PROTOKOLL 7.105) is the exact periodic demag tensor of piecewise-constant
+M on cubic cells in Fourier space. It sums the form factor of a cell (sinc² per axis) over all aliases G of each
+wave vector q of the grid, up to |G_a| ≤ Gm. It has no image sum. h = H / M_s and b = B / J_s are the reduced drive
+field and induction; μ_r = b_peak / h; ε = w_dis / w_loop − 1 (PROTOKOLL 7.108).
+
+Background (PROTOKOLL 7.105, 7.108):
+- DemagFieldPBC has a first-order error at the staircase surfaces and cell-scale null modes.
+- With 4 image shells E(4) is too small by up to 5.75 % for the N0b F states. The image sum converges as 1 / (2k + 1)².
+  The extrapolated kernel (DemagField(true_pbc=True, extrapolate=True)) agrees with the fit over k = 2 … 8 within
+  0.0095 % (code check).
+- A first check against the alias sum exists (7.105, B0b I3 and T3 s941 on dx 3). A fit c0 + c1 / Gm + c2 / Gm² over
+  Gm = 4, 8, 16 of these values gives (recomputed 2026-10-17): exact cases −0.002 %; Newell extrapolated from (2, 4)
+  +0.019 % and +0.016 %; Newell with 4 shells +0.13 % and +0.04 %. These two states have only a small 4-shell error.
+  The N0b states have a 4-shell error up to 10 × larger. The field was not compared.
+
+**V1, validation against the alias sum (static; on the local computer).**
+- Data: the relaxed N0b states I3 and T3 (dx 3) and the N0b F states (dx 0.75), downloaded from the instance with md5
+  check (about 0.35 GB). F→3 is the block average of F (run_loops.transfer_m).
+- Reference: the alias sum computes the kernel K(q) once per grid (it does not depend on M). New in
+  check_demag_alias.py: (1) the cell-averaged field of each cell from the same K(q), H_ref = −K(q) M̃(q) in Fourier space;
+  (2) Gm = 8, 16, 32; (3) the reference is the fit c0 + c1 / Gm + c2 / Gm² over 8, 16, 32, and the uncertainty u is
+  its difference to the linear extrapolation in 1 / Gm from 16 and 32. For the field, u_H is the RMS over the magnetic
+  cells of the cell-wise difference of the two extrapolations.
+- Calibration (first), with exact values:
+  - aligned cube f = 1/8, m along (111): E = 7/192;
+  - B0b geometry on dx 3, uniform m along (111): E = φ_vox (1 − φ_vox) / 3;
+  - checkerboard m = (1, −1, 0) / √2 · (−1)^(i+j) in a full box: E = 1/2 K_d and H = −M / 2 in each cell.
+  - Checks of the code: trace K(q) = Π_a Σ_G sinc²(t_a) for each q; E = −½ ⟨M · H⟩ / K_d from the field.
+  - Reading: "reference calibrated" if the energies of the cube and of the uniform B0b state agree with the exact
+    values within 0.01 %, and the checkerboard energy and field within 0.05 % and 0.1 % RMS. The checkerboard converges
+    most slowly in Gm (fit over Gm = 4, 8, 16: −0.028 %). Else stop and report.
+- States: the 12 N0b states on dx 3: F→3, I3 and T3, seeds 941 … 944.
+- Candidates, all with DemagField(true_pbc=True): k = 1, 2, 4, 8; extrapolated from (1, 2); extrapolated from (2, 4).
+- Measures per state and candidate: δE = (E − E_ref) / E_ref; δH = RMS over the magnetic cells of |H − H_ref|, divided
+  by the RMS of |H_ref| over the same cells.
+- Thresholds on dx 3. The 4-shell error has the same absolute size on all meshes (7.108); the energy of F is about
+  1/4 and the field RMS about 1/2 of that of F→3 (estimate). Thus |δE| ≤ 0.025 % and δH ≤ 0.25 % on dx 3 correspond
+  to 0.1 % and 0.5 % on dx 0.75.
+- Reading per candidate (fixed now):
+  - "valid" if |δE| + 2u ≤ 0.025 % and δH + 2 u_H ≤ 0.25 % for all 12 states;
+  - "not valid" if |δE| − 2u > 0.025 % or δH − 2 u_H > 0.25 % for one state or more;
+  - "not determined" in all other cases.
+- Predictions (from E(k) of 7.108, estimates): |δE| about 1.4 % for k = 4, 0.4 % for k = 8, 0.14 … 0.23 % for the
+  extrapolation from (1, 2), ≤ 0.01 % for the extrapolation from (2, 4). Thus k = 1, 2, 4 are negative controls: the
+  test must find them "not valid".
+- Final setting: the most accurate valid candidate. The kernel cost is small in all cases (the kernel is computed once
+  per run; for 729 image boxes about 17 min on 192³ cells on the GPU, 7.105).
+- Code path at dx 0.75: on 192³ cells the kernel loop has more than one chunk. Check: B0b geometry on dx 0.75, uniform
+  m along (111), with the final setting; reading "valid at dx 0.75" if E agrees with φ_vox (1 − φ_vox) / 3 within
+  0.01 %. This runs on the instance or on a GPU of V3 (about 20 min, estimate).
+- Cost (estimates): alias sum with Gm 32 on 48³ cells, K(q) once per grid, about 40 min; kernels for the candidates
+  about 25 … 30 min on the CPU; on the local computer, no instance cost. Code and tests before the run: the alias field,
+  the Gm fit and u, the calibration cases, the candidates and the report; tests on the calibration cases and on
+  synthetic Gm series.
+
+**V2, effect of the solver on μ_r (information, no reading).** From the loss test of PROTOKOLL 7.108 (T15 and I15,
+4 shells against extrapolated from (2, 4), same relaxed state): T15 +0.33 ± 0.15 %, I15 −0.01 ± 0.11 % (SE, n 4).
+μ_r has a small scatter, but it changes only weakly with the solver. Thus μ_r cannot validate the solver.
+
+**V3, mesh convergence with the final setting (separate go after V1).**
+- The N0b runs again with the final setting, prefix N1b: stage 1 (I3, I15) and stage 2 (F, T15, T3), seeds 941 … 944,
+  9 mT; --b_tol 0.01 on all lines; the T arms transfer from N1b_F (the stray-field setting is an INIT_KEY). The drive
+  cycles use the tighter tolerance (--atol_cycles 1e-7 --rtol_cycles 1e-6).
+- V3 changes two things against N0b: the kernel and the tolerance. The effect of the tolerance on P was tested with n 2
+  only (7.108).
+- Readings for ln P as PLAN 4.10 / 4.11, plus "not determined" if the 90 % CI of Δ(1.5 − 0.75) includes ± 0.10 and
+  0 and the shrinking from (3 − 1.5) to (1.5 − 0.75) is not clear. Information: Δ ln μ_r between the meshes
+  (mean ± SE, n 4); ε of the F tails (expected ≤ 0.03, an estimate from n 2).
+- Cost (estimates): F relaxation 2.8 … 4.8 h, 5 cycles of about 5 450 s; about 14 … 16 h on 4 GPUs, 5.7 … 6.5 $;
+  worst case 12 cycles, about 23 h, about 9.5 $.
+
+**V4, loss convergence at higher B (part of the re-scope, separate decision).** Hypothesis: at 150 mT the drive
+(h ≈ 0.015) exceeds the pinning of the staircase, so the state selection adds less scatter. The pinning estimate
+0.001 … 0.01 (7.104) comes from DemagFieldPBC; with the reference solver the staircase energy is about 2 × larger
+(estimate). Cost after V3.
+
+**Risks.**
+- The alias sum converges slowly for states with cell-scale structure (the checkerboard: −0.028 % with the fit over Gm = 4, 8, 16). Then u
+  is large and the reading is "not determined".
+- The thresholds on dx 3 come from an estimate of the energy and field ratios between dx 3 and dx 0.75.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
