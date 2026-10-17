@@ -1121,7 +1121,7 @@ Readings and cost as V3 (eval_v3.py --prefix N1g). Details and limits: PROTOKOLL
   is large and the reading is "not determined".
 - The thresholds on dx 3 come from an estimate of the energy and field ratios between dx 3 and dx 0.75.
 
-### 4.13 One production setup for the corner test and a new main study (2026-10-17, draft for the approval of Chris; two context-free reviews applied)
+### 4.13 One production setup for the corner test and a new main study (2026-10-17; two context-free reviews applied; approved by Chris 2026-10-17: the plan, D1 (b), D2 (a), D3 (c), and a credit top-up before the corner test)
 
 Goal: one setup for the corner test and for a possible new main study. Requirements of Chris (2026-10-17):
 - the corner runs give the data for all evaluations of the old main study;
