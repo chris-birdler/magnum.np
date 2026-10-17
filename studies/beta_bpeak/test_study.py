@@ -1944,3 +1944,33 @@ def test_precision_cycles():
         RL.run_precision(ns("single", "double"))
     a = RL.parse_args(["--out", "x", "--d_lex", "96", "--precision_cycles", "double", "--init_from", "X/init.pt"])
     assert a.precision == "single" and RL.run_precision(a) == "double"
+
+
+def test_corner_newell_lines_and_reading():
+    """Corner test: only --strayfield, --strayfield_shells and the snapshots differ from the old corner lines;
+    eval_corners_nx.reading on synthetic values."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_corners_nx as EN
+    from rerun_jobs import get_arg, job_lines
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    old = dict(job_lines(src))
+    jobs = CJ.corner_newell_lines(src)
+    assert len(jobs) == 12 and all(n.endswith("_nx") for n, _ in jobs)
+    for n, line in jobs:
+        tok, ref = shlex.split(line), shlex.split(old[n[:-3]])
+        assert get_arg(tok, "strayfield") == ["newell_ext"] and get_arg(tok, "strayfield_shells") == ["4"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"strayfield", "strayfield_shells", "snap_phases",
+                                                                     "snap_cycles", "snap_mT"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    c = {"K1": [0.01] * 3, "K2": [0.0] * 3, "K3": [0.02] * 3, "K4": [-0.01] * 3}
+    assert EN.reading([0.01, 0.0, 0.02, -0.01, 0.03, -0.02, 0.0, 0.01, 0.02, -0.01, 0.0, 0.01], c)[0] == \
+        "β robust to the solver"
+    assert EN.reading([0.3, 0.25, 0.35, 0.3, 0.28, 0.32, 0.3, 0.27, 0.33, 0.29, 0.31, 0.3], c)[0] == "β shifted"
+    assert EN.reading([0.3, -0.2] * 6, c)[0] == "not determined"
+    assert EN.reading([0.0] * 5, c)[0] == "not determined"
+    o = np.array([-16.0, -14.0, np.nan, -12.0, -11.2, -10.4, -9.4])
+    nw = o + 0.1
+    bo, bn = EN.beta_pair(o, nw)
+    assert np.isfinite(bo) and bn == pytest.approx(bo)
+    assert np.isnan(EN.beta_pair(o, np.where(np.arange(7) == 0, np.nan, nw))[0])

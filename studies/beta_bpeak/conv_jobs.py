@@ -27,6 +27,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b (replaced by V3g)
     python conv_jobs.py --newell locked > jobs/locked_n1g.txt   # PLAN 4.12 V3g, prefix N1g, geometry locked at dx 3
     python conv_jobs.py --newell tolbench > jobs/tolbench.txt   # cost of the cycle tolerance on the main-study mesh
+    python conv_jobs.py --newell corners > jobs/corners_nx.txt  # the 12 corner runs with the final stray-field setting
 """
 import shlex
 
@@ -223,6 +224,26 @@ def tolbench_lines(src="jobs/sobol_corners.txt"):
     return out
 
 
+CORNERS_NX = ("K1", "K2", "K3", "K4")
+NX_SUFFIX = "_nx"
+
+
+def corner_newell_lines(src="jobs/sobol_corners.txt"):
+    """Corner test (decision Chris 2026-10-17: first the corners, then decide on a new main study): the 12 corner runs
+    of the main study again with the final stray-field setting (--strayfield newell_ext --strayfield_shells 4); only
+    the snapshots are removed (disk space, not used for β). All other arguments are those of the old runs, also atol
+    1e-5, so that only the solver changes. Name <run>_nx."""
+    out = []
+    for n, a in job_lines(src):
+        t = shlex.split(a)
+        for k in ("snap_phases", "snap_cycles", "snap_mT"):
+            t = set_arg(t, k, None)
+        t = set_arg(t, "strayfield", ["newell_ext"])
+        t = set_arg(t, "strayfield_shells", ["4"])
+        out.append((n + NX_SUFFIX, " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -252,7 +273,8 @@ if __name__ == "__main__":
         jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
-                tolbench_lines() if st == "tolbench" else newell_lines(int(st)))
+                tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
+                newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:
