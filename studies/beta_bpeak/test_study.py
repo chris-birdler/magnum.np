@@ -1928,3 +1928,19 @@ def test_tolbench_lines():
         for k in {t[2:] for t in tok + ref if t.startswith("--")} - planned:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
     assert get_arg(shlex.split(dict(jobs)["TB_K2_0_tight"]), "rtol_cycles") == ["1e-06"]
+
+
+def test_precision_cycles():
+    """run_loops --precision_cycles (decision Chris 2026-10-17, fp64 test): not an INIT_KEY; only with --init_from; the
+    run then uses this precision."""
+    import types
+    import run_loops as RL
+    assert "precision_cycles" not in RL.INIT_KEYS and RL.NEW_KEYS["precision_cycles"] is None
+    ns = lambda p, pc, init=None: types.SimpleNamespace(precision=p, precision_cycles=pc, init_from=init)
+    assert RL.run_precision(ns("single", None)) == "single"
+    assert RL.run_precision(ns("single", "single")) == "single"
+    assert RL.run_precision(ns("single", "double", "X/init.pt")) == "double"
+    with pytest.raises(ValueError):
+        RL.run_precision(ns("single", "double"))
+    a = RL.parse_args(["--out", "x", "--d_lex", "96", "--precision_cycles", "double", "--init_from", "X/init.pt"])
+    assert a.precision == "single" and RL.run_precision(a) == "double"

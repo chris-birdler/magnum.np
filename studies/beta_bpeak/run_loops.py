@@ -95,7 +95,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
             "b_tol": 0.0,                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
             "atol_cycles": None, "rtol_cycles": None,              # 2026-10-16, PROTOKOLL 7.108
-            "strayfield_cycles": None, "geom_dx_lex": None}       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
+            "strayfield_cycles": None, "geom_dx_lex": None,       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
+            "precision_cycles": None}                             # 2026-10-17, decision Chris (fp64 test)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -197,6 +198,10 @@ def parse_args(argv=None):
 
     g = p.add_argument_group("numerics")
     g.add_argument("--precision", choices=["single", "double"], default="single")
+    g.add_argument("--precision_cycles", choices=["single", "double"], default=None,
+                   help="precision of the drive cycles (default: --precision). Only with --init_from: the run loads a "
+                        "state relaxed with --precision and runs all of its own work in this precision; not an "
+                        "INIT_KEY (decision Chris 2026-10-17, fp64 test)")
     g.add_argument("--atol", type=float, default=1e-5, help="RKF45 tolerance")
     g.add_argument("--atol_cycles", type=float, default=None,
                    help="RKF45 atol of the drive cycles (default: --atol). Not an INIT_KEY: the relaxation uses --atol, "
@@ -368,6 +373,17 @@ def locked_cube_axes(ids, rep, dx_lex, a_lex, d_lex, L, seed):
         return cube_axes(ids, dx_lex, a_lex, d_lex, L, seed)
     ax, n = cube_axes(ids[::rep, ::rep, ::rep], dx_lex * rep, a_lex, d_lex, L, seed)
     return upsample(ax, rep), n
+
+
+def run_precision(args):
+    """Precision of this run: --precision_cycles (only with --init_from, the run then does no relaxation) or
+    --precision."""
+    if args.precision_cycles is None or args.precision_cycles == args.precision:
+        return args.precision
+    if not args.init_from:
+        raise ValueError("--precision_cycles %s needs --init_from (the relaxation keeps --precision %s)"
+                         % (args.precision_cycles, args.precision))
+    return args.precision_cycles
 
 
 def cycle_tolerances(args):
@@ -607,7 +623,7 @@ def main(argv=None):
                           LLGSolver, accumulate_h, write_vti, normalize)
     import torch
     set_log_level(25)
-    set_precision(args.precision)
+    set_precision(run_precision(args))           # --precision_cycles with --init_from (no relaxation in this run)
     if args.timer:
         Timer.enable()
 
