@@ -16,9 +16,11 @@ The same for the I arms (ln P(I15) − ln P(F), ln P(I3) − ln P(I15)) as infor
 (mean ± SE); ε = w_dis / w_loop − 1 of the F tails per seed (expected ≤ 0.03, an estimate from n 2, PROTOKOLL 7.108).
 
     python eval_v3.py > runs/v3_n1b_report.md
+    python eval_v3.py --prefix N1g > runs/v3g_n1g_report.md     # PLAN 4.12 V3g (geometry locked at dx 3), same rules
 """
 import json
 import math
+import sys
 
 import numpy as np
 
@@ -57,10 +59,12 @@ def tail(d):
             float(np.mean([c["w_dis"] / c["w_loop"] - 1 for c in cyc])))
 
 
-def main(root=EC.R):
+def main(root=EC.R, prefix=None):
+    global PREFIX
+    PREFIX = prefix or PREFIX
     recs = EC.collect(root, PREFIX)
     text, _ = EC.report(recs)
-    text = text.replace("# B0: mesh", "# %s (final stray-field setting, PLAN 4.12 V3): mesh" % PREFIX, 1)
+    text = text.replace("# B0: mesh", "# %s (final stray-field setting, PLAN 4.12 V3 / V3g): mesh" % PREFIX, 1)
     lnP = {k: r["lnP"] for k, r in recs.items()}
     L = [text, "", "## Convergence reading (PLAN 4.11 / 4.12, pre-registered)", ""]
     for lab, (a, b, c) in (("T arm (decisive)", ("T15", "F", "T3")), ("I arm (information)", ("I15", "F", "I3"))):
@@ -84,4 +88,4 @@ def main(root=EC.R):
 
 
 if __name__ == "__main__":
-    main()
+    main(prefix=sys.argv[sys.argv.index("--prefix") + 1] if "--prefix" in sys.argv else None)

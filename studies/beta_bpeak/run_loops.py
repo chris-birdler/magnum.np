@@ -95,7 +95,7 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "strayfield": "fd", "strayfield_shells": 4,            # (acc_harm: 2026-10-12, PROTOKOLL 7.72;
             "b_tol": 0.0,                                          # b_tol: 2026-10-15, PROTOKOLL 7.107)
             "atol_cycles": None, "rtol_cycles": None,              # 2026-10-16, PROTOKOLL 7.108
-            "strayfield_cycles": None}
+            "strayfield_cycles": None, "geom_dx_lex": None}       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -105,7 +105,8 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 # (the drive, the amplitudes and alpha can differ: the relaxation runs at alpha = 1 and H = 0)
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
-             "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells"]
+             "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
+             "geom_dx_lex"]
 
 
 def parse_args(argv=None):
@@ -115,6 +116,10 @@ def parse_args(argv=None):
     g.add_argument("--dx_lex", type=float, default=3.0, help="cell size / l_ex")
     g.add_argument("--phi", type=float, default=0.65, help="packing fraction (exact; d is adjusted to the box quantum)")
     g.add_argument("--a_quant", type=float, default=12.0, help="box edge quantum / l_ex (0 = off)")
+    g.add_argument("--geom_dx_lex", type=float, default=None,
+                   help="lock the voxel geometry, the particle index and the cube axes at this coarser cell size (a "
+                        "multiple of dx; voxel surface only): each fine cell repeats its coarse voxel, so only dx "
+                        "changes between meshes (PLAN 4.12 V3g)")
     g.add_argument("--surface", choices=["voxel", "fraction"], default="voxel",
                    help="voxel: staircase surface; fraction: surface cells carry their magnetic volume "
                         "fraction f (8^3 samples); Ms, A, K_eff and K_p are scaled with f")
@@ -323,6 +328,46 @@ def cycle_strayfield(args):
         raise ValueError("--strayfield_cycles needs a Newell form in --strayfield (the mesh pbc stays)")
     return strayfield_setup(types.SimpleNamespace(strayfield=args.strayfield_cycles,
                                                   strayfield_shells=args.strayfield_shells))[1]
+
+
+def geometry_rep(args):
+    """Number of fine cells per edge of a locked coarse voxel (1 without --geom_dx_lex)."""
+    if not args.geom_dx_lex:
+        return 1
+    rep = int(round(args.geom_dx_lex / args.dx_lex))
+    if rep < 1 or not is_multiple(args.geom_dx_lex, args.dx_lex):
+        raise ValueError("--geom_dx_lex %g is not a multiple of --dx_lex %g" % (args.geom_dx_lex, args.dx_lex))
+    if rep > 1 and args.surface != "voxel":
+        raise ValueError("--geom_dx_lex needs --surface voxel")
+    return rep
+
+
+def upsample(x, rep):
+    """Repeat each cell of x [n, n, n, ...] rep times along the three grid axes."""
+    for ax in range(3):
+        x = np.repeat(x, rep, axis=ax)
+    return x
+
+
+def locked_geometry(N, d, dx, rep, sub=0):
+    """fcc_box on the mesh; with rep > 1 the voxel geometry of the cell size rep dx, repeated onto the mesh (ids and
+    frac of each coarse voxel in its rep^3 fine cells; PLAN 4.12 V3g)."""
+    from geometry import fcc_box
+    if rep == 1:
+        return fcc_box(N, d, dx, sub=sub)
+    if N % rep:
+        raise ValueError("N = %d is not a multiple of %d" % (N, rep))
+    g = fcc_box(N // rep, d, dx * rep, sub=0)
+    return dict(g, ids=upsample(g["ids"], rep), frac=upsample(g["frac"], rep))
+
+
+def locked_cube_axes(ids, rep, dx_lex, a_lex, d_lex, L, seed):
+    """cube_axes on the mesh; with rep > 1 on the coarse voxels (ids[::rep, ::rep, ::rep]) and repeated."""
+    from anisotropy_model import cube_axes
+    if rep == 1:
+        return cube_axes(ids, dx_lex, a_lex, d_lex, L, seed)
+    ax, n = cube_axes(ids[::rep, ::rep, ::rep], dx_lex * rep, a_lex, d_lex, L, seed)
+    return upsample(ax, rep), n
 
 
 def cycle_tolerances(args):
@@ -582,7 +627,8 @@ def main(argv=None):
         warnings.warn("a = %g l_ex is not a multiple of dx = %g l_ex: a -> %g l_ex" % (a_lex, args.dx_lex, N * args.dx_lex))
         a_lex = N * args.dx_lex
     d, dx = d_lex * lex, args.dx_lex * lex
-    geo = fcc_box(N, d, dx, sub=8 if args.surface == "fraction" else 0)
+    rep = geometry_rep(args)
+    geo = locked_geometry(N, d, dx, rep, sub=8 if args.surface == "fraction" else 0)
     ids = geo["ids"]
     mag = ids >= 0
     phi = geo["phi_vox"]
@@ -619,7 +665,7 @@ def main(argv=None):
     terms = [strayfield, ExchangeField()]
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
-        ax_c, n_cubes = cube_axes(ids, args.dx_lex, a_lex, d_lex, L, args.seed)
+        ax_c, n_cubes = locked_cube_axes(ids, rep, args.dx_lex, a_lex, d_lex, L, args.seed)
         state.material["Ku"] = T(np.where(mag4, frac4 * K_eff, 0.0))
         state.material["Ku_axis"] = T(ax_c)
         terms.append(UniaxialAnisotropyField())
@@ -778,7 +824,8 @@ def main(argv=None):
             if not (is_multiple(a_lex, dxf) and is_multiple(args.dx_lex, dxf)):
                 sys.exit("ERROR: dx %g l_ex of %s is not a divisor of dx %g and of a %g l_ex" % (dxf, src, args.dx_lex, a_lex))
             Nf = int(round(a_lex / dxf))
-            ids_f = fcc_box(Nf, d, dxf * lex, sub=0)["ids"]
+            rep_f = int(round(args.geom_dx_lex / dxf)) if args.geom_dx_lex else 1      # the same locked geometry
+            ids_f = locked_geometry(Nf, d, dxf * lex, rep_f)["ids"]
             m_c, tstats = transfer_m(cf["m"].numpy(), ids_f, ids)
             state.m = T(m_c)
             transfer = dict(tstats, source=str(src), dx_lex_fine=dxf)

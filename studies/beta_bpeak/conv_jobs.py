@@ -24,7 +24,8 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell eps > jobs/newell_eps075.txt    # energy balance on dx 0.75 with 1024 samples
     python conv_jobs.py --newell tol > jobs/newell_tol075.txt    # the same with a 10 x tighter RKF45 tolerance
     python conv_jobs.py --newell kext > jobs/newell_kext15.txt   # dx 1.5 runs with the extrapolated kernel
-    python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b
+    python conv_jobs.py --newell final > jobs/final_n1b.txt     # PLAN 4.12 V3, prefix N1b (replaced by V3g)
+    python conv_jobs.py --newell locked > jobs/locked_n1g.txt   # PLAN 4.12 V3g, prefix N1g, geometry locked at dx 3
 """
 import shlex
 
@@ -174,6 +175,23 @@ def final_lines(src="jobs/mesh212.txt"):
     return out
 
 
+PREFIX_LOCKED = "N1g"    # PLAN 4.12 V3g (decision Chris 2026-10-17): the final setting with the geometry locked at dx 3
+GEOM_DX = "3.0"
+
+
+def locked_lines(src="jobs/mesh212.txt"):
+    """PLAN 4.12 V3g: the N1b lines (final_lines) with --geom_dx_lex 3.0 (voxel geometry, particle index and cube axes
+    of dx 3 on all meshes) and the prefix N1g; the T arms transfer from N1g_F."""
+    out = []
+    for n, a in final_lines(src):
+        t = set_arg(shlex.split(a), "geom_dx_lex", [GEOM_DX])
+        n = n.replace(PREFIX_FINAL, PREFIX_LOCKED)
+        if "_T" in n:
+            t = set_arg(t, "init_transfer", ["%s/init.pt" % name("F", int(n.split("_s")[1]), PREFIX_LOCKED)])
+        out.append((n, " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -202,7 +220,7 @@ if __name__ == "__main__":
         st = sys.argv[sys.argv.index("--newell") + 1]
         jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
-                final_lines() if st == "final" else newell_lines(int(st)))
+                final_lines() if st == "final" else locked_lines() if st == "locked" else newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
     for n, a in jobs:

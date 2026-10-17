@@ -1864,3 +1864,43 @@ def test_final_lines_and_v3_reading():
         "not converging"
     assert V.conv_reading(mk([0, 0, 0, 0], [0.5, -0.4, 0.3, -0.2], [0.2, 0.1, 0.3, 0.2]), "T15", "F", "T3")[0] == \
         "not determined"
+
+
+def test_locked_geometry_and_lines():
+    """PLAN 4.12 V3g: --geom_dx_lex locks the voxel geometry, the particle index and the cube axes at a coarser cell
+    size (each fine cell repeats its coarse voxel; the same φ_vox on all meshes); conv_jobs.locked_lines change only
+    --geom_dx_lex and the T transfer source against the N1b lines."""
+    import shlex
+    import types
+    import run_loops as RL
+    import conv_jobs as CJ
+    from geometry import fcc_box
+    from anisotropy_model import cube_axes
+    from rerun_jobs import get_arg
+    assert "geom_dx_lex" in RL.INIT_KEYS and RL.NEW_KEYS["geom_dx_lex"] is None
+    ns = lambda g, dx, s="voxel": types.SimpleNamespace(geom_dx_lex=g, dx_lex=dx, surface=s)
+    assert RL.geometry_rep(ns(None, 0.75)) == 1 and RL.geometry_rep(ns(3.0, 0.75)) == 4 and RL.geometry_rep(ns(3.0, 3.0)) == 1
+    with pytest.raises(ValueError):
+        RL.geometry_rep(ns(3.0, 2.0))
+    with pytest.raises(ValueError):
+        RL.geometry_rep(ns(3.0, 1.5, "fraction"))
+    lex = 3.34e-9
+    a_lex, d_lex, Nc = 48.0, 26.0, 16                       # coarse cell 3 l_ex
+    gc = fcc_box(Nc, d_lex * lex, 3.0 * lex)
+    for rep in (2, 4):
+        g = RL.locked_geometry(Nc * rep, d_lex * lex, 3.0 / rep * lex, rep)
+        assert np.array_equal(g["ids"], RL.upsample(gc["ids"], rep)) and g["phi_vox"] == gc["phi_vox"]
+        ax, n = RL.locked_cube_axes(g["ids"], rep, 3.0 / rep, a_lex, d_lex, 12.0, 941)
+        axc, nc = cube_axes(gc["ids"], 3.0, a_lex, d_lex, 12.0, 941)
+        assert np.array_equal(ax, RL.upsample(axc, rep)) and list(n) == list(nc)
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "mesh212.txt")
+    n1b = dict(CJ.final_lines(src))
+    jobs = CJ.locked_lines(src)
+    assert len(jobs) == 20 and all(n.startswith("N1g_") for n, _ in jobs)
+    for n, line in jobs:
+        tok, ref = shlex.split(line), shlex.split(n1b[n.replace("N1g", "N1b")])
+        assert get_arg(tok, "geom_dx_lex") == ["3.0"]
+        if "_T" in n:
+            assert get_arg(tok, "init_transfer") == ["N1g_F_s%s/init.pt" % n[-3:]]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"geom_dx_lex", "init_transfer"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
