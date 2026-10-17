@@ -5722,6 +5722,64 @@ Gm = 4, 8, 16 permitted an estimate of u before the run, but nobody made it.
    the rule.
 4. Stop here: the final setting stays open, V3 does not start, and the 4-shell error of the N0b loss values stays open.
 
+**V1 with the finer reference (decision of Chris 2026-10-17: option 1).**
+- Checkerboard check first (rule fixed before the run in check_demag_alias.py, commit b063483: "finer reference works"
+  if u with Gm = 32, 64, 128 is at least 8 × smaller than with Gm = 8, 16, 32 and E_ref deviates from 1/2 by at most
+  0.005 %). Result: u 0.0028 % against 0.040 % (ratio 14.0; prediction about 16), E_ref −0.00008 % from 1/2.
+  **Reading: "finer reference works".**
+- The 12 states and the calibration with Gm = 32, 64, 128; the alias kernels on GPU 0 (alias_kernel_torch; the Gm 128
+  kernel on 48³ cells took 894 s); 2026-10-17 06:11 … 06:33 UTC, exit codes 0. Report: results/v1_N0b_32_64_128.md
+  (commit c464ce4; the column labels of its calibration table read E(8), E(16), E(32), but the values are for Gm 32,
+  64, 128; the code fix came after the run). The Newell candidates are the same files as before.
+- Calibration: cube, checkerboard and uniform B0b within 0.0001 % of the exact values (u ≤ 0.003 %). The largest trace
+  error of the alias kernels is 1.9·10⁻¹³. **"Reference calibrated".**
+
+| candidate | max dE | max (dE + 2u) | max dH | max (dH + 2u_H) | reading |
+|---|---|---|---|---|---|
+| k = 1 | −14.92 % | 14.92 % | 5.30 % | 5.31 % | not valid |
+| k = 2 | −5.25 % | 5.26 % | 1.87 % | 1.87 % | not valid |
+| k = 4 | −1.62 % | 1.63 % | 0.58 % | 0.58 % | not valid |
+| k = 8 | −0.45 % | 0.46 % | 0.16 % | 0.17 % | not valid |
+| extrapolated from (1, 2) | +0.19 % | 0.19 % | 0.066 % | 0.071 % | not valid |
+| extrapolated from (2, 4) | +0.0031 % | 0.0093 % | 0.0019 % | 0.0071 % | **valid** |
+
+- **Final setting: DemagField(true_pbc=True, extrapolate=True) with 4 image shells** (run_loops.py --strayfield
+  newell_ext --strayfield_shells 4).
+- The finer reference moved E_ref by +0.0030 … +0.0032 % on all 12 states; thus the largest dE of the extrapolated
+  kernel falls from +0.0063 % to +0.0031 %. The prediction of PLAN 4.12 (≤ 0.01 %) is confirmed.
+- Code path at dx 0.75 (check_demag_alias.py v1_u075, commit c14ff30; rule fixed before the run): B0b geometry on 192³
+  cells, uniform m along (111), final setting: E / exact − 1 = +0.00000 %. **"Valid at dx 0.75".** V1 is complete.
+
+**Decision of Chris (2026-10-17): V3g replaces V3 (PLAN 4.12).**
+- Question of Chris before V3: will the final solver make the loss converge? My expectation (an estimate): no. N0b
+  already used the Newell solver and gave "not converging" (ln P(T15) − ln P(F) = −1.19 ± 0.38, SE, n 4). The kernel
+  change moved ln P on dx 1.5 by +0.048 ± 0.063 (T15, SE, n 4, 90 % CI −0.10 … +0.20, "not determined", s941
+  +0.230) and −0.020 ± 0.030 (I15); F was not tested; the tolerance change left w_loop the same (n 2).
+- Proposal of Chris: change only dx and keep the voxel geometry. V3g locks the voxel geometry of dx 3 on all meshes:
+  on dx 1.5 and 0.75 each coarse cell splits into 2³ or 4³ fine cells. In all earlier series the voxel geometry of the
+  spheres changed with dx; V3g separates the discretisation of m from this change of the model.
+- Locked (run_loops.py --geom_dx_lex 3.0, commit 8831bcb): the particle index of each cell, the cube axes, φ_vox
+  (0.6476 on all three meshes; without the lock 0.6499 on dx 0.75), M_s of the void (10⁻⁸ M_s, A 0) and the virgin
+  start state (blocks of 6 l_ex). The T transfer uses the same locked geometry. Not locked: the relaxation path and
+  the time step. Single precision as in production.
+- Readings: eval_v3.py --prefix N1g (fixed before the runs): for the T arm "converged at dx 1.5", "converging", "not
+  converging" or "not determined"; the I arm and μ_r as information.
+- If P converges with the locked geometry, the numerics converge on a fixed voxel geometry. The non-convergence of
+  B0b / N0b then comes from the change of the voxel geometry between meshes, as far as the kernel and tolerance
+  changes are small (an estimate, see above). A free control: N1g_I3 against N0b_I3 (the same geometry on dx 3;
+  they differ only in the kernel and the tolerance).
+- If P does not converge, the cause is in the numerics or in the state selection at 9 mT, not in the change of the
+  voxel geometry between meshes.
+- Limit: V3g shows the convergence for a sphere built of 3 l_ex cubes with 90° edges, not for the smooth sphere.
+- Run: instance/chain_n1g.sh, jobs/locked_n1g.txt (20 jobs, prefix N1g: F first, then I3, I15, T15, T3), report
+  runs/v3g_n1g_report.md. Study tests 96 passed. Cost (estimates): 14 … 16 h on 4 GPUs, 5.7 … 6.5 $; worst case about
+  23 h, about 9.5 $.
+- Smoke test before the start (instance, d/l_ex 24, φ 0.3 so that the dx 3 voxels do not touch, one cycle): F on
+  dx 0.75 with the geometry of dx 3 relaxed (1 500 iterations) and ran its cycle; T15 on dx 1.5 took the transfer from
+  it without a cell of another particle or a zero vector; φ_vox was 0.296875 on both meshes; exit codes 0.
+- Start 2026-10-17 07:40 UTC (/root/n1g_commit 8831bcb, own worktree /root/magnum.np-n1g): the 4 F runs on the
+  4 GPUs; config.json records geom_dx_lex 3.0 and magnumnp_path /root/magnum.np-n1g/magnumnp.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

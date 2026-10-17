@@ -1094,7 +1094,12 @@ Background (PROTOKOLL 7.105, 7.108):
 4 shells against extrapolated from (2, 4), same relaxed state): T15 +0.33 ± 0.15 %, I15 −0.01 ± 0.11 % (SE, n 4).
 μ_r has a small scatter, but it changes only weakly with the solver. Thus μ_r cannot validate the solver.
 
-**V3, mesh convergence with the final setting (separate go after V1).**
+**V3g, mesh convergence with the final setting and a locked voxel geometry (decision of Chris 2026-10-17; replaces V3
+below).** The runs of V3 with --geom_dx_lex 3.0 (prefix N1g, jobs/locked_n1g.txt, commit 8831bcb): the particle
+index, the cube axes, φ_vox, M_s of the void and the virgin start are the same on dx 3, 1.5 and 0.75; only dx changes.
+Readings and cost as V3 (eval_v3.py --prefix N1g). Details and limits: PROTOKOLL 7.109.
+
+**V3, mesh convergence with the final setting (replaced by V3g, not run).**
 - The N0b runs again with the final setting, prefix N1b: stage 1 (I3, I15) and stage 2 (F, T15, T3), seeds 941 … 944,
   9 mT; --b_tol 0.01 on all lines; the T arms transfer from N1b_F (the stray-field setting is an INIT_KEY). The drive
   cycles use the tighter tolerance (--atol_cycles 1e-7 --rtol_cycles 1e-6).
