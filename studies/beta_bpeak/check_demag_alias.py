@@ -341,7 +341,7 @@ def alias_kernel_torch(N, Gm, device="cuda"):
     return K.cpu().numpy()
 
 
-def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE)):
+def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE), device=None):
     """E_ref, u and the field error of the 16^3 checkerboard for the Gm sets; the reading of the finer reference."""
     n = 16
     i, j, k = np.meshgrid(*[np.arange(n)] * 3, indexing="ij")
@@ -350,7 +350,7 @@ def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE)):
     mask = np.ones((n, n, n), bool)
     res = {}
     for gms in gms_list:
-        vals = [alias_energy_field(M, alias_kernel(n, g)) for g in gms]
+        vals = [alias_energy_field(M, alias_kernel_torch(n, g, device) if device else alias_kernel(n, g)) for g in gms]
         e0, el = gm_fit(*[v[0] for v in vals])
         h0, hl = gm_fit(*[v[1] for v in vals])
         res[gms] = (e0, abs(e0 - el) / abs(e0), rms_rel(h0, -0.5 * M, mask))
@@ -364,7 +364,7 @@ def v1_checkerboard(gms_list=(GMS_V1, GMS_FINE)):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "v1_cb":
-        v1_checkerboard()
+        v1_checkerboard(device=sys.argv[2] if len(sys.argv) > 2 else None)
     elif len(sys.argv) > 2 and sys.argv[1] == "v1_ref":
         a = sys.argv[3:]
         dev = a.pop() if a and not a[-1].isdigit() else None
