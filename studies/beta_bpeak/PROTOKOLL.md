@@ -6098,6 +6098,162 @@ throughput, and they distort the measured times (the fp64 times of K2_0 and K4_0
 uses it and waits for free GPUs. From 13:39 to 17:44 two queues shared the GPUs (solver scan and AC demagnetization
 test); since 17:44 one job per GPU.
 
+### 7.114 Bloch points in the start state: AC demagnetization and the uniform start are not clean; option C is clean on its 4 test runs and started; protocol S in test (2026-10-18 … 19)
+
+All times UTC. Terms as in 7.112 (corner run, w, V, K_d). Bloch point (BP): a cube of 2 × 2 × 2 cells inside one
+particle with the topological charge ±1. run_loops counts the BPs online with the exact cube charge (commit 5b540cb).
+The count leaves out the outer cell layer of each particle. Prepared state: the state at the start of the 9 mT stage,
+after the full preparation. Pass: one AC demagnetization (a decaying sinusoidal field) and the relaxation after it.
+Clean (reading of 7.112, fixed before the runs): no BP in the prepared state, a remanence |M| / M_s (box average)
+below 0.01, and no BP at any sample of the 9 mT stage. Rules of Chris (2026-10-18 evening): a method works if all 4
+test runs are clean; a test can cost up to 2 $ without a question; the 12 corner runs with a working method are the
+first 12 runs of a new main study (setup of PLAN 4.13 plus the new preparation). Reports: results/predemag_report.md
+(eval_predemag.py), results/initmode_report.md (eval_initmode.py); md5 of the run files in runs/md5_bloch_tests_20261019.txt.
+
+**Test runs.** The tests use the 4 corner runs with the most BPs: K2_0_nx, K2_1_nx, K4_1_nx and K3_1_nx.
+- AC demagnetization (jobs/predemag.txt). The start is the relaxed virgin state of the corner run. The field is
+  sinusoidal along the drive direction, at the drive frequency (30 MHz), with α 0.1. After each half cycle the
+  amplitude falls by the factor 0.8. The last amplitude is about 0.34 mT. Then the relaxation runs again (relaxation
+  2), and the 9 mT stage follows. There are 3 start amplitudes:
+  - "AC from 150 mT": the field amplitude of the 150 mT stage of the corner run;
+  - "AC from 300 mT": twice this field amplitude (the peak induction of the first half cycle is about 300 mT, box
+    average);
+  - "AC from saturation": the field 1 − φ in units of M_s.
+- Uniform start (way 2, jobs/initmode.txt): each particle is uniform along its own random direction. The relaxation
+  and the 9 mT stage follow.
+
+16 runs, 13:39 … 22:22, all exit code 0, 36.9 GPU-h in all. The AC test cost 30.6 GPU-h (about 3.1 $). This is
+above its estimate of 1.6 … 2.5 $ (the test started before the 2 $ rule). The uniform start cost 6.3 GPU-h (about
+0.6 $, estimate 0.3 … 0.6 $). Part of the time is lost to shared GPUs: two queues shared the GPUs from 13:39 to
+17:44. K2_0_nx_pdsat and K2_0_nx_ip shared GPU 2 from about 17:55 to 21:10, because the AC queue did not check for a
+free GPU.
+
+BPs in the prepared state:
+
+| run | random start, relaxed (corner run) | AC from 150 mT | AC from 300 mT | AC from saturation | uniform start |
+|---|---|---|---|---|---|
+| K2_0 | 9 (+4 / −5) | 1 | 0 | 2 | 8 |
+| K2_1 | 5 (+2 / −3) | 1 | 0 | 1 | 3 |
+| K4_1 | 2 (+1 / −1) | 0 | 0 | 0 | 4 |
+| K3_1 | 2 (+1 / −1) | 2 | 2 | 0 | 8 |
+
+- **Readings: all four variants are "not clean".** The remanence of all AC runs is 0.0003 … 0.0058.
+- 9 mT stage: in the 12 AC runs and in K3_1 with the uniform start, the BP count stays the same at each sample. In
+  the other 3 runs with the uniform start it changes: K2_0 8 or 7, K2_1 3 or 4, K4_1 4 or 3 (number of samples with
+  each value in bloch_00_amp00.csv). The counts do not show whether a BP forms or vanishes, or whether one BP moves
+  into and out of the outer cell layer that the count leaves out.
+- Largest BP count during a pass: from 150 mT 2 … 10, from 300 mT 2 … 13, from saturation 44 … 150.
+- The prepared state changes the 9 mT loss. The ratio P / P(corner run) of the 16 runs is 0.41 … 3.0 (n 1 per
+  cell; no effect claim per variant).
+
+**The first saturation peak removes the BPs of the random start** (bloch_predemag.csv of K2_1 and K3_1, AC from
+saturation; 128 samples per half cycle). On the rise of the first half cycle the count first increases: K2_1 from 7
+at sample 0 to 91 at sample 12, K3_1 from 2 to 26. Then it falls to 0: K2_1 from sample 15 to 121, K3_1 from sample
+15 to 124. At the peak (sample 63) the box-average magnetization is 99.5 % (K2_1) and 98.9 % (K3_1) of the saturation
+value φ M_s. When the field falls, new BPs form (K2_1: up to 49 at the end of half cycle 0, up to 117 at sample 9 of
+half cycle 1).
+
+**The uniform start forms BPs during the relaxation.** By its construction the start has no BP. After 500 relaxation
+iterations: K2_0 16, K2_1 20, K4_1 11, K3_1 15. After the relaxation: 8, 3, 4, 8 (table). The relaxed energy of K3_1
+is higher than with the random start: 1.61·10⁻³ against 0.72·10⁻³ K_d V. Decision of Chris: the uniform start is
+dropped.
+
+**Two sources of BPs (an inference from these runs).**
+1. BPs from the random start. The pair of K3_1 is in the relaxed virgin state. It survives the passes from 150 mT and
+   from 300 mT. During these passes the count is at most 2, thus no new BP forms. The pass from saturation removes it.
+2. BPs that form during the domain formation and during each reversal. Example K2_1, AC from saturation. The peak
+   induction b of a half cycle is the field amplitude plus the peak box magnetization, in units of J_s 1.5 T.
+
+   | half cycle | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 … 24 | 25 … 33 |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | b (mT) | 203 | 162 | 130 | 104 | 83 | 66 | 53 | 42 | 34 … 17 | 14 … 2.5 |
+   | BPs at the end | 2 | 0 | 2 | 0 | 1 | 0 | 0 | 1 | 1 | 1 |
+   | BPs min … max | 1 … 4 | 0 … 2 | 1 … 3 | 0 … 2 | 0 … 1 | 0 … 1 | 0 … 1 | 0 … 1 | 0 … 1 | 1 |
+
+   The count changes between 0 and 1 down to half cycle 24 (b about 17 mT). It stays at 1 from half cycle 25 (b about
+   14 mT). At K2, 2 of 6 passes ended clean: from 150 mT 0 of 2, from 300 mT 2 of 2, from saturation 0 of 2. K2_0 and
+   K2_1 are two microstructures. These 6 passes cannot separate chance from an effect of the start amplitude.
+
+**K2: the walls are resolved; the structures on the l_ex scale are not.** The model has two uniaxial anisotropies:
+the cube anisotropy K_W (cubes of edge L_eff with random axes) and the particle anisotropy K_p (one axis per particle).
+From run_loops:
+
+  K_W = K_d / L_eff²  (L_eff in units of l_ex),   K_p = r_p K_W
+
+The wall width parameter is
+
+  δ = √(A / K)
+
+The narrowest wall of the model is where the cube axis and the particle axis are parallel. There the anisotropy is
+K_W + K_p. The full width of a Bloch wall is π δ.
+
+| corner | L_eff | r_p | K_W | K_p | δ for K_W + K_p | π δ |
+|---|---|---|---|---|---|---|
+| K1 | 30 l_ex | 1.5 | 0.99 kJ/m³ | 1.49 kJ/m³ | 63 nm (6.3 cells) | 199 nm (19.9 cells) |
+| K2 | 12 l_ex | 3.0 | 6.22 kJ/m³ | 18.65 kJ/m³ | 20 nm (2.0 cells) | 63 nm (6.3 cells) |
+| K3, K4 | 18 l_ex | 1.5 | 2.76 kJ/m³ | 4.14 kJ/m³ | 38 nm (3.8 cells) | 119 nm (11.9 cells) |
+
+(J_s 1.5 T, A 10 pJ/m: l_ex 3.34 nm, K_d 895 kJ/m³, dx 10.0 nm.)
+- 7.112 gave the same δ for K2 (6 l_ex, 2 cells) and read it as "probably not resolved". This reading is withdrawn.
+  K2 is exactly at the limit of section 4 (δ at least 2 cells; run_loops warns below it). In the wall centre the
+  magnetization turns by at most 0.5 rad (29°) per cell. The full wall has 6.3 cells.
+- The grid pinning of a wall is about exp(−π² δ / dx) (an estimate from the formula of section 4). With δ for K_W +
+  K_p it is 2.5·10⁻⁹ at K2. Section 4 gives ≈ 10⁻¹⁷ with δ for K_W only.
+- Not resolved at all corners: the structures on the l_ex scale (Bloch lines, vortex cores, BPs). Their width is of
+  the order of √(A / K_d), which is l_ex = 3.3 nm (Hubert and Schäfer, Magnetic Domains). Section 1 accepts this. The
+  neighbour angles of 164 … 180° in the K2 runs (7.112) belong to these structures, not to the walls (an inference).
+- K2 has more neighbour pairs with a large angle in its relaxed virgin state (census_bloch_nx_v2.json): above 60°
+  128 … 178 against 16 … 50 at K1, K3, K4; above 90° 21 … 36 against 0 … 7. A part of these pairs belongs to the BP
+  cores. From K1_2, K3_1 and K3_2 (n 3, pairs above 60°, against the BP-free runs of the same corner) an estimate is
+  12 … 23 pairs per BP. With it and the 16 … 18 pairs of the BP-free K1 and K3 runs, K2_1 (5 BPs, 163 pairs) has more
+  pairs than its BPs explain (76 … 133); K2_0 and K2_2 do not show this. Why K2 forms more BPs is not measured.
+
+**Cost of the passes** (V100. Corner run: mean of 3 seeds. Pass: one run per corner and variant, K2 from K2_1, on a GPU
+without a second job where not marked. The relaxation after the pass from its iterations and the iteration time of
+the corner run. AC from 150 mT is not in the table, because no method uses it.)
+
+| corner | corner run (relaxation + 7 stages) | AC from 300 mT + relaxation | AC from saturation + relaxation |
+|---|---|---|---|
+| K2 | 4.8 h | +1.2 … 2.0 h (an estimate; both K2 runs shared the GPU) | +2.4 h (+50 %) |
+| K3 | 1.9 h | +0.5 h (+27 %; partly shared, an upper value) | +0.9 h (+47 %) |
+| K4 | 5.1 h | +1.4 h (+28 %) | +2.2 h (+43 %) |
+
+**Earlier tests of the start state.** 7.4 and 7.5 (d/l_ex 96, L_eff 12) tested a random start with 17 decaying
+saturating cycles after it (protocol B): B was steady and nearly centred. 7.6 found the difference between the
+relaxed random start (A) and B inside the realisation scatter (dx 1.5, one pair; σ(ln w) 0.41 at 9 mT and 0.57 at
+50 mT): A and B were equivalent. BPs were not counted then. A start without a random element was not tested before.
+
+**Decisions of Chris (2026-10-18 evening).**
+- Option C for the 12 corner runs (names <run>_ad, jobs/corners_ad300.txt): the random start, the relaxation, AC from
+  300 mT, the relaxation. A prepared state with a BP gets a new random start of the same microstructure, at most 3
+  attempts (`--bloch_free_tries 3`, commit 4f558a7). The BPs are counted at each sample.
+- K2_0_ad, K2_1_ad and K4_1_ad start from the prepared state of their clean test run <run>_nx_pd300 (init.pt, the same
+  seed and INIT_KEYS; `--init_from`, conv_jobs.ad_continue_lines). The 9 mT stage runs again, with snapshots and
+  accumulators. Their config has `--bloch_free_tries 0` like the test run, because no new start was necessary.
+- K3_1_ad starts from the random start. The other 8 corner runs start when K3_1_ad has a clean prepared state
+  (instance/gate_c8.sh); else they do not start.
+- Test of protocol S (a proposal of Chris), jobs/protocol_s.txt, eval_protocol_s.py, the same reading "clean", fixed
+  before the runs. Sequence: a uniform start along the drive direction without a relaxation; AC from saturation and
+  the relaxation; AC from 300 mT and the relaxation; if a BP remains, one more pass from 300 mT. 4 runs K2_0, K2_1,
+  K4_1, K3_1 up to the end of the 9 mT stage (names <run>_nx_ps). Cost 1.5 … 1.7 $ (an estimate). Protocol S has no
+  random element: its seed scatter comes from the microstructure only.
+
+**Operation and first results of option C.**
+- The box dispatcher (instance/dispatcher.sh: run_queue --spool --exclusive_gpu, one job per GPU) has run since 22:08.
+  K2_0_ad started at 22:11 (GPU 1) and K2_1_ad at 22:24 (GPU 3), both at commit 4f558a7.
+- K3_1_ad has run in its own queue since 21:35 (GPU 0). Attempt 0: 2 BPs (the pair again). Attempt 1: 0 BPs (22:53).
+  **Thus option C is clean on its 4 test runs** (K2_0, K2_1, K4_1 from the AC-300 test, K3_1 after one new start).
+  The gate put the 8 other corner runs into the queue at 22:53 (priority 30).
+- K4_1_ad waits for disk space. The dispatcher keeps at least 3 GB free and reserves the expected size of each running
+  job; two K2 runs with snapshots reserve 15.9 GB, K4_1_ad needs 8.6 GB. The waiting job holds its GPU worker. To use
+  GPU 2, K3_1_nx_ps runs there in its own queue since 22:55 (no snapshots, about 2 h).
+- The other protocol S runs are in the dispatcher with priority 10, before the 8 corner runs.
+- Code of protocol S (commit 143535f): `--init_mode saturated`; `--predemag_h` with several values, one pass per
+  value; with `--init_mode saturated`, an attempt after the first one of `--bloch_free_tries` is one more pass from
+  the last value. Local smoke test with forced BPs: the extra pass ran and the run ended clean. Two errors of the patch
+  were found by the smoke test and fixed before the commit: the drive direction was not passed to the uniform start (m
+  was NaN), and the sample loop overwrote the pass index.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
