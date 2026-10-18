@@ -5,6 +5,7 @@
 # /root/st_commit; runs/ is a link to the shared run folder.
 #   start: echo <commit> > /root/st_commit; cp chain_solvertest.sh /root/; add "nohup bash /root/chain_solvertest.sh >>
 #   /root/st_chain.out 2>&1 &" to /root/onstart.sh; start it the same way.
+#   bash chain_solvertest.sh now 1,3   starts at once on the GPUs 1 and 3 (idle GPUs, Chris 2026-10-18)
 B=/root/magnum.np/studies/beta_bpeak
 W=/root/magnum.np-st
 T=$W/studies/beta_bpeak
@@ -30,11 +31,12 @@ cd $T || exit 1
 L=$B/queue_solvertest.log
 echo "$(date '+%F %T') st chain (re)start at $(git log --oneline -1 | cut -c1-60)" >> $L
 # only the lines after the last (re)start of the corner chain count (the stopped start of 2026-10-17 is also in the log)
-until tac $B/queue_corners_nx.log 2> /dev/null | sed '/cx chain (re)start/q' | grep -q "corners_nx queue exit code"; do
+GPUS=${2:-0,1,2,3}
+[ "$1" = "now" ] || until tac $B/queue_corners_nx.log 2> /dev/null | sed '/cx chain (re)start/q' | grep -q "corners_nx queue exit code"; do
     sleep 120
 done
-echo "$(date '+%F %T') corner queue ended: start" >> $L
-python run_queue.py jobs/solvertest.txt --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 24 \
+echo "$(date '+%F %T') start on the GPUs $GPUS" >> $L
+python run_queue.py jobs/solvertest.txt --gpus $GPUS --min_free_gb 3 --retries 1 --job_timeout_h 24 \
     --status status_solvertest.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 rq=$?; echo "$(date '+%F %T') solvertest queue exit code $rq" >> $L
 python eval_solvertest.py > runs/solvertest_report.md 2>> $L
