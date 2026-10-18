@@ -2227,3 +2227,35 @@ def test_predemag_options():
     a = RL.parse_args(["--out", "x", "--d_lex", "96"])
     assert a.predemag_h is None and a.predemag_q == 0.8
     assert RL.parse_args(["--out", "x", "--d_lex", "96", "--predemag_h", "0.015"]).predemag_h == 0.015
+
+
+def test_init_mode_particle():
+    """--init_mode particle (Chris 2026-10-18, Bloch points, way 2): each particle uniform along its own random unit
+    vector, deterministic in init_seed, the void cells keep the block field; an INIT_KEY (old configs: block); the job
+    lines of the test differ from the corner lines only in init_mode, b_list, n_amp and the removed outputs."""
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    N, a, dx, blk = 12, 36.0, 3.0, 6.0
+    ids = -np.ones((N, N, N), int)
+    ids[1:5, 1:5, 1:5], ids[6:11, 6:11, 6:11], ids[1:5, 6:11, 1:5], ids[6:11, 1:5, 6:11] = 0, 1, 2, 3
+    m = RL.virgin_m0(N, a, dx, blk, 7, "particle", ids)
+    mb = RL.virgin_m0(N, a, dx, blk, 7)
+    for p in range(4):
+        v = m[ids == p]
+        assert np.allclose(v, v[0]) and abs(np.linalg.norm(v[0]) - 1) < 1e-12
+    assert np.allclose(m[ids < 0], mb[ids < 0])
+    assert np.allclose(m, RL.virgin_m0(N, a, dx, blk, 7, "particle", ids))
+    assert not np.allclose(m[ids >= 0], RL.virgin_m0(N, a, dx, blk, 8, "particle", ids)[ids >= 0])
+    assert "init_mode" in RL.INIT_KEYS and RL.NEW_KEYS["init_mode"] == "block"
+    assert RL.parse_args(["--out", "x", "--d_lex", "96"]).init_mode == "block"
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    removed = {"snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"}
+    for n, line in CJ.initmode_lines(src):
+        tok, ref = shlex.split(line), shlex.split(corners[n[:-3]])
+        assert get_arg(tok, "init_mode") == ["particle"] and get_arg(tok, "b_list") == ["0.006"]
+        assert get_arg(tok, "init_from") is None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - removed - {"init_mode", "b_list", "n_amp"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)

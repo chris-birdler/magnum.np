@@ -100,7 +100,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "precision_cycles": None,                             # 2026-10-17, decision Chris (fp64 test)
             "relax_tol_E_abs": None,                              # 2026-10-17, PLAN 4.13 S7 (D1)
             "init_stage": None,                                   # 2026-10-18, solver test at 150 mT (Chris)
-            "predemag_h": None, "predemag_q": 0.8}                # 2026-10-18, Bloch points (Chris)
+            "predemag_h": None, "predemag_q": 0.8,                # 2026-10-18, Bloch points (Chris)
+            "init_mode": "block"}                                 # 2026-10-18, Bloch points, way 2 (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -111,7 +112,7 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
-             "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q"]
+             "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode"]
 
 
 def parse_args(argv=None):
@@ -145,6 +146,9 @@ def parse_args(argv=None):
     g = p.add_argument_group("seeds")
     g.add_argument("--seed", type=int, default=1, help="realisation: cube axes and offsets, initial m")
     g.add_argument("--init_seed", type=int, default=None, help="seed of the random initial m (default --seed)")
+    g.add_argument("--init_mode", choices=["block", "particle"], default="block",
+                   help="virgin start (Chris 2026-10-18, Bloch points): block = random m on --init_block blocks; "
+                        "particle = each particle uniform along its own random direction")
     g.add_argument("--init_block", type=float, default=0.0,
                    help="random initial m constant on blocks of this edge / l_ex in physical coordinates "
                         "(multiple of every dx: the same start on every mesh); 0 = one direction per cell")
@@ -445,9 +449,18 @@ def transfer_m(m_f, ids_f, ids_c):
     return v, stats
 
 
-def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
+def virgin_m0(N, a_lex, dx_lex, init_block, init_seed, mode="block", ids=None):
     """Random initial m of the virgin state: isotropic unit vectors (normalised Gaussian), constant on blocks of
-    edge init_block l_ex (0: per cell); own random stream [init_seed, 0] (the cube axes use [seed, 1000 + p])."""
+    edge init_block l_ex (0: per cell); own random stream [init_seed, 0] (the cube axes use [seed, 1000 + p]).
+    mode "particle" (Chris 2026-10-18, Bloch points): each particle (ids) uniform along its own isotropic random
+    direction (stream [init_seed, 2]); the void cells keep the block field (they carry no magnetization)."""
+    if mode == "particle":
+        m0 = virgin_m0(N, a_lex, dx_lex, init_block, init_seed)
+        g = np.random.default_rng([init_seed, 2]).standard_normal((4, 3))
+        g /= np.linalg.norm(g, axis=-1, keepdims=True)
+        for p in range(4):
+            m0[ids == p] = g[p]
+        return m0
     rng = np.random.default_rng([init_seed, 0])
     if init_block > 0.0:
         nb = int(round(a_lex / init_block))
@@ -1064,7 +1077,7 @@ def main(argv=None):
             transfer = dict(tstats, source=str(src), dx_lex_fine=dxf)
             print("[init] transferred from %s (dx %g -> %g l_ex): %s" % (src, dxf, args.dx_lex, tstats), flush=True)
         else:
-            state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed))
+            state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids))
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()

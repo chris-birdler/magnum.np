@@ -32,6 +32,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell solvertest > jobs/solvertest.txt    # FD against Newell at 150 mT from the same state
     python conv_jobs.py --newell solverscan > jobs/solverscan.txt    # FD at all 7 stages of one seed per corner
     python -c "import conv_jobs as CJ; [print(*x) for x in CJ.predemag_lines(runs_dir=<study runs>)]" > jobs/predemag.txt
+    python conv_jobs.py --newell initmode > jobs/initmode.txt        # start: each particle uniform (Bloch points)
 """
 import shlex
 
@@ -350,6 +351,22 @@ def predemag_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
     return sorted(out, key=lambda x: (x[0].split("_")[-1], x[0]))
 
 
+def initmode_lines(src="jobs/sobol_corners.txt"):
+    """Test of the start "each particle uniform along its own random direction" (Chris 2026-10-18, Bloch points, way 2):
+    the 4 corner runs with the most Bloch points (PD_RUNS), virgin relaxation from this start (--init_mode particle,
+    no --init_from), then the 9 mT stage (<run>_ip). All other settings as the corner run, without snapshots and
+    accumulators."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in PD_RUNS:
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"]), "init_mode", ["particle"])
+        out.append((n + "_ip", " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -382,6 +399,7 @@ if __name__ == "__main__":
                 tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
                 precision_lines() if st == "precision" else solvertest_lines() if st == "solvertest" else
                 solverscan_lines() if st == "solverscan" else predemag_lines() if st == "predemag" else
+                initmode_lines() if st == "initmode" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
