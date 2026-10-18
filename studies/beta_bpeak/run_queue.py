@@ -5,6 +5,13 @@ Run a job file on several GPUs of one machine (one job per GPU at a time).
     python run_queue.py jobs/production.txt --gpus 0,1,2,3
     python run_queue.py jobs/production.txt --gpus 0,1,2,3,4,5,6,7 --shard 0/2   # half of the jobs
     python run_queue.py jobs/bench.txt --gpus 0 --dry
+    python run_queue.py --spool spool --gpus 0,1,2,3 --min_free_gb 3 --job_timeout_h 24   # the box dispatcher
+
+Dispatcher (Chris 2026-10-18: one queue per box): with --spool DIR the queue runs until DIR/EXIT exists. It loads
+every new job file DIR/<priority>_<tag>.jobs (lines "name args"; a smaller priority runs first, then the order of
+submission) and gives each GPU one job at a time. When all jobs of a file are done or finally failed, it writes
+DIR/<file>.done (JSON: done, failed). Submit: write the job file as DIR/<priority>_<tag>.jobs.tmp, then rename it to
+.jobs (an atomic step). A chain waits for the .done file and then runs its evaluation.
 
 * A job is skipped if runs/<name>/DONE exists.
 * An interrupted job restarts from its checkpoint when you start the queue
@@ -36,6 +43,7 @@ Unattended operation (audit 3, item 4):
   relax_maxiter (without --no_resume). Delete the file by hand to give a job new attempts.
 """
 import argparse
+import itertools
 import json
 import os
 import pathlib
@@ -169,27 +177,81 @@ def gpu_busy(gpu):
 
 def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
              burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0, gate_maxiter=200000,
-             stop_file=None, exclusive=False, busy=gpu_busy, wait_s=60.0):
+             stop_file=None, exclusive=False, busy=gpu_busy, wait_s=60.0, spool=None, spool_s=60.0, grace_s=120.0):
     """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
-    q = queue.Queue()
+    q = queue.PriorityQueue()                       # (priority, submission order, name, args)
+    seq = itertools.count()
     attempts, failed, done, disabled, alerts, gate_retried = {}, {}, [], set(), [], set()
-    for name, args in jobs:
+    lock = threading.Lock()
+    files = {}                                      # spool file -> names of its jobs not finished
+    file_of = {}                                    # job name -> spool file
+    loaded = set()
+
+    def add(name, args, prio=0):
+        """Put one job into the queue; returns False if it is already finished (DONE or excluded)."""
         if (runs / name / "DONE").exists():
             print("[skip] %s (DONE)" % name, flush=True)
-            continue
+            if name not in done:
+                done.append(name)
+            return False
         qs = load_queue_state(runs / name)
         if qs.get("excluded"):
             failed[name] = "excluded earlier: %s" % qs["excluded"]
             print("[skip] %s (%s)" % (name, failed[name]), flush=True)
-            continue
+            return False
         attempts[name] = int(qs.get("attempts", 0))
         if qs.get("gate_retried"):
             gate_retried.add(name)
             args = " ".join(shlex.quote(x) for x in shlex.split(qs["args"]) if x != "--no_resume")
-        q.put((name, args))
-    lock = threading.Lock()
+        q.put((prio, next(seq), name, args))
+        return True
+
+    def write_done(f):
+        names = [n for n, g in file_of.items() if g == f]
+        pathlib.Path(str(f) + ".done").write_text(json.dumps(
+            {"time": time.strftime("%F %T"), "done": [n for n in names if n in done],
+             "failed": {n: failed[n] for n in names if n in failed and n not in done}}, indent=1))
+        print("[file done] %s" % f.name, flush=True)
+
+    def finish(name):
+        """A job is done or finally failed: the .done file of its spool file when all its jobs are finished."""
+        f = file_of.get(name)
+        if f is None or f not in files:
+            return
+        files[f].discard(name)
+        if not files[f]:
+            del files[f]
+            write_done(f)
+
+    def scan_spool():
+        """Load the new job files of the spool (sorted by priority, then name)."""
+        for f in sorted(pathlib.Path(spool).glob("*.jobs"), key=lambda p: (int(p.name.split("_")[0]), p.name)):
+            if f in loaded:
+                continue
+            loaded.add(f)
+            prio = int(f.name.split("_")[0])
+            lines = [l.strip().partition(" ") for l in f.read_text().splitlines() if l.strip() and not l.startswith("#")]
+            with lock:
+                open_names = set()
+                for name, _, args in lines:
+                    file_of[name] = f
+                    if add(name, args, prio):
+                        open_names.add(name)
+                print("[spool] %s: %d jobs, %d to run, priority %d" % (f.name, len(lines), len(open_names), prio),
+                      flush=True)
+                if open_names:
+                    files[f] = open_names
+                else:
+                    write_done(f)
+
+    for name, args in jobs:
+        add(name, args)
+    if spool is not None:
+        pathlib.Path(spool).mkdir(parents=True, exist_ok=True)
+        scan_spool()
+    exit_file = pathlib.Path(spool) / "EXIT" if spool is not None else None
     running = {}                                    # name -> (run folder, expected bytes, gpu, start time)
     active = {"n": 0}                               # jobs taken from the queue and not finished
     t_start = time.time()
@@ -259,25 +321,35 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
 
     def worker(gpu):
         fails, bursts = [], 0                       # fails: (time, job name) on this GPU
+        free_since = None
         while True:
             if stop_file is not None and pathlib.Path(stop_file).exists():
                 # PLAN 4.5: a failed check (check_reruns.py) stops new jobs; the running jobs end normally
                 print("[stop] gpu %s: %s exists, no new job" % (gpu, stop_file), flush=True)
                 return
-            if exclusive and busy(gpu):
-                # Chris 2026-10-18: one job per GPU; wait until no other process computes on this GPU
-                with lock:
-                    if q.empty() and active["n"] == 0:
-                        return
-                time.sleep(wait_s)
-                continue
+            if exclusive:
+                # Chris 2026-10-18: one job per GPU; the GPU must be free of other processes for grace_s (another
+                # queue starts its next job within seconds after its last one ended)
+                if busy(gpu):
+                    free_since = None
+                    with lock:
+                        if spool is None and q.empty() and active["n"] == 0:
+                            return
+                    time.sleep(wait_s)
+                    continue
+                if free_since is None:
+                    free_since = time.time()
+                if time.time() - free_since < grace_s:
+                    time.sleep(min(wait_s, grace_s))
+                    continue
             try:
-                name, args = q.get(timeout=5)
+                prio, _, name, args = q.get(timeout=5)
             except queue.Empty:
                 with lock:
-                    if active["n"] == 0:            # nothing running that could come back to the queue
-                        return
+                    if active["n"] == 0 and (spool is None or exit_file.exists()):
+                        return                      # nothing running that could come back to the queue
                 continue
+            free_since = None
             with lock:
                 active["n"] += 1
             t0 = time.time()
@@ -288,6 +360,7 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                     done.append(name)
                     failed.pop(name, None)
                     print("[done] gpu %s  %s  %.2f h" % (gpu, name, h), flush=True)
+                    finish(name)
                 else:
                     failed[name] = why
                     if rc == 3:
@@ -310,7 +383,9 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                                                     "gate_retried": name in gate_retried, "args": args,
                                                     "excluded": None if retry else failed[name]})
                     if retry:
-                        q.put((name, args))
+                        q.put((prio, next(seq), name, args))
+                    else:
+                        finish(name)
                     fails = [(t, n) for t, n in fails if time.time() - t < burst_s] + [(time.time(), name)]
                 active["n"] -= 1
             if len({n for _, n in fails}) >= burst_n:
@@ -337,9 +412,18 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
             except Exception as e:                  # noqa: BLE001
                 print("[status] %r" % e, flush=True)
 
+    def spool_loop():
+        while not stop.wait(spool_s):
+            try:
+                scan_spool()
+            except Exception as e:                  # noqa: BLE001 - a bad file must not stop the dispatcher
+                print("[spool] %r" % e, flush=True)
+
     threads = [threading.Thread(target=worker, args=(g,)) for g in gpus]
     st_thread = threading.Thread(target=status_loop, daemon=True)
     st_thread.start()
+    if spool is not None:
+        threading.Thread(target=spool_loop, daemon=True).start()
     for t in threads:
         t.start()
     for t in threads:
@@ -347,7 +431,7 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
     stop.set()
     left = []
     while not q.empty():
-        left.append(q.get()[0])
+        left.append(q.get()[2])
     why = "not run (stop file)" if stop_file is not None and pathlib.Path(stop_file).exists() else "not run (no GPU left)"
     for n in left:
         failed.setdefault(n, why)
@@ -357,7 +441,8 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("jobfile")
+    ap.add_argument("jobfile", nargs="?", default=None)
+    ap.add_argument("--spool", default=None, help="dispatcher: the job files of this folder, until DIR/EXIT exists")
     ap.add_argument("--gpus", default="0", help="comma separated CUDA device ids")
     ap.add_argument("--runs", default=str(HERE / "runs"), help="output root")
     ap.add_argument("--shard", default="0/1", help="i/n: run every n-th job starting at i")
@@ -376,7 +461,7 @@ def main():
 
     i_sh, n_sh = (int(x) for x in a.shard.split("/"))
     jobs = []
-    for k, line in enumerate(l for l in open(a.jobfile) if l.strip() and not l.startswith("#")):
+    for k, line in enumerate(l for l in (open(a.jobfile) if a.jobfile else []) if l.strip() and not l.startswith("#")):
         if k % n_sh != i_sh:
             continue
         name, _, args = line.strip().partition(" ")
@@ -387,7 +472,7 @@ def main():
             print("CUDA_DEVICE=%s %s" % (gpus[0], " ".join(default_command(args, pathlib.Path(a.runs) / name))))
         return
     res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status,
-                   gate_maxiter=a.gate_maxiter, stop_file=a.stop_file, exclusive=a.exclusive_gpu)
+                   gate_maxiter=a.gate_maxiter, stop_file=a.stop_file, exclusive=a.exclusive_gpu, spool=a.spool)
     print("[end] done %d, failed %d: %s" % (len(res["done"]), len(res["failed"]),
                                            ", ".join("%s (%s)" % kv for kv in sorted(res["failed"].items()))), flush=True)
     sys.exit(0 if not res["failed"] else 1)

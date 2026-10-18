@@ -2277,5 +2277,46 @@ def test_run_queue_exclusive_gpu(tmp_path):
         return calls["g0"] <= 2
 
     res = run_queue.run_jobs([("A", "ok"), ("B", "ok")], ["g0", "g1"], tmp_path / "runs", command=_cmd, burst_n=99,
-                             exclusive=True, busy=busy, wait_s=0.05)
+                             exclusive=True, busy=busy, wait_s=0.05, grace_s=0.1)
     assert sorted(res["done"]) == ["A", "B"] and calls["g0"] >= 3
+
+
+def test_run_queue_spool_dispatcher(tmp_path):
+    """run_queue dispatcher (--spool, Chris 2026-10-18: one queue per box): job files by priority, a file submitted
+    while the dispatcher runs is loaded, <file>.done lists done and failed jobs, DIR/EXIT ends the dispatcher."""
+    import json
+    import threading
+    import time
+    import run_queue
+    spool = tmp_path / "spool"
+    spool.mkdir()
+    (spool / "20_b.jobs").write_text("B1 ok\nB2 fail\n")
+    (spool / "10_a.jobs").write_text("A1 ok\n")
+    order = []
+
+    def cmd(args, out):
+        order.append(out.name)
+        return _fake_command(args, out)
+
+    def later():
+        time.sleep(1.0)
+        (spool / "05_c.jobs.tmp").write_text("C1 ok\n")
+        (spool / "05_c.jobs.tmp").rename(spool / "05_c.jobs")
+        t_end = time.time() + 60
+        while not (spool / "05_c.jobs.done").exists() and time.time() < t_end:
+            time.sleep(0.1)
+        (spool / "EXIT").write_text("")
+
+    th = threading.Thread(target=later)
+    th.start()
+    res = run_queue.run_jobs([], ["g0"], tmp_path / "runs", retries=1, command=cmd, burst_n=99, spool=spool,
+                             spool_s=0.2)
+    th.join()
+    assert order[:3] == ["A1", "B1", "B2"] and "C1" in order
+    assert sorted(res["done"]) == ["A1", "B1", "C1"] and set(res["failed"]) == {"B2"}
+    b = json.loads((spool / "20_b.jobs.done").read_text())
+    assert b["done"] == ["B1"] and set(b["failed"]) == {"B2"}
+    assert json.loads((spool / "10_a.jobs.done").read_text())["done"] == ["A1"]
+    (spool / "30_d.jobs").write_text("A1 ok\n")          # all done already: .done at once
+    run_queue.run_jobs([], ["g0"], tmp_path / "runs", command=cmd, burst_n=99, spool=spool, spool_s=0.2)
+    assert json.loads((spool / "30_d.jobs.done").read_text())["done"] == ["A1"]
