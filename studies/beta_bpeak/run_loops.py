@@ -454,20 +454,25 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
 def stage_start(src, config):
     """--init_stage (solver test, Chris 2026-10-18): (checkpoint dict, summary, first stage). src is a stage state file
     ckpt_<i>_<stage>.pt of another run; that run (the folder of src) must agree in all INIT_KEYS (relax_maxiter only a
-    limit) and in b_list. Its stages before the next stage are copied (marked copied_from), so that the drive amplitude
-    of the next stage comes from the same b/h."""
+    limit); b_list must be its b_list or the start of it with more stages than the next stage (then the run ends with
+    the last stage of its b_list). Its stages before the next stage are copied (marked copied_from), so that the drive
+    amplitude of the next stage comes from the same b/h."""
     import torch
     src = pathlib.Path(src)
     if not src.exists():
         sys.exit("ERROR: --init_stage %s does not exist" % src)
     scfg = json.loads((src.parent / "config.json").read_text())
-    diff = [k for k in INIT_KEYS + ["b_list"] if k != "relax_maxiter" and scfg.get(k, NEW_KEYS.get(k)) != config.get(k)]
+    diff = [k for k in INIT_KEYS if k != "relax_maxiter" and scfg.get(k, NEW_KEYS.get(k)) != config.get(k)]
     if diff:
         sys.exit("ERROR: %s comes from a run with other arguments: %s" % (src, ", ".join(
             "%s %r -> %r" % (k, scfg.get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
     c = torch.load(str(src), map_location="cpu")
     ssum = json.loads((src.parent / "summary.json").read_text())
     k = int(c["next_stage"])
+    # b_list: the same list, or its first stages (the run then ends after stage len(b_list) - 1; solver scan)
+    bl, sbl = list(config.get("b_list") or []), list(scfg.get("b_list") or [])
+    if not (bl == sbl[:len(bl)] and len(bl) > k):
+        sys.exit("ERROR: --b_list %r is not the start of the b_list %r of %s with more than %d stages" % (bl, sbl, src, k))
     stages = [dict(s, copied_from=str(src.parent)) for s in ssum["stages"][:k]]
     summary = {"stages": stages, "init": dict(ssum.get("init", {}), source=str(src)),
                "init_stage": {"source": str(src), "first_stage": k}}

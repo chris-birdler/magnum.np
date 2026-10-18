@@ -30,10 +30,11 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell corners > jobs/corners_nx.txt  # the 12 corner runs, production setup of PLAN 4.13
     python conv_jobs.py --newell precision > jobs/precision_nx.txt   # PLAN 4.13 precision test (fp64 against fp32)
     python conv_jobs.py --newell solvertest > jobs/solvertest.txt    # FD against Newell at 150 mT from the same state
+    python conv_jobs.py --newell solverscan > jobs/solverscan.txt    # FD at all 7 stages of one seed per corner
 """
 import shlex
 
-from rerun_jobs import job_lines, set_arg
+from rerun_jobs import get_arg, job_lines, set_arg
 
 SEEDS = range(941, 945)
 D_LEX = 96.0
@@ -291,6 +292,38 @@ def solvertest_lines(src="jobs/sobol_corners.txt"):
     return out
 
 
+SCAN_RUNS = ("K1_0_nx", "K2_0_nx", "K3_0_nx", "K4_0_nx")
+
+
+def scan_name(run, k):
+    """Run name of the solver scan for stage k of corner run `run` (K1_0_nx at 150 mT: the solver test run)."""
+    return run + "_150fd" if (run, k) == ("K1_0_nx", 6) else "%s_fd%02d" % (run, k)
+
+
+def solverscan_lines(src="jobs/sobol_corners.txt"):
+    """Solver scan (option (a), Chris 2026-10-18): one seed per corner, each of the 7 stages once more with DemagFieldPBC
+    in the cycles, from the same state as the corner run (stage 0: its init.pt; stage k: its state after stage k − 1)
+    and with the first k + 1 amplitudes, so that the run ends after stage k. The Newell arm is the corner run itself (the
+    Newell restart of the solver test reproduced it exactly). K1_0_nx at 150 mT is K1_0_nx_150fd of the solver test."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in SCAN_RUNS:
+        t0 = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t0 = set_arg(t0, k, None)
+        bl = get_arg(t0, "b_list")
+        for k in range(len(bl)):
+            if scan_name(n, k).endswith("_150fd"):
+                continue
+            t = set_arg(set_arg(t0, "b_list", bl[:k + 1]), "n_amp", [str(k + 1)])
+            if k == 0:
+                t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % n]), "init_wait_h", ["0.0"])
+            else:
+                t = set_arg(t, "init_stage", ["%s/ckpt_%02d_amp%02d.pt" % (n, k - 1, k - 1)])
+            out.append((scan_name(n, k), " ".join(set_arg(t, "strayfield_cycles", ["fd"]))))
+    return sorted(out, key=lambda x: (x[0][:2] not in ("K2", "K4"), x[0]))     # the longer d/l_ex 300 runs first
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -322,6 +355,7 @@ if __name__ == "__main__":
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
                 tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
                 precision_lines() if st == "precision" else solvertest_lines() if st == "solvertest" else
+                solverscan_lines() if st == "solverscan" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

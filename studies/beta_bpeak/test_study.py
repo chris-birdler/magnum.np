@@ -2130,7 +2130,10 @@ def test_stage_start(tmp_path):
     with pytest.raises(SystemExit):
         RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, seed=config["seed"] + 1))
     with pytest.raises(SystemExit):
-        RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, b_list=[0.006, 0.013]))
+        RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, b_list=[0.006, 0.013]))       # ends before stage 2
+    with pytest.raises(SystemExit):
+        RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, b_list=[0.006, 0.014, 0.023]))
+    assert RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, b_list=[0.006, 0.013, 0.023]))[2] == 2
 
 
 def test_solvertest_lines_and_reading():
@@ -2156,3 +2159,30 @@ def test_solvertest_lines_and_reading():
     assert ES.reading([0.01, -0.02, 0.0])[0] == "no solver effect"
     assert ES.reading([0.3, -0.3, 0.1])[0] == "not determined"
     assert ES.reading([0.5, float("nan"), 0.6])[0] == "not determined"
+
+
+def test_solverscan_lines_and_reading():
+    """Solver scan: per corner run K?_0_nx each stage k with FD from the same state (k 0: init.pt; k > 0: the state after
+    stage k − 1) and the first k + 1 amplitudes; K1_0_nx at 150 mT is the solver-test run; eval_solverscan.reading."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_solverscan as SS
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    jobs = dict(CJ.solverscan_lines(src))
+    assert len(jobs) == 27 and "K1_0_nx_fd06" not in jobs and CJ.scan_name("K1_0_nx", 6) == "K1_0_nx_150fd"
+    for n in CJ.SCAN_RUNS:
+        bl = get_arg(shlex.split(corners[n]), "b_list")
+        for k in range(7):
+            if (n, k) == ("K1_0_nx", 6):
+                continue
+            tok = shlex.split(jobs[CJ.scan_name(n, k)])
+            assert get_arg(tok, "b_list") == bl[:k + 1] and get_arg(tok, "strayfield_cycles") == ["fd"]
+            assert get_arg(tok, "init_from") == (["%s/init.pt" % n] if k == 0 else None)
+            assert get_arg(tok, "init_stage") == (None if k == 0 else ["%s/ckpt_%02d_amp%02d.pt" % (n, k - 1, k - 1)])
+            assert get_arg(tok, "snap_phases") is None and get_arg(tok, "acc") is None
+    assert SS.reading([0.3, 0.35, 0.25, 0.3])[0] == "β shifted by the solver"
+    assert SS.reading([0.01, -0.02, 0.0, 0.02])[0] == "β robust to the solver"
+    assert SS.reading([0.3, -0.3, 0.1, 0.0])[0] == "not determined"
+    assert SS.reading([0.3, 0.3, float("nan"), 0.3])[0] == "not determined"
