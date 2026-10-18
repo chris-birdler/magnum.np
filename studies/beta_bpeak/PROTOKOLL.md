@@ -5929,6 +5929,105 @@ Energy-terms check of the smoke run (S5). d = ε + ΔE_int / w_loop is the resid
 K2_0_nx, K3_0_nx, K4_0_nx); then the precision test and the two reports. The chain is in /root/onstart.sh. Before the
 start the 4 folders of the stopped start (7.110) were renamed to `<name>_stopped`.
 
+### 7.112 Corner test with the setup of PLAN 4.13: β "not determined"; the solver causes the difference at K1, 150 mT; fp32 sufficient; Bloch points (2026-10-18)
+
+All times UTC. Run data local in runs/ (without state files), md5 in runs/md5_nx_20261018.txt. dx 3 l_ex is 10.0 nm;
+V is the box volume (K_d V ≈ 1.0·10⁻¹² J for the K3 box). _mc2: the reruns of PLAN 4.5 with the online calm rule.
+
+**Corner test (PLAN 4.13 part 5, step 3; runs/corners_nx_report.md, eval_corners_nx.py, rules fixed before the
+runs).**
+- 12 runs K1_0_nx … K4_2_nx, 2026-10-17 22:07 … 2026-10-18 11:09, all exit code 0, no gate retry (8 000 … 48 000
+  relaxation iterations). Cost 41.0 V100-h (relaxation 7.16 h, cycles 33.86 h; plan 36 … 52, old runs 30.9).
+- Relaxation new against old (n 12, geometric mean, range): iterations × 1.14 (0.43 … 3.31), wall time × 2.15
+  (0.75 … 5.3).
+- Online stop: no stage needed an extension by the calm rule; 6 of 84 stages had an 8th cycle from the second drive
+  correction.
+- Energy balance of the calm-tail cycles: median |ε| 0.0007 … 0.0098 per amplitude; residual of the energy-terms check
+  (S5) median |d| 0.0006 … 0.0031, maximum 0.018.
+- Flags (S9): flag ε in 15, flag w in 9 of 84 stages.
+
+| corner | β old (mean ± SE, n 3) | β new | Δβ (new − old) |
+|---|---|---|---|
+| K1 | 2.454 ± 0.067 | 2.214 ± 0.095 | −0.240 ± 0.101 |
+| K2 | 2.211 ± 0.069 | 2.258 ± 0.083 | +0.047 ± 0.086 |
+| K3 | 2.379 ± 0.049 | 2.050 ± 0.161 | −0.328 ± 0.193 |
+| K4 | 1.860 ± 0.067 | 2.069 ± 0.080 | +0.208 ± 0.030 |
+
+- Mean Δβ = −0.078 ± 0.082 (SE, n 12; 90 % CI −0.226 … +0.070). **Reading: "not determined".** Without the flagged
+  stages −0.041 ± 0.127 (n 7: the runs that keep at least 6 of 7 amplitudes after the flagged stages are removed).
+- Corner differences β(Ki) − β(K1), old / new: K2 −0.243 / +0.044; K3 −0.076 / −0.164; K4 −0.594 / −0.146.
+- Factor P_new / P_old per amplitude (geometric mean, n 12, 90 % CI): 9 mT 0.84 (0.70 … 1.02); 20 mT 0.76
+  (0.58 … 1.00); 35 mT 0.85 (0.59 … 1.25); 50 mT 0.85 (0.60 … 1.21); 70 mT 0.67 (0.49 … 0.91); 100 mT 0.69
+  (0.53 … 0.89); 150 mT 0.69 (0.56 … 0.85). The factor depends on the corner: at 150 mT K1 0.56, K2 0.71, K3 0.48,
+  K4 1.19 (mean of 3 seeds).
+- SD of ln P over the seeds (pooled, 8 degrees of freedom), old / new: 9 mT 0.25 / 0.27; 20 mT 0.28 / 0.43; 35 mT
+  0.21 / 0.58; 50 mT 0.22 / 0.55; 70 mT 0.22 / 0.33; 100 mT 0.18 / 0.24; 150 mT 0.07 / 0.21. One-sided F test (new
+  larger) p 0.005, 0.009 and 0.002 at 35, 50 and 150 mT. At 35 … 50 mT mainly K3 (K3_1, see below); the cause of the
+  larger SD at 150 mT is not known.
+- Field evaluations of the snapshots (mean of the seeds): wall measure A_w and l_C change by at most 9 %; switched
+  volume the same or up to 20 % smaller; the fundamental share R1 changes without a pattern (for example K1 50 mT
+  0.56 → 0.87, K4 35 mT 0.27 → 0.69). The old partners K1_0, K4_0, K4_1 (_mc2) have no snapshots (n 2 or 1 there).
+- Plots: results/figures_corners_nx/ (plot_corners_nx.py; not in git, made again by the script).
+
+**Solver test at 150 mT (decision Chris; runs/solvertest_report.md, eval_solvertest.py, rules fixed before the
+runs).** From the state of K1_0_nx, K1_1_nx and K1_2_nx after the 100 mT stage, the 150 mT stage once with DemagFieldPBC and once with the
+final setting (2026-10-18 08:56 … 10:03).
+- ln w(DemagFieldPBC) − ln w(Newell) = +0.548 / +0.563 / +0.609 (s 0, 1, 2); mean +0.573 ± 0.018 (SE, n 3; 90 % CI
+  +0.520 … +0.626). **Reading: "solver effect".** It equals the old − new difference of the corner test at K1,
+  150 mT (+0.57, n 3).
+- ε of both arms 0.005 … 0.019. The Newell restart from the state file reproduces the corner run (difference 0.0000).
+- Thus at K1 and 150 mT the old solver gives a loss 1.77 times higher from the same state.
+
+**Precision test (PLAN 4.13 part 5, step 4; runs/precision_nx_report.md, eval_precision.py).** fp64 against fp32 in
+the 9 mT stage from the same init.pt, K1_0 … K4_0. Δ_p = ln w(fp64) − ln w(fp32) = −0.0000 / +0.0000 / +0.0001 /
+−0.0000; mean +0.0000 ± 0.0000 (SE, n 4). **Reading: "fp32 sufficient".** ε of fp64 and fp32 differ by at most
+0.0002. Condition 2 of PLAN 4.13 holds. The time per cycle of fp64 is × 1.6 (K1_0, K3_0); the values × 3.1 and × 3.6
+at K2_0 and K4_0 are distorted (shared GPUs).
+
+**Bloch points.**
+- K3_1_nx: the loss at 20 … 50 mT was 3 … 6 times higher than the mean of the other K3 seeds (3.1, 6.0, 5.4 at 20, 35,
+  50 mT). Facts (analyze_defect.py; state
+  files of the stages, sample files):
+  - Particle 1 holds a pair of Bloch points from the relaxed virgin state on: topological charge −1 and +1 on closed
+    surfaces of half-edge 2, 3, 4 cells inside the particle, 83 nm (Q −1) and 100 nm (Q +1) below the surface in the
+    virgin state (exact cube charges; particle radius 35 cells, 350 nm).
+  - The virgin state has an energy 2.7·10⁻⁴ K_d V (2.7·10⁻¹⁶ J) above the other K3 seeds (different microstructures,
+    a rough comparison). This is of the order of the exchange energy of a Bloch-point pair: a hedgehog field in a
+    sphere of radius R has the exchange energy 8πAR, thus 2 × 8πAR ≈ 1·10⁻¹⁶ J for R ≈ 200 nm (an estimate).
+  - During the cycles at 20 … 50 mT the largest neighbour angle reaches 175°; at the end of the stages (H = 0) it is
+    below 120°. The loop energy that the applied field puts into particles 1 and 3 is 5 … 10 times that of a normal
+    particle (particle 3 can follow particle 1 by the stray field; the place of the dissipation is not measured).
+  - At 70 mT, cycle 2: ε = +39.2 and −ΔE_int / w_loop = +39.5; the released energy equals the excess of the virgin
+    state. After it the pair is gone and the loss is normal.
+- Census of all 24 corner runs (census_bloch.py with the exact charge of each elementary cube of 2 × 2 × 2 cells;
+  Bloch points in the outer cell layer are not counted). Start states: old 40 Bloch points in 5 of 12 runs, new 29
+  in 9 of 12 runs. K2 has them in all runs (old 7 … 15, new 5 … 9). After 150 mT: old 10, new 2. In the new runs the
+  number per particle only falls from stage to stage, by the annihilation of pairs or the exit of single Bloch points
+  through the surface, with one exception: K2_1_nx, particle 0, a Bloch point (Q +1, 5.5 cells below the surface)
+  enters during the 100 mT stage and leaves before the end of 150 mT. Bloch points that form and vanish within a cycle
+  are not visible in the stage-end states.
+- Stages with a Bloch point at their start deviate more from the corner mean (median |Δ ln w| 0.20, share above 0.3:
+  32 %, n 44) than stages without (0.15, 15 %, n 40). 18 of the 44 stages with a Bloch point are K2 stages, 3 of
+  the 40 without; thus the corner is mixed in, and this is a hint only.
+- Interpretation: the core of a Bloch point is a singularity of the continuum model; no dx resolves it. Its energy is
+  finite and converges. Its pinning on the mesh is about A·dx per cell (≈ 1·10⁻¹⁹ J at 10 nm, an estimate); on the
+  atomic lattice it is about 35 times smaller. The extra loss of K3_1 at 35 mT (≈ 6.7·10⁻¹⁸ J per cycle) is about 70
+  such barriers per cycle. Thus the loss of Bloch points in the model is an effect of the mesh and probably too large.
+- K2 (L_eff 12, r_p 3) has neighbour angles of 164 … 180° in all runs, old and new. The local wall width
+  1/√(Q_eff(1 + r_p)) is 6 l_ex, 2 cells (an estimate from the formula of the code): this corner is probably not
+  resolved at dx 3.
+
+**Decisions of Chris and runs started.**
+- Solver scan (option (a)): one seed per corner, each of the 7 stages again with DemagFieldPBC from the same state as
+  the corner run (27 runs, jobs/solverscan.txt, eval_solverscan.py, reading fixed before the runs), started 12:00.
+- Online count of the Bloch points in run_loops (exact cube charges on the GPU at each sample, per relaxation chunk,
+  at each stage end; commit 5b540cb) and a test of an AC demagnetization after the virgin relaxation (4 runs with
+  Bloch points × start amplitude 150 mT, 2 × 150 mT, saturation; jobs/predemag.txt, eval_predemag.py, reading fixed
+  before the runs: "clean" if no Bloch point after the second relaxation, remanence below 0.01 M_s and no Bloch point
+  in the 9 mT stage, in all 4 runs), started 13:39. Cost of the test 1.6 … 2.5 $ (estimate).
+- Operation: from 08:35 to 08:56 two GPUs were idle (the precision queue waited for the last corner runs); then the
+  solver test and precision jobs K1_0 and K3_0 ran ahead on the free GPUs (the chain skipped them as DONE).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
