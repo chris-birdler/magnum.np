@@ -2349,3 +2349,63 @@ def test_bloch_free_start():
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
     ad = CJ.start_lines("adsat", src)
     assert all(get_arg(shlex.split(a), "predemag_h") == ["0"] for _, a in ad)
+
+
+def test_protocol_s(tmp_path):
+    """Protocol S (Chris 2026-10-18, Bloch points): --init_mode saturated is uniform along the drive direction and needs
+    --predemag_h; --predemag_h takes several passes (one value stays the scalar of the older configs); satstart_lines,
+    ad_continue_lines (only clean AC-300 test runs, same INIT_KEYS) and ad_rest_lines."""
+    import json
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    a1 = RL.parse_args(["--out", "x", "--d_lex", "96", "--predemag_h", "0.03"])
+    a2 = RL.parse_args(["--out", "x", "--d_lex", "96", "--predemag_h", "0", "0.03"])
+    assert a1.predemag_h == 0.03 and isinstance(a1.predemag_h, float) and a2.predemag_h == [0.0, 0.03]
+    m0 = RL.virgin_m0(6, 18.0, 3.0, 6.0, 5, "saturated", direction=[0.0, 0.0, 2.0])
+    assert m0.shape == (6, 6, 6, 3) and np.allclose(m0, [0.0, 0.0, 1.0])
+    with pytest.raises(ValueError):
+        RL.virgin_m0(6, 18.0, 3.0, 6.0, 5, "saturated")
+    rl = pathlib.Path(RL.__file__).read_text()          # both calls of the saturated start pass the drive direction
+    assert rl.count("args.init_mode, ids,") == 2 and rl.count("direction=e_d))") == 2
+    body = rl[rl.index("    def predemag(h=None, k=0):"):rl.index("    def predemag_all(")]
+    assert "for k in" not in body and "k = " not in body      # the pass index k stays the pass index
+    with pytest.raises(SystemExit):
+        RL.main(["--out", str(tmp_path / "x"), "--d_lex", "96", "--init_mode", "saturated"])
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    runs = tmp_path / "runs"
+    for n in corners:
+        (runs / n).mkdir(parents=True)
+        (runs / n / "summary.json").write_text(json.dumps({"stages": [{"measure": True, "h_amp": 0.01},
+                                                                      {"measure": True, "h_amp": 0.02}]}))
+    for n, bp in (("K2_0_nx", []), ("K2_1_nx", []), ("K4_1_nx", []), ("K3_1_nx", [[1, 2, 3, 1, 0]])):
+        d = runs / (n + "_pd300")
+        d.mkdir()
+        (d / "DONE").write_text("0\n")
+        (d / "summary.json").write_text(json.dumps({"init": {"predemag": {"bloch_points": bp}}}))
+    ps = CJ.satstart_lines(src, runs)
+    assert [n for n, _ in ps] == [n + "_ps" for n in CJ.PD_RUNS]
+    for n, line in ps:
+        tok, ref = shlex.split(line), shlex.split(corners[n[:-3]])
+        assert get_arg(tok, "init_mode") == ["saturated"] and get_arg(tok, "bloch_free_tries") == ["2"]
+        assert get_arg(tok, "predemag_h") == ["0", "0.04"] and get_arg(tok, "b_list") == ["0.006"]
+        assert get_arg(tok, "acc") is None and get_arg(tok, "snap_mT") is None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {
+                "init_mode", "bloch_free_tries", "predemag_h", "b_list", "n_amp", "snap_phases", "snap_cycles",
+                "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    ad = dict(CJ.start_lines("ad300", src, runs))
+    cont = CJ.ad_continue_lines(src, runs)
+    assert [n for n, _ in cont] == ["K2_0_ad", "K2_1_ad", "K4_1_ad"]
+    for n, line in cont:
+        tok, ref = shlex.split(line), shlex.split(ad[n])
+        assert get_arg(tok, "init_from") == ["%s_nx_pd300/init.pt" % n[:-3]] and get_arg(tok, "bloch_free_tries") == ["0"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"init_from", "init_wait_h", "bloch_free_tries"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    rest = [n for n, _ in CJ.ad_rest_lines(src, runs)]
+    assert len(rest) == 8 and not {"K2_0_ad", "K2_1_ad", "K4_1_ad", "K3_1_ad"} & set(rest)
+    full = dict(CJ.ad300_lines(src, runs))
+    assert len(full) == 12 and all(full[n] == a for n, a in cont + CJ.ad_rest_lines(src, runs))
+    assert full["K3_1_ad"] == ad["K3_1_ad"]

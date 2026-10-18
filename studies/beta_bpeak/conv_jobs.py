@@ -399,6 +399,59 @@ PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision":
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
 
+def ad_continue_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Option C (Chris 2026-10-18): the corner runs of start_lines("ad300") whose test run <run>_nx_pd300 ended without
+    a Bloch point start from its prepared state (init.pt: the virgin relaxation of <run>_nx, AC from 300 mT, the
+    relaxation again; the same INIT_KEYS) and run all 7 stages, the 9 mT stage again with snapshots and accumulators.
+    --bloch_free_tries 0 as the test run: the state needs no new start."""
+    import json
+    import pathlib
+    out = []
+    for n, a in start_lines("ad300", src, runs_dir):
+        pd = pathlib.Path(runs_dir) / ("%s%s_pd300" % (n[:-len("_ad")], NX_SUFFIX))
+        if not (pd / "DONE").exists() or json.loads((pd / "summary.json").read_text())["init"]["predemag"]["bloch_points"]:
+            continue
+        t = set_arg(shlex.split(a), "bloch_free_tries", ["0"])
+        t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % pd.name]), "init_wait_h", ["0.0"])
+        out.append((n, " ".join(t)))
+    return out
+
+
+def ad300_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Option C, the 12 corner runs (jobs/corners_ad300.txt): start_lines("ad300"), the lines of ad_continue_lines in
+    place of their random start."""
+    cont = dict(ad_continue_lines(src, runs_dir))
+    return [(n, cont.get(n, a)) for n, a in start_lines("ad300", src, runs_dir)]
+
+
+def ad_rest_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Option C: the 8 corner runs of start_lines("ad300") outside PD_RUNS (they start from the random start)."""
+    skip = {r[:-len(NX_SUFFIX)] + "_ad" for r in PD_RUNS}
+    return [(n, a) for n, a in start_lines("ad300", src, runs_dir) if n not in skip]
+
+
+def satstart_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Test of protocol S (Chris 2026-10-18, Bloch points): the 4 runs of PD_RUNS start uniform along the drive direction
+    (--init_mode saturated, no relaxation before), AC demagnetization from saturation and the relaxation, AC from twice
+    the drive of the 150 mT stage of <run>_nx (300 mT) and the relaxation; if a Bloch point remains, one further pass
+    from 300 mT (--bloch_free_tries 2); then the 9 mT stage (<run>_ps). All other settings as the corner run, without
+    snapshots and accumulators."""
+    import json
+    import pathlib
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in PD_RUNS:
+        st = json.loads((pathlib.Path(runs_dir) / n / "summary.json").read_text())["stages"]
+        h150 = [s for s in st if s.get("measure")][-1]["h_amp"]
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+        t = set_arg(set_arg(t, "init_mode", ["saturated"]), "bloch_free_tries", ["2"])
+        out.append((n + "_ps", " ".join(set_arg(t, "predemag_h", ["0", "%.6g" % (2.0 * h150)]))))
+    return out
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -428,6 +481,8 @@ if __name__ == "__main__":
                 precision_lines() if st == "precision" else solvertest_lines() if st == "solvertest" else
                 solverscan_lines() if st == "solverscan" else predemag_lines() if st == "predemag" else
                 initmode_lines() if st == "initmode" else
+                satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
+                ad_rest_lines() if st == "adrest" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

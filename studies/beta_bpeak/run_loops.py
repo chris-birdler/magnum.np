@@ -148,13 +148,16 @@ def parse_args(argv=None):
     g = p.add_argument_group("seeds")
     g.add_argument("--seed", type=int, default=1, help="realisation: cube axes and offsets, initial m")
     g.add_argument("--init_seed", type=int, default=None, help="seed of the random initial m (default --seed)")
-    g.add_argument("--init_mode", choices=["block", "particle"], default="block",
+    g.add_argument("--init_mode", choices=["block", "particle", "saturated"], default="block",
                    help="virgin start (Chris 2026-10-18, Bloch points): block = random m on --init_block blocks; "
-                        "particle = each particle uniform along its own random direction")
+                        "particle = each particle uniform along its own random direction; saturated = uniform along "
+                        "--direction, no relaxation before the first --predemag_h pass (protocol S)")
     g.add_argument("--bloch_free_tries", type=int, default=0,
                    help="virgin_asc converge (Chris 2026-10-18): if the prepared state (after --predemag_h if set) has a "
                         "Bloch point, a new random start (other stream of init_seed; the microstructure stays) and the "
-                        "preparation again, at most this many attempts in all; 0 = one attempt, no check")
+                        "preparation again, at most this many attempts in all; 0 = one attempt, no check. With "
+                        "--init_mode saturated (no random start): a further AC pass from the last --predemag_h value "
+                        "and the relaxation instead")
     g.add_argument("--init_block", type=float, default=0.0,
                    help="random initial m constant on blocks of this edge / l_ex in physical coordinates "
                         "(multiple of every dx: the same start on every mesh); 0 = one direction per cell")
@@ -186,12 +189,13 @@ def parse_args(argv=None):
     g.add_argument("--relax_tol_E_abs", type=float, default=None,
                    help="converge (PLAN 4.13 S7, D1): a chunk is quiet if |dE| / (K_d V) over the chunk is at most "
                         "this value (an absolute threshold; a rise below it counts as quiet). Replaces relax_tol_E")
-    g.add_argument("--predemag_h", type=float, default=None,
+    g.add_argument("--predemag_h", type=float, nargs="+", default=None,
                    help="virgin_asc (Bloch points, Chris 2026-10-18): after the virgin relaxation an AC demagnetization "
                         "at the drive frequency from this amplitude H/Ms (0: --h_sat, default 1 - phi), the amplitude "
                         "times --predemag_q at each zero crossing of the field down to 0.3 x the first b target / "
-                        "mu_guess, then the relaxation again. With --init_from a virgin state without it: applied "
-                        "after loading")
+                        "mu_guess, then the relaxation again. Several values: one such pass per value, in this order "
+                        "(protocol S: 0 then twice the drive of the 150 mT stage). With --init_from a virgin state "
+                        "without it: applied after loading")
     g.add_argument("--predemag_q", type=float, default=0.8, help="--predemag_h: amplitude factor per half cycle")
     g.add_argument("--relax_confirm", type=int, default=2,
                    help="converge: number of consecutive chunks with a relative energy change < relax_tol_E "
@@ -296,7 +300,10 @@ def parse_args(argv=None):
     g.add_argument("--allow_unconverged", action="store_true",
                    help="continue although the virgin relaxation did not converge (default: stop, exit code 3)")
     g.add_argument("--timer", action="store_true")
-    return p.parse_args(argv)
+    a = p.parse_args(argv)
+    if a.predemag_h is not None and len(a.predemag_h) == 1:
+        a.predemag_h = a.predemag_h[0]                    # one pass: the scalar of the configs before the list
+    return a
 
 
 def git_commit():
@@ -455,12 +462,18 @@ def transfer_m(m_f, ids_f, ids_c):
     return v, stats
 
 
-def virgin_m0(N, a_lex, dx_lex, init_block, init_seed, mode="block", ids=None, attempt=0):
+def virgin_m0(N, a_lex, dx_lex, init_block, init_seed, mode="block", ids=None, attempt=0, direction=None):
     """Random initial m of the virgin state: isotropic unit vectors (normalised Gaussian), constant on blocks of
     edge init_block l_ex (0: per cell); own random stream [init_seed, 0] (the cube axes use [seed, 1000 + p]).
     mode "particle" (Chris 2026-10-18, Bloch points): each particle (ids) uniform along its own isotropic random
     direction (stream [init_seed, 2]); the void cells keep the block field (they carry no magnetization).
-    attempt k > 0 (--bloch_free_tries): other streams [init_seed, 10 + k] (blocks) and [init_seed, 20 + k] (particles)."""
+    attempt k > 0 (--bloch_free_tries): other streams [init_seed, 10 + k] (blocks) and [init_seed, 20 + k] (particles).
+    mode "saturated" (Chris 2026-10-18, protocol S): uniform along direction in all cells (no random element)."""
+    if mode == "saturated":
+        if direction is None:
+            raise ValueError("virgin_m0: mode saturated needs the direction")
+        e = np.asarray(direction, float)
+        return np.broadcast_to(e / np.linalg.norm(e), (N, N, N, 3)).copy()
     if mode == "particle":
         m0 = virgin_m0(N, a_lex, dx_lex, init_block, init_seed, attempt=attempt)
         g = np.random.default_rng([init_seed, 2 if attempt == 0 else 20 + attempt]).standard_normal((4, 3))
@@ -740,6 +753,9 @@ def build_stages(args, phi):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.init_mode == "saturated" and (args.predemag_h is None or args.protocol != "virgin_asc"
+                                          or args.relax_mode != "converge"):
+        sys.exit("ERROR: --init_mode saturated needs --predemag_h, --protocol virgin_asc and --relax_mode converge")
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -921,45 +937,58 @@ def main(argv=None):
             E_prev = E
         return hist, it, converged
 
-    def predemag():
-        """AC demagnetization after the virgin relaxation (Chris 2026-10-18), then the relaxation again. Returns the
-        record for summary["init"]["predemag"]; writes bloch_predemag.csv (Bloch points at each sample)."""
-        h0 = args.predemag_h if args.predemag_h > 0 else (args.h_sat if args.h_sat is not None else 1.0 - args.phi)
+    def predemag(h=None, k=0):
+        """AC demagnetization pass k from the amplitude h (default --predemag_h; 0: saturation) after the virgin
+        relaxation (Chris 2026-10-18), then the relaxation again. Returns the record of the pass; writes
+        bloch_predemag.csv (pass 0) or bloch_predemag_<k>.csv (Bloch points at each sample)."""
+        h = args.predemag_h if h is None else h
+        h0 = h if h > 0 else (args.h_sat if args.h_sat is not None else 1.0 - args.phi)
         h_end = 0.3 * min(args.b_list) / args.mu_guess if args.b_list else 0.01 * h0
         n_half = max(1, int(math.ceil(math.log(h0 / h_end) / math.log(1.0 / args.predemag_q))))
         dt_d = 1.0 / freq / args.samples
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.t0, drive.freq, drive.H_amp = 0.0, freq, h0 * Ms
         t_w, halves = time.time(), []
-        with open(out / "bloch_predemag.csv", "w") as fb:
+        with open(out / ("bloch_predemag.csv" if k == 0 else "bloch_predemag_%d.csv" % k), "w") as fb:
             fb.write("# half_cycle,sample,h,M_par_over_Ms,n_bloch_pos,n_bloch_neg\n")
             for hh in range(n_half):
                 mx, nbmax = 0.0, 0
-                for k in range(args.samples // 2):
+                for j in range(args.samples // 2):
                     llg.step(state, dt_d)
                     with torch.no_grad():
                         mp = float(torch.dot((Ms_t * state.m).double().mean(dim=(0, 1, 2)), e_t)) / Ms
                     nb = bloch()
                     mx, nbmax = max(mx, abs(mp)), max(nbmax, nb[0] + nb[1])
-                    fb.write("%d,%d,%.6e,%.6e,%d,%d\n" % (hh, k, drive.H_amp / Ms, mp, nb[0], nb[1]))
+                    fb.write("%d,%d,%.6e,%.6e,%d,%d\n" % (hh, j, drive.H_amp / Ms, mp, nb[0], nb[1]))
                 halves.append({"h": drive.H_amp / Ms, "M_par_peak_over_Ms": mx, "n_bloch_max": nbmax,
                                "n_bloch_end": list(nb)})
                 print("[predemag] half cycle %d: h %.4g  |M_par|/Ms peak %.4f  Bloch points max %d, end +%d -%d" %
                       (hh, drive.H_amp / Ms, mx, nbmax, nb[0], nb[1]), flush=True)
                 drive.H_amp *= args.predemag_q
         drive.H_amp = 0.0
-        rec = {"h0": h0, "q": args.predemag_q, "h_end": h_end, "n_half": n_half, "halves": halves,
+        rec = {"pass": k, "h0": h0, "q": args.predemag_q, "h_end": h_end, "n_half": n_half, "halves": halves,
                "wall_s": time.time() - t_w}
-        hist, it, conv = relax_converge("relax2")
+        hist, it, conv = relax_converge("relax2" if k == 0 else "relax2_pass%d" % k)
         Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
         npos, nneg, pts = bloch(positions=True)
         rec.update({"relax_history": hist, "relax_iterations": it, "relax_converged": conv,
                     "E_over_Kd": hist[-1]["E_over_Kd"], "M_over_Ms": [float(x) / Ms for x in Mv0],
                     "n_pairs_gt60": int(n60_0), "bloch_points": pts})
-        print("[predemag] after the relaxation: converged=%s after %d iterations, M/Ms (%.4f, %.4f, %.4f), Bloch "
-              "points +%d -%d" % (conv, it, *rec["M_over_Ms"], npos, nneg), flush=True)
+        print("[predemag] pass %d (h0 %.4g) after the relaxation: converged=%s after %d iterations, M/Ms (%.4f, %.4f, "
+              "%.4f), Bloch points +%d -%d" % (k, h0, conv, it, *rec["M_over_Ms"], npos, nneg), flush=True)
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         return rec
+
+    def predemag_all(k0=0):
+        """All --predemag_h passes (protocol S: several values); sets summary["init"]["predemag"] (the last pass) and
+        ["predemag_passes"]; returns the number of Bloch points of the prepared state."""
+        hs = args.predemag_h if isinstance(args.predemag_h, list) else [args.predemag_h]
+        recs = [predemag(h, k0 + i) for i, h in enumerate(hs)]
+        summary["init"].setdefault("predemag_passes", []).extend(recs)
+        summary["init"]["predemag"] = recs[-1]
+        summary["init"]["relax_converged"] = bool(summary["init"]["relax_converged"]
+                                                  and all(r["relax_converged"] for r in recs))
+        return len(recs[-1]["bloch_points"])
 
     # --- config ------------------------------------------------------------
     stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
@@ -1043,9 +1072,8 @@ def main(argv=None):
         if late_predemag:
             # Chris 2026-10-18: the virgin state of another run, then the AC demagnetization and the relaxation here
             summary["init"]["bloch_virgin"] = list(bloch())
-            summary["init"]["predemag"] = predemag()
-            summary["init"]["relax_converged"] = bool(c["init"].get("relax_converged")
-                                                      and summary["init"]["predemag"]["relax_converged"])
+            summary["init"]["relax_converged"] = bool(c["init"].get("relax_converged"))
+            predemag_all()
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
     else:
@@ -1084,7 +1112,8 @@ def main(argv=None):
             transfer = dict(tstats, source=str(src), dx_lex_fine=dxf)
             print("[init] transferred from %s (dx %g -> %g l_ex): %s" % (src, dxf, args.dx_lex, tstats), flush=True)
         else:
-            state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids))
+            state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids,
+                                  direction=e_d))
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
         t_w = time.time()
@@ -1093,32 +1122,47 @@ def main(argv=None):
             # energy does not change any more (relative change per chunk < relax_tol_E, or with relax_tol_E_abs an
             # absolute change per chunk <= relax_tol_E_abs, PLAN 4.13 S7)
             tries = []
+            sat = args.init_mode == "saturated"
             for attempt in range(max(1, args.bloch_free_tries)):
-                if attempt > 0:
-                    # Chris 2026-10-18: a new random start of the same microstructure, the preparation again
-                    state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids,
-                                          attempt))
-                    state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
-                    drive.H_amp = 0.0
-                hist, it, converged = relax_converge("relax" if attempt == 0 else "relax_try%d" % attempt)
-                Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
-                summary["init"] = {"protocol": args.protocol, "relax_mode": "converge", "relax_converged": converged,
-                                   "relax_iterations": it, "relax_history": hist,
-                                   "E_over_Kd": hist[-1]["E_over_Kd"],
-                                   "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
-                                   "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
-                                   "wall_s": time.time() - t_w}
-                print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
-                      (converged, it, summary["init"]["wall_s"]), flush=True)
-                summary["init"]["bloch_virgin"] = list(bloch())
-                n_end = sum(summary["init"]["bloch_virgin"])
-                if args.predemag_h is not None:
-                    summary["init"]["predemag"] = predemag()
-                    summary["init"]["relax_converged"] = bool(converged
-                                                              and summary["init"]["predemag"]["relax_converged"])
-                    n_end = len(summary["init"]["predemag"]["bloch_points"])
-                tries.append({"attempt": attempt, "relax_iterations": it, "converged": converged,
-                              "n_bloch_prepared": n_end})
+                if attempt > 0 and sat:
+                    # Chris 2026-10-18, protocol S (no random element): a further AC pass from the last
+                    # --predemag_h value and the relaxation
+                    hs = args.predemag_h if isinstance(args.predemag_h, list) else [args.predemag_h]
+                    rec = predemag(hs[-1], len(summary["init"]["predemag_passes"]))
+                    summary["init"]["predemag_passes"].append(rec)
+                    summary["init"]["predemag"] = rec
+                    summary["init"]["relax_converged"] = bool(summary["init"]["relax_converged"]
+                                                              and rec["relax_converged"])
+                    n_end = len(rec["bloch_points"])
+                    tries.append({"attempt": attempt, "kind": "pass", "relax_iterations": rec["relax_iterations"],
+                                  "converged": rec["relax_converged"], "n_bloch_prepared": n_end})
+                else:
+                    if attempt > 0:
+                        # Chris 2026-10-18: a new random start of the same microstructure, the preparation again
+                        state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids,
+                                              attempt, direction=e_d))
+                        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+                        drive.H_amp = 0.0
+                    if sat:
+                        hist, it, converged = [], 0, True   # protocol S: the AC pass from saturation follows at once
+                    else:
+                        hist, it, converged = relax_converge("relax" if attempt == 0 else "relax_try%d" % attempt)
+                    Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
+                    summary["init"] = {"protocol": args.protocol, "relax_mode": "converge",
+                                       "relax_converged": converged, "relax_iterations": it, "relax_history": hist,
+                                       "E_over_Kd": (hist[-1]["E_over_Kd"] if hist
+                                                     else float(llg.E(state)) / (Kd * N**3 * dx**3)),
+                                       "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
+                                       "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
+                                       "wall_s": time.time() - t_w}
+                    print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
+                          (converged, it, summary["init"]["wall_s"]), flush=True)
+                    summary["init"]["bloch_virgin"] = list(bloch())
+                    n_end = sum(summary["init"]["bloch_virgin"])
+                    if args.predemag_h is not None:
+                        n_end = predemag_all()
+                    tries.append({"attempt": attempt, "kind": "start", "relax_iterations": it, "converged": converged,
+                                  "n_bloch_prepared": n_end})
                 if args.bloch_free_tries > 0:
                     print("[bloch] attempt %d: %d Bloch points in the prepared state" % (attempt, n_end), flush=True)
                 if args.bloch_free_tries <= 0 or n_end == 0 or not summary["init"]["relax_converged"]:
