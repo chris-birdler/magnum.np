@@ -2,10 +2,10 @@
 """
 Census of Bloch points in the state files of run folders (Chris 2026-10-18, after the Bloch-point pair of K3_1_nx).
 For each state file of a run (init.pt, ckpt_<i>_<stage>.pt, checkpoint.pt): the pairs of neighbour cells of one particle
-above 60 / 90 / 120 / 150 degrees, their clusters, and the Bloch points: clusters with a topological charge |Q| > 0.5 on
-the surface of a cube of half-edge 2 cells around the cluster centre that lies at least 95 % in one particle.
-Restriction: a Bloch point closer than about 3 cells to the particle surface is not counted (no closed surface inside
-the particle); the clusters at the surface (the corners of the voxel staircase) are counted separately.
+above 60 / 90 / 120 / 150 degrees, and the Bloch points: the elementary cubes of 2 x 2 x 2 cell centres, all in one
+particle, with a topological charge |Q| > 0.5 (analyze_defect.bloch_points; exact integer charges, one cube per Bloch
+point). Restriction: a Bloch point in a cube with a corner outside the particle (within about 1 cell of the surface)
+is not counted.
 
     python census_bloch.py --out census.json runs/K1_0_nx runs/K1_1_nx …
 """
@@ -15,11 +15,9 @@ import pathlib
 import re
 
 import numpy as np
-from scipy import ndimage
 
 import analyze_defect as A
 
-R_Q, IN_MIN = 2, 0.95
 
 
 def states(d):
@@ -31,23 +29,9 @@ def states(d):
 def census(m, ids):
     pa = A.pair_angles(m, ids)
     counts = {str(int(t)): int(sum(((ang > t) & same).sum() for ang, same in pa)) for t in (60, 90, 120, 150)}
-    cells = np.zeros(ids.shape, bool)
-    for a, (ang, same) in enumerate(pa):
-        h = (ang > 60.0) & same
-        cells |= h | np.roll(h, -1, axis=a)
-    lab, n = ndimage.label(cells)
-    bps, surface = [], 0
-    for k in range(1, n + 1):
-        pos = np.argwhere(lab == k)
-        pid = int(np.bincount(ids[tuple(pos.T)][ids[tuple(pos.T)] >= 0]).argmax())
-        cen = np.round(pos.mean(0)).astype(int)
-        q, fin = A.charge(m, ids, cen, R_Q, pid)
-        if fin < IN_MIN:
-            surface += 1
-            continue
-        if abs(q) > 0.5:
-            bps.append({"particle": pid, "centre": cen.tolist(), "Q": round(q, 2), "cells": len(pos)})
-    return {"pairs_above": counts, "clusters": n, "surface_clusters": surface, "bloch_points": bps}
+    bps = [{"particle": p, "Q": q, "cube": list(c), "dist_to_surface_cells": round(d, 1)}
+           for p, q, c, d in A.bloch_points(m, ids)]
+    return {"pairs_above": counts, "bloch_points": bps}
 
 
 def main():
@@ -67,10 +51,9 @@ def main():
             m /= np.maximum(np.linalg.norm(m, axis=-1, keepdims=True), 1e-30)
             c = census(m, ids)
             res[d.name][f.name] = c
-            print("%s %s: pairs >60/90/120/150 %s, clusters %d (surface %d), Bloch points %d %s" % (
-                d.name, f.name, "/".join(str(v) for v in c["pairs_above"].values()), c["clusters"],
-                c["surface_clusters"], len(c["bloch_points"]), [(b["particle"], b["Q"]) for b in c["bloch_points"]]),
-                flush=True)
+            print("%s %s: pairs >60/90/120/150 %s, Bloch points %d %s" % (
+                d.name, f.name, "/".join(str(v) for v in c["pairs_above"].values()), len(c["bloch_points"]),
+                [(b["particle"], b["Q"], b["dist_to_surface_cells"]) for b in c["bloch_points"]]), flush=True)
     pathlib.Path(a.out).write_text(json.dumps(res, indent=1))
 
 

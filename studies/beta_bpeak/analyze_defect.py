@@ -134,3 +134,40 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def cube_charges(m, ids):
+    """Topological charge of each elementary cube of 2 x 2 x 2 cell centres (exact integer up to rounding): the sum of
+    the oriented solid angles of its 6 faces / 4π. Returns (Q [N,N,N] for the cube with lower corner (i, j, k), mask of
+    the cubes with all 8 corners in one particle, the particle index of these cubes)."""
+    r = lambda a, s, ax: np.roll(a, -s, axis=ax)
+
+    def plaquette(ax):
+        u, v = [(1, 2), (2, 0), (0, 1)][ax]          # (u, v, ax) right-handed: normal +ax
+        a = m
+        b = r(m, 1, u)
+        c = r(r(m, 1, u), 1, v)
+        d = r(m, 1, v)
+        return solid_angle(a, b, c) + solid_angle(a, c, d)
+
+    Om = [plaquette(ax) for ax in range(3)]
+    q = sum(r(Om[ax], 1, ax) - Om[ax] for ax in range(3)) / (4.0 * math.pi)
+    same = np.ones(ids.shape, bool)
+    for s in [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1)]:
+        same &= np.roll(ids, (-s[0], -s[1], -s[2]), axis=(0, 1, 2)) == ids
+    same &= ids >= 0
+    return q, same, ids
+
+
+def bloch_points(m, ids):
+    """List of (particle, Q, (i, j, k), distance to the particle surface in cells) of the elementary cubes with
+    |Q| > 0.5 inside one particle."""
+    q, same, pid = cube_charges(m, ids)
+    out = []
+    dist = {}
+    for p in range(4):
+        dist[p] = ndimage.distance_transform_edt(np.pad(ids == p, 8, mode="wrap"))[8:-8, 8:-8, 8:-8]
+    for i, j, k in np.argwhere(same & (np.abs(q) > 0.5)):
+        p = int(pid[i, j, k])
+        out.append((p, int(round(q[i, j, k])), (int(i), int(j), int(k)), float(dist[p][i, j, k])))
+    return out
