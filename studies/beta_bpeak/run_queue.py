@@ -145,9 +145,31 @@ def gate_args(args, maxiter):
     return " ".join(shlex.quote(x) for x in t)
 
 
+def busy_gpus(index_uuid_csv, apps_csv):
+    """Indices of the GPUs with a compute process, from the outputs of nvidia-smi --query-gpu=index,uuid and
+    --query-compute-apps=gpu_uuid (both csv, noheader)."""
+    uuid = {}
+    for line in index_uuid_csv.strip().splitlines():
+        i, u = [x.strip() for x in line.split(",")[:2]]
+        uuid[u] = i
+    return {uuid[x.strip()] for x in apps_csv.strip().splitlines() if x.strip() in uuid}
+
+
+def gpu_busy(gpu):
+    """True if another process computes on this GPU (Chris 2026-10-18: one job per GPU); False without nvidia-smi."""
+    try:
+        a = subprocess.run(["nvidia-smi", "--query-gpu=index,uuid", "--format=csv,noheader"], capture_output=True,
+                           text=True, timeout=60).stdout
+        b = subprocess.run(["nvidia-smi", "--query-compute-apps=gpu_uuid", "--format=csv,noheader"],
+                           capture_output=True, text=True, timeout=60).stdout
+        return str(gpu) in busy_gpus(a, b)
+    except Exception:                               # noqa: BLE001 - no nvidia-smi: no check
+        return False
+
+
 def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, status=None, command=default_command,
              burst_n=2, burst_s=600.0, pause_s=1800.0, burst_max=3, status_s=300.0, poll_s=300.0, gate_maxiter=200000,
-             stop_file=None):
+             stop_file=None, exclusive=False, busy=gpu_busy, wait_s=60.0):
     """Run the (name, args) jobs on the GPUs; returns {"done": [...], "failed": {name: reason}}."""
     runs = pathlib.Path(runs)
     runs.mkdir(parents=True, exist_ok=True)
@@ -242,6 +264,13 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                 # PLAN 4.5: a failed check (check_reruns.py) stops new jobs; the running jobs end normally
                 print("[stop] gpu %s: %s exists, no new job" % (gpu, stop_file), flush=True)
                 return
+            if exclusive and busy(gpu):
+                # Chris 2026-10-18: one job per GPU; wait until no other process computes on this GPU
+                with lock:
+                    if q.empty() and active["n"] == 0:
+                        return
+                time.sleep(wait_s)
+                continue
             try:
                 name, args = q.get(timeout=5)
             except queue.Empty:
@@ -339,6 +368,8 @@ def main():
     ap.add_argument("--job_timeout_h", type=float, default=0.0, help="kill a job after this time (0 = off)")
     ap.add_argument("--status", default=None, help="JSON status file, written every 5 min")
     ap.add_argument("--stop_file", default=None, help="if this file exists, no new job starts (PLAN 4.5)")
+    ap.add_argument("--exclusive_gpu", action="store_true",
+                    help="start a job on a GPU only if no other process computes on it (one job per GPU, Chris 2026-10-18)")
     ap.add_argument("--gate_maxiter", type=int, default=200000,
                     help="relax_maxiter of the one retry after a gate failure (exit code 3); 0 = no retry")
     a = ap.parse_args()
@@ -356,7 +387,7 @@ def main():
             print("CUDA_DEVICE=%s %s" % (gpus[0], " ".join(default_command(args, pathlib.Path(a.runs) / name))))
         return
     res = run_jobs(jobs, gpus, a.runs, a.min_free_gb, a.retries, a.job_timeout_h, a.status,
-                   gate_maxiter=a.gate_maxiter, stop_file=a.stop_file)
+                   gate_maxiter=a.gate_maxiter, stop_file=a.stop_file, exclusive=a.exclusive_gpu)
     print("[end] done %d, failed %d: %s" % (len(res["done"]), len(res["failed"]),
                                            ", ".join("%s (%s)" % kv for kv in sorted(res["failed"].items()))), flush=True)
     sys.exit(0 if not res["failed"] else 1)

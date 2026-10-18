@@ -2259,3 +2259,23 @@ def test_init_mode_particle():
         assert get_arg(tok, "init_from") is None
         for k in {t[2:] for t in tok + ref if t.startswith("--")} - removed - {"init_mode", "b_list", "n_amp"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+
+
+def test_run_queue_exclusive_gpu(tmp_path):
+    """run_queue --exclusive_gpu (Chris 2026-10-18, one job per GPU): busy_gpus parses nvidia-smi; a worker starts a
+    job only when its GPU is free of other processes (here: g0 busy for the first 2 checks, g1 always busy)."""
+    import run_queue
+    idx = "0, GPU-aaa\n1, GPU-bbb\n2, GPU-ccc\n"
+    assert run_queue.busy_gpus(idx, "GPU-bbb\nGPU-bbb\nGPU-ccc\n") == {"1", "2"}
+    assert run_queue.busy_gpus(idx, "") == set()
+    calls = {"g0": 0}
+
+    def busy(g):
+        if g == "g1":
+            return True
+        calls["g0"] += 1
+        return calls["g0"] <= 2
+
+    res = run_queue.run_jobs([("A", "ok"), ("B", "ok")], ["g0", "g1"], tmp_path / "runs", command=_cmd, burst_n=99,
+                             exclusive=True, busy=busy, wait_s=0.05)
+    assert sorted(res["done"]) == ["A", "B"] and calls["g0"] >= 3

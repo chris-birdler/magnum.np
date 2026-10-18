@@ -36,7 +36,7 @@ GPUS=${2:-0,1,2,3}
     sleep 120
 done
 echo "$(date '+%F %T') start on the GPUs $GPUS" >> $L
-python run_queue.py jobs/initmode.txt --gpus $GPUS --min_free_gb 3 --retries 1 --job_timeout_h 24 \
+python run_queue.py jobs/initmode.txt --gpus $GPUS --min_free_gb 3 --retries 1 --job_timeout_h 24 --exclusive_gpu \
     --status status_initmode.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 rq=$?; echo "$(date '+%F %T') initmode queue exit code $rq" >> $L
 python eval_initmode.py > runs/initmode_report.md 2>> $L
