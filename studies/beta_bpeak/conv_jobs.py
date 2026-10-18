@@ -31,6 +31,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell precision > jobs/precision_nx.txt   # PLAN 4.13 precision test (fp64 against fp32)
     python conv_jobs.py --newell solvertest > jobs/solvertest.txt    # FD against Newell at 150 mT from the same state
     python conv_jobs.py --newell solverscan > jobs/solverscan.txt    # FD at all 7 stages of one seed per corner
+    python -c "import conv_jobs as CJ; [print(*x) for x in CJ.predemag_lines(runs_dir=<study runs>)]" > jobs/predemag.txt
 """
 import shlex
 
@@ -324,6 +325,31 @@ def solverscan_lines(src="jobs/sobol_corners.txt"):
     return sorted(out, key=lambda x: (x[0][:2] not in ("K2", "K4"), x[0]))     # the longer d/l_ex 300 runs first
 
 
+PD_RUNS = ("K2_0_nx", "K2_1_nx", "K4_1_nx", "K3_1_nx")
+
+
+def predemag_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Test of the AC demagnetization after the virgin relaxation (Chris 2026-10-18, Bloch points): the 4 corner runs
+    with the most Bloch points, from their relaxed virgin state (init.pt), AC demagnetization from (a) the drive of
+    their 150 mT stage (<run>_pd150), (b) twice that (<run>_pd300), (c) saturation 1 − φ (<run>_pdsat); then the
+    relaxation again and the 9 mT stage. All other settings as the corner run, without snapshots and accumulators."""
+    import json
+    import pathlib
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in PD_RUNS:
+        st = json.loads((pathlib.Path(runs_dir) / n / "summary.json").read_text())["stages"]
+        h150 = [s for s in st if s.get("measure")][-1]["h_amp"]
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+        t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % n]), "init_wait_h", ["0.0"])
+        for tag, h in (("pd150", h150), ("pd300", 2.0 * h150), ("pdsat", 0.0)):
+            out.append(("%s_%s" % (n, tag), " ".join(set_arg(t, "predemag_h", ["%.6g" % h]))))
+    return sorted(out, key=lambda x: (x[0].split("_")[-1], x[0]))
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -355,7 +381,7 @@ if __name__ == "__main__":
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
                 tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
                 precision_lines() if st == "precision" else solvertest_lines() if st == "solvertest" else
-                solverscan_lines() if st == "solverscan" else
+                solverscan_lines() if st == "solverscan" else predemag_lines() if st == "predemag" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

@@ -1245,7 +1245,10 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
             if not init.endswith("/init.pt") or run not in src:
                 continue                                          # no init_from, or a state file without a job line
             s = parse(src[run])
-            diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)]
+            # the AC demagnetization after loading (Chris 2026-10-18): only if the source has none, as run_loops
+            late = t.get("predemag_h") is not None and s.get("predemag_h") is None
+            diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)
+                    and not (late and k in ("predemag_h", "predemag_q"))]
             assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
             n += 1
     assert n >= 190
@@ -2186,3 +2189,41 @@ def test_solverscan_lines_and_reading():
     assert SS.reading([0.01, -0.02, 0.0, 0.02])[0] == "β robust to the solver"
     assert SS.reading([0.3, -0.3, 0.1, 0.0])[0] == "not determined"
     assert SS.reading([0.3, 0.3, float("nan"), 0.3])[0] == "not determined"
+
+
+def test_bloch_counter_torch():
+    """run_loops.cube_charge_t / bloch_mask_t (Chris 2026-10-18): the same charges as analyze_defect.cube_charges; a
+    hedgehog m = r / |r| around the centre of one elementary cube gives exactly one cube with Q = +1, its inverse −1,
+    a uniform state none."""
+    import torch
+    import analyze_defect as A
+    import run_loops as RL
+    N = 10
+    ids = np.zeros((N, N, N), np.int64)
+    ids[0], ids[:, 0], ids[:, :, 0] = -1, -1, -1           # void layers at the periodic seams: those cubes are not valid
+    g = np.stack(np.meshgrid(*(np.arange(N),) * 3, indexing="ij"), -1).astype(float)
+    r = g - np.array([4.5, 5.5, 4.5])
+    m = r / np.linalg.norm(r, axis=-1, keepdims=True)
+    qn, ok_n, _ = A.cube_charges(m, ids)
+    qt = RL.cube_charge_t(torch.tensor(m)).numpy()
+    ok_t = RL.bloch_mask_t(torch.tensor(ids)).numpy()
+    assert np.allclose(qn, qt, atol=1e-9) and (ok_n == ok_t).all()
+    sel = ok_t & (np.abs(qt) > 0.5)
+    assert sel.sum() == 1 and tuple(np.argwhere(sel)[0]) == (4, 5, 4) and round(float(qt[4, 5, 4])) == 1
+    qi = RL.cube_charge_t(torch.tensor(-m)).numpy()
+    assert round(float(qi[4, 5, 4])) == -1
+    mu = np.zeros_like(m)
+    mu[..., 2] = 1.0
+    assert np.abs(RL.cube_charge_t(torch.tensor(mu)).numpy()).max() < 1e-12
+    m32 = torch.tensor(m, dtype=torch.float32)
+    assert ((RL.cube_charge_t(m32).numpy() > 0.5) & ok_t).sum() == 1
+
+
+def test_predemag_options():
+    """--predemag_h / --predemag_q (Chris 2026-10-18) are INIT_KEYS; old configs: no predemag, q 0.8."""
+    import run_loops as RL
+    assert "predemag_h" in RL.INIT_KEYS and "predemag_q" in RL.INIT_KEYS
+    assert RL.NEW_KEYS["predemag_h"] is None and RL.NEW_KEYS["predemag_q"] == 0.8
+    a = RL.parse_args(["--out", "x", "--d_lex", "96"])
+    assert a.predemag_h is None and a.predemag_q == 0.8
+    assert RL.parse_args(["--out", "x", "--d_lex", "96", "--predemag_h", "0.015"]).predemag_h == 0.015

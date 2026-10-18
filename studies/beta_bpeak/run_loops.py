@@ -99,7 +99,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "strayfield_cycles": None, "geom_dx_lex": None,       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
             "precision_cycles": None,                             # 2026-10-17, decision Chris (fp64 test)
             "relax_tol_E_abs": None,                              # 2026-10-17, PLAN 4.13 S7 (D1)
-            "init_stage": None}                                   # 2026-10-18, solver test at 150 mT (Chris)
+            "init_stage": None,                                   # 2026-10-18, solver test at 150 mT (Chris)
+            "predemag_h": None, "predemag_q": 0.8}                # 2026-10-18, Bloch points (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -110,7 +111,7 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
-             "geom_dx_lex", "relax_tol_E_abs"]
+             "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q"]
 
 
 def parse_args(argv=None):
@@ -175,6 +176,13 @@ def parse_args(argv=None):
     g.add_argument("--relax_tol_E_abs", type=float, default=None,
                    help="converge (PLAN 4.13 S7, D1): a chunk is quiet if |dE| / (K_d V) over the chunk is at most "
                         "this value (an absolute threshold; a rise below it counts as quiet). Replaces relax_tol_E")
+    g.add_argument("--predemag_h", type=float, default=None,
+                   help="virgin_asc (Bloch points, Chris 2026-10-18): after the virgin relaxation an AC demagnetization "
+                        "at the drive frequency from this amplitude H/Ms (0: --h_sat, default 1 - phi), the amplitude "
+                        "times --predemag_q at each zero crossing of the field down to 0.3 x the first b target / "
+                        "mu_guess, then the relaxation again. With --init_from a virgin state without it: applied "
+                        "after loading")
+    g.add_argument("--predemag_q", type=float, default=0.8, help="--predemag_h: amplitude factor per half cycle")
     g.add_argument("--relax_confirm", type=int, default=2,
                    help="converge: number of consecutive chunks with a relative energy change < relax_tol_E "
                         "(one quiet chunk can come before an avalanche)")
@@ -449,6 +457,35 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
     else:
         m0 = rng.standard_normal((N, N, N, 3))
     return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
+
+
+def cube_charge_t(m):
+    """Topological charge of each elementary cube of 2 x 2 x 2 cell centres (torch, on the device of m): the sum of the
+    oriented solid angles of its 6 faces / 4π; ±1 at a Bloch point (Chris 2026-10-18; analyze_defect.cube_charges)."""
+    import torch
+
+    def sa(a, b, c):
+        num = (a * torch.linalg.cross(b, c, dim=-1)).sum(-1)
+        den = 1.0 + (a * b).sum(-1) + (b * c).sum(-1) + (c * a).sum(-1)
+        return 2.0 * torch.atan2(num, den)
+
+    q = torch.zeros(m.shape[:3], dtype=m.dtype, device=m.device)
+    for ax, (u, v) in enumerate(((1, 2), (2, 0), (0, 1))):
+        b = torch.roll(m, -1, dims=u)
+        c = torch.roll(b, -1, dims=v)
+        d = torch.roll(m, -1, dims=v)
+        om = sa(m, b, c) + sa(m, c, d)
+        q += torch.roll(om, -1, dims=ax) - om
+    return q / (4.0 * math.pi)
+
+
+def bloch_mask_t(ids_t):
+    """Cubes with all 8 corners in one particle (torch bool)."""
+    import torch
+    ok = ids_t >= 0
+    for s in ((1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1)):
+        ok &= torch.roll(ids_t, shifts=(-s[0], -s[1], -s[2]), dims=(0, 1, 2)) == ids_t
+    return ok
 
 
 def stage_start(src, config):
@@ -820,6 +857,90 @@ def main(argv=None):
             n60 += int((c < cos60).sum())
         return Mpar, Mvec.cpu().numpy(), Mp.cpu().numpy(), p_dis, cmin, n60
 
+    cube_ok = bloch_mask_t(ids_n)
+
+    @torch.no_grad()
+    def bloch(positions=False):
+        """Bloch points of the present state (Chris 2026-10-18): (n with Q = +1, n with Q = -1) of the cubes inside one
+        particle; with positions also [[i, j, k, Q, particle], ...]."""
+        q = cube_charge_t(state.m)
+        sel = cube_ok & (q.abs() > 0.5)
+        npos, nneg = int((sel & (q > 0)).sum()), int((sel & (q < 0)).sum())
+        if not positions:
+            return npos, nneg
+        pts = [[int(i), int(j), int(k), int(round(float(q[i, j, k]))), int(ids[i, j, k])]
+               for i, j, k in torch.nonzero(sel).cpu().numpy()]
+        return npos, nneg, pts
+
+    def relax_converge(tag):
+        """The converge relaxation of virgin_asc (alpha 1, chunks, quiet_chunk; PLAN 4.13 S7). Returns (history,
+        iterations, converged); the history has the Bloch points per chunk."""
+        magf = torch.tensor(mag.reshape(-1), device=dev)
+        hist, E_prev, it, converged, quiet = [], None, 0, False, 0
+        while it < args.relax_maxiter:
+            for _ in range(args.relax_chunk):
+                state.t, state.m = llg._solver.step(state.t, state.m, 1e-11, state=state, alpha=1.0)
+            normalize(state.m)
+            it += args.relax_chunk
+            with torch.no_grad():
+                tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
+                      / constants.gamma)
+                E = float(llg.E(state))
+            q, rel, d_abs = quiet_chunk(E, E_prev, Kd * N**3 * dx**3, args.relax_tol_E, args.relax_tol_E_abs)
+            nb = bloch()
+            hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel, "dE_over_KdV": d_abs,
+                         "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max()),
+                         "n_bloch": list(nb)})
+            print("[%s] it %6d  E/K_d %.10g  rel dE %.2e  |dE|/(K_d V) %.2e  torque rms %.3g  max %.3g A/m  "
+                  "Bloch points +%d -%d" % (tag, it, hist[-1]["E_over_Kd"], rel, d_abs, hist[-1]["torque_rms"],
+                                            hist[-1]["torque_max"], nb[0], nb[1]), flush=True)
+            quiet = quiet + 1 if q else 0
+            if quiet >= args.relax_confirm:
+                converged = True
+                break
+            E_prev = E
+        return hist, it, converged
+
+    def predemag():
+        """AC demagnetization after the virgin relaxation (Chris 2026-10-18), then the relaxation again. Returns the
+        record for summary["init"]["predemag"]; writes bloch_predemag.csv (Bloch points at each sample)."""
+        h0 = args.predemag_h if args.predemag_h > 0 else (args.h_sat if args.h_sat is not None else 1.0 - args.phi)
+        h_end = 0.3 * min(args.b_list) / args.mu_guess if args.b_list else 0.01 * h0
+        n_half = max(1, int(math.ceil(math.log(h0 / h_end) / math.log(1.0 / args.predemag_q))))
+        dt_d = 1.0 / freq / args.samples
+        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+        drive.t0, drive.freq, drive.H_amp = 0.0, freq, h0 * Ms
+        t_w, halves = time.time(), []
+        with open(out / "bloch_predemag.csv", "w") as fb:
+            fb.write("# half_cycle,sample,h,M_par_over_Ms,n_bloch_pos,n_bloch_neg\n")
+            for hh in range(n_half):
+                mx, nbmax = 0.0, 0
+                for k in range(args.samples // 2):
+                    llg.step(state, dt_d)
+                    with torch.no_grad():
+                        mp = float(torch.dot((Ms_t * state.m).double().mean(dim=(0, 1, 2)), e_t)) / Ms
+                    nb = bloch()
+                    mx, nbmax = max(mx, abs(mp)), max(nbmax, nb[0] + nb[1])
+                    fb.write("%d,%d,%.6e,%.6e,%d,%d\n" % (hh, k, drive.H_amp / Ms, mp, nb[0], nb[1]))
+                halves.append({"h": drive.H_amp / Ms, "M_par_peak_over_Ms": mx, "n_bloch_max": nbmax,
+                               "n_bloch_end": list(nb)})
+                print("[predemag] half cycle %d: h %.4g  |M_par|/Ms peak %.4f  Bloch points max %d, end +%d -%d" %
+                      (hh, drive.H_amp / Ms, mx, nbmax, nb[0], nb[1]), flush=True)
+                drive.H_amp *= args.predemag_q
+        drive.H_amp = 0.0
+        rec = {"h0": h0, "q": args.predemag_q, "h_end": h_end, "n_half": n_half, "halves": halves,
+               "wall_s": time.time() - t_w}
+        hist, it, conv = relax_converge("relax2")
+        Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
+        npos, nneg, pts = bloch(positions=True)
+        rec.update({"relax_history": hist, "relax_iterations": it, "relax_converged": conv,
+                    "E_over_Kd": hist[-1]["E_over_Kd"], "M_over_Ms": [float(x) / Ms for x in Mv0],
+                    "n_pairs_gt60": int(n60_0), "bloch_points": pts})
+        print("[predemag] after the relaxation: converged=%s after %d iterations, M/Ms (%.4f, %.4f, %.4f), Bloch "
+              "points +%d -%d" % (conv, it, *rec["M_over_Ms"], npos, nneg), flush=True)
+        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+        return rec
+
     # --- config ------------------------------------------------------------
     stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
     if args.cycles_last_amp:
@@ -874,7 +995,7 @@ def main(argv=None):
     elif args.init_from or init_file.exists():
         # relaxed virgin state of another run (--init_from) or of this run before an interruption
         src = init_file
-        if args.init_from:
+        if args.init_from and not init_file.exists():
             src = pathlib.Path(args.init_from)
             src = src if src.is_absolute() else out.parent / src
             t_end = time.time() + 3600.0 * args.init_wait_h
@@ -884,9 +1005,12 @@ def main(argv=None):
                 sys.exit("ERROR: --init_from %s does not exist" % src)
         src = str(src)
         c = torch.load(src, map_location=dev)
+        late_predemag = bool(args.predemag_h is not None and "init" in c
+                             and c["config"].get("predemag_h", NEW_KEYS["predemag_h"]) is None)
         if "init" in c:
             diff = [k for k in INIT_KEYS if c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)
-                    and not (k == "relax_maxiter" and c["init"].get("relax_converged"))]
+                    and not (k == "relax_maxiter" and c["init"].get("relax_converged"))
+                    and not (late_predemag and k in ("predemag_h", "predemag_q"))]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
                     "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
@@ -896,6 +1020,14 @@ def main(argv=None):
         state.m = c["m"].to(dtype=dt_, device=dev)
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         print("[init] m from %s" % src, flush=True)
+        if late_predemag:
+            # Chris 2026-10-18: the virgin state of another run, then the AC demagnetization and the relaxation here
+            summary["init"]["bloch_virgin"] = list(bloch())
+            summary["init"]["predemag"] = predemag()
+            summary["init"]["relax_converged"] = bool(c["init"].get("relax_converged")
+                                                      and summary["init"]["predemag"]["relax_converged"])
+            save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
+                         "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
     else:
         init_seed = args.seed if args.init_seed is None else args.init_seed
         if args.init_block > 0.0 and not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
@@ -940,28 +1072,7 @@ def main(argv=None):
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
             # energy does not change any more (relative change per chunk < relax_tol_E, or with relax_tol_E_abs an
             # absolute change per chunk <= relax_tol_E_abs, PLAN 4.13 S7)
-            magf = torch.tensor(mag.reshape(-1), device=dev)
-            hist, E_prev, it, converged, quiet = [], None, 0, False, 0
-            while it < args.relax_maxiter:
-                for _ in range(args.relax_chunk):
-                    state.t, state.m = llg._solver.step(state.t, state.m, 1e-11, state=state, alpha=1.0)
-                normalize(state.m)
-                it += args.relax_chunk
-                with torch.no_grad():
-                    tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
-                          / constants.gamma)
-                    E = float(llg.E(state))
-                q, rel, d_abs = quiet_chunk(E, E_prev, Kd * N**3 * dx**3, args.relax_tol_E, args.relax_tol_E_abs)
-                hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel, "dE_over_KdV": d_abs,
-                             "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max())})
-                print("[relax] it %6d  E/K_d %.10g  rel dE %.2e  |dE|/(K_d V) %.2e  torque rms %.3g  max %.3g A/m" %
-                      (it, hist[-1]["E_over_Kd"], rel, d_abs, hist[-1]["torque_rms"], hist[-1]["torque_max"]),
-                      flush=True)
-                quiet = quiet + 1 if q else 0
-                if quiet >= args.relax_confirm:
-                    converged = True
-                    break
-                E_prev = E
+            hist, it, converged = relax_converge("relax")
             Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
             summary["init"] = {"protocol": args.protocol, "relax_mode": "converge", "relax_converged": converged,
                                "relax_iterations": it, "relax_history": hist,
@@ -971,6 +1082,10 @@ def main(argv=None):
                                "wall_s": time.time() - t_w}
             print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
                   (converged, it, summary["init"]["wall_s"]), flush=True)
+            summary["init"]["bloch_virgin"] = list(bloch())
+            if args.predemag_h is not None:
+                summary["init"]["predemag"] = predemag()
+                summary["init"]["relax_converged"] = bool(converged and summary["init"]["predemag"]["relax_converged"])
         elif args.protocol == "virgin_asc":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
             converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))
@@ -1051,6 +1166,8 @@ def main(argv=None):
                    "im": torch.zeros(state.m.shape, dtype=torch.float64, device=dev),
                    "h1": 0j, "p_sum": 0.0, "n": 0}
         fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
+        fbl = open(out / ("bloch_%02d_%s.csv" % (si, st["name"])), "w")
+        fbl.write("# cycle,sample,n_bloch_pos,n_bloch_neg  (Bloch points at each sample, Chris 2026-10-18)\n")
 
         ci = 0
         complete = False
@@ -1059,7 +1176,7 @@ def main(argv=None):
                 break
             t_w = time.time()
             steps0 = state._step
-            rows = []
+            rows, brows = [], []
             cmin_c, n60_c = 1.0, 0
 
             def sample():
@@ -1068,6 +1185,7 @@ def main(argv=None):
                 Mpar, Mv, Mp, pd, cmin, n60 = diagnostics()
                 cmin_c, n60_c = min(cmin_c, cmin), max(n60_c, n60)
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
+                brows.append(bloch())                    # Chris 2026-10-18: Bloch points at each sample
 
             e_start = term_energies()                     # PLAN 4.13 S5; the drive field is 0 at the cycle start
             sample()
@@ -1134,6 +1252,12 @@ def main(argv=None):
             for r in rows:
                 fcsv.write("%d," % ci + ",".join("%.9e" % v for v in (*r[:3], *r[3:6], MU0 * (r[1] + r[2]), *r[6:])) + "\n")
             fcsv.flush()
+            nbs = [a + b for a, b in brows]
+            cyc["bloch"] = {"start": list(brows[0]), "end": list(brows[-1]), "max": max(nbs),
+                            "mean": float(np.mean(nbs))}
+            for k, (a, b) in enumerate(brows):
+                fbl.write("%d,%d,%d,%d\n" % (ci, k, a, b))
+            fbl.flush()
             if snap:
                 clean_snapshots(out, st["name"], ci - args.snap_cycles + 1)   # PLAN 4.13 S6: keep the last cycles
             cycles_done += 1
@@ -1181,8 +1305,10 @@ def main(argv=None):
                     complete = True
                     break
         fcsv.close()
+        fbl.close()
         if complete:
             rec["E_end"] = term_energies()                # PLAN 4.13 S5: the end of the last cycle
+            rec["bloch_points_end"] = bloch(positions=True)[2]
 
         if complete and st["measure"] and args.ringdown_periods > 0:
             # ring-down test: drive on for a quarter period (to H max), then H constant; record the decay of the
