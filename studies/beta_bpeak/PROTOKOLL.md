@@ -6028,6 +6028,71 @@ at K2_0 and K4_0 are distorted (shared GPUs).
 - Operation: from 08:35 to 08:56 two GPUs were idle (the precision queue waited for the last corner runs); then the
   solver test and precision jobs K1_0 and K3_0 ran ahead on the free GPUs (the chain skipped them as DONE).
 
+### 7.113 Solver scan: the solver explains the β shift of each corner and the levers of the old study; further evaluations of the corner test (2026-10-18)
+
+All times UTC. md5 in runs/md5_nx_20261018.txt.
+
+**Solver scan (decision Chris; runs/solverscan_report.md, eval_solverscan.py, rules fixed before the runs).** One
+seed per corner (K1_0_nx … K4_0_nx): each of the 7 stages again with DemagFieldPBC (FD) in the cycles, from the same
+state as the corner run (stage 0: its init.pt; stage k: its state after stage k − 1); the Newell value is the corner
+run itself. 27 runs (K1_0_nx at 150 mT is the solver-test run K1_0_nx_150fd), 12:00 … 17:44, all exit code 0.
+
+Δ_k = ln w_FD − ln w_Newell per stage:
+
+| corner run | 9 mT | 20 mT | 35 mT | 50 mT | 70 mT | 100 mT | 150 mT | Δβ_solver = β_FD − β_Newell | β old − β new (corner test, the same seed) |
+|---|---|---|---|---|---|---|---|---|---|
+| K1_0_nx | +0.092 | −0.196 | +0.444 | +0.740 | +0.997 | +0.654 | +0.548 | +0.296 | +0.216 |
+| K2_0_nx | +0.514 | +0.646 | −0.200 | −0.315 | −0.440 | −0.201 | +0.199 | −0.258 | −0.192 |
+| K3_0_nx | +0.390 | +0.329 | +0.052 | −0.031 | +0.143 | +0.503 | +0.513 | +0.036 | +0.065 |
+| K4_0_nx | +0.150 | −0.130 | +0.099 | +0.018 | −0.187 | −0.257 | −0.221 | −0.129 | −0.245 |
+
+- Mean Δβ_solver = −0.014 ± 0.119 (SE, n 4; 90 % CI −0.295 … +0.267). **Reading: "not determined".**
+- Information: Δβ_solver and the β difference of the corner test (old − new, the same seed) have the same sign at all
+  4 corners and a similar size (correlation coefficient 0.93, n 4; a hint, not a test).
+- Corner differences β(Ki) − β(K1) from the same states, Newell / FD: K2 +0.173 / −0.380; K3 +0.201 / −0.058; K4
+  −0.092 / −0.516. The old main study had at its corners K2 −0.24, K3 −0.08, K4 −0.59 (7.112). Thus with FD the
+  lever pattern of the old study appears, and with Newell another pattern. The levers of the old main study come
+  mainly from the error of DemagFieldPBC (1 seed per corner).
+- Mean Δ_k over the corners (± SE, n 4): 9 mT +0.287 ± 0.100 (FD about × 1.33, as × 1.3 at d/l_ex 96 in 7.110);
+  20 … 100 mT +0.10 … +0.18 with SE 0.13 … 0.31; 150 mT +0.260 ± 0.178. The sign of Δ_k changes with the amplitude
+  and the corner.
+
+**Further evaluations of the corner test, old against new** (runs/corners_nx_fields.md, eval_corners_fields.py,
+descriptive). Paired difference new − old over the 12 runs (mean ± SE):
+- Fundamental share R1 of the dissipation: 9 mT −0.015 ± 0.077; 35 mT +0.167 ± 0.086; 70 mT +0.138 ± 0.053; 100 mT
+  +0.080 ± 0.034; 150 mT +0.044 ± 0.019.
+- Share of the loss in the outer shell r ≥ 0.8 of the particles (49 % of the volume): 9 mT −0.001 ± 0.046; 70 mT
+  −0.087 ± 0.024; 100 mT −0.088 ± 0.017; 150 mT −0.064 ± 0.015.
+- Share of the loss in the hottest 10 % of the cells: 70 mT −0.057 ± 0.017; 150 mT −0.028 ± 0.008.
+- Share of the dissipation in jumps (5 sigma above a Fourier series up to harmonic 8): 0 … 0.07 old and new; the
+  paired differences are below 0.02.
+- Exponent of the fundamental channel β_f = β + d ln R1 / d ln B, old / new: K1 2.08 / 2.02; K2 2.06 / 1.97; K3
+  2.02 / 1.89; K4 1.80 / 1.76 (means over 3 seeds); β old / new: 2.45 / 2.21; 2.21 / 2.26; 2.38 / 2.05; 1.86 / 2.07.
+- Interpretation (an inference): at 35 … 150 mT the old solver put more loss into the outer shell of the particles,
+  where the voxel staircase is, and more loss outside the fundamental. This agrees with the error of DemagFieldPBC at
+  the staircase surfaces (7.105). β_f changes less than β (at most 0.13 against up to 0.33); thus the β shifts come
+  mainly from the share outside the fundamental.
+
+**AC demagnetization test, first runs (jobs/predemag.txt; no reading before all 12 runs).** K3_1_nx_pd150 (AC
+demagnetization from the drive of its 150 mT stage): the Bloch-point pair survives the demagnetization and the second
+relaxation (Q +1 and −1; remanence |M| 0.002 M_s), and it stays during the 9 mT stage (2 Bloch points at all
+samples). Nevertheless the 9 mT loss is now w_loop 6.58·10⁻⁸ (K3_0_nx 6.52·10⁻⁸, the corner run K3_1_nx
+1.35·10⁻⁷). Earlier: PROTOKOLL 7.5 found that the AC demagnetization does not remove the large-angle structures that
+the 10 nm mesh holds (about 21 pairs above 60°).
+
+**Start "each particle uniform" (way 2; decision Chris).** `--init_mode particle` (commit 2f0072f): each particle
+starts uniform along its own random direction instead of random m on 6 l_ex blocks. Earlier tests of the start state
+(7.4 … 7.6): random blocks (A), AC demagnetization (B), one saturating cycle (C); this start was not tested before.
+Test: K2_0, K2_1, K4_1, K3_1, virgin relaxation and the 9 mT stage (jobs/initmode.txt, eval_initmode.py, reading
+fixed before the runs: "clean" if no Bloch point after the relaxation and in the 9 mT stage in all 4 runs). Cost
+0.3 … 0.6 $ (estimate).
+
+**Operation: one job per GPU (Chris).** Two queues on the same GPUs make each job slower without a gain in total
+throughput, and they distort the measured times (the fp64 times of K2_0 and K4_0 in 7.112). run_queue
+`--exclusive_gpu` (commit 6e8ab08) starts a job only on a GPU without another compute process; the queue of way 2
+uses it and waits for free GPUs. From 13:39 to 17:44 two queues shared the GPUs (solver scan and AC demagnetization
+test); since 17:44 one job per GPU.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
