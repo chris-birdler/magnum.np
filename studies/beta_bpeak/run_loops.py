@@ -101,7 +101,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "relax_tol_E_abs": None,                              # 2026-10-17, PLAN 4.13 S7 (D1)
             "init_stage": None,                                   # 2026-10-18, solver test at 150 mT (Chris)
             "predemag_h": None, "predemag_q": 0.8,                # 2026-10-18, Bloch points (Chris)
-            "init_mode": "block"}                                 # 2026-10-18, Bloch points, way 2 (Chris)
+            "init_mode": "block",                                 # 2026-10-18, Bloch points, way 2 (Chris)
+            "bloch_free_tries": 0}                                # 2026-10-18, Bloch points (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -112,7 +113,8 @@ RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init
 INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff", "r_p", "ms_void", "Js", "A",
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
-             "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode"]
+             "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
+             "bloch_free_tries"]
 
 
 def parse_args(argv=None):
@@ -149,6 +151,10 @@ def parse_args(argv=None):
     g.add_argument("--init_mode", choices=["block", "particle"], default="block",
                    help="virgin start (Chris 2026-10-18, Bloch points): block = random m on --init_block blocks; "
                         "particle = each particle uniform along its own random direction")
+    g.add_argument("--bloch_free_tries", type=int, default=0,
+                   help="virgin_asc converge (Chris 2026-10-18): if the prepared state (after --predemag_h if set) has a "
+                        "Bloch point, a new random start (other stream of init_seed; the microstructure stays) and the "
+                        "preparation again, at most this many attempts in all; 0 = one attempt, no check")
     g.add_argument("--init_block", type=float, default=0.0,
                    help="random initial m constant on blocks of this edge / l_ex in physical coordinates "
                         "(multiple of every dx: the same start on every mesh); 0 = one direction per cell")
@@ -449,19 +455,20 @@ def transfer_m(m_f, ids_f, ids_c):
     return v, stats
 
 
-def virgin_m0(N, a_lex, dx_lex, init_block, init_seed, mode="block", ids=None):
+def virgin_m0(N, a_lex, dx_lex, init_block, init_seed, mode="block", ids=None, attempt=0):
     """Random initial m of the virgin state: isotropic unit vectors (normalised Gaussian), constant on blocks of
     edge init_block l_ex (0: per cell); own random stream [init_seed, 0] (the cube axes use [seed, 1000 + p]).
     mode "particle" (Chris 2026-10-18, Bloch points): each particle (ids) uniform along its own isotropic random
-    direction (stream [init_seed, 2]); the void cells keep the block field (they carry no magnetization)."""
+    direction (stream [init_seed, 2]); the void cells keep the block field (they carry no magnetization).
+    attempt k > 0 (--bloch_free_tries): other streams [init_seed, 10 + k] (blocks) and [init_seed, 20 + k] (particles)."""
     if mode == "particle":
-        m0 = virgin_m0(N, a_lex, dx_lex, init_block, init_seed)
-        g = np.random.default_rng([init_seed, 2]).standard_normal((4, 3))
+        m0 = virgin_m0(N, a_lex, dx_lex, init_block, init_seed, attempt=attempt)
+        g = np.random.default_rng([init_seed, 2 if attempt == 0 else 20 + attempt]).standard_normal((4, 3))
         g /= np.linalg.norm(g, axis=-1, keepdims=True)
         for p in range(4):
             m0[ids == p] = g[p]
         return m0
-    rng = np.random.default_rng([init_seed, 0])
+    rng = np.random.default_rng([init_seed, 0 if attempt == 0 else 10 + attempt])
     if init_block > 0.0:
         nb = int(round(a_lex / init_block))
         tab = rng.standard_normal((nb, nb, nb, 3))
@@ -1085,20 +1092,39 @@ def main(argv=None):
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
             # energy does not change any more (relative change per chunk < relax_tol_E, or with relax_tol_E_abs an
             # absolute change per chunk <= relax_tol_E_abs, PLAN 4.13 S7)
-            hist, it, converged = relax_converge("relax")
-            Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
-            summary["init"] = {"protocol": args.protocol, "relax_mode": "converge", "relax_converged": converged,
-                               "relax_iterations": it, "relax_history": hist,
-                               "E_over_Kd": hist[-1]["E_over_Kd"],
-                               "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
-                               "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
-                               "wall_s": time.time() - t_w}
-            print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
-                  (converged, it, summary["init"]["wall_s"]), flush=True)
-            summary["init"]["bloch_virgin"] = list(bloch())
-            if args.predemag_h is not None:
-                summary["init"]["predemag"] = predemag()
-                summary["init"]["relax_converged"] = bool(converged and summary["init"]["predemag"]["relax_converged"])
+            tries = []
+            for attempt in range(max(1, args.bloch_free_tries)):
+                if attempt > 0:
+                    # Chris 2026-10-18: a new random start of the same microstructure, the preparation again
+                    state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids,
+                                          attempt))
+                    state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+                    drive.H_amp = 0.0
+                hist, it, converged = relax_converge("relax" if attempt == 0 else "relax_try%d" % attempt)
+                Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
+                summary["init"] = {"protocol": args.protocol, "relax_mode": "converge", "relax_converged": converged,
+                                   "relax_iterations": it, "relax_history": hist,
+                                   "E_over_Kd": hist[-1]["E_over_Kd"],
+                                   "M_over_Ms": [float(x) / Ms for x in Mv0], "n_pairs_gt60": int(n60_0),
+                                   "max_angle_deg": float(math.degrees(math.acos(max(-1.0, min(1.0, cmin0))))),
+                                   "wall_s": time.time() - t_w}
+                print("[relax] virgin state: converged=%s after %d iterations, %.0f s wall" %
+                      (converged, it, summary["init"]["wall_s"]), flush=True)
+                summary["init"]["bloch_virgin"] = list(bloch())
+                n_end = sum(summary["init"]["bloch_virgin"])
+                if args.predemag_h is not None:
+                    summary["init"]["predemag"] = predemag()
+                    summary["init"]["relax_converged"] = bool(converged
+                                                              and summary["init"]["predemag"]["relax_converged"])
+                    n_end = len(summary["init"]["predemag"]["bloch_points"])
+                tries.append({"attempt": attempt, "relax_iterations": it, "converged": converged,
+                              "n_bloch_prepared": n_end})
+                if args.bloch_free_tries > 0:
+                    print("[bloch] attempt %d: %d Bloch points in the prepared state" % (attempt, n_end), flush=True)
+                if args.bloch_free_tries <= 0 or n_end == 0 or not summary["init"]["relax_converged"]:
+                    break
+            summary["init"]["bloch_tries"] = tries
+            summary["init"]["bloch_free"] = bool(tries[-1]["n_bloch_prepared"] == 0)
         elif args.protocol == "virgin_asc":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
             converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))

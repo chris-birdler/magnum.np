@@ -34,12 +34,12 @@ cd $T || exit 1
 L=$B/dispatcher.log
 echo "$(date '+%F %T') dispatcher (re)start at $(git log --oneline -1 | cut -c1-60)" >> $L
 ( while [ ! -f spool/EXIT ]; do
-      python instance_postproc.py --runs runs --stop spool/EXIT --workers 4 --pattern '^(S\d{3}|C\d|K\d_\d)_nx$' \
+      python instance_postproc.py --runs runs --stop spool/EXIT --workers 4 --pattern '^(S\d{3}|C\d|K\d_\d)_(nx|hs|ad|as)$' \
           >> $B/postproc_dispatcher.log 2>&1 && break
       echo "$(date '+%F %T') instance_postproc (dispatcher) restarted" >> runs/ALERT
       sleep 60
   done ) &
-python run_queue.py --spool spool --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 24 \
+python run_queue.py --spool spool --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 24 --exclusive_gpu \
     --status status_dispatcher.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 echo "$(date '+%F %T') dispatcher ended, exit code $?" >> $L
 wait

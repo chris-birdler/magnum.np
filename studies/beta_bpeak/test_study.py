@@ -2320,3 +2320,32 @@ def test_run_queue_spool_dispatcher(tmp_path):
     (spool / "30_d.jobs").write_text("A1 ok\n")          # all done already: .done at once
     run_queue.run_jobs([], ["g0"], tmp_path / "runs", command=cmd, burst_n=99, spool=spool, spool_s=0.2)
     assert json.loads((spool / "30_d.jobs.done").read_text())["done"] == ["A1"]
+
+
+def test_bloch_free_start():
+    """--bloch_free_tries (Chris 2026-10-18): an INIT_KEY (old configs 0); attempt 0 of virgin_m0 is the old start,
+    attempt k > 0 another random start; start_lines: the corner lines of PLAN 4.13 plus the start options."""
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    assert "bloch_free_tries" in RL.INIT_KEYS and RL.NEW_KEYS["bloch_free_tries"] == 0
+    assert RL.parse_args(["--out", "x", "--d_lex", "96"]).bloch_free_tries == 0
+    N, a, dx, blk = 12, 36.0, 3.0, 6.0
+    ids = -np.ones((N, N, N), int)
+    ids[1:5, 1:5, 1:5], ids[6:11, 6:11, 6:11], ids[1:5, 6:11, 1:5], ids[6:11, 1:5, 6:11] = 0, 1, 2, 3
+    for mode in ("block", "particle"):
+        m0 = RL.virgin_m0(N, a, dx, blk, 5, mode, ids)
+        assert np.allclose(m0, RL.virgin_m0(N, a, dx, blk, 5, mode, ids, 0))
+        assert not np.allclose(m0, RL.virgin_m0(N, a, dx, blk, 5, mode, ids, 1))
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    hs = CJ.start_lines("hs", src)
+    assert [n for n, _ in hs] == [n[:-3] + "_hs" for n in corners]
+    for n, line in hs:
+        tok, ref = shlex.split(line), shlex.split(corners[n[:-3] + "_nx"])
+        assert get_arg(tok, "init_mode") == ["particle"] and get_arg(tok, "bloch_free_tries") == ["3"]
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {"init_mode", "bloch_free_tries"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    ad = CJ.start_lines("adsat", src)
+    assert all(get_arg(shlex.split(a), "predemag_h") == ["0"] for _, a in ad)

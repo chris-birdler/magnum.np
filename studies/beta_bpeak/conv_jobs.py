@@ -367,6 +367,34 @@ def initmode_lines(src="jobs/sobol_corners.txt"):
     return out
 
 
+START_TRIES = 3
+
+
+def start_lines(kind, src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """The 12 corner runs with a start state without Bloch points (Chris 2026-10-18; first runs of a new main study,
+    the full setup of PLAN 4.13): kind "hs" = each particle uniform (--init_mode particle), names <run>_hs; kind "ad300"
+    = AC demagnetization from twice the drive of the 150 mT stage of the corner run <run>_nx, "adsat" = from
+    saturation (names <run>_ad and <run>_as). --bloch_free_tries 3: a prepared state with a Bloch point gets a new random start of
+    the same microstructure (at most 3 attempts). The Bloch points are counted at each sample (run_loops)."""
+    import json
+    import pathlib
+    out = []
+    for n, a in corner_newell_lines(src):
+        run = n[:-len(NX_SUFFIX)]
+        t = set_arg(shlex.split(a), "bloch_free_tries", [str(START_TRIES)])
+        if kind == "hs":
+            t = set_arg(t, "init_mode", ["particle"])
+            out.append((run + "_hs", " ".join(t)))
+        else:
+            if kind == "ad300":
+                st = json.loads((pathlib.Path(runs_dir) / n / "summary.json").read_text())["stages"]
+                h = 2.0 * [s for s in st if s.get("measure")][-1]["h_amp"]
+            else:
+                h = 0.0
+            out.append((run + ("_ad" if kind == "ad300" else "_as"), " ".join(set_arg(t, "predemag_h", ["%.6g" % h]))))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
