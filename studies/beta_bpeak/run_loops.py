@@ -98,9 +98,10 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "atol_cycles": None, "rtol_cycles": None,              # 2026-10-16, PROTOKOLL 7.108
             "strayfield_cycles": None, "geom_dx_lex": None,       # geom_dx_lex: 2026-10-17, PLAN 4.12 V3g
             "precision_cycles": None,                             # 2026-10-17, decision Chris (fp64 test)
-            "relax_tol_E_abs": None}                              # 2026-10-17, PLAN 4.13 S7 (D1)
+            "relax_tol_E_abs": None,                              # 2026-10-17, PLAN 4.13 S7 (D1)
+            "init_stage": None}                                   # 2026-10-18, solver test at 150 mT (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
-RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "timer",
+RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
 # (deterministic, audit 3, item 5); run_queue raises it after a gate failure (exit code 3)
@@ -220,9 +221,10 @@ def parse_args(argv=None):
                         "(1 / (2k + 1)^2 law of the image sum, PROTOKOLL 7.108)")
     g.add_argument("--strayfield_shells", type=int, default=4,
                    help="image shells per side for --strayfield newell")
-    g.add_argument("--strayfield_cycles", choices=["newell", "newell_ext"], default=None,
+    g.add_argument("--strayfield_cycles", choices=["fd", "newell", "newell_ext"], default=None,
                    help="stray-field form of the drive cycles (default: --strayfield). Not an INIT_KEY: an --init_from "
-                        "state relaxed with newell can run its cycles with newell_ext (PROTOKOLL 7.108)")
+                        "state relaxed with newell can run its cycles with newell_ext (PROTOKOLL 7.108); fd: "
+                        "DemagFieldPBC in the cycles of a run with a Newell --strayfield (solver test, 2026-10-18)")
 
     g = p.add_argument_group("run control / output")
     g.add_argument("--out", type=str, required=True)
@@ -260,6 +262,11 @@ def parse_args(argv=None):
                    help="start from the relaxed virgin state init.pt of another run (no relaxation); a "
                         "relative path is relative to the parent of --out (runs/); the arguments in "
                         "INIT_KEYS must agree")
+    g.add_argument("--init_stage", type=str, default=None,
+                   help="solver test (Chris 2026-10-18): start from a stage state file ckpt_<i>_<stage>.pt of another run "
+                        "(--keep_stage_ckpt) at its next stage; the earlier stages of that run are copied from its "
+                        "summary.json (marked copied_from), so the drive of the next stage is the same; all INIT_KEYS and "
+                        "b_list must agree; a relative path is relative to the parent of --out")
     g.add_argument("--init_transfer", type=str, default=None,
                    help="virgin_asc (PLAN 4.10): start the relaxation from the relaxed state init.pt of a run on a finer "
                         "mesh (integer ratio of the cells) instead of a random state: block average of m over the "
@@ -330,7 +337,9 @@ def strayfield_setup(args):
 
 def cycle_strayfield(args):
     """The stray-field term of the drive cycles if --strayfield_cycles differs from --strayfield, else None
-    (PROTOKOLL 7.108). Only between the Newell forms: the mesh keeps the pbc of --strayfield_shells."""
+    (PROTOKOLL 7.108). The mesh keeps the pbc of --strayfield_shells: thus --strayfield must be a Newell form. fd
+    (solver test 2026-10-18): DemagFieldPBC does not use the pbc count (its k = 0 rule), and the exchange is periodic
+    for any pbc > 0, so the cycles have the physics of a --strayfield fd run."""
     import types
     if args.strayfield_cycles is None or args.strayfield_cycles == args.strayfield:
         return None
@@ -440,6 +449,29 @@ def virgin_m0(N, a_lex, dx_lex, init_block, init_seed):
     else:
         m0 = rng.standard_normal((N, N, N, 3))
     return m0 / np.linalg.norm(m0, axis=-1, keepdims=True)
+
+
+def stage_start(src, config):
+    """--init_stage (solver test, Chris 2026-10-18): (checkpoint dict, summary, first stage). src is a stage state file
+    ckpt_<i>_<stage>.pt of another run; that run (the folder of src) must agree in all INIT_KEYS (relax_maxiter only a
+    limit) and in b_list. Its stages before the next stage are copied (marked copied_from), so that the drive amplitude
+    of the next stage comes from the same b/h."""
+    import torch
+    src = pathlib.Path(src)
+    if not src.exists():
+        sys.exit("ERROR: --init_stage %s does not exist" % src)
+    scfg = json.loads((src.parent / "config.json").read_text())
+    diff = [k for k in INIT_KEYS + ["b_list"] if k != "relax_maxiter" and scfg.get(k, NEW_KEYS.get(k)) != config.get(k)]
+    if diff:
+        sys.exit("ERROR: %s comes from a run with other arguments: %s" % (src, ", ".join(
+            "%s %r -> %r" % (k, scfg.get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
+    c = torch.load(str(src), map_location="cpu")
+    ssum = json.loads((src.parent / "summary.json").read_text())
+    k = int(c["next_stage"])
+    stages = [dict(s, copied_from=str(src.parent)) for s in ssum["stages"][:k]]
+    summary = {"stages": stages, "init": dict(ssum.get("init", {}), source=str(src)),
+               "init_stage": {"source": str(src), "first_stage": k}}
+    return c, summary, k
 
 
 def quiet_chunk(E, E_prev, norm, tol_rel, tol_abs=None):
@@ -826,6 +858,14 @@ def main(argv=None):
         first_stage = c["next_stage"]
         summary["stages"] = summary["stages"][:first_stage]
         print("[resume] from stage %d" % first_stage, flush=True)
+    elif args.init_stage:
+        if args.init_from:
+            sys.exit("ERROR: --init_stage and --init_from exclude each other")
+        src = pathlib.Path(args.init_stage)
+        c, summary, first_stage = stage_start(src if src.is_absolute() else out.parent / src, config)
+        state.m = c["m"].to(dtype=dt_, device=dev)
+        state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+        print("[init] m from %s, start at stage %d" % (args.init_stage, first_stage), flush=True)
     elif args.init_from or init_file.exists():
         # relaxed virgin state of another run (--init_from) or of this run before an interruption
         src = init_file

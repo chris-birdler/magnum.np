@@ -2091,3 +2091,68 @@ def test_design_pattern_suffix():
     assert old.match("S012") and old.match("K3_1") and not old.match("S012_nx") and not old.match("K3_1_mc2")
     assert new.match("S012_nx") and new.match("C4_nx") and new.match("K3_1_nx") and not new.match("S012")
     assert not new.match("K1_0_nx_p64") and not new.match("K1_0_nx_stopped")
+
+
+def test_cycle_strayfield_fd():
+    """Solver test (Chris 2026-10-18): --strayfield_cycles fd gives DemagFieldPBC in the cycles of a Newell run; a run
+    with --strayfield fd cannot switch to a Newell form in the cycles (the mesh pbc stays)."""
+    import types
+    import run_loops as RL
+    from magnumnp import DemagFieldPBC
+    ns = lambda s, c: types.SimpleNamespace(strayfield=s, strayfield_cycles=c, strayfield_shells=4)
+    assert isinstance(RL.cycle_strayfield(ns("newell_ext", "fd")), DemagFieldPBC)
+    assert RL.cycle_strayfield(ns("newell_ext", None)) is None
+    with pytest.raises(ValueError):
+        RL.cycle_strayfield(ns("fd", "newell_ext"))
+    assert RL.parse_args(["--out", "x", "--d_lex", "96", "--strayfield_cycles", "fd"]).strayfield_cycles == "fd"
+    assert "init_stage" in RL.RUN_CONTROL and RL.NEW_KEYS["init_stage"] is None
+
+
+def test_stage_start(tmp_path):
+    """run_loops.stage_start (--init_stage): the stages before the next stage are copied and marked; INIT_KEYS or b_list
+    of another run stop the run."""
+    import json
+    import torch
+    import run_loops as RL
+    a = RL.parse_args(["--out", str(tmp_path / "x"), "--d_lex", "96", "--b_list", "0.006", "0.013", "0.023"])
+    config = vars(a)
+    src = tmp_path / "SRC"
+    src.mkdir()
+    (src / "config.json").write_text(json.dumps(dict(config, relax_maxiter=200000)))
+    stages = [{"name": "amp%02d" % i, "measure": True, "h_amp": 0.001 * (i + 1), "cycles": [{"b_peak": 0.006}]}
+              for i in range(3)]
+    (src / "summary.json").write_text(json.dumps({"stages": stages, "init": {"relax_converged": True}}))
+    torch.save({"m": torch.zeros(2, 2, 2, 3), "next_stage": 2}, src / "ckpt_01_amp01.pt")
+    c, summary, k = RL.stage_start(src / "ckpt_01_amp01.pt", config)
+    assert k == 2 and [s["name"] for s in summary["stages"]] == ["amp00", "amp01"]
+    assert all(s["copied_from"] == str(src) for s in summary["stages"]) and summary["init"]["relax_converged"]
+    assert summary["init_stage"]["first_stage"] == 2 and tuple(c["m"].shape) == (2, 2, 2, 3)
+    with pytest.raises(SystemExit):
+        RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, seed=config["seed"] + 1))
+    with pytest.raises(SystemExit):
+        RL.stage_start(src / "ckpt_01_amp01.pt", dict(config, b_list=[0.006, 0.013]))
+
+
+def test_solvertest_lines_and_reading():
+    """Solver test at 150 mT: per K1 seed a fd and a newell run from the same stage state file, all other settings as
+    the corner run without snapshots and accumulators; eval_solvertest.reading on synthetic values."""
+    import shlex
+    import conv_jobs as CJ
+    import eval_solvertest as ES
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    jobs = CJ.solvertest_lines(src)
+    assert [n for n, _ in jobs] == [r + s for r in CJ.SOLVER_RUNS for s in ("_150fd", "_150nx")]
+    removed = {"snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"}
+    for n, line in jobs:
+        run = n.rsplit("_", 1)[0]
+        tok, ref = shlex.split(line), shlex.split(corners[run])
+        assert get_arg(tok, "init_stage") == ["%s/ckpt_05_amp05.pt" % run]
+        assert get_arg(tok, "strayfield_cycles") == (["fd"] if n.endswith("_150fd") else None)
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - removed - {"init_stage", "strayfield_cycles"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+    assert ES.reading([0.5, 0.6, 0.55])[0] == "solver effect"
+    assert ES.reading([0.01, -0.02, 0.0])[0] == "no solver effect"
+    assert ES.reading([0.3, -0.3, 0.1])[0] == "not determined"
+    assert ES.reading([0.5, float("nan"), 0.6])[0] == "not determined"

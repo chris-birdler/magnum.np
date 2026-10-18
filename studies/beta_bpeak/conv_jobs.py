@@ -29,6 +29,7 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell tolbench > jobs/tolbench.txt   # cost of the cycle tolerance on the main-study mesh
     python conv_jobs.py --newell corners > jobs/corners_nx.txt  # the 12 corner runs, production setup of PLAN 4.13
     python conv_jobs.py --newell precision > jobs/precision_nx.txt   # PLAN 4.13 precision test (fp64 against fp32)
+    python conv_jobs.py --newell solvertest > jobs/solvertest.txt    # FD against Newell at 150 mT from the same state
 """
 import shlex
 
@@ -270,6 +271,26 @@ def precision_lines(src="jobs/sobol_corners.txt"):
     return out
 
 
+SOLVER_RUNS = ("K1_0_nx", "K1_1_nx", "K1_2_nx")
+SOLVER_CKPT = "ckpt_05_amp05.pt"           # the state after the 100 mT stage (--keep_stage_ckpt)
+
+
+def solvertest_lines(src="jobs/sobol_corners.txt"):
+    """Solver test at 150 mT (Chris 2026-10-18): from the state of K1_s_nx after the 100 mT stage, the 150 mT stage again
+    with the same settings as the corner run, once with DemagFieldPBC in the cycles (<run>_150fd, --strayfield_cycles
+    fd) and once with the final setting (<run>_150nx). Without snapshots and accumulators."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in SOLVER_RUNS:
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(t, "init_stage", ["%s/%s" % (n, SOLVER_CKPT)])
+        out.append((n + "_150fd", " ".join(set_arg(t, "strayfield_cycles", ["fd"]))))
+        out.append((n + "_150nx", " ".join(t)))
+    return out
+
+
 PREC = (("P48_dx075_single", 0.75, {}), ("P48_dx075_double", 0.75, {"precision": ["double"]}),
         ("P48_dx075_atol6", 0.75, {"atol": ["1e-06"]}), ("P48_dx15_single", 1.5, {}))
 
@@ -300,7 +321,7 @@ if __name__ == "__main__":
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
                 tolbench_lines() if st == "tolbench" else corner_newell_lines() if st == "corners" else
-                precision_lines() if st == "precision" else
+                precision_lines() if st == "precision" else solvertest_lines() if st == "solvertest" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
