@@ -2431,6 +2431,20 @@ def test_protocol_s(tmp_path):
     full = dict(CJ.ad300_lines(src, runs))
     assert len(full) == 12 and all(full[n] == a for n, a in cont + CJ.ad_rest_lines(src, runs))
     assert full["K3_1_ad"] == ad["K3_1_ad"]
+    kh = dict(CJ.k4hist_lines(src, runs))               # Chris 2026-10-19: K4 history test
+    assert sorted(kh) == sorted("%s_%s_h16" % (r, k) for r in CJ.K4H_RUNS for k in ("ad", "nx"))
+    for r in CJ.K4H_RUNS:
+        for k in ("ad", "nx"):
+            tok = shlex.split(kh["%s_%s_h16" % (r, k)])
+            ref = shlex.split(full[r + "_ad"] if k == "ad" else corners[r + "_nx"])
+            want = "%s_nx_pd300/init.pt" % r if (k == "ad" and r == "K4_1") else "%s_%s/init.pt" % (r, k)
+            assert get_arg(tok, "init_from") == [want], (r, k)
+            assert get_arg(tok, "cycles_per_amp") == ["16"] and get_arg(tok, "snap_cycles") == ["16"]
+            assert get_arg(tok, "b_list") == ["0.006"] and get_arg(tok, "snap_mT") == ["9.0"]
+            for key in {t[2:] for t in tok + ref if t.startswith("--")} - {
+                    "init_from", "init_wait_h", "keep_stage_ckpt", "b_list", "n_amp", "cycles_per_amp",
+                    "max_cycles_per_amp", "snap_phases", "snap_cycles", "snap_mT"}:
+                assert get_arg(tok, key) == get_arg(ref, key), (r, k, key)
     sa = CJ.smooth_ad_lines(src, runs)                  # Chris 2026-10-19: one AC pass, then the cut
     assert [n for n, _ in sa] == [n + "_sm" for n in CJ.SA_RUNS]
     for n, line in sa:

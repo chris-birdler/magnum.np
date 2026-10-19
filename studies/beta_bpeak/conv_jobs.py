@@ -493,6 +493,36 @@ def smooth_ad_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
     return out
 
 
+K4H_RUNS = ("K4_0", "K4_1", "K4_2")
+K4H_CYCLES = 16
+
+
+def k4hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """K4 history test (Chris 2026-10-19; PROTOKOLL 7.119: at K4 the loss of option C at 9 ... 50 mT is about 2 x the
+    loss of the relaxed random start, and in the 9 mT stage it rises over the first 2 ... 3 cycles). For each K4
+    microstructure the 9 mT stage with K4H_CYCLES cycles from both prepared states: <run>_ad_h16 from the option C
+    state (<run>_ad/init.pt; K4_1: its AC-300 test state, as the run), <run>_nx_h16 from the relaxed random start of the
+    corner test (<run>_nx/init.pt). m snapshots at 2 phases (H max, H min) in every cycle (--snap_cycles K4H_CYCLES; 4
+    phases would need 25 GB of disk); accumulators as
+    the runs; all other settings as the runs."""
+    ad = dict(ad300_lines(src, runs_dir))
+    nx = dict(corner_newell_lines(src))
+    out = []
+    for r in K4H_RUNS:
+        for kind, line in (("ad", ad[r + "_ad"]), ("nx", nx[r + NX_SUFFIX])):
+            t = shlex.split(line)
+            t = set_arg(t, "keep_stage_ckpt", None)
+            t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+            if kind == "nx" or get_arg(t, "init_from") is None:
+                t = set_arg(t, "init_from", ["%s_%s/init.pt" % (r, kind)])
+            t = set_arg(t, "init_wait_h", ["0.0"])
+            t = set_arg(set_arg(t, "cycles_per_amp", [str(K4H_CYCLES)]), "max_cycles_per_amp", [str(K4H_CYCLES)])
+            t = set_arg(set_arg(t, "snap_phases", ["2"]), "snap_cycles", [str(K4H_CYCLES)])
+            t = set_arg(t, "snap_mT", ["9.0"])
+            out.append(("%s_%s_h16" % (r, kind), " ".join(t)))
+    return out
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -525,6 +555,7 @@ if __name__ == "__main__":
                 satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
                 ad_rest_lines() if st == "adrest" else
                 smooth_lines() if st == "smooth" else smooth_ad_lines() if st == "smoothad" else
+                k4hist_lines() if st == "k4hist" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
