@@ -533,3 +533,59 @@ work run on the box (Chris: "nicht mehr lokal auf dem Laptop"); the local stage 
   (dx 1.5, geometry of dx 3 locked), then D3f (dx 3, volume fraction alone, q = 2), D3P / D3L (dx 3, pairwise /
   cell-local correction, q = 2, p = 3), and D3P4 / D3L4 (q = 4: the target is the voxel geometry of dx 0.75).
   AC amplitude --predemag_h 0.040, the value of the corner runs with φ 0.55 (0.0400 … 0.0401).
+
+### 3.6 Stage A with q = 2: results; the window converges only as 1/p; decision D3 (2026-10-20, night mandate)
+
+**Run.** Box 56790356, CPU, double precision, production stray-field setting (newell_ext, 4 shells) on both meshes,
+fine meshes 304³ (K2) and 312³ (K4); check_static.py at commit 0bc5597 (the p = 4 … 6 series at b6f4b44). Files:
+results/static_A_*.json (copied from the box), report results/static_A.md (eval_static.py).
+
+**R0, R1: passed** (both geometries). For uniform m along (100), (110), (111): E_ref and E_vox agree with
+φ (1 − φ) / 3 within 10⁻⁹ (relative); both forms of the correction agree with E_ref within 10⁻⁹ at every p.
+
+**States** (energies per box volume in K_d; S = E_vox − E_ref):
+
+| state | E_K | S | S / \|E_K\| | E_frac − E_ref | RMS h_vox − h_ref (layer) | RMS h_frac − h_ref (layer) |
+|---|---|---|---|---|---|---|
+| K2_0 | −1.042e-2 | +4.72e-4 | 0.045 | −2.11e-4 | 0.0333 | 0.0136 |
+| K2_1 | −1.040e-2 | +4.72e-4 | 0.045 | −2.12e-4 | 0.0333 | 0.0135 |
+| K4_1 | −1.847e-3 | +4.21e-4 | 0.228 | −1.89e-4 | 0.0338 | 0.0126 |
+
+- The staircase raises the stray-field energy of these states by S. Relative to |E_K| this is 4.5 % for the K2 states
+  (below the 10 % rule of 3.1) and 23 % for K4_1 (above it).
+- The volume fraction alone overcorrects: E_frac lies below E_ref by about 0.45 S. Its field error in the layer is
+  about 0.4 of that of the voxel model.
+
+**Forms** (the same for the three states within 0.01; K2_0 shown; e_E = |E_form − E_ref| / |S|, e_h = field error
+in the layer relative to the voxel model):
+
+| p | P: e_E | P: e_h | L: e_E | L: e_h |
+|---|---|---|---|---|
+| 1 | 0.948 | 0.169 | 0.952 | 0.194 |
+| 2 | 0.594 | 0.096 | 0.602 | 0.133 |
+| 3 | 0.432 | 0.067 | 0.442 | 0.113 |
+| 4 | 0.339 | – | 0.352 | – |
+
+(p = 4 from the energies of the second run; its field values are in the json.) |E_form − E_ref| / |E_K| at p = 3:
+0.020 (K2), 0.097 (K4_1).
+
+- R2: no form is "sufficient": the field criterion holds for P from p = 2 on and for L nowhere at p ≤ 3; the
+  energy criterion e_E ≤ 0.10 fails at all p ≤ 4.
+- The energy error falls about as 1/(p + 0.6): 4.47, 2.80, 2.04, 1.60 · 10⁻⁴ K_d for p = 1 … 4 (K2_0); the ratio of
+  steps is 0.63, 0.73, 0.78. Reading by the rule of PLAN.md: **"window not converged"**.
+- Cause (inference, to be tested): outside the window each cut cell acts as a cube with the moment v M_s Δx³ at the
+  centre of the cube; the true moment sits at the centroid of the body part of the cell. The error per pair then
+  falls as 1/r⁴ (a misplaced dipole). Summed over the full cells of the particle interior this gives an energy error
+  that falls only as 1/R with the window radius R. A window large enough for e_E ≤ 0.1 would need p of about 14
+  (estimate from the law), which is not practical.
+
+**D3 — how to go on (decision under the night mandate).**
+- Options: (a) add the first moment of each cut cell to the far field (moment at the centroid): the FFT field gets
+  the term of the centroid offsets d_i of the source and target cells, with the central difference of the same
+  periodic kernel (no new kernel; about 4 … 5 times the FFT work of the stray field, estimate); the window term
+  subtracts the same terms; then the pair error falls as 1/r⁵ and the energy error as 1/R² (expected, not shown);
+  (b) take P at p = 3 on the field criterion (local fields in the layer within 7 %) and let the dynamic arms decide;
+  (c) a larger window: not practical (p about 14).
+- Recommendation and decision: (b) and (a) together. The dynamic arms with P and L at p = 3 run anyway (D1). A
+  static prototype of (a) is built and tested tonight with the same states and readings; if it converges, the
+  dynamic arms are repeated with it.
