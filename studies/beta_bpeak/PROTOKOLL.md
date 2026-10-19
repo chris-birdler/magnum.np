@@ -7106,6 +7106,60 @@ All times UTC. Terms as in 7.116 and 7.118 (smoothing, cut, step, tested, clean)
 attempts) stays the preparation; it gave a clean prepared state in all 12 corner runs (7.118). The option
 --bloch_smooth stays in run_loops.py with the default 0 (off); no job uses it.
 
+### 7.125 Why the loss depends on the preparation: the walls move farther, the wall area stays (2026-10-19, question of Chris; local, descriptive)
+
+All times UTC. Terms as in 7.14 (wall measure), 7.114 and 7.119. Data: summary.json, acc.json and domains.json of the
+local run folders (domains.json from the snapshots of the 9, 50 and 150 mT stages, made on the box before the
+snapshots were deleted). A_w: wall area of the wall measure of 7.14 (valid within ± 12 % if the walls are at least
+5 L_eff apart). V_sw: volume that switches in a half cycle. Wall path = V_sw / A_w, the mean distance that a wall
+moves in a half cycle (mean of the two half cycles).
+
+**K4_1, one microstructure, 9 mT loss after six preparations** (n 1 each; from the AC tests of 7.114, protocol S of
+7.115 and the corner runs):
+
+| preparation | w_loop (mean of the last 5 cycles) | relative to nx | E / (K_d V) of the prepared state | μ_r |
+|---|---|---|---|---|
+| relaxed random start (nx) | 1.73·10⁻⁷ | 1 | −3.29·10⁻⁴ | 5.0 |
+| AC from saturation | 1.35·10⁻⁷ | × 0.78 | −3.75·10⁻⁴ | 5.0 |
+| protocol S | 2.09·10⁻⁷ | × 1.21 | −3.76·10⁻⁴ | 5.0 |
+| AC from 150 mT | 2.22·10⁻⁷ | × 1.29 | −3.71·10⁻⁴ | 5.0 |
+| AC from 300 mT (option C) | 5.24·10⁻⁷ | × 3.0 | −3.68·10⁻⁴ | 5.0 |
+
+- The permeability is the same (μ_r 5.0) and the energies of the AC states differ by at most 2 %. The loss differs by a
+  factor of about 4 between "AC from saturation" and "AC from 300 mT". All five states have 0 BPs.
+- Correction of 7.119 (K4 bullet): the rise of w_loop over the first cycles of the 9 mT stage comes mostly from the
+  drive correction (h 0.00075 → 0.001125 → 0.0012; cycle 0 has 62 % of the final drive). Measured against the final
+  value, cycles 0 / 1 / 2 have 0.43 / 0.83 / 0.95 for nx and 0.25 / 0.70 / 0.94 for option C; the drive alone gives
+  about 0.39 / 0.87 / 1.0 (β 2). Thus option C adds only a small rise of its own. The difference of the final level
+  (× 3) is the effect.
+
+**Where the difference is (K4_1, 9 mT, nx → option C).**
+- Loss location (acc.json): the shares are similar. The hottest 10 % of the cells carry 0.71 → 0.77 of the loss, the
+  core r < 0.5 carries 0.35 → 0.39. On the stored slice plane the mean loss density is 6.3 times higher, and the
+  largest cell value is 500 instead of 165 times the slice mean.
+- Domains: A_w 344 800 → 329 500 (× 0.96); V_sw per half cycle 505 600 / 305 200 → 759 600 / 514 500 (× 1.5 … 1.7);
+  wall path 1.47 / 0.89 → 2.31 / 1.56 (× 1.6 … 1.75).
+- Scale check for viscous wall motion: the loss grows with A_w and with the square of the wall speed, thus with
+  A_w · (wall path)². This gives × 2.4 … 3.0; the measured loss factor is × 3.0.
+
+**All 12 corner pairs (option C against nx), paired per microstructure:**
+
+| stage | n | correlation of Δ ln P with Δ ln (A_w · wall path²) | slope |
+|---|---|---|---|
+| 9 mT | 12 | 0.96 | 1.30 |
+| 50 mT | 12 | 0.94 | 1.46 |
+| 150 mT | 12 | 0.89 | 1.30 |
+
+- The wall area changes little (|Δ ln A_w| ≤ 0.03 in 10 of 12 runs at 9 mT; K3_1 −0.14, K4_0 −0.15). The loss
+  difference follows the wall path. At K4 the walls of option C move farther in all 3 microstructures: Δ ln wall path
+  +0.36, +0.50, +0.42 at 9 mT (× 1.4 … 1.6).
+- The slope is above 1 (1.3 … 1.5). Thus A_w · (wall path)² explains the direction and most of the size, not all of
+  it (inference).
+- Not the cause (n 12): the ripple of m and the share of cells with a large angle to the drive (F90) of the states.
+  Their changes do not correlate with the change of the wall path (r −0.15 and −0.22).
+- Open: why the walls of the AC-300 state at K4 move farther. The K4 history test (7.123) has snapshots in every cycle
+  of the 9 mT stage; they can show where the walls move farther.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
