@@ -6448,6 +6448,162 @@ K2_1_ad and K3_1_ad).
 - Credit at 13:26: 20.33 $ (23.72 $ at 05:05, thus about 0.41 $/h).
 - Report and md5: after the download, runs/smooth_report.md (eval_smooth.py) and an md5 manifest of the run files.
 
+### 7.117 Literature check: stray-field corrections of the staircase, and their use in 3D (search 2026-10-15, recorded 2026-10-19)
+
+**Source of this section.** The search was made on 2026-10-15. Chris asked first whether a correction of the
+staircase can work, and then for a thorough search for 3D work that continues or develops the idea of Donahue. The
+results were given in the chat. The notes file of the search was in a temporary folder; on 2026-10-19 it did not exist
+any more. This section is written on 2026-10-19 from the chat record of that session. Details that are not in the
+chat record are left out. Statements from other sections are marked with their section number.
+
+**Terms.**
+- l_ex: exchange length. d: particle diameter. Δx: edge of a cubic cell of the mesh. B0b: the mesh test of 7.102
+  (d/l_ex 96, φ 0.65). FFT: fast Fourier transform. PBC: periodic boundary conditions.
+- Staircase: the surface of a sphere that is built from cubic cells (7.104). E_st: the extra stray-field energy of the
+  staircase against the smooth sphere (7.104).
+- Partial cell: a cell that the true surface cuts. Volume fraction: the magnetic part of the volume of a cell.
+- Submesh: a finer mesh inside a cell, with q sub-cells along each axis.
+- Near-field correction: a change of the stray-field coupling between a cell and its neighbours up to p cells away.
+  The change is computed once from a submesh.
+
+**Method.**
+- Web search, and the citation lists of the three base papers (OpenAlex, Semantic Scholar).
+- The citers of Lepadatu 2015, Lebecki 2008 and Wei 2009.
+- Read, as the chat record says: Donahue & McMichael 2007, García-Cervera et al. 2003, and Parker et al. 2000 (all 9
+  pages; PDF from Chris). For the other entries the record gives the sources (list at the end). It does not say for
+  each entry whether the full text or only the abstract was read.
+- Checked: the source code of Boris and of magnum.np, and the OOMMF user guide.
+- Full text not read: Rajaram et al. 2013 and 2014, Wei 2009, Wang 2011, GPMagnet 2012.
+- Gap: the citation lists are not complete. Riahi et al. 2013 was missing in OpenAlex and Semantic Scholar. Only the
+  web search found it.
+
+**Base methods.**
+- Donahue & McMichael, IEEE Trans. Magn. 43, 2878 (2007).
+  - Only the stray field is corrected. The far field stays the FFT convolution. Each partial cell enters it with its
+    volume fraction. Each partial cell also gets a near-field correction. A submesh of p × p neighbour cells with
+    q × q sub-cells each gives it.
+  - In the simplified form the correction is a local 3 × 3 tensor per cell. It acts like a cell anisotropy.
+  - Tests only on films one cell thick: a NiFe square, rotated against the mesh. The frequency of the edge mode shifts
+    by up to 50 % without the correction and by less than 5 % with it. The field that pushes a vortex out of the
+    square changes with the rotation angle by 26 % without and by 3.2 % with the correction. This is a factor of
+    about 8 … 10, for these two quantities and not for the energy. Δx/d of these tests is 0.011 … 0.014 (the range of
+    this study).
+  - The volume fraction alone ("rough correction only" in their figure) gives almost no improvement. The near-field
+    term gives the effect.
+  - The authors needed smaller cells to resolve the vortex core and to prevent its pinning on the mesh.
+  - A talk slide (2006, slide 7; not in the paper) shows the error without the correction as first order in Δx in the
+    cells at the edge (given as "0.003 Δ"), and as second order 5 nm inside. This is read from a slide. On 2026-10-15
+    it was taken as support for the exponent 1.23 of 7.104; that exponent uses DemagFieldPBC values (7.105).
+- García-Cervera, Gimbutas & E, J. Comput. Phys. 184, 37 (2003).
+  - The staircase gives large errors in the exchange and in the stray field. In a hexagonal film the switching
+    mechanism depends on the rotation against the mesh, with artificial vortices at the edge. A mesh with twice the
+    resolution does not remove this.
+  - Exchange: the Laplace operator at the surface is second order. The normal derivative of M is zero on the true
+    surface; ghost values outside give this.
+  - Stray field: the nearest neighbours use exact tensors of the true cell shapes (numerical integration). The far
+    field uses the FFT with equivalent rectangular cells.
+  - With both corrections the result does not depend on the rotation. The loops on 100² and 200² cells agree.
+  - Only 2D films.
+- Parker, Cerjan & Hewett, J. Magn. Magn. Mater. (2000), "embedded curve boundary" (ECB). Donahue 2007 cites it as
+  ref. [4].
+  - The stray field comes from a finite-difference Poisson solver for the potential (alternating-direction implicit
+    method), not from an FFT convolution. This solver type does not fit the FFT solver of magnum.np.
+  - At the nodes next to the surface the stencil uses the true distance δ to the surface and the jump condition with
+    the charge of the smooth surface. The differences there are first order.
+  - Exchange: the normal derivative of M is zero on the true surface. M is interpolated at a point 2δ inside, along
+    the normal. The chat record names a risk at contact points between particles: there the normal is not defined.
+    In this model the particles do not touch (geometry.py keeps at least one void cell between them).
+  - This is the only 3D LLG implementation of the three base papers. But only the vertical side walls are curved.
+  - Tests: a uniformly magnetised disk (r 200 nm, h 50 nm, Δx 10 nm). The field error at the edge is at most 10 %
+    (x axis) and 7 % (y axis) with ECB, and at least 20 % on the y axis with the staircase. On a finer mesh both errors
+    fall, and their ratio stays "roughly the same". The paper gives no convergence order and no energy. The field error
+    falls by a factor of about 2 … 3 (estimate, read from the figures 3 and 4). µMAG standard problem 2 has no curved
+    surface and is no test of ECB.
+  - Co ellipses (450 × 250 nm, 16 … 40 nm thick, Δx 6 nm): single vortex in the experiment 97 %, with ECB 50 %, with
+    the staircase only in the thickest ellipse. The coercive field is similar with ECB and with the staircase. Thus
+    the staircase changes the state more than the coercive field. This agrees with the reading of 7.104 that coarse
+    states follow the steps; 7.105 leaves that reading open.
+
+**Use in 3D after 2007 (works found).**
+
+| work | 3D | method | validation |
+|---|---|---|---|
+| Donahue & McMichael, talks 2006 and 2007 | no | near-field correction, simplified to a local tensor per cell; exchange with a fixed l_ex at volume-weighted M_s | films one cell thick |
+| Lebecki, Donahue & Gutowski, J. Phys. D (2008) | 3D code with PBC | Donahue correction for an infinitely long rod (refinement 64 × 64 × 1, range 7 cells) | nucleation fields "fit quite well" to the analytic values; no values with and without the correction; only the 2D cross-section is curved |
+| Rajaram et al., IEEE Trans. Magn. (2013), disks 8 … 20 nm thick | not known | uses a "3D-compatible correction" after Donahue | full text not read |
+| Lepadatu, J. Appl. Phys. 118, 243908 (2015), and the code Boris (GPL-3) | yes | module "Roughness": a correction from a fine mesh, refined along all three axes, averaged onto the coarse cells; at run time a local symmetric 3 × 3 tensor per cell (seen in the source code); PBC supported | roughness up to a depth of about l_ex: "excellent agreement" with an explicit fine mesh (switching, wall mobility); as a staircase correction only on an 80 nm disk, qualitative |
+| mumax3, EdgeSmooth | yes | scales only M_s with the volume fraction of the cell | similar to the volume-fraction model of 7.29, which scales M_s, A and K |
+| OOMMF 2.1, magnum.np | – | no staircase correction (user guide and source code checked) | – |
+| Wei & Wang (2009), Wang (2011) | no | triangular prisms as surface cells | films only |
+| Riahi et al. (2013) | no | a variable moment per cell | 2D only (kagome lattice) |
+| Lai, Li & Lin, J. Comput. Appl. Math. (2006) | yes | 3D Poisson solver with an "immersed interface" and FFT, second order, written for magnetostatics | analytic test cases only; not used in a micromagnetic code |
+| reviews: García-Cervera (2007), Abert (2019), Miltat & Donahue (2007) | – | no 3D continuation; Miltat & Donahue: "practical solutions are expected in the near future" | – |
+
+Gillis et al., J. Comput. Phys. (2018) is in the source list of the search; its content is not in the chat record.
+Holt et al., arXiv 2412.10466 (2024) treat the anisotropy that the difference formulas of the exchange and the DMI
+make, not the staircase.
+
+**Result.**
+- The search found no work that tests a staircase correction on a body that is curved in all three directions
+  (sphere, ellipsoid). It found no convergence order and no energy of a corrected 3D scheme. The citation lists are
+  not complete (see Method).
+- Boris is the only public 3D implementation of the idea of Donahue that the search found.
+- The statement of 2026-10-15 before the 3D search ("the correction probably works for the stray field") was
+  withdrawn. The question is open.
+- Limit 1, the simplified form. The correction of a cell then depends only on M of this cell. This is correct only
+  if M changes little over the correction window (a few cells). Lepadatu checked this only up to a step depth of about
+  l_ex. The steps of this study are Δx deep, that is 1.5 … 3 l_ex.
+- Limit 2, the target. The coarse energy plus the correction gives the energy of the fine staircase of the submesh,
+  not of the smooth sphere (stated in Boris). Boris computes the fine mesh over the whole box. The local windows of
+  Donahue avoid this.
+- Exchange: the staircase also gives a first-order error of the exchange energy (helix test of 7.104: −10 % on
+  3 l_ex; a code test on the geometry d/l_ex 48, φ 0.45, not valid for B0b). The plan of 2026-10-15 was to correct
+  the stray field first and the exchange only if necessary.
+- Estimates of 2026-10-15 that are not valid now. They assume that the correction is otherwise exact. They come from
+  the power law of E_st in 7.104 (exponent 1.23) and from the ratio of E_st to the anisotropy energy E_K. Both use
+  DemagFieldPBC values, and 7.105 requires a new determination.
+  - Need: E_st must fall to 10 % of |E_K|, a factor 5 … 46 over the design range and 19 for B0b on 3 l_ex.
+  - Necessary refinement: about 11 for B0b on 3 l_ex, about 22 in the worst part of the design range. With Boris this
+    is about 1.5·10⁸ fine cells for B0b, only for the start.
+- Link to 7.29: the volume fraction alone is the far-field part of the method of Donahue. Donahue shows that it alone
+  gives almost no improvement. 7.29 measured more loss at 100 mT with the volume-fraction model and left the cause
+  open. The literature does not explain that result.
+- FEM was weighed on 2026-10-15: exact surface, but the vortex cores must still be resolved (about 10⁸ elements per
+  1 µm particle, estimate), PBC for the stray field are more difficult, and it is a new code stack.
+
+**Decision of Chris on 2026-10-15 and what followed.**
+- Options: A, a static script test of both forms of the correction (local tensor as in Boris; full local sum as in
+  Donahue, eq. 5) on the B0b states on 3 l_ex, with a fine mesh of 0.75 l_ex. The reference was the same coarse M on
+  the fine shape. Reading fixed before the test: a form is usable if its error against the fine reference is at most
+  10 % of |E_K|. B, Boris as a test bench. C, an immersed-interface Poisson solver. D, no correction (grid-aligned
+  particles or FEM).
+- Decision of Chris: A.
+- From 7.105: test A was stopped before it ran, because its reference on the fine mesh carried the DemagFieldPBC
+  error. Since 7.105 the production solver is the Newell solver with the compensated outer surface charges (PLAN
+  4.11 … 4.13). check_demag_alias.py gives an independent reference. Thus the obstacle of test A is removed in
+  principle.
+
+**Sources.**
+- Donahue & McMichael 2007: https://math.nist.gov/~MDonahue/pubs/jaggies_20070117.pdf; talks:
+  https://math.nist.gov/~MDonahue/talks/bonn2006-staircase-errata20070116.pdf,
+  https://math.nist.gov/~MDonahue/talks/joint2007-GE05-staircase.pdf
+- García-Cervera, Gimbutas & E 2003: https://web.math.princeton.edu/~weinan/pdf%20files/accurate.pdf
+- Parker, Cerjan & Hewett 2000: https://www.sciencedirect.com/science/article/abs/pii/S0304885300000433
+- Lebecki, Donahue & Gutowski 2008: https://math.nist.gov/~MDonahue/pubs/pbc-in-oommf_4.6.pdf
+- Lepadatu 2015: https://arxiv.org/pdf/1508.04391; Boris 2020: https://arxiv.org/pdf/2008.02478; code:
+  https://github.com/SerbanL/Boris2, https://github.com/SerbanL/BORIS
+- Rajaram et al. 2013: https://ieeexplore.ieee.org/document/6559077/
+- mumax3: https://mumax.github.io/api.html, https://github.com/mumax/3/blob/master/engine/geom.go,
+  https://arxiv.org/pdf/1406.7635
+- OOMMF 2.1a1 user guide: https://math.nist.gov/oommf/doc/userguide21a1/userguide.pdf
+- Wei & Wang 2009: https://ieeexplore.ieee.org/document/5170238/; Wang 2011: https://ieeexplore.ieee.org/document/6028212/
+- Riahi et al. 2013: https://arxiv.org/abs/1401.5274
+- Lai, Li & Lin 2006: https://xblin.math.ncsu.edu/preprint/lai_li_lin.pdf; Gillis et al. 2018:
+  https://www.sciencedirect.com/science/article/abs/pii/S0021999117308094
+- Holt et al. 2024: https://arxiv.org/abs/2412.10466
+- Miltat & Donahue 2007: https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=50910; García-Cervera review 2007:
+  https://web.math.ucsb.edu/~cgarcia/Papers/Garcia-Cervera_ReviewSEMA.pdf; Abert 2019: https://arxiv.org/pdf/1810.12365
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
