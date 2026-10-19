@@ -13,7 +13,7 @@
 \newcommand{\preexisting}{\textcolor{orange!80!black}{pre-existing}}
 
 \title{Validation of Single-Precision (fp32) Arithmetic in \magnumnp{}\\
-\large Test and benchmark report of the \texttt{perf/memory-optimizations} branch}
+\large Test and benchmark report of the performance changes (library code at commit \texttt{656a78b})}
 \author{Christoph Vogler\thanks{All numbers are measured, none are estimated unless explicitly marked.}}
 \date{2026-07-07}
 
@@ -24,7 +24,7 @@
 This report documents the correctness and performance validation of the optional
 single-precision (fp32) mode introduced into \magnumnp{} via
 \texttt{set\_precision("single")}, together with the accompanying performance work
-on branch \texttt{perf/memory-optimizations} (24 commits on top of
+(library code at commit \texttt{656a78b}; 24 commits on top of
 \texttt{main@ff6507a}). Validation comprises (i)~exact-equivalence tests of all
 refactored kernels against the reference implementation, (ii)~the full unit and
 demo test suites on CPU and on a Tesla V100 GPU, (iii)~a dedicated
@@ -101,7 +101,7 @@ $\sim10^{-6}$ relative. The fp64 default is unchanged.
 device & CPU only & Tesla V100-SXM2-16GB \\
 PyTorch & 2.12.1+cpu & 2.12.0+cu126 \\
 Python & 3.12 & 3.10 (vast.ai PyTorch image) \\
-\magnumnp{} & \texttt{perf/memory-optimizations} & identical tree (rsync) \\
+\magnumnp{} & commit \texttt{656a78b} & identical tree (rsync) \\
 baseline ref & \texttt{main@ff6507a} & identical \\
 \bottomrule
 \end{tabular}
@@ -381,7 +381,7 @@ Adversarial multi-agent code review (high effort) & 10 findings $\to$ 8 fixed wi
 Performance non-regression (V100 + CPU benchmark sweeps) & 1 regression found, fixed, re-confirmed \ok \\
 \bottomrule
 \end{tabular}
-\caption{Verification matrix of the \texttt{perf/memory-optimizations} branch.}
+\caption{Verification matrix of the performance changes (commit \texttt{656a78b}).}
 \label{tab:matrix}
 \end{table}
 
@@ -427,7 +427,7 @@ Performance non-regression (V100 + CPU benchmark sweeps) & 1 regression found, f
 \appendix
 \section{Data provenance}
 \begin{itemize}\small
-\item Branch: \texttt{perf/memory-optimizations}, 24 commits on
+\item Code: library at commit \texttt{656a78b}, 24 commits on
       \texttt{main@ff6507a}; all equivalence/verification scripts run on
       2026-07-07.
 \item Raw benchmark JSONs, run logs and composite results:
