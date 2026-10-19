@@ -302,7 +302,7 @@ def main():
     res["times_s"]["total"] = time.time() - t0
     res["max_rss_gb"] = rss_gb()
     (out / fname).write_text(json.dumps(res, indent=1))
-    log("done", out / ("static_A_%s.json" % geo_key))
+    log("done", out / fname)
 
 
 if __name__ == "__main__":

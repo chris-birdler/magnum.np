@@ -28,7 +28,7 @@ torch.set_num_threads(int(os.environ.get("STAIRCASE_THREADS", os.cpu_count())))
 
 from anisotropy_model import box_edge  # noqa: E402
 from geometry import fcc_box  # noqa: E402
-from nearfield import NearCorrection, FFTField, v1_cells  # noqa: E402
+from nearfield import NearCorrection, FFTField, v1_cells, centroid_offsets, centroid_field  # noqa: E402
 from check_static import STATES, CACHE, log  # noqa: E402
 
 
@@ -40,6 +40,7 @@ def main():
     ap.add_argument("--forms", nargs="+", default=["P", "L"])
     ap.add_argument("--shells", type=int, default=None)
     ap.add_argument("--maxiter", type=int, default=400)
+    ap.add_argument("--centroid", action="store_true", help="far field with the first moment (PROTOKOLL 3.7)")
     ap.add_argument("--out", default=str(HERE / "results"))
     a = ap.parse_args()
     cfg = json.loads((STATES / a.run / "config.json").read_text())
@@ -56,10 +57,13 @@ def main():
     geo_key = "d%.0f_phi%.2f" % (cfg["d_lex"], cfg["phi"])
     out = pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    fname = out / ("sign_%s_q%d%s.json" % (geo_key, q, "" if a.shells is None else "_k%d" % a.shells))
+    fname = out / ("sign_%s_q%d%s%s.json" % (geo_key, q, "" if a.shells is None else "_k%d" % a.shells,
+                                             "_c" if a.centroid else ""))
+    vfull = torch.as_tensor(v)
+    dcen = centroid_offsets(occ, q) if a.centroid else None
     res = json.loads(fname.read_text()) if fname.exists() else {}
     for p in a.p:
-        nc = NearCorrection(n, occ, q, p, periodic=True)
+        nc = NearCorrection(n, occ, q, p, periodic=True, centroid=a.centroid)
         for form in a.forms:
             corr = nc.h_pair if form == "P" else nc.h_local
             count = [0]
@@ -70,6 +74,8 @@ def main():
                 m[mag] = torch.as_tensor(np.asarray(x, dtype=np.float64)).reshape(-1, 3)
                 m = m.reshape(N, N, N, 3)
                 h = coarse.h(v, m) + corr(m)
+                if a.centroid:
+                    h = h + centroid_field(coarse.term._N, vfull, dcen, m, shape=coarse.fft_shape)
                 return (-(vt * h.reshape(-1, 3)[mag])).reshape(-1).numpy()
 
             op = LinearOperator((3 * nm, 3 * nm), matvec=mv, dtype=np.float64)
