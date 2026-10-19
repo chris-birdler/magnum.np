@@ -635,3 +635,16 @@ does not help.
   (--staircase_centroid). New arms: D3Pc and D3Lc (q = 2, p = 3), then D3Pc4 and D3Lc4 (q = 4, p = 3; the target is
   the voxel geometry of dx 0.75, information). D3f (volume fraction alone) stays as a control. The three arms without
   the centroid term that already ran or run are information (n = 1 each).
+
+**D5 — one image shell for the static tests with q = 4 (decision under the night mandate).**
+- Check (K2, q = 2, centroid term, p = 2 and 3; file results/static_A_d300_phi0.62_q2_k1_c.json): the plain Newell
+  kernel with one image shell (k = 1) on both meshes against the production setting (newell_ext, 4 shells). R1:
+  passed (largest deviation from φ (1 − φ)/3: 1.2·10⁻⁵, at m along (111)). S changes by 3·10⁻⁸ K_d (relative
+  6·10⁻⁵); e_E and e_h of both forms agree to 4 digits (for example P3: e_E 0.0182 / 0.0182, e_h 0.0038 / 0.0038).
+  Thus the image sum cancels in the differences, as argued in PLAN.md.
+- Options: (a) q = 4 with the production setting (fine meshes 608³ and 624³; the fine kernel would take about
+  6 … 8 h, estimate); (b) q = 4 with k = 1 (fine kernel in minutes); (c) no q = 4 on the production geometry.
+- Recommendation and decision: (b). Stage A with q = 4 (K2 and K4, centroid term, p = 1 … 3, k = 1) started.
+- Engineering change before (commit 41df994): the couplings L_ij are computed directly in blocks of source cells
+  instead of with a table of occupancy patterns, which would need tens of GB for q = 4 (64 sub-cells); unit tests 13
+  passed (the full-window exactness also for q = 4).
