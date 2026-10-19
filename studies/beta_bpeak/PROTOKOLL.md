@@ -1,7 +1,8 @@
 # Protokoll: β(B_peak) study with magnum.np (fp32, reduced units)
 
-Owner: Christoph Vogler (Chris). Branch: `study/beta-bpeak-pinning` (based on
-`perf/memory-optimizations`, the fp32 fork). Folder: `studies/beta_bpeak/`.
+Owner: Christoph Vogler (Chris). Branch: `study/beta-bpeak-pinning` (record and reports; based on the fp32
+performance work, in `main` since 2026-10-19). Code of the runs since 2026-10-15: `feature/newell-pbc`. Folder:
+`studies/beta_bpeak/`.
 
 Rules: documents in ASD-STE100 Simplified Technical English, SI units only.
 **Chris makes the decisions.** Before you change the model, the parameter
