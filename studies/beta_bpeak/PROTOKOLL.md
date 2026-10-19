@@ -7050,6 +7050,30 @@ extrapolation only if f is 0.5 or more (threshold proposed before the measuremen
 the measured f (0.37 … 0.42). The upper f of production (0.46 … 0.48) came from the context-free review after the
 decision and is reported to Chris. The measurement stays as the reference for later cost questions.
 
+### 7.123 K4 history test: 16 cycles at 9 mT from both prepared states (started 2026-10-19; reading fixed before the results)
+
+All times UTC. Terms as in 7.119. Question (Chris, 2026-10-19): why is the K4 loss of ad (option C) at 9 … 50 mT about
+2 times the loss of nx (relaxed random start)? In the 9 mT stage of each K4 ad run, w_loop rises over the first 2 … 3
+cycles and then stays constant (7.119).
+
+**Runs** (conv_jobs.k4hist_lines, jobs/k4hist.txt, commit ffc893e; dispatcher code eba2dfd). For each K4
+microstructure (K4_0, K4_1, K4_2) two runs of the 9 mT stage with 16 cycles:
+- <run>_ad_h16 from the prepared state of ad (<run>_ad/init.pt; K4_1: K4_1_nx_pd300/init.pt, as the run K4_1_ad);
+- <run>_nx_h16 from the relaxed random start of nx (<run>_nx/init.pt).
+All other settings as the runs, with accumulators. Snapshots of m at 2 phases (H max, H min) in every cycle (4 phases
+would need 25 GB of disk; now 13.7 GB). Start 18:44 on 3 GPUs. Cost about 8 GPU-h, about 0.8 $ (estimate).
+
+**Reading (fixed before the results).** Per run: the early level w_e = mean w_loop of cycles 3 … 6, the late level
+w_l = mean w_loop of cycles 12 … 15. A run is "stable" if |ln (w_l / w_e)| < 0.10. Per microstructure:
+- "two stable states": both runs stable, and ln (w_l(ad) / w_l(nx)) > ln 1.5;
+- "nx rises to ad": the nx run rises (ln (w_l / w_e) ≥ 0.10) and ends within a factor 1.2 of the ad run;
+- "ad falls to nx": the ad run falls (ln (w_l / w_e) ≤ −0.10) and ends within a factor 1.2 of the nx run;
+- "not determined": all other cases.
+The overall reading is the reading of at least 2 of the 3 microstructures, else "not determined".
+Information: the first 8 cycles of <run>_ad_h16 against the 9 mT stage of <run>_ad (repeatability; |Δ ln w_loop| per
+cycle); the snapshots per cycle (wall measure and switched volume of domains.py, on the CPU of the box) to locate the
+change in the first cycles.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
