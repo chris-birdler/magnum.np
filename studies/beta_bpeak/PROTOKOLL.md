@@ -7102,7 +7102,7 @@ All times UTC. Terms as in 7.116 and 7.118 (smoothing, cut, step, tested, clean)
 - With the stopped test on the relaxed virgin states (7.116: 1 of 3 clean) the smoothing removed a BP in 1 of 6 runs
   (K1_2_nx_sm, a single BP 20 cells below the surface).
 
-**Decision of Chris (2026-10-19, about 19:45): smoothing is rejected.** Option C (a new random start, at most 3
+**Decision of Chris (2026-10-19, about 18:53): smoothing is rejected.** Option C (a new random start, at most 3
 attempts) stays the preparation; it gave a clean prepared state in all 12 corner runs (7.118). The option
 --bloch_smooth stays in run_loops.py with the default 0 (off); no job uses it.
 
