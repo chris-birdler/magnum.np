@@ -6990,43 +6990,61 @@ https://math.nist.gov/~MDonahue/pubs/jaggies_20070117.pdf, text extracted with p
 ### 7.122 Time share of the stray field in the drive cycles; decision of Chris: no time extrapolation of the stray field (2026-10-19)
 
 All times UTC. f = time share of the stray-field evaluation inside the RKF45 stages, as a share of the wall time of
-the drive cycles.
+the drive cycles. A stage is one evaluation of the right-hand side of the LLG equation; stage 0 is the first of the 6
+stages of an RKF45 step. A sample interval is 1/256 of a drive cycle (130 ps at 30 MHz); one call of
+LLGSolver.step() integrates one sample interval with about 22 RKF45 steps. h() is the field of one term; "drive" is
+the term of the sinusoidal drive field.
 
 **Question (option 1 of Chris, 2026-10-19).** The magnum.np upstream branch feature/demag-extrapolation (gitlab,
 Dieter Suess, 2026-04-25, 2 commits; in none of our branches) computes the stray field only in stage 0 of each RKF45
 step. For the other 5 stages it extrapolates the field linearly in time. The author gives a speed-up of 2.3 for µMAG
-standard problem 4 on an A100. For our runs the gain depends on f. Chris decided to measure f first; a test of the
-extrapolation was to follow only if f is at least 0.5 (threshold proposed before the measurement).
+standard problem 4 on an A100. For our runs the gain depends on f. Chris decided to measure f first, and to test the
+extrapolation only if f is 0.5 or more (threshold proposed before the measurement).
 
-**Method.** Tool: prof_terms.py (commit e7e2358). The magnum.np Timer does not synchronize the device, thus on a GPU
-it measures only the kernel launches. prof_terms.py synchronizes the device before and after each field term h(),
-each LLGSolver.dm() (one RKF45 stage) and each LLGSolver.step(). Then it runs run_loops.main with the production
-arguments of the run. Runs: K1_0_ad (d/l_ex 212) on GPU 2 and K4_2_ad (d/l_ex 300) on GPU 1 of the box (Tesla
-V100-SXM2-16GB), each from its prepared state, 9 mT, 3 cycles; start 17:06, end 17:17 and 17:31. Counting starts
-after 300 sample intervals (warm-up and torch.compile). Data local in runs/PROF_K1_0_ad and runs/PROF_K4_2_ad
-(prof_terms.json, logs); md5 in runs/md5_prof_20261019.txt.
+**Method.**
+- Tool: prof_terms.py (branch feature/newell-pbc, commit e7e2358). The magnum.np Timer does not synchronize the
+  device; thus on a GPU it measures only the kernel launches. prof_terms.py synchronizes the device before and after
+  each h(), each LLGSolver.dm() (one stage) and each LLGSolver.step(). Then it runs run_loops.main.
+- Arguments: those of the production run, without --acc, --acc_harm, --keep_stage_ckpt and --snap_*, with --b_list
+  0.006, --n_amp 1, --init_from <run>/init.pt and --max_cycles 3.
+- Runs: K1_0_ad (d/l_ex 212) on GPU 2 and K4_2_ad (d/l_ex 300) on GPU 1 of the 4 × V100 instance (Tesla
+  V100-SXM2-16GB), each from its prepared state, 9 mT, 3 cycles. Start 17:06, end 17:17 and 17:31. Counting starts
+  after 300 sample intervals (warm-up and torch.compile).
+- The run data are local in runs/PROF_K1_0_ad and runs/PROF_K4_2_ad (prof_terms.json, logs). The md5 sums are in
+  runs/md5_prof_20261019.txt.
 
 **Result.** Shares of the wall time after the warm-up:
 
-| run | wall | stray field in the stages (f) | other field terms in the stages | rest of the stages | rest of the steps | stages per sample interval | speed-up estimate |
+| run | wall | stray field in the stages (f) | other field terms in the stages | rest of the stages | rest of step() | outside step() | stages per sample interval |
 |---|---|---|---|---|---|---|---|
-| K1_0_ad | 248 s | 36.6 % | 25.9 % (anisotropy 13.8, exchange 7.3, drive 4.8) | 22.1 % | 12.7 % | 130 | 1.44 |
-| K4_2_ad | 531 s | 41.8 % | 18.8 % (anisotropy 11.0, exchange 5.5, drive 2.3) | 21.3 % | 15.7 % | 130 | 1.54 |
+| K1_0_ad | 248 s | 36.6 % | 25.9 % (anisotropy 13.8, exchange 7.3, drive 4.8) | 22.1 % | 12.7 % | 2.7 % | 130 |
+| K4_2_ad | 531 s | 41.8 % | 18.8 % (anisotropy 11.0, exchange 5.5, drive 2.3) | 21.3 % | 15.7 % | 2.4 % | 130 |
 
-- "Rest of the stages" is the LLG right-hand side and the sum of the fields; "rest of the steps" is the RKF45
-  combination and the error norm. "Anisotropy" is the sum of the two uniaxial terms (cube axes and particle stress).
-- Speed-up estimate: the extrapolation removes 5 of 6 stray-field evaluations, thus the time falls by 5/6 · f. This is
-  an upper estimate: the extrapolation adds some work, and the RKF45 step control can need smaller steps. The
-  synchronizations of the measurement make the share of the small terms larger than in production; thus f in
-  production is probably a little larger (inference, not measured).
-- f is 0.37 … 0.42 (n 2 runs), below the threshold 0.5.
-- Estimate for the new main study of PLAN 4.13 (260 … 380 V100-h, 26 … 38 $): about 30 % less, that is 80 … 130
-  V100-h, 8 … 13 $ and about 1 day of wall time. The costs: a port of the upstream code (it starts from main at
-  ff6507a, before the RKF45 changes of our branches), a validation test (about 1 … 2 $, estimate), and a risk for the
-  small losses, because the RKF45 error control does not see the error of the extrapolated stages.
+- "Rest of the stages" is the LLG right-hand side and the sum of the fields. "Rest of step()" is the RKF45
+  combination and the error norm. "Outside step()" is the work at the samples (energies, diagnostics). "Anisotropy"
+  is the sum of the two uniaxial terms (cube axes and particle stress).
+- Both logs show a torch.compile graph-break warning (perf_counter) after cycle 1. It comes from the compiled energy
+  of the field terms, which runs outside step().
+- The synchronizations of the measurement make the cycles longer. A 9 mT cycle takes 134 s in the measurement and
+  107 s in production for K1_0_ad (+25 %), and 288 s against 253 s for K4_2_ad (+14 %) (cycles 1 and 2; the
+  production cycles also include the accumulators and the snapshots). If the stray-field time does not change, f in
+  production is at most 0.46 (K1_0) and 0.48 (K4_2).
+- Speed-up: the extrapolation removes 5 of 6 stray-field evaluations, thus the time falls by 5/6 · f. For the
+  measured f this gives 1.44 and 1.54; for the upper f of production it gives at most 1.61 and 1.66. These are upper
+  estimates for each f: the extrapolation adds some work, and the RKF45 step control can make the steps smaller.
+- f is 0.37 … 0.42 as measured and at most 0.46 … 0.48 in production (n 2 runs). Both are below the threshold 0.5;
+  the margin is small for K4.
+- Estimate for the new main study of PLAN 4.13 (point estimate 225 V100-h: 198.7 V100-h cycles and 26.7 V100-h
+  relaxation; plan range 260 … 380 V100-h): the saving is 31 … 40 % of the cycle time. For the point estimate this
+  is 60 … 80 V100-h (6 … 8 $) and 0.6 … 0.8 day of wall time on 4 GPUs; for the plan range it is 70 … 130 V100-h. The
+  relaxation was not measured.
+- Costs of the extrapolation: a port of the upstream code is necessary, because it starts from main at ff6507a,
+  before the RKF45 changes of our branches. A validation test costs about 1 … 2 $ (estimate). There is also a risk
+  for the small losses, because the RKF45 error control does not see the error of the extrapolated stages.
 
-**Decision of Chris (2026-10-19, 18:17): the time extrapolation of the stray field is not used.** The measurement
-stays as the reference for later cost questions.
+**Decision of Chris (2026-10-19, 18:17): the time extrapolation of the stray field is not used.** The decision used
+the measured f (0.37 … 0.42). The upper f of production (0.46 … 0.48) came from the context-free review after the
+decision and is reported to Chris. The measurement stays as the reference for later cost questions.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
