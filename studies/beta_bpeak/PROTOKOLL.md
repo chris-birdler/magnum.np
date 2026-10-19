@@ -6673,6 +6673,107 @@ sequence of attempt 0: the relaxed random start of <run>_nx, AC from 300 mT, the
 - Tool: prof_terms.py, commit e7e2358. Runs: K4_2_ad (d/l_ex 300) and K1_0_ad (d/l_ex 212), each from its prepared
   state, 3 cycles at 9 mT. Output: runs/PROF_<run>; log: /root/prof_<run>.log.
 
+### 7.119 Corner evaluation with three arms: old main study, new solver with Bloch points (nx), new solver without Bloch points (ad); β in 9 … 50 mT (2026-10-19)
+
+All times UTC. Terms as in 7.112 (V, K_d, P) and 7.114 … 7.118 (BP, option C). Chris approved the method before the
+evaluation. Tools: eval_corners_ad.py and plot_corners_ad.py (commit 8378060). Report: results/corners_ad_report.md;
+numbers: results/corners_ad_data.json; figures: results/figures_corners_ad/ (not in git; the script makes them again).
+Run data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
+
+**Method.**
+- Three arms, paired per microstructure (n 12: 4 corners × 3 microstructures):
+  - old: the corner runs of the old main study (DemagFieldPBC, atol 1e-5; the _mc2 rerun for K1_0, K4_0 and K4_1);
+  - nx: setup of PLAN 4.13, relaxed random start, with BPs (7.112);
+  - ad: setup of PLAN 4.13, option C, no BP in the prepared state (7.118).
+- nx against ad: the code of the cycles is the same, except the BP count at each sample (diff of run_loops.py from
+  e5998f5 to eba2dfd; magnumnp unchanged). Thus ad − nx measures the effect of the start state. The ad start of K2_0,
+  K2_1 and K4_1 is the nx relaxed start plus AC. The other 9 ad runs relaxed the same random start again (the same BP
+  count as nx, 7.118).
+- β per run is the slope of ln w over ln B at the nominal amplitudes (main-fit definition, steady-tail rule with at
+  least 2 calm cycles). There are 3 windows:
+  - 9 … 150 mT: 7 amplitudes, at least 6 with a value in both runs (as 7.112);
+  - 9 … 50 mT: all 4 amplitudes;
+  - 70 … 150 mT: all 3 amplitudes, information only.
+- In the window 9 … 50 mT a fit has 4 points, thus 2 degrees of freedom. The uncertainty is the scatter over the
+  microstructures: mean ± SE, n 3 per corner and n 12 paired.
+- Reading for Δβ(ad − old) and Δβ(ad − nx) in the windows 9 … 150 and 9 … 50 mT (rule of 7.112, fixed before the
+  evaluation):
+  - "robust": the 90 % CI of the mean Δβ lies inside ± 0.10, and no corner has |mean Δβ| > 0.20;
+  - "shifted": the 90 % CI excludes 0, and |mean Δβ| > 0.10;
+  - "not determined": all other cases, or fewer than 9 pairs.
+- Check of the tools: eval_corners_nx.py and eval_corners_fields.py with the new arm parameter give the reports of
+  7.112 bit for bit. The old and nx values of the new report agree with 7.112.
+
+**Readings.**
+
+| comparison | window | mean Δβ ± SE (n 12; 90 % CI) | per corner (n 3) | reading |
+|---|---|---|---|---|
+| ad − old | 9 … 150 mT | −0.108 ± 0.032 (−0.165 … −0.051) | K1 −0.165, K2 −0.009, K3 −0.136, K4 −0.121 | shifted |
+| ad − old | 9 … 50 mT | −0.126 ± 0.061 (−0.236 … −0.016) | K1 −0.379, K2 −0.035, K3 −0.064, K4 −0.027 | shifted |
+| ad − nx | 9 … 150 mT | −0.030 ± 0.071 (−0.157 … +0.097) | K1 +0.074, K2 −0.056, K3 +0.193, K4 −0.329 | not determined |
+| ad − nx | 9 … 50 mT | −0.143 ± 0.078 (−0.283 … −0.002) | K1 +0.089, K2 −0.268, K3 −0.253, K4 −0.139 | shifted |
+
+- ad − old, 9 … 50 mT: the shift comes from K1 (−0.379 ± 0.081, n 3). The other 3 corners lie within ± 0.07. The
+  old K1 runs have no BP at the start (census, 7.112). 7.112 and 7.113 found that the solver causes the K1 difference
+  at 150 mT. The K1 shift here agrees with that, but this evaluation cannot separate the solver from the start
+  state for the old arm.
+- ad − nx, 9 … 50 mT: the largest values are at K2 (−0.268 ± 0.058) and K3 (−0.253 ± 0.289). Runs of nx with a BP in
+  the stages 9 … 50 mT (census at the start or the end of a stage): K1 1 of 3, K2 3 of 3, K3 2 of 3, K4 3 of 3. Hint
+  only (n 3 per corner): K2 and K3 have many BPs and a large Δβ; K4 has BPs in all 3 runs but a smaller Δβ (−0.139 ±
+  0.060).
+
+**β per corner (mean ± SE, n 3).**
+
+| corner | 9 … 50 mT: old | nx | ad | 9 … 150 mT: old | nx | ad | 70 … 150 mT: old | nx | ad |
+|---|---|---|---|---|---|---|---|---|---|
+| K1 | 2.40 ± 0.05 | 1.93 ± 0.03 | 2.02 ± 0.03 | 2.45 ± 0.07 | 2.21 ± 0.10 | 2.29 ± 0.08 | 2.38 ± 0.10 | 2.82 ± 0.03 | 2.86 ± 0.20 |
+| K2 | 2.14 ± 0.10 | 2.37 ± 0.04 | 2.11 ± 0.04 | 2.21 ± 0.07 | 2.26 ± 0.08 | 2.20 ± 0.06 | 2.37 ± 0.28 | 2.14 ± 0.11 | 2.41 ± 0.11 |
+| K3 | 2.15 ± 0.06 | 2.34 ± 0.30 | 2.09 ± 0.03 | 2.38 ± 0.05 | 2.05 ± 0.16 | 2.24 ± 0.03 | 2.44 ± 0.20 | 2.48 ± 0.22 | 2.48 ± 0.12 |
+| K4 | 1.89 ± 0.11 | 2.00 ± 0.03 | 1.86 ± 0.04 | 1.86 ± 0.07 | 2.07 ± 0.08 | 1.74 ± 0.01 | 1.99 ± 0.04 | 1.93 ± 0.06 | 1.46 ± 0.08 |
+
+- 9 … 50 mT, ad: β 1.86 … 2.11 at the 4 corners, SE 0.03 … 0.04. The SE of nx is the same size except at K3 (0.30);
+  the SE of old is 0.05 … 0.11.
+- The 70 … 150 mT window includes the K2 stages with BPs in ad (7.118).
+
+**Levers β(Ki) − β(K1) (SE from the two corner SE).**
+
+| lever | 9 … 50 mT: old | nx | ad | 9 … 150 mT: old | nx | ad |
+|---|---|---|---|---|---|---|
+| K2 − K1 | −0.26 ± 0.11 | +0.44 ± 0.05 | +0.09 ± 0.05 | −0.24 ± 0.10 | +0.04 ± 0.13 | −0.09 ± 0.10 |
+| K3 − K1 | −0.25 ± 0.08 | +0.41 ± 0.30 | +0.07 ± 0.05 | −0.08 ± 0.08 | −0.16 ± 0.19 | −0.05 ± 0.08 |
+| K4 − K1 | −0.51 ± 0.13 | +0.07 ± 0.04 | −0.16 ± 0.06 | −0.59 ± 0.09 | −0.15 ± 0.12 | −0.55 ± 0.08 |
+
+- 9 … 50 mT: the levers of ad are small (|lever| ≤ 0.16). The old main study had −0.25 … −0.51 there.
+- 9 … 150 mT: the K4 lever of ad (−0.55 ± 0.08) is close to the old value (−0.59 ± 0.09); nx had −0.15 ± 0.12. In ad
+  this lever comes from 70 … 150 mT (K4 − K1 −1.40 ± 0.21 there; old −0.38 ± 0.11).
+
+**Loss density P.**
+- Factor on P, ad / old (exp of the mean paired Δ ln P, n 12): × 0.95 at 9 mT, × 0.75 … 0.77 at 20 … 50 mT, × 0.67 …
+  0.70 at 70 … 150 mT. The SE of Δ ln P is 0.13 … 0.19.
+- Factor on P, ad / nx: × 0.89 … 1.13 at all amplitudes; each mean Δ ln P lies within 1 SE of 0 (SE 0.06 … 0.23).
+- Per corner the start state changes P at 9 … 50 mT strongly (ad / nx, geometric corner means, n 3): K4 × 1.9 … 2.4,
+  K3 × 0.42 … 0.64, K2 × 0.65 … 1.02, K1 × 0.92 … 1.15. Thus the mean factor near 1 hides changes in both directions.
+- At K4 the ad runs have 9 of their 21 stages with the S9 flag ε (|ε| up to 0.10 in K4_0 at 35 and 50 mT). The
+  energy-terms check gives a small d for these stages. Thus ε is a change of the internal energy over the cycle: the
+  state still changes from cycle to cycle. The K4 loss level of ad at 9 … 50 mT can contain this transient
+  (inference).
+
+**Fields (descriptive; paired mean ± SE, n 12).**
+- Fundamental share R1 of the dissipation: ad − old +0.17 … +0.24 at 20 … 50 mT and +0.05 … +0.15 at 70 … 150 mT;
+  ad − nx +0.07 … +0.12 at 20 … 50 mT and +0.01 … +0.03 at 70 … 150 mT.
+- Share of the loss in the outer shell r ≥ 0.8: ad − old −0.06 … −0.10 at 35 … 150 mT; ad − nx within ± 0.02.
+- Share of the loss in the hottest 10 % of the cells: ad − old −0.03 … −0.06 at 20 … 150 mT; ad − nx within ± 0.02.
+- Share of the dissipation in jumps: at most 0.07 in all arms.
+- β_f (exponent of the fundamental channel, 9 … 150 mT): K4 ad 1.49 (old 1.80, nx 1.76); the other corners 1.89 …
+  2.08 in all arms.
+
+**Quality of the ad runs.** S9 flags: ε 16 and w 4 of 84 stages (nx: 15 and 9). Energy-terms check on the calm-tail
+cycles: median |d| at most 0.0035, largest |d| 0.0245 (9 mT). Relaxation iterations of the last attempt: 8 000 …
+48 000.
+
+**Limits.** n 3 microstructures per corner and 4 corners only. dx 3 l_ex for all arms. The fit in 9 … 50 mT has 2
+degrees of freedom per run. The census of the old and nx arms counts only the start and the end of a stage.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
