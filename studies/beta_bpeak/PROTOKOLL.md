@@ -6254,6 +6254,83 @@ relaxed random start (A) and B inside the realisation scatter (dx 1.5, one pair;
   were found by the smoke test and fixed before the commit: the drive direction was not passed to the uniform start (m
   was NaN), and the sample loop overwrote the pass index.
 
+### 7.115 Protocol S: 3 of 4 test runs clean, thus "not clean"; option C is the preparation of the main study; first corner runs with option C; queue patch (2026-10-19)
+
+All times UTC. Terms as in 7.114 (BP, prepared state, pass, clean). Option C: the random start, the relaxation, AC
+from 300 mT and the relaxation; if a BP remains, a new random start of the same microstructure (an attempt), at most 3
+attempts. AC-300 test: the test run <run>_nx_pd300 of 7.114. Report: results/protocol_s_report.md
+(eval_protocol_s.py, reading fixed before the runs). md5 of the run files: runs/md5_bloch_tests_20261019b.txt.
+
+**Test of protocol S** (7.114; jobs/protocol_s.txt, commit 143535f). The start is uniform along the drive direction,
+without a relaxation. Pass 0 starts at saturation, pass 1 at 300 mT. If a BP remains, one more pass from 300 mT
+follows (pass 2). Then the 9 mT stage runs.
+
+| run | BPs after pass 0 / 1 / 2 | largest count during pass 0 / 1 / 2 | BPs in the 9 mT stage | remanence M/M_s | GPU-h |
+|---|---|---|---|---|---|
+| K2_0 | 1 / 1 / 1 | 628 / 12 / 12 | 1 at each sample | 0.0018 | 4.72 |
+| K2_1 | 0 / 0 / – | 677 / 11 / – | 0 | 0.0013 | 3.70 |
+| K4_1 | 0 / 0 / – | 1362 / 1 / – | 0 | 0.0003 | 3.70 |
+| K3_1 | 0 / 0 / – | 200 / 1 / – | 0 | 0.0021 | 1.40 |
+
+- **Reading: "not clean".** A method works only if all 4 runs are clean (7.114). K2_0 fails two criteria: 1 BP after
+  the last relaxation, and 1 BP at each of the 1799 samples of the 9 mT stage. Its remanence passes (limit 0.01).
+- In K2_0 the BP after pass 0, pass 1 and pass 2 is in the same cube (charge +1, particle index 1). The two passes
+  from 300 mT did not move it.
+- Comparison with option C, first attempt (n 1 per run): AC from 300 mT after the relaxed random start was clean in
+  K2_0, K2_1 and K4_1, and not clean in K3_1 (the BP pair of the random start, 7.114). Protocol S was clean in K2_1,
+  K4_1 and K3_1, and not clean in K2_0. Thus both are clean in 3 of 4 runs; the test shows no difference between the
+  two methods.
+- Time per pass: from saturation 0.71 … 2.01 h, from 300 mT 0.34 … 0.94 h. The test cost 13.5 GPU-h, about 1.4 $
+  (0.405 $/h for 4 GPUs). The estimate before the test was 1.5 … 1.7 $.
+- 9 mT loss (n 1 per run; no effect claim): ratio P / P(AC-300 test) 0.40 … 2.3, ratio P / P(corner run <run>_nx)
+  0.42 … 2.5.
+
+**Decisions of Chris (2026-10-19, about 05:10).**
+1. Option C is the preparation of the main study. Protocol S is not used.
+2. BPs that occur during the cycles at K2 are accepted. The evaluation marks each stage with a BP at a sample (online
+   count, bloch_<i>_<stage>.csv).
+3. Patch of run_queue (the queue program of the box): a job that waits for disk space goes back into the queue, and
+   its GPU takes the next job that fits. Commit b325736; new test test_run_queue_disk_wait_takes_a_smaller_job; the
+   study test suite passed (118 passed, 3 skipped, exit code 0).
+
+**First corner runs with option C** (names <run>_ad; box state at 06:15, from the box logs; the run folders of
+K4_1_ad, K1_0_ad, K3_0_ad and K4_0_ad are not downloaded yet).
+- Prepared states: 0 BPs in the 5 runs that are prepared (K3_1_ad, K2_0_ad, K2_1_ad, K4_1_ad, K1_0_ad).
+- K3_1_ad: attempt 0 had 2 BPs (the BP pair of K3_1 again), attempt 1 had 0. K1_0_ad: 0 BPs in attempt 0.
+- K2_0_ad, K2_1_ad and K4_1_ad start from the clean prepared state of their AC-300 test.
+
+BPs during the 7 stages of the 3 finished runs. The stage names give the peak induction b. Each cell gives the largest
+count and the share of the samples with at least one BP.
+
+| run | 9 … 50 mT | 70 mT | 100 mT | 150 mT | at the end of the 150 mT stage |
+|---|---|---|---|---|---|
+| K3_1_ad | 0 | 0 | 0 | 0 | 0 |
+| K2_0_ad | 0 | 0 | 1 (31 %) | 2 (40 %) | 0 |
+| K2_1_ad | 0 | 1 (12 %) | 1 (30 %) | 2 (86 %) | 1 |
+
+- At K2, BPs occur in the cycles also after a clean prepared state. The first stage with a BP is 70 mT in K2_1 and
+  100 mT in K2_0. Thus the onset is between 50 and 70 mT in K2_1, and between 70 and 100 mT in K2_0 (n 2
+  microstructures; no general rule).
+- The count does not show whether a BP forms in the particle or crosses the outer cell layer that the count leaves
+  out (7.114). Thus "forms" is an inference.
+- K3_1_ad has no BP at any sample.
+
+**Operation.**
+- With the old queue code a job that waited for disk space kept its GPU. GPU 2 was idle from 22:22 to 22:55 and from
+  00:20 to 02:08 (start of K4_1_ad on GPU 2), 2.4 h in all, about 0.24 $ of box time.
+- The patch went into service at 05:15 … 05:16. I stopped the old queue process by its PID. Its 4 jobs did not stop.
+  K2_1_nx_ps ended at 05:49 and K4_1_nx_ps at 06:06; K4_1_ad and K1_0_ad continue. The new queue does not log the end
+  of these 4 jobs. Their DONE file is the record.
+- The old job files are in spool/archive_20261019/. The new queue (commit b325736) holds only the 7 corner runs that
+  had not started. It started K3_0_ad at 05:52 and K4_0_ad at 06:08.
+- Code commit of each run (config.json): K3_1_ad, K2_0_ad and K2_1_ad 4f558a7; K4_1_ad and K1_0_ad 143535f; K3_0_ad
+  and later runs b325736.
+- Changes between 4f558a7 and 143535f, from the diff: predemag() takes the pass amplitude and index, and
+  predemag_all() runs all passes; summary.json has the list predemag_passes; bloch_tries has the field kind;
+  --predemag_h takes several values. With one value of --predemag_h and the random start, the sequence of option C is
+  the same. The unit tests and two smoke runs passed (7.114).
+- Credit at 05:05: 23.72 $.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
