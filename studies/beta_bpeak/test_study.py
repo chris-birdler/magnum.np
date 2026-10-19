@@ -1247,8 +1247,9 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
             s = parse(src[run])
             # the AC demagnetization after loading (Chris 2026-10-18): only if the source has none, as run_loops
             late = t.get("predemag_h") is not None and s.get("predemag_h") is None
+            late_s = t.get("bloch_smooth", 0) > 0 and not s.get("bloch_smooth", 0)   # the cut after loading
             diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)
-                    and not (late and k in ("predemag_h", "predemag_q"))]
+                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")]
             assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
             n += 1
     assert n >= 190
@@ -2430,3 +2431,56 @@ def test_protocol_s(tmp_path):
     full = dict(CJ.ad300_lines(src, runs))
     assert len(full) == 12 and all(full[n] == a for n, a in cont + CJ.ad_rest_lines(src, runs))
     assert full["K3_1_ad"] == ad["K3_1_ad"]
+
+
+def test_bloch_smooth_cut():
+    """--bloch_smooth (Chris 2026-10-19): smooth_bloch_t removes single Bloch points (+1, -1, deep inside) and the two
+    points of a +1 / -1 pair by tubes to the particle surface (synthetic Coulomb fields in a sphere of radius 10 cells);
+    a dense case of 3 steps with radius 2, 3, 4 ends clean; the option is an INIT_KEY (old configs 0); smooth_lines
+    loads the relaxed virgin state of the corner run."""
+    import shlex
+    import torch
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    assert "bloch_smooth" in RL.INIT_KEYS and RL.NEW_KEYS["bloch_smooth"] == 0
+    assert RL.parse_args(["--out", "x", "--d_lex", "96"]).bloch_smooth == 0
+    N = 28
+    g = np.stack(np.meshgrid(*[np.arange(N) + 0.0] * 3, indexing="ij"), -1)
+    ids_n = torch.tensor(np.where(np.linalg.norm(g - 13.5, axis=-1) <= 10.0, 0, -1))
+
+    def count(m):
+        q = RL.cube_charge_t(m)
+        sel = RL.bloch_mask_t(ids_n) & (q.abs() > 0.5)
+        return [[int(i), int(j), int(k), int(round(float(q[i, j, k]))), 0] for i, j, k in torch.nonzero(sel)]
+
+    def coul(*cs):
+        f = 0.0
+        for c, sign in cs:
+            d = g - np.array(c)
+            f = f + sign * d / np.linalg.norm(d, axis=-1, keepdims=True) ** 3
+        return torch.tensor(f / np.linalg.norm(f, axis=-1, keepdims=True), dtype=torch.float64)
+
+    for m, n0 in ((coul(([16.2, 12.3, 14.1], 1)), 1), (coul(([11.2, 14.3, 13.1], -1)), 1),
+                  (coul(([13.7, 13.6, 13.2], 1)), 1), (coul(([10.3, 13.4, 13.6], 1), ([16.6, 13.7, 13.3], -1)), 2)):
+        pts = count(m)
+        assert len(pts) == n0
+        m2, tubes = RL.smooth_bloch_t(m, ids_n, pts, r=2.0)
+        assert count(m2) == [] and len(tubes) == n0 and torch.allclose(m2.norm(dim=-1), torch.ones(N, N, N, dtype=m.dtype))
+    m = coul(([9.3, 12.4, 13.6], 1), ([12.6, 13.7, 13.3], -1), ([15.4, 15.2, 12.1], 1), ([18.1, 14.6, 15.2], -1))
+    for s in range(3):
+        if count(m):
+            m = RL.smooth_bloch_t(m, ids_n, count(m), r=2.0 + s)[0]
+    assert count(m) == []
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    corners = dict(CJ.corner_newell_lines(src))
+    sm = CJ.smooth_lines(src)
+    assert [n for n, _ in sm] == [n + "_sm" for n in CJ.SM_RUNS]
+    for n, line in sm:
+        tok, ref = shlex.split(line), shlex.split(corners[n[:-3]])
+        assert get_arg(tok, "init_from") == ["%s/init.pt" % n[:-3]] and get_arg(tok, "bloch_smooth") == ["3"]
+        assert get_arg(tok, "b_list") == ["0.006"] and get_arg(tok, "acc") is None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {
+                "init_from", "init_wait_h", "bloch_smooth", "b_list", "n_amp", "snap_phases", "snap_cycles", "snap_mT",
+                "acc", "acc_harm", "keep_stage_ckpt"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)

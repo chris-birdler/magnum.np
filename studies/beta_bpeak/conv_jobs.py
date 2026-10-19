@@ -452,6 +452,26 @@ def satstart_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
     return out
 
 
+SM_RUNS = ("K1_2_nx", "K2_0_nx", "K2_1_nx", "K2_2_nx", "K3_1_nx", "K3_2_nx", "K4_0_nx", "K4_1_nx", "K4_2_nx")
+# the corner runs whose relaxed virgin state (init.pt) has Bloch points (census_bloch_nx_v2.json, PROTOKOLL 7.112)
+
+
+def smooth_lines(src="jobs/sobol_corners.txt"):
+    """Test of the Bloch-point cut (Chris 2026-10-19, --bloch_smooth 3): the relaxed virgin state of each run of SM_RUNS
+    (init.pt, with Bloch points) is loaded, cut and relaxed (at most 3 steps), then the 9 mT stage runs (<run>_sm). All
+    other settings as the corner run, without snapshots and accumulators."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in SM_RUNS:
+        t = shlex.split(corners[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+        t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % n]), "init_wait_h", ["0.0"])
+        out.append((n + "_sm", " ".join(set_arg(t, "bloch_smooth", ["3"]))))
+    return out
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -483,6 +503,7 @@ if __name__ == "__main__":
                 initmode_lines() if st == "initmode" else
                 satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
                 ad_rest_lines() if st == "adrest" else
+                smooth_lines() if st == "smooth" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

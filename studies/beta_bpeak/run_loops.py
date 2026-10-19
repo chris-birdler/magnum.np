@@ -102,7 +102,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "init_stage": None,                                   # 2026-10-18, solver test at 150 mT (Chris)
             "predemag_h": None, "predemag_q": 0.8,                # 2026-10-18, Bloch points (Chris)
             "init_mode": "block",                                 # 2026-10-18, Bloch points, way 2 (Chris)
-            "bloch_free_tries": 0}                                # 2026-10-18, Bloch points (Chris)
+            "bloch_free_tries": 0,                                # 2026-10-18, Bloch points (Chris)
+            "bloch_smooth": 0}                                    # 2026-10-19, Bloch points (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -114,7 +115,7 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
-             "bloch_free_tries"]
+             "bloch_free_tries", "bloch_smooth"]
 
 
 def parse_args(argv=None):
@@ -158,6 +159,12 @@ def parse_args(argv=None):
                         "preparation again, at most this many attempts in all; 0 = one attempt, no check. With "
                         "--init_mode saturated (no random start): a further AC pass from the last --predemag_h value "
                         "and the relaxation instead")
+    g.add_argument("--bloch_smooth", type=int, default=0,
+                   help="virgin_asc converge (Chris 2026-10-19): if the prepared state still has a Bloch point after "
+                        "--bloch_free_tries, at most this many cuts (run_loops.smooth_bloch_t: a tube from the Bloch "
+                        "point to the particle surface, or between a +1 / -1 pair, gets one direction; tube radius "
+                        "2, 3, ... cells), each with the relaxation after it. With --init_from a state without it: "
+                        "applied after loading")
     g.add_argument("--init_block", type=float, default=0.0,
                    help="random initial m constant on blocks of this edge / l_ex in physical coordinates "
                         "(multiple of every dx: the same start on every mesh); 0 = one direction per cell")
@@ -510,6 +517,51 @@ def cube_charge_t(m):
         om = sa(m, b, c) + sa(m, c, d)
         q += torch.roll(om, -1, dims=ax) - om
     return q / (4.0 * math.pi)
+
+
+def smooth_bloch_t(m, ids_n, pts, r=2.0):
+    """Remove Bloch points by a local cut (Chris 2026-10-19, last stage of option C). Each Bloch point gets a tube from
+    its cube to the nearest surface cell of its particle (only there can its charge leave). The tube (cells of the
+    particle within r cells of the segment) gets one direction: the mean of the cells just behind the Bloch point (the
+    side away from the surface). The charge then sits where the field around the tube is opposite to this direction,
+    at the surface end, and is gone. Tested and rejected (synthetic hedgehogs, 2026-10-19): a harmonic smoothing of the
+    tube after the fill (it forms the Bloch point again at its old cube), and one tube between the two points of a
+    +1 / -1 pair (the charges move to the wall of the tube). The tubes are cut one after the other on the field
+    of the cuts before. The relaxation after the cut decides if the state stays free of Bloch points.
+    pts: [[i, j, k, Q, particle]] (cube corner i, j, k). Returns (new m, list of the tubes). Periodic box: minimum
+    image distances."""
+    import torch
+    N = m.shape[0]
+    dev, dt = m.device, m.dtype
+    m = m.clone()
+    out = []
+
+    def mi(d):
+        return d - N * torch.round(d / N)
+
+    for q in pts:
+        p = int(q[4])
+        own = ids_n == p
+        idx = torch.nonzero(own).to(dt)                     # cells of the particle
+        nb_out = torch.zeros_like(own)
+        for ax in range(3):
+            for sh in (1, -1):
+                nb_out |= ~torch.roll(own, sh, dims=ax)
+        surf = torch.nonzero(own & nb_out).to(dt)           # surface cells of the particle
+        a = torch.tensor([q[0] + 0.5, q[1] + 0.5, q[2] + 0.5], dtype=dt, device=dev)
+        w = mi(surf[int(torch.argmin(mi(surf - a).norm(dim=-1)))] - a)
+        v = mi(idx - a)
+        t = ((v * w).sum(-1) / max(float((w * w).sum()), 1e-12)).clamp(0.0, 1.0)
+        dist = (v - t[:, None] * w).norm(dim=-1)
+        cells = idx[dist <= r].long()
+        back = idx[(dist > r) & (dist <= r + 2.0) & ((v * w).sum(-1) <= 0.0)].long()
+        ref = m[back[:, 0], back[:, 1], back[:, 2]] if len(back) else m[cells[:, 0], cells[:, 1], cells[:, 2]]
+        u = ref.mean(0)
+        u = u / u.norm().clamp_min(1e-12)
+        m[cells[:, 0], cells[:, 1], cells[:, 2]] = u
+        out.append({"particle": p, "charge": int(q[3]), "cube": [int(x) for x in q[:3]],
+                    "length_cells": round(float(w.norm()), 2), "cells": int(len(cells)), "radius_cells": r})
+    return m, out
 
 
 def bloch_mask_t(ids_t):
@@ -990,6 +1042,31 @@ def main(argv=None):
                                                   and all(r["relax_converged"] for r in recs))
         return len(recs[-1]["bloch_points"])
 
+    def bloch_smooth_steps():
+        """--bloch_smooth (Chris 2026-10-19): while the state has a Bloch point, at most this many cuts
+        (smooth_bloch_t, tube radius 2 + step cells), each with the relaxation after it. Records
+        summary["init"]["bloch_smooth"]; returns the number of Bloch points at the end."""
+        recs = summary["init"].setdefault("bloch_smooth", [])
+        pts = bloch(positions=True)[2]
+        for s in range(args.bloch_smooth):
+            if not pts:
+                break
+            state.m, tubes = smooth_bloch_t(state.m, ids_n, pts, r=2.0 + s)
+            state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
+            drive.H_amp = 0.0
+            n_cut = sum(bloch())
+            hist, it, conv = relax_converge("relax_smooth%d" % s)
+            new = bloch(positions=True)[2]
+            recs.append({"step": s, "bloch_points_before": pts, "tubes": tubes, "n_bloch_after_cut": n_cut,
+                         "relax_iterations": it, "relax_converged": conv, "bloch_points": new,
+                         "E_over_Kd": hist[-1]["E_over_Kd"] if hist else None})
+            summary["init"]["relax_converged"] = bool(summary["init"].get("relax_converged", True) and conv)
+            print("[smooth] step %d: %d Bloch points cut (%d tubes, radius %.0f cells), %d after the cut, %d after "
+                  "the relaxation (%d iterations)" % (s, len(pts), len(tubes), 2.0 + s, n_cut, len(new), it),
+                  flush=True)
+            pts = new
+        return len(pts)
+
     # --- config ------------------------------------------------------------
     stages = build_stages(args, args.phi)        # nominal phi: same amplitudes on every mesh
     if args.cycles_last_amp:
@@ -1056,10 +1133,12 @@ def main(argv=None):
         c = torch.load(src, map_location=dev)
         late_predemag = bool(args.predemag_h is not None and "init" in c
                              and c["config"].get("predemag_h", NEW_KEYS["predemag_h"]) is None)
+        late_smooth = bool(args.bloch_smooth > 0 and "init" in c and not c["config"].get("bloch_smooth", 0))
         if "init" in c:
             diff = [k for k in INIT_KEYS if c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)
                     and not (k == "relax_maxiter" and c["init"].get("relax_converged"))
-                    and not (late_predemag and k in ("predemag_h", "predemag_q"))]
+                    and not (late_predemag and k in ("predemag_h", "predemag_q"))
+                    and not (late_smooth and k == "bloch_smooth")]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
                     "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
@@ -1074,6 +1153,11 @@ def main(argv=None):
             summary["init"]["bloch_virgin"] = list(bloch())
             summary["init"]["relax_converged"] = bool(c["init"].get("relax_converged"))
             predemag_all()
+        if late_smooth:
+            # Chris 2026-10-19: the cuts of --bloch_smooth on the state of another run
+            summary["init"]["bloch_loaded"] = list(bloch())
+            summary["init"]["bloch_free"] = bool(bloch_smooth_steps() == 0)
+        if late_predemag or late_smooth:
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
     else:
@@ -1167,8 +1251,11 @@ def main(argv=None):
                     print("[bloch] attempt %d: %d Bloch points in the prepared state" % (attempt, n_end), flush=True)
                 if args.bloch_free_tries <= 0 or n_end == 0 or not summary["init"]["relax_converged"]:
                     break
+            n_final = tries[-1]["n_bloch_prepared"]
+            if args.bloch_smooth > 0 and n_final > 0 and summary["init"]["relax_converged"]:
+                n_final = bloch_smooth_steps()          # Chris 2026-10-19: the last stage of option C
             summary["init"]["bloch_tries"] = tries
-            summary["init"]["bloch_free"] = bool(tries[-1]["n_bloch_prepared"] == 0)
+            summary["init"]["bloch_free"] = bool(n_final == 0)
         elif args.protocol == "virgin_asc":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 until |dm/dt| is small
             converged = bool(llg.relax(state, maxiter=args.relax_maxiter, dm_tol=args.relax_dm_tol, dt=1e-11))
