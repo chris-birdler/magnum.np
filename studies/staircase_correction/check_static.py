@@ -140,6 +140,9 @@ def main():
     ap.add_argument("--q", type=int, default=2)
     ap.add_argument("--p", type=int, nargs="+", default=[1, 2, 3])
     ap.add_argument("--out", default=str(HERE / "results"))
+    ap.add_argument("--shells", type=int, default=None,
+                    help="image shells of a plain Newell kernel (no extrapolation) on both meshes for the static "
+                         "comparison; default: the production setting of the runs (newell_ext)")
     a = ap.parse_args()
     out = pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -154,6 +157,8 @@ def main():
     assert all(r[1]["strayfield"] == "newell_ext" for r in runs), "only states of the Newell solver (rule of Chris)"
 
     # coarse field (production setting); its kernel is shared with the energy check of step 2
+    setting = ("newell_ext", shells) if a.shells is None else ("newell", a.shells)
+    res["setting"] = list(setting)
     coarse = None
     for run, cfg, rec, m in runs:
         from magnumnp import DemagField
@@ -162,8 +167,9 @@ def main():
         t = time.time()
         E, ids_vox, N, d_lex, dx_lex, a_lex = production(cfg, m, stray)
         if coarse is None:
-            coarse = FFTField(N, ("newell_ext", shells))
-            coarse.term = stray                                   # same kernel (scale-free)
+            coarse = FFTField(N, setting, cache_dir=CACHE)
+            if a.shells is None:
+                coarse.term = stray                               # same kernel (scale-free)
             res["times_s"]["coarse_kernel_and_check"] = time.time() - t
         norm_dev = float((m.norm(dim=-1)[torch.as_tensor(ids_vox >= 0)] - 1).abs().max())
         bp = bloch_count(m.to(torch.float32), ids_vox)
@@ -174,6 +180,7 @@ def main():
                             + E.get("aniso_particle", 0.0), "norm_dev": norm_dev, "bloch": bp, "check_ok": ok}
         log(run, "step 2: E_total %.10f record %s |m|-1 %.1e BP %s -> %s" % (Etot, rec, norm_dev, bp, ok))
     geo_key = "d%.0f_phi%.2f" % (cfg0["d_lex"], cfg0["phi"])
+    fname = "static_A_%s_q%d%s.json" % (geo_key, q, "" if a.shells is None else "_k%d" % a.shells)
     res["geometry"] = {"N": N, "d_lex": d_lex, "dx_lex": dx_lex, "a_lex": a_lex, "key": geo_key}
 
     # step 3: fine body and V1 cells (R0)
@@ -191,7 +198,7 @@ def main():
     res["R0"] = r0
     log("R0", {k: r0[k] for k in r0 if k != "v_hist"})
     if not r0["ok"]:
-        (out / ("static_A_%s.json" % geo_key)).write_text(json.dumps(res, indent=1))
+        (out / fname).write_text(json.dumps(res, indent=1))
         sys.exit("R0 failed: stop")
     src, dst = nearest_voxel_map(ids_vox, pid, n)
     v = n / nq
@@ -200,7 +207,7 @@ def main():
     layer = maximum_filter(mod, size=2 * LAYER + 1, mode="wrap") & vox
     newc = mag & ~vox
     lay_t, new_t = torch.as_tensor(layer), torch.as_tensor(newc)
-    fine = FFTField(q * N, ("newell_ext", shells), cache_dir=CACHE)
+    fine = FFTField(q * N, setting, cache_dir=CACHE)
     body_t = torch.as_tensor(body)
 
     def v1_m(m):
@@ -256,7 +263,7 @@ def main():
     res["R1"] = {"cases": r1, "ok": all(abs(c["ref_rel"]) <= 5e-4 and abs(c["vox_rel"]) <= 5e-4 for c in r1.values())}
     log("R1", res["R1"])
     if not res["R1"]["ok"]:
-        (out / ("static_A_%s.json" % geo_key)).write_text(json.dumps(res, indent=1))
+        (out / fname).write_text(json.dumps(res, indent=1))
         sys.exit("R1 failed: computation not valid, stop")
 
     # corrected models, window by window
@@ -280,10 +287,10 @@ def main():
             res["times_s"]["field_P_p%d" % p] = tP
             log(name, "p", p, "E_P %.8f E_L %.8f E_ref %.8f" % (d["E_P%d" % p], d["E_L%d" % p], d["E_ref"]))
         del nc
-        (out / ("static_A_%s.json" % geo_key)).write_text(json.dumps(res, indent=1))
+        (out / fname).write_text(json.dumps(res, indent=1))
     res["times_s"]["total"] = time.time() - t0
     res["max_rss_gb"] = rss_gb()
-    (out / ("static_A_%s.json" % geo_key)).write_text(json.dumps(res, indent=1))
+    (out / fname).write_text(json.dumps(res, indent=1))
     log("done", out / ("static_A_%s.json" % geo_key))
 
 
