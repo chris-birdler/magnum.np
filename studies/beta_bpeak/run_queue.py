@@ -253,6 +253,7 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
         scan_spool()
     exit_file = pathlib.Path(spool) / "EXIT" if spool is not None else None
     running = {}                                    # name -> (run folder, expected bytes, gpu, start time)
+    disk_wait = set()                               # jobs that went back into the queue for disk space (logged once)
     active = {"n": 0}                               # jobs taken from the queue and not finished
     t_start = time.time()
 
@@ -278,11 +279,27 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
         tmp.write_text(json.dumps(st, indent=1))
         os.replace(tmp, status)
 
+    def try_reserve(name, args, out, gpu):
+        """Reserve the expected size of a job if the disk keeps min_free_gb free after it; returns (reserved, free,
+        reserved bytes of the running jobs, need)."""
+        need = expected_bytes(args) if min_free_gb > 0 else 0
+        with lock:
+            if name in running:
+                return True, 0, 0, need
+            pending = sum(max(e - folder_bytes(o), 0) for o, e, _, _ in running.values())
+            free = shutil.disk_usage(str(runs)).free
+            if min_free_gb <= 0 or free - pending - need >= min_free_gb * 1e9:
+                running[name] = (out, need, gpu, time.time())
+                return True, free, pending, need
+            return False, free, pending, need
+
     def reserve(name, args, out, gpu):
         need = expected_bytes(args) if min_free_gb > 0 else 0
         waited = False
         while True:
             with lock:
+                if name in running:                 # reserved by the worker (try_reserve)
+                    return
                 pending = sum(max(e - folder_bytes(o), 0) for o, e, _, _ in running.values())
                 free = shutil.disk_usage(str(runs)).free
                 if min_free_gb <= 0 or free - pending - need >= min_free_gb * 1e9:
@@ -343,15 +360,43 @@ def run_jobs(jobs, gpus, runs, min_free_gb=0.0, retries=1, job_timeout_h=0.0, st
                     time.sleep(min(wait_s, grace_s))
                     continue
             try:
-                prio, _, name, args = q.get(timeout=5)
+                item = q.get(timeout=5)
             except queue.Empty:
                 with lock:
                     if active["n"] == 0 and (spool is None or exit_file.exists()):
                         return                      # nothing running that could come back to the queue
                 continue
-            free_since = None
             with lock:
-                active["n"] += 1
+                active["n"] += 1                    # also while this worker holds jobs out of the queue
+            ok, free, pending, need = try_reserve(item[2], item[3], runs / item[2], gpu)
+            if not ok:
+                # Chris 2026-10-19: a job that waits for disk space goes back into the queue, and this GPU takes the
+                # first job in the order of the queue that fits (before, the waiting job held its GPU)
+                held, chosen = [item], None
+                while True:
+                    try:
+                        it = q.get_nowait()
+                    except queue.Empty:
+                        break
+                    if try_reserve(it[2], it[3], runs / it[2], gpu)[0]:
+                        chosen = it
+                        break
+                    held.append(it)
+                for it in held:
+                    q.put(it)
+                if item[2] not in disk_wait:
+                    disk_wait.add(item[2])
+                    print("[wait] %s: free %.1f GB - reserved %.1f GB - needs %.1f GB < %.0f GB: back into the queue"
+                          % (item[2], free / 1e9, pending / 1e9, need / 1e9, min_free_gb), flush=True)
+                if chosen is None:
+                    with lock:
+                        active["n"] -= 1
+                    time.sleep(poll_s)
+                    continue
+                print("[disk] gpu %s takes %s (%s waits for disk space)" % (gpu, chosen[2], item[2]), flush=True)
+                item = chosen
+            prio, _, name, args = item
+            free_since = None
             t0 = time.time()
             rc, why = run_one(name, args, gpu)
             h = (time.time() - t0) / 3600

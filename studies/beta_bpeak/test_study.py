@@ -2281,6 +2281,27 @@ def test_run_queue_exclusive_gpu(tmp_path):
     assert sorted(res["done"]) == ["A", "B"] and calls["g0"] >= 3
 
 
+def test_run_queue_disk_wait_takes_a_smaller_job(tmp_path, monkeypatch):
+    """run_queue (Chris 2026-10-19): a job that does not fit on the disk goes back into the queue, and the GPU takes the
+    next job that fits; the waiting job starts when the disk has space (here after the small job, which frees it)."""
+    import types
+    import run_queue
+    disk = {"free": 10e9}
+    order = []
+    monkeypatch.setattr(run_queue.shutil, "disk_usage", lambda p: types.SimpleNamespace(free=disk["free"]))
+    monkeypatch.setattr(run_queue, "expected_bytes", lambda a: {"big": 8e9, "small": 1e9}[a])
+
+    def cmd(args, out):
+        order.append(out.name)
+        if args == "small":
+            disk["free"] = 20e9                         # e.g. the post-processing deleted snapshots
+        return _fake_command("ok", out)
+
+    res = run_queue.run_jobs([("A", "big"), ("B", "small")], ["g0"], tmp_path / "runs", min_free_gb=3, command=cmd,
+                             burst_n=99, poll_s=0.05)
+    assert order == ["B", "A"] and sorted(res["done"]) == ["A", "B"]
+
+
 def test_run_queue_spool_dispatcher(tmp_path):
     """run_queue dispatcher (--spool, Chris 2026-10-18: one queue per box): job files by priority, a file submitted
     while the dispatcher runs is loaded, <file>.done lists done and failed jobs, DIR/EXIT ends the dispatcher."""
