@@ -3,12 +3,12 @@
 Plots of the corner evaluation with three arms (Chris 2026-10-19; eval_corners_ad.py, PROTOKOLL 7.119): old main study
 (DemagFieldPBC), nx (setup of PLAN 4.13, relaxed random start with Bloch points), ad (setup of PLAN 4.13, option C,
 no Bloch point in the start state). Input: the JSON of eval_corners_ad.py --json.
-  corners_ad_loss.png    P over B_peak per corner: geometric mean over the 3 microstructures, bars mean × exp(± SE of
-                         ln P) (n 3); open marker = at least 1 of the 3 runs has a Bloch point in this stage (ad: at
-                         a sample; nx: at the start or the end of the stage; old: no stage information); lines = power
-                         law fitted to the mean ln P over 9 … 50 mT (grey band).
+  corners_ad_loss.png    P over B_peak per corner: geometric mean over the 3 microstructures (line and markers), band
+                         from the smallest to the largest of the 3 runs (scatter); open marker = at least 1 of the 3 runs has a Bloch point in this stage (ad: at
+                         a sample; nx: at the start or the end of the stage; old: no stage information); dashed lines =
+                         power law fitted to the mean ln P over 9 … 50 mT (grey band).
   corners_ad_beta.png    β per corner and arm (mean ± SE, n 3) in the windows 9 … 150, 9 … 50 and 70 … 150 mT.
-  corners_ad_factor.png  factor on P per amplitude, exp(mean paired Δ ln P) with bars exp(± SE) (n 12).
+  corners_ad_factor.png  factor on P per amplitude, exp(mean paired Δ ln P) with the band exp(± SE) (n 12).
 Colors: categorical palette of the dataviz skill, validated (slots 1 … 3 for the arms, 4 … 6 for the comparisons);
 each arm also has its own marker.
 
@@ -57,17 +57,17 @@ def loss_figure(data, out):
         for i, a in enumerate(ARMS):
             L = np.array([data["lnP"][r][a] for r in runs], float)
             m = np.nanmean(L, 0)
-            se = np.nanstd(L, 0, ddof=1) / np.sqrt(np.sum(np.isfinite(L), 0))
-            x = B * (1 + 0.03 * (i - 1))
-            ax.errorbar(x, np.exp(m), yerr=[np.exp(m) - np.exp(m - se), np.exp(m + se) - np.exp(m)], fmt="none",
-                        ecolor=COLOR[a], elinewidth=1.2, capsize=0, zorder=2)
+            x = B
+            ax.fill_between(B, np.exp(np.nanmin(L, 0)), np.exp(np.nanmax(L, 0)), color=COLOR[a], alpha=0.18, lw=0,
+                            zorder=1)
+            ax.plot(B, np.exp(m), "-", color=COLOR[a], lw=1.2, zorder=2)
             for k in range(len(B)):
                 open_ = any(bp_flag(data, r, a, k) for r in runs)
                 ax.plot(x[k], math.exp(m[k]), MARK[a], ms=8, mec=COLOR[a], mew=1.8,
                         mfc="white" if open_ else COLOR[a], zorder=3, label=LABEL[a] if k == 0 else None)
             p = np.polyfit(np.log(B[lo]), m[lo], 1)
             xx = np.array([9.0, 50.0])
-            ax.plot(xx, np.exp(np.polyval(p, np.log(xx))), "-", color=COLOR[a], lw=2, zorder=1)
+            ax.plot(xx, np.exp(np.polyval(p, np.log(xx))), "--", color=COLOR[a], lw=2, zorder=2)
         ax.set_xscale("log")
         ax.set_yscale("log")
         ax.set_title(TITLE[c], fontsize=12, color=INK, loc="left")
@@ -117,9 +117,8 @@ def factor_figure(data, out):
         s = data["factor"][k]
         m = np.array([t[0] if t else np.nan for t in s])
         e = np.array([t[1] if t else np.nan for t in s])
-        x = B * (1 + 0.03 * (i - 1))
-        ax.errorbar(x, np.exp(m), yerr=[np.exp(m) - np.exp(m - e), np.exp(m + e) - np.exp(m)], fmt=mk + "-", ms=8,
-                    color=col, lw=1.5, elinewidth=1.4, capsize=0, label="%s" % {
+        ax.fill_between(B, np.exp(m - e), np.exp(m + e), color=col, alpha=0.18, lw=0)
+        ax.plot(B, np.exp(m), mk + "-", ms=8, color=col, lw=1.5, label="%s" % {
                         "ad/old": "option C / old main study", "ad/nx": "option C / start with Bloch points",
                         "nx/old": "start with Bloch points / old main study"}[k])
     ax.axhline(1.0, color=INK, lw=0.8)
