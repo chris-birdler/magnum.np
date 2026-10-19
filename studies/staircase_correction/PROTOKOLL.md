@@ -32,7 +32,7 @@ References: a number "7.x" is a section of the record of the β(B_peak) study, `
   directions, or on hysteresis or loss. Donahue & McMichael 2007 give the method (far field by FFT, near-field
   correction from a submesh) and use its cell-local form for all their results (3.3). The variant V2 (boundary cells
   with constant volume, idea of Chris) was not found (3.2).
-- **Status.** No code, no runs, no PLAN.md yet. The strategy waits for the decision of Chris (section 2).
+- **Status.** Stage A of PLAN.md (phase 1, static test, V1 with both forms) approved; code in progress.
 
 ## 1. Goal
 
@@ -48,6 +48,14 @@ with full PBC.
 - 2026-10-19: own branch from `main` for this work.
 - 2026-10-19: only the Newell solver with full PBC. Never DemagFieldPBC, also not as a reference. The older state
   files (.pt) that were relaxed with DemagFieldPBC are not used.
+- 2026-10-19: strategy approved: a static test of both forms of the correction (cell-local and pairwise) against a
+  fine Newell reference with full PBC (the choice of V2 as the main variant was replaced on the same day, see below
+  and 3.4).
+- 2026-10-19: magnetisation states for the tests only from the Newell solver with full PBC and without Bloch points
+  ("the cleanest states").
+- 2026-10-19: V2 dropped (3.4). Main variant: the original method of Donahue & McMichael (V1: cut cells with volume
+  fraction, near-field correction from a submesh); the static test computes both forms (pairwise and cell-local).
+  Stage A of PLAN.md approved.
 - 2026-10-19: own record for the staircase correction (this file). The sections 7.117, 7.120 and 7.121 of the study
   record are copied here as 3.1, 3.2 and 3.3, with the references to each other changed to the new numbers.
 
@@ -59,11 +67,8 @@ with full PBC.
   for Chris after the corner test (PLAN 4.13 of the β(B_peak) study; corner runs in 7.111 … 7.119). Also open there:
   the size and roughness question (at a fixed dx 3 l_ex, dx/d is 0.010 at d/l_ex 300 and 0.014 at d/l_ex 212).
 
-**Open for Chris (proposal of 2026-10-19).**
-- Strategy: V2 as the main variant; a static test on the local CPU that measures both forms of the correction (the
-  cell-local tensor and the full pairwise correction) against a fine Newell reference with full PBC; V1 (cut cells
-  after Donahue & McMichael) only as a check of the computation. After the decision: PLAN.md for the static test.
-- Release for V1 as a test model, because it contains the volume-fraction element of 7.29.
+**Open for Chris.**
+- Stage B of PLAN.md (separate go after stage A).
 - Target of the correction: the fine staircase (exact reference on a fine mesh) or the smooth sphere (only through a
   series of finer submeshes).
 - Meng et al. 2025, J. Magn. Magn. Mater. 173350 (powder cores, cites Donahue & McMichael): full text wanted (3.2).
@@ -419,3 +424,37 @@ https://math.nist.gov/~MDonahue/pubs/jaggies_20070117.pdf, text extracted with p
 - Consequence for the strategy (proposal): the static test measures both forms, as test A of 2026-10-15 planned. The
   cell-local tensor needs 6 numbers per cell. The pair matrix needs up to about 2 GB (estimate of the search, 3.2).
   The same derivation holds for V2 with the volume Δx³ instead of v_i.
+
+### 3.4 V2 cannot be built locally; decision: the original method of Donahue & McMichael (2026-10-19)
+
+**Finding.** A context-free review of the first PLAN draft built the fine body and the V2 owner rule for one particle
+of the production geometry, and an independent check repeated it (scratchpad script v2match.py; maximum bipartite
+matching, scipy).
+- K2 geometry (d/l_ex 300, φ 0.62, sphere radius 50.65 cells, q = 2): 544 840 voxel cells, fine body 4 358 152 fine
+  cells (q³ times the voxel cells: 4 358 720, δ_p −568), 28 256 orphan fine cells, 28 824 free places in 12 432
+  receiving cells.
+- With the best possible assignment inside 3 Δx, 744 orphans have no receiving cell (script v2match.py in this
+  folder). All 744 lie at the six poles of
+  the sphere: the largest component of their normal is above 0.99. The review found 312 such orphans in the K4
+  geometry (best assignment, 3 Δx), and with its greedy rule still 763 in K2 at 10 Δx.
+- Cause: at each pole the voxel sphere has a wide flat terrace (half-width about 10 cells at d/l_ex 300, estimate from
+  the cap height of one cell). Above the centre of the terrace the true sphere has more volume than the voxel cells;
+  at the rim of the terrace the voxel cells have more volume than the sphere. Whole cells cannot represent a cap that
+  is less than one cell high. Thus the volume error of the voxel model is spread over the width of the terrace, not
+  over one cell. Cells with a fixed volume Δx³ can follow the sphere there only if volume moves over about 5 … 10
+  cells (estimate from the terrace width).
+- Consequence: V2 does not violate a principle, but it is not local at the poles. Options given to Chris: A, V2 with a
+  global partition (inner cells deform; the magnetisation moves over several cells); B, V1 (cut cells with volume
+  fraction, the original method); C, V2 with volume fractions only at the pole terraces; D, no correction.
+
+**Decision of Chris (2026-10-19): B.** The original method of Donahue & McMichael is the main variant. The static test
+computes both forms (pairwise and cell-local). The volume fraction is here part of the representation of the true
+sphere, not a smoothing; whether it changes the dynamics as in 7.29 (there without a near-field correction and with
+DemagFieldPBC) is a question for phase 3.
+
+**Further findings of the review, applied to PLAN.md.** The sign convention of magnum.np is H = K M (self term about
+−1/3), so the correction enters with a plus sign. The fine kernel with the production setting takes about 1.6 … 1.7 h
+per geometry on this computer (measured kernel speed, extrapolated), so the static test uses the production setting
+and needs no one-shell deviation. The sign check uses the smallest eigenvalue (Lanczos) instead of random fields.
+Donahue's "7 × 7" neighbourhood is p = 3 in the notation of the plan. The field layer and the reading for uniform m
+are defined more exactly.
