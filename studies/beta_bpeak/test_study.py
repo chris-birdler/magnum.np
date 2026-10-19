@@ -2533,3 +2533,27 @@ def test_eval_corners_ad_window_beta():
     d[5] = np.nan                                       # a second amplitude missing: 5 of 7
     assert np.all(np.isnan(EA.window_beta([a, d], "full")))
     assert np.allclose(EA.window_beta([a, d], "high")[0], np.nan, equal_nan=True)
+
+
+def test_eval_hist_snapshots_cycle_measures():
+    """eval_hist_snapshots.cycle_measures (Chris 2026-10-19): on synthetic states. All cells turn from −x to +x: net 2,
+    against 0, rot 1. Half the cells turn +x, the other half turn −x: net 0, cancel 1. A rotation of 90° from −x to
+    +y: net 1, perp 1, rot 0.5."""
+    import eval_hist_snapshots as EH
+    n = 4
+    ids = np.zeros((n, n, n), np.int8)
+    ids[:, :, :2] = 1
+    st = lambda m: {"m": m, "ids": ids, "mask": ids >= 0}
+    ex = np.array([1.0, 0.0, 0.0])
+    a = np.zeros((n, n, n, 3)); a[..., 0] = -1.0
+    b = -a
+    r = EH.cycle_measures(st(a), st(b), ex)
+    assert np.isclose(r["net"], 2.0) and np.isclose(r["against"], 0.0) and np.isclose(r["rot"], 1.0)
+    c = a.copy(); d = b.copy()
+    c[:, :, 2:, 0] = 1.0; d[:, :, 2:, 0] = -1.0          # particle 0 turns the other way
+    r = EH.cycle_measures(st(c), st(d), ex)
+    assert np.isclose(r["net"], 0.0) and np.isclose(r["cancel"], 1.0)
+    assert np.isclose(r["particles"][1], 2.0) and np.isclose(r["particles"][0], -2.0)
+    e = np.zeros((n, n, n, 3)); e[..., 1] = 1.0
+    r = EH.cycle_measures(st(a), st(e), ex)
+    assert np.isclose(r["net"], 1.0) and np.isclose(r["perp"], 1.0) and np.isclose(r["rot"], 0.5)

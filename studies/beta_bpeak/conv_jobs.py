@@ -516,7 +516,8 @@ def hist_lines(runs, snapshots, src="jobs/sobol_corners.txt", runs_dir="runs"):
     9 ... 50 mT is about 2 x the loss of the relaxed random start, and in the 9 mT stage it rises over the first 2 ... 3
     cycles). For each microstructure of runs the 9 mT stage with K4H_CYCLES cycles from both prepared states: <run>_ad_h16 from the option C
     state (<run>_ad/init.pt; K4_1: its AC-300 test state, as the run), <run>_nx_h16 from the relaxed random start of the
-    corner test (<run>_nx/init.pt). With snapshots: m at 2 phases (H max, H min) in every cycle (--snap_cycles
+    corner test (<run>_nx/init.pt). With snapshots: m at 2 phases (180° and 360°: H = 0 falling and rising; drive
+    H0 sin(ωt)) in every cycle (--snap_cycles
     K4H_CYCLES; 4 phases would need 25 GB of disk for K4); without: no snapshots. Accumulators as
     the runs; all other settings as the runs."""
     ad = dict(ad300_lines(src, runs_dir))
