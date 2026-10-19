@@ -6774,6 +6774,137 @@ cycles: median |d| at most 0.0035, largest |d| 0.0245 (9 mT). Relaxation iterati
 **Limits.** n 3 microstructures per corner and 4 corners only. dx 3 l_ex for all arms. The fit in 9 … 50 mT has 2
 degrees of freedom per run. The census of the old and nx arms counts only the start and the end of a stage.
 
+### 7.120 Second literature search: volume-preserving boundary cells (V2), and corrections that keep the Newell solver with full PBC (2026-10-19, questions of Chris)
+
+**Questions of Chris.** (1) A targeted search for the variant V2 (below), because the idea is obvious. (2) A new
+survey of the variants for our goal that stay compatible with the Newell solver with full periodic boundary
+conditions (PBC). Rule of Chris for this work: only the Newell solver with full PBC, never DemagFieldPBC, also not as
+a reference.
+
+**Terms.**
+- Newell solver with full PBC: DemagField(true_pbc=True), the FFT convolution (FFT: fast Fourier transform) of M with
+  the Newell tensor of cubic cells, with image shells and the compensation of the outer surface charges (7.105).
+- m: unit vector of the magnetisation; M_s: saturation magnetisation; Δx: cell edge; f: volume fraction (7.117).
+  Staircase, partial cell, submesh, near-field correction: as in 7.117. Window: the neighbour cells, up to p cells
+  away, for which the near-field correction is applied.
+- V1 (Donahue & McMichael 2007): a partial cell is the part of its cube inside the body, with the moment
+  f·M_s·Δx³. Cells with a centre outside the body but with f > 0 become magnetic. The near field comes from a fine
+  submesh, that is, from a fine staircase (7.117, limit 2). García-Cervera et al. 2003 use the exact cut shapes
+  instead (2D only).
+- V2 (idea of Chris): each voxel cell keeps its volume Δx³ and its moment M_s·Δx³. Only the shape of the boundary
+  cells changes, with the volume kept, so that all cells together fill the smooth sphere with exactly the voxel
+  volume. The near field comes from these deformed cells. The FFT far field does not change.
+
+**Physics of V2 (own reasoning, 2026-10-19).**
+- One magnetisation field M(r) serves all energy terms.
+- Each deformed cell is a closed body. Thus each cell is charge-neutral.
+- If m is equal in two neighbour cells, their common border carries no charge. Thus the surface charge is M·n on the
+  smooth surface.
+- The stray-field energy of the deformed cells is the exact energy of this M(r). Thus it is symmetric and not
+  negative.
+- Two conditions limit this in the computation. (a) Outside the window the coupling of the cubes is used. If the
+  centroid of a deformed cell is not at the centre of its cube, this gives an error at quadrupole order outside the
+  window. (b) With a cut window the energy is exact only up to the cut, and the sign of the energy is not guaranteed
+  by construction. The static test must measure both, and the correction matrix must be symmetric.
+- V2 leaves the exchange on the cube neighbours. The first-order exchange error at the surface stays (helix test of
+  7.104, −10 % on 3 l_ex, a code test on another geometry, see 7.117).
+- Why the simple form of the idea is not used: put a charge with the true normal on the free face of a full cube and
+  keep the other faces. The cell then has a net charge. It is zero only if the new charge face has the same vector
+  area as the free cube faces, that is, only if the normal does not change. The particle as a whole stays neutral, but
+  each cell has a monopole when m varies.
+
+**Method.** Two literature searches in parallel on 2026-10-19 (web, arXiv, citation lists from OpenAlex and in part
+from Semantic Scholar, which stopped at its rate limit). The notes give each query, each hit with its citation and
+link, and whether the full text or only the abstract was read: studies/staircase_correction/lit/
+LIT_v2_volume_preserving.md and LIT_newell_pbc_variants.md (branch feature/staircase-correction, commit 7158436). After
+the searches, three sources were checked again on arXiv for title, authors and date (Ai, Duan & Lomakin 2024;
+Durhuus, Insinga & Bjørk 2026; Adams & Michels 2026).
+
+**Result 1: V2 was not found.**
+- Fields searched: micromagnetics; the discrete dipole approximation (DDA: light scattering on a cubic lattice of
+  dipoles, with FFT); conformal FDTD and cut-cell methods; magnetic and gravity forward modelling with rectangular
+  prisms (geophysics; prism formulas equivalent to Newell); particle-mesh methods (P3M, precorrected FFT); partitions
+  of a body into cells of prescribed volume. No source keeps the cell volume and the cell moment and changes only the
+  shape of the boundary cells.
+- Closest relatives:
+  - Donahue & McMichael 2007 (full text): their eq. 2 averages the fine tensor over the sub-cells that belong to a
+    coarse cell. The search infers that the same formula gives V2 with a transport assignment of the sub-cells and the
+    volume Δx³. This inference must be checked in the code.
+  - Precorrected FFT (Phillips & White 1994, full text) and the adaptive integral method: the same algebra (exact near
+    field minus the grid near field).
+  - Lebecki, Donahue & Gutowski 2008 (full text): the correction of Donahue together with a periodic kernel (1D PBC).
+    The only finite-difference micromagnetic precedent found for a surface correction under PBC.
+  - Partition with prescribed volumes: its existence and its link to the least-squares transport are known
+    (Aurenhammer et al. 1992/1998, abstract; Lévy 2015, full text). The search found no use for the cells of a field
+    kernel.
+  - Sen, Wang, Breitzman & Dayal 2024 and 2026 (abstracts only): in the continuum limit of a lattice of charge-neutral
+    cells, a surface charge appears that depends on the partial cells at the boundary. That this supports V2 at fixed
+    moments is an inference of the search.
+- No source compares cells with constant volume against cells with a volume fraction. The sources compare the volume
+  fraction alone with the volume fraction plus a near-field correction. In Donahue & McMichael the near-field term
+  gives the effect (7.117). García-Cervera et al. 2003 claim large errors of the volume weighting in the abstract, but
+  show no curve with the volume weighting alone. Riahi et al. 2013 (full text) find that a volume-weighted mask on
+  5 nm cells gives about the same coupling energies of curved magnets as the staircase on 2 nm cells. Thus the volume
+  fraction helps for energies of the far field.
+- Risks of V2 (inferences of the search and own): the partition must stay in a shell at the surface, else inner cells
+  deform a little and the window must include them; the exact coupling of the deformed cells needs new code (own
+  plan: sums of sub-cell Newell tensors).
+
+**Result 2: variants that keep the Newell solver with full PBC.**
+
+| family | what it corrects | evidence | fits Newell with full PBC | main risk for us |
+|---|---|---|---|---|
+| F1 pairwise near-field correction (V1, V2) | near field of the stray field | Donahue & McMichael 2007 and talks (2D films); DDA weighted discretisation (Piller 1997, abstract; Yurkin et al. 2006, full text; 3D spheres in optics) | yes, as a sparse local term | memory of the pair matrix (0.1 … 2 GB, estimate of the search); the matrix must be symmetric |
+| F1 in the cell-local form (Boris, one tensor per cell) | near field, only for m uniform over the window | Donahue talk 2006, thin spheroid: RMS field error 118 % with the staircase, 29 % with cell-local corrections only | yes | DDA: the weighted discretisation keeps a first-order term with a smaller constant (Yurkin et al. 2006). That this holds for the cell-local form in micromagnetics is an inference. |
+| F2 refined grids with FFT (precorrected FFT, NUFFT, adaptive refinement) | geometry of the sources | Ai, Duan & Lomakin 2024 (finite elements, FEM, periodic kernel); Exl & Schrefl 2014 | precorrected FFT yes; adaptive refinement only with large changes | a second solver, weeks of work (estimate of the search) |
+| F3 charge correction (smooth minus staircase surface charge) | near field | no source in finite-difference micromagnetics | yes; the search infers that it is F1 in another basis | needs M on the true surface: extrapolation over one cell |
+| F4 / F8 cell weights and composite voxels (DDA, FFT homogenisation) | effective properties of boundary cells | DDA: integral quantities up to 24 times (Piller 1997) and 60 times (Zhu et al. 2023) more accurate, abstracts only; composite voxels: about 10 times smaller error (Lendvai & Schneider 2024, conference paper on thermal conductivity, one sphere of 17 % volume, contrast 10) | yes | rules for linear media; for LLG they reduce to volume fractions plus a cell-local term of the Donahue type (inference of the search); 7.29 tested the volume fraction alone |
+| F6 exchange at the true surface | exchange | García-Cervera 2003, Parker 2000 (7.117); no new source | yes, local | second part of a full correction |
+| F7 averaging over grid offsets or rotations; Richardson extrapolation at a locked geometry | the random part of the shape error | no source in DDA or micromagnetics; Yurkin et al. 2006 show that the shape error is quasi-random in the cell size | yes, no solver change | the systematic part stays: the staircase area is 1.5 times the sphere area for each Δx (own calculation of the search; 7.29 measured 1.50); at a locked geometry the extrapolation converges to the staircase body |
+
+- Under PBC the near-field correction uses the free-space kernel with the minimum-image distance (the window wraps
+  across the box edge). Precedents: Lebecki et al. 2008 (finite differences, 1D PBC) and Ai, Duan & Lomakin 2024
+  (FEM; section 3.2 read by the search: a free-space near correction together with a periodic FFT kernel). That this
+  also holds with the Newell kernel is an inference.
+- Durhuus, Insinga & Bjørk 2026 (abstract and start of the text read): for sufficiently large samples under 3D PBC,
+  only the mean magnetisation carries the effect of the outer sample shape. This agrees with the compensation term of
+  DemagField(true_pbc=True) (7.105).
+- Holt et al. (7.117) is now published: IEEE Trans. Magn. 2025, doi 10.1109/TMAG.2025.3604525.
+
+**Gaps.**
+- No source tests a staircase correction on hysteresis or loss of spheres. The validations are field errors,
+  energies, FMR frequencies and scattering cross-sections.
+- All effect sizes of the sources (Donahue & McMichael, García-Cervera et al., Riahi et al.) come from single
+  deterministic simulations without error bars.
+- No finite-difference micromagnetic work combines a staircase correction with the FFT and full 3D PBC.
+- Full text not read: Zhu, Liu & Yurkin 2023; Kabel et al. 2015; Piller 1997; Piller & Martin 1998; Tandon et al.
+  2004; Wei 2009; Wang 2011; the geophysics and FDTD papers. The citation lists are from OpenAlex and in part from
+  Semantic Scholar. Six citers of Donahue & McMichael that only Semantic Scholar lists are not read.
+- Meng et al. 2025, J. Magn. Magn. Mater. 173350 (powder cores, 1 … 20 kHz, cites Donahue & McMichael): abstract not
+  found. It has the same application as this study; a check by hand is proposed.
+
+**Consequence for the strategy (proposal; decision of Chris open).**
+- The pairwise near-field correction, not the cell-local tensor (Donahue: 29 % field error remains with cell-local
+  corrections only; DDA: a first-order rest; transfer to our case is an inference).
+- V2 as the main variant. It changes only the stray-field near field and leaves the cells, moments, exchange,
+  anisotropy and Zeeman terms as they are. V1 only as a check of the computation in the static test.
+
+**Sources** (full citations and read status in the two notes files).
+- Ai, Duan & Lomakin 2024: https://arxiv.org/abs/2409.13958
+- Durhuus, Insinga & Bjørk 2026: https://arxiv.org/abs/2604.08777
+- Lebecki, Donahue & Gutowski 2008: doi 10.1088/0022-3727/41/17/175005
+- Phillips & White 1994: https://cecs.uci.edu/~papers/compendium94-03/papers/1994/iccad94/pdffiles/04c_2.pdf;
+  journal version 1997: doi 10.1109/43.662670
+- Aurenhammer, Hoffmann & Aronov: doi 10.1145/142675.142747 (1992), doi 10.1007/PL00009187 (1998); Lévy 2015:
+  doi 10.1051/m2an/2015055
+- Sen, Wang, Breitzman & Dayal: doi 10.1016/j.jmps.2024.105743 (2024), doi 10.1137/25M1747907 (2026)
+- Yurkin, Maltsev & Hoekstra 2006 (I): doi 10.1364/JOSAA.23.002578, arXiv 0704.0033
+- Piller 1997: doi 10.1364/OL.22.001674; Zhu, Liu & Yurkin 2023: doi 10.1364/OE.509479
+- Lendvai & Schneider 2024: https://scipedia.com/wd/images/b/b0/Draft_Sanchez_Pinedo_909610227pap_645.pdf
+- Exl & Schrefl 2014: doi 10.1016/j.jcp.2014.04.013
+- Riahi et al. 2013: doi 10.1088/0953-8984/25/29/296001
+- Holt et al. 2025: doi 10.1109/TMAG.2025.3604525
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
