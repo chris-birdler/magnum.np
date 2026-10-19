@@ -102,3 +102,24 @@ def test_uniform_m_cubic_body_exact_energy():
     E = float(-(torch.as_tensor(body)[..., None] * m * h).sum() / (q * N) ** 3)
     exact = phi * (1 - phi) / 3
     assert abs(E / exact - 1) < 5e-4, (E, exact)
+
+
+@pytest.mark.parametrize("form", ["pair", "local"])
+def test_field_term_equals_correction(form):
+    """DemagStaircaseCorrection (the field term of magnum.np) gives M_s times the correction of NearCorrection."""
+    from magnumnp import Mesh, State, DemagStaircaseCorrection
+    N, q, Ms = 16, 2, 8e5
+    ids = fcc_box(q * N, 6.0, 0.5)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    nc = NearCorrection(n, occ, q, p=2, periodic=True)
+    m = random_m((N, N, N), 6)
+    state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(1, 1, 1)))
+    state.m = m
+    state.material["Ms"] = torch.as_tensor(n / q ** 3 * Ms).reshape(N, N, N, 1)
+    term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form=form)
+    h = term.h(state)
+    ref = Ms * (nc.h_pair(m) if form == "pair" else nc.h_local(m))
+    assert float((h - ref).abs().max()) <= 1e-12 * Ms
+    E = float(term.E(state))
+    E_ref = -0.5 * 4e-7 * np.pi * float((state.material["Ms"] * m * ref).sum()) * 8e-27
+    assert abs(E - E_ref) <= 1e-9 * abs(E_ref)

@@ -463,3 +463,73 @@ per geometry on this computer (measured kernel speed, extrapolated), so the stat
 and needs no one-shell deviation. The sign check uses the smallest eigenvalue (Lanczos) instead of random fields.
 Donahue's "7 × 7" neighbourhood is p = 3 in the notation of the plan. The field layer and the reading for uniform m
 are defined more exactly.
+
+### 3.5 Night work 2026-10-19/20: machine, order of work, decisions under the night mandate
+
+**Machine.** vast.ai instance 56790356 (RTX 3090 24 GB, 27 CPU cores as cgroup quota, 229 GB RAM as cgroup limit,
+0.27 $/h plus disk), rented by this session; code from GitHub, branch feature/staircase-correction (clone in
+/root/msc). Unit tests T0 on the box: 6 passed. The state files were copied with md5 check. All computations of this
+work run on the box (Chris: "nicht mehr lokal auf dem Laptop"); the local stage A run was stopped.
+
+**Order of work (decision under the night mandate).**
+1. CPU: stage A of PLAN.md with q = 2 (K4 geometry and K2 geometry in parallel), then the same with q = 4 on the
+   production geometry (the RAM of the box allows the fine mesh of about 600³ cells; PLAN.md had q = 4 only in stage
+   B because of the local computer).
+2. GPU, at the same time: first dynamic arms at the B0b point (section D1 below).
+3. Phase 2 code (field term, run_loops option), then the corrected dynamic arms on the GPU.
+4. Stage B (static, B0b geometry) with the prepared states of the GPU arms.
+
+**D1 — first dynamic arms at the B0b point (decision under the night mandate).**
+- Question: does the corrected coarse model reproduce the effect of a finer staircase on the loss?
+- Options: (a) compare the corrected dx 3 runs with the existing N0b references (fine voxel geometry, 7.107 …
+  7.110); (b) new paired arms with the production protocol of today (option C, Bloch-point check), the same seeds
+  and settings; (c) only static tests tonight.
+  - (a): no new GPU time for the references; but N0b used the virgin relaxation without Bloch-point control, 4 shells
+    without the extrapolation and other cycle settings, so the comparison mixes protocols; the N0b states are on the
+    study instance, which this session does not touch.
+  - (b): one protocol for all arms, states without Bloch points (rule of Chris); costs GPU time (dx 1.5 runs about
+    1 … 2 h each, estimate).
+  - (c): no answer on the loss.
+- Recommendation and decision: (b).
+- Arms at the B0b point (d/l_ex 96, φ 0.65, L_eff 12 l_ex, r_p 0), 9 mT, seeds 941 … 944, production settings of
+  PLAN 4.13 of the β(B_peak) study (newell_ext with 4 shells, relaxation to convergence, atol 1e-6, cycle tolerances
+  1e-7 / 1e-6, 7 … 15 cycles, at least 2 calm cycles, drive correction b_tol 0.01), option C (random start,
+  relaxation, AC pass, relaxation, Bloch-point check, at most 3 attempts). Job files in jobs/:
+  - C3: dx 3, voxel model (today's production model);
+  - C15: dx 1.5, voxel model of dx 1.5 (its staircase is the fine body of q = 2);
+  - C15g: dx 1.5 with the voxel geometry of dx 3 locked (only the resolution of m changes, as V3g in 7.110);
+  - later, after phase 2: dx 3 with the volume fraction alone (q = 2), and dx 3 with the correction (q = 2).
+- AC amplitude: --predemag_h 0.023 = twice the drive amplitude of the 150 mT stage at the B0b point in the older dx 3
+  runs (h_amp 0.0115; those runs used DemagFieldPBC). The amplitude only sets the start of the AC pass at about
+  300 mT; the corner runs use the same rule (7.114).
+- Planned reading (fixed now, before the results): geometry effect of the correction Δ_c = ln P(dx 3 corrected) −
+  ln P(C3), geometry effect of the fine staircase Δ_g = ln P(C15) − ln P(C15g), both paired by seed (mean ± SE, n 4).
+  "Correction reproduces the geometry effect" if |Δ_c − Δ_g| ≤ 2 SE of the difference and ≤ 0.15; "not reproduced"
+  if the difference is larger than both; else "not determined". Limit: independent preparations per arm, so the
+  scatter between states enters (7.108: SD of ln P over seeds 0.2 … 0.6).
+
+**Stage A, first facts (box, q = 2).** Step 2 passed for all three states: total energy against the run record
+−0.0003676531 / −0.0003676500 (K4_1), −0.0074936839 / −0.0074936824 (K2_0), −0.0074991682 / −0.0074991672 (K2_1);
+|m| − 1 at most
+1.6·10⁻⁷; 0 Bloch points. R0 passed for both geometries: K4 (φ 0.55): 2 089 600 voxel cells, 93 792 modified cells,
+46 176 new cells, φ_vox 0.55041, φ_f 0.55010; K2 (φ 0.62): 2 179 360 voxel cells, 98 304 modified, 45 696 new,
+φ_vox 0.62058, φ_f 0.61976. Thus the material setup of the static test is verified against the runs.
+
+**D2 — contact of cut cells at the B0b point (finding, decision under the night mandate).**
+- Finding (smoke run of run_loops with --staircase at the B0b point): geometry.fcc_box stops ("Particles touch on the
+  voxel grid"). At d/l_ex 96 the gap between neighbour particles is 1.44 cells at φ 0.65 and 1.95 cells at φ 0.62.
+  The cut cells reach about one cell beyond the voxel surface, so cut cells of two particles touch at edges and
+  corners: 3 552 (q = 2) and 4 704 (q = 4) contacts in the 26-neighbourhood at φ 0.65; 864 and 2 688 at φ 0.62. No
+  face contacts (thus no exchange between particles). At φ 0.55 (gap 3.20 cells) there are none, for q = 2 and 4.
+  The production geometry of stage A (d/l_ex 300) has a gap of about 6 cells and passed R0.
+- Options: (a) the dynamic test at d/l_ex 96 with φ 0.55 (in the design range; corners K4 use φ 0.55); (b) keep
+  φ 0.65 and allow edge and corner contacts of cut cells for --staircase (change of a safety rule of the geometry;
+  the arm "volume fraction alone" then has the coarse coupling at these contacts); (c) the dynamic test on the
+  production geometry (d/l_ex 300): the dx 1.5 arms would take about 8 times longer, not possible tonight.
+- Recommendation and decision: (a). No rule changes, all arms valid. The link to the N0b history of φ 0.65 is lost,
+  but D1 does not use N0b. The arms C3 at φ 0.65 that already ran are information only; C15 and C15g at φ 0.65 are
+  cancelled before their start.
+- New arms (names D…, the same settings as in D1, φ 0.55, seeds 941 … 944): D3 (dx 3 voxel), D15 (dx 1.5 voxel), D15g
+  (dx 1.5, geometry of dx 3 locked), then D3f (dx 3, volume fraction alone, q = 2), D3P / D3L (dx 3, pairwise /
+  cell-local correction, q = 2, p = 3), and D3P4 / D3L4 (q = 4: the target is the voxel geometry of dx 0.75).
+  AC amplitude --predemag_h 0.040, the value of the corner runs with φ 0.55 (0.0400 … 0.0401).

@@ -18,6 +18,7 @@
 
 from magnumnp.field_terms.anisotropy import *
 from magnumnp.field_terms.demag import *
+from magnumnp.field_terms.demag_staircase import *
 from magnumnp.field_terms.demag_nonequidistant import *
 from magnumnp.field_terms.demagPBC import *
 from magnumnp.field_terms.dmi import *
@@ -34,6 +35,7 @@ from magnumnp.field_terms.vector_potential import *
 
 __all__ = (anisotropy.__all__ +
            demag.__all__ +
+           demag_staircase.__all__ +
            demag_nonequidistant.__all__ +
            demagPBC.__all__ +
            dmi.__all__ +
