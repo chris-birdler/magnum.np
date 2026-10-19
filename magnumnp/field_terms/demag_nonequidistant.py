@@ -43,8 +43,9 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
     """
-    def __init__(self, p = 20):
+    def __init__(self, p = 20, kernel_device = None):
         self._p = p
+        self._kernel_device = kernel_device
 
     def _shape(self, state):
         s = [1,1,1]
@@ -60,24 +61,29 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
     def _init_N_component(self, state, i_dst, i_src, perm, func):
         # rescale dx to avoid NaNs when using single precision
         # TODO: add scale to state and rescale like in DemagField
+        # the kernel is evaluated in double precision on kernel_device
+        # (default: the simulation device) and the final stacked tensor is
+        # moved to the target device
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         dx = state.mesh.dx
-        z = (torch.cumsum(state.mesh.dx_tensor[2], dim=0) - state.mesh.dx_tensor[2][0])
-        dx_dst = torch.tensor([[dx[0], dx[1], state.mesh.dx_tensor[2][i_dst]][ind] for ind in perm])
-        dx_src = torch.tensor([[dx[0], dx[1], state.mesh.dx_tensor[2][i_src]][ind] for ind in perm])
+        dz = state.mesh.dx_tensor[2].detach().to(device=device, dtype=torch.float64)
+        z = torch.cumsum(dz, dim=0) - dz[0]
+        dx_dst = [[dx[0], dx[1], float(dz[i_dst])][ind] for ind in perm]
+        dx_src = [[dx[0], dx[1], float(dz[i_src])][ind] for ind in perm]
 
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
+        ij = [torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device).reshape([n if j == i else 1 for j in range(3)])
+              for i, n in enumerate(shape)] # local indices (1-D, broadcast inside func)
         ij[2] = ij[2]*0. + z[i_dst] - z[i_src] # use fixed distance for z-direction
-        ij = torch.meshgrid(*ij,indexing='ij')
         x, y, z = [[ij[0]*dx[0], ij[1]*dx[1], ij[2].clone()][ind] for ind in perm]
 
-        Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], torch.cumsum(state.mesh.dx_tensor[2], dim=0)[-1]]
+        Lx = [state.mesh.n[0]*dx[0], state.mesh.n[1]*dx[1], float(torch.cumsum(dz, dim=0)[-1])]
         Lx = [Lx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device=device) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = torch.zeros(shape)
+        Nc = torch.zeros(shape, dtype=torch.float64, device=device)
         for offset in offsets:
             Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx_dst, *dx_src, self._p)
 
@@ -93,28 +99,36 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
             raise ValueError("Demag field only implemented for non-equidistant z-spacings. mesh.dx[0] and mesh.dx[1] need to be constant!")
 
         dtype = torch.get_default_dtype()
-        torch.set_default_dtype(torch.float64) # always use double precision
-
         time_kernel = time()
-        self._N = [None]*state.mesh.n[2]
-        for i_dst in range(state.mesh.n[2]):
-            self._N[i_dst] = [None]*state.mesh.n[2]
+        # kernel is stacked over layer pairs and components so h() can contract
+        # everything in a single batched matmul instead of a O(nz^2 * 3) python
+        # loop; the final layout [x, y, (dst,comp), (src,ax)] keeps the batch
+        # dimensions leading, so no per-call permutation/copy of the kernel is
+        # needed
+        n_z = state.mesh.n[2]
+        N = None
+        for i_dst in range(n_z):
             for i_src in range(i_dst+1):
-                Nxx = self._init_N_component(state, i_dst, i_src, [0,1,2], demag_f).to(dtype=complex_dtype[dtype])
-                Nxy = self._init_N_component(state, i_dst, i_src, [0,1,2], demag_g).to(dtype=complex_dtype[dtype])
-                Nxz = self._init_N_component(state, i_dst, i_src, [0,2,1], demag_g).to(dtype=complex_dtype[dtype])
-                Nyy = self._init_N_component(state, i_dst, i_src, [1,2,0], demag_f).to(dtype=complex_dtype[dtype])
-                Nyz = self._init_N_component(state, i_dst, i_src, [1,2,0], demag_g).to(dtype=complex_dtype[dtype])
-                Nzz = self._init_N_component(state, i_dst, i_src, [2,0,1], demag_f).to(dtype=complex_dtype[dtype])
+                Nxx = self._init_N_component(state, i_dst, i_src, [0,1,2], demag_f).squeeze(-1).to(dtype=complex_dtype[dtype])
+                Nxy = self._init_N_component(state, i_dst, i_src, [0,1,2], demag_g).squeeze(-1).to(dtype=complex_dtype[dtype])
+                Nxz = self._init_N_component(state, i_dst, i_src, [0,2,1], demag_g).squeeze(-1).to(dtype=complex_dtype[dtype])
+                Nyy = self._init_N_component(state, i_dst, i_src, [1,2,0], demag_f).squeeze(-1).to(dtype=complex_dtype[dtype])
+                Nyz = self._init_N_component(state, i_dst, i_src, [1,2,0], demag_g).squeeze(-1).to(dtype=complex_dtype[dtype])
+                Nzz = self._init_N_component(state, i_dst, i_src, [2,0,1], demag_f).squeeze(-1).to(dtype=complex_dtype[dtype])
 
-                self._N[i_dst][i_src] = [[ Nxx,  Nxy,  Nxz],
-                                         [ Nxy,  Nyy,  Nyz],
-                                         [ Nxz,  Nyz,  Nzz]]
-                self._N[i_src][i_dst] = [[ Nxx,  Nxy, -Nxz],
-                                         [ Nxy,  Nyy, -Nyz],
-                                         [-Nxz, -Nyz,  Nzz]]
+                if N is None:
+                    N = torch.zeros((n_z, n_z, 3, 3) + Nxx.shape, dtype=complex_dtype[dtype], device=Nxx.device)
+                N[i_dst,i_src] = torch.stack([torch.stack([ Nxx,  Nxy,  Nxz]),
+                                              torch.stack([ Nxy,  Nyy,  Nyz]),
+                                              torch.stack([ Nxz,  Nyz,  Nzz])])
+                if i_src != i_dst:
+                    N[i_src,i_dst] = torch.stack([torch.stack([ Nxx,  Nxy, -Nxz]),
+                                                  torch.stack([ Nxy,  Nyy, -Nyz]),
+                                                  torch.stack([-Nxz, -Nyz,  Nzz])])
+        # [dst, src, comp, ax, x, y] -> [x, y, (dst,comp), (src,ax)]
+        X, Y = N.shape[4], N.shape[5]
+        self._N = N.permute(4, 5, 0, 2, 1, 3).reshape(X, Y, n_z*3, n_z*3).contiguous().to(state.device)
         logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-        torch.set_default_dtype(dtype) # restore dtype
 
     @timedmethod
     def h(self, state):
@@ -129,26 +143,16 @@ class DemagFieldNonEquidistant(LinearFieldTerm):
         else:
             m_pad_fft = torch.fft.rfftn(state.material["Ms"] * state.m, dim = dim, s = s)
 
-        hx = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
-        hy = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
-        hz = torch.zeros(m_pad_fft[...,0].shape, dtype=self._N[0][0][0][0].dtype)
-
-        for i_dst in range(state.mesh.n[2]):
-            for i_src in range(state.mesh.n[2]):
-                for ax in range(3):
-                    hx[:,:,i_src] += self._N[i_src][i_dst][0][ax][:,:,0]*m_pad_fft[:,:,i_dst,ax]
-                    hy[:,:,i_src] += self._N[i_src][i_dst][1][ax][:,:,0]*m_pad_fft[:,:,i_dst,ax]
-                    hz[:,:,i_src] += self._N[i_src][i_dst][2][ax][:,:,0]*m_pad_fft[:,:,i_dst,ax]
+        # contract kernel [x, y, (dst,comp), (src,ax)] with m_fft[x, y, (src,ax)]
+        # over all layer pairs and components in one batched matmul
+        if not m_pad_fft.is_complex():
+            m_pad_fft = m_pad_fft.to(self._N.dtype) # single-spin branch passes a real tensor
+        X, Y, n_z = m_pad_fft.shape[0], m_pad_fft.shape[1], state.mesh.n[2]
+        h_fft = (self._N @ m_pad_fft.reshape(X, Y, n_z*3, 1)).reshape(X, Y, n_z, 3)
 
         if len(dim) == 0: # single spin   TODO: remove this when torch issue #96518 has been solved
-            hx = hx.real.clone()
-            hy = hy.real.clone()
-            hz = hz.real.clone()
+            h = h_fft.real.clone()
         else:
-            hx = torch.fft.irfftn(hx, dim = dim)
-            hy = torch.fft.irfftn(hy, dim = dim)
-            hz = torch.fft.irfftn(hz, dim = dim)
+            h = torch.fft.irfftn(h_fft, dim = dim)
 
-        return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        return h[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]].contiguous()

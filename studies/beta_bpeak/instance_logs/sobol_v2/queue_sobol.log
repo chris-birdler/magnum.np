@@ -1,0 +1,225 @@
+2026-10-07 08:53:49 chain (re)start at 2da32a8 test: the stress term uses Kp / Kp_axis (easy axis, correct size); PROTOKOLL: earlier r_p > 0 runs with old axes marked (7.8, 7.9, 7.24), model description 2.1 updated
+[start] gpu 0  K1_0
+[start] gpu 1  K2_0
+[start] gpu 2  K3_0
+[start] gpu 3  K4_0
+[done] gpu 2  K3_0  1.27 h
+[start] gpu 2  S005
+[done] gpu 0  K1_0  1.28 h
+[start] gpu 0  S028
+[done] gpu 0  S028  2.25 h
+[start] gpu 0  S048
+[done] gpu 1  K2_0  3.61 h
+[start] gpu 1  S053
+[done] gpu 2  S005  2.80 h
+[start] gpu 2  S091
+[done] gpu 3  K4_0  4.26 h
+[start] gpu 3  C6
+[done] gpu 0  S048  2.05 h
+[start] gpu 0  S039
+[done] gpu 2  S091  2.17 h
+[start] gpu 2  K2_2
+[done] gpu 3  C6  2.15 h
+[start] gpu 3  S078
+[done] gpu 1  S053  2.92 h
+[start] gpu 1  S089
+[done] gpu 0  S039  1.30 h
+[start] gpu 0  S046
+[done] gpu 1  S089  1.38 h
+[start] gpu 1  S075
+[done] gpu 3  S078  2.51 h
+[start] gpu 3  S072
+[done] gpu 2  K2_2  3.43 h
+[start] gpu 2  S057
+[done] gpu 3  S072  1.37 h
+[start] gpu 3  S050
+[done] gpu 1  S075  2.65 h
+[start] gpu 1  K3_1
+[done] gpu 0  S046  3.75 h
+[start] gpu 0  S074
+[done] gpu 2  S057  2.10 h
+[start] gpu 2  S082
+[done] gpu 1  K3_1  1.33 h
+[start] gpu 1  S035
+[done] gpu 0  S074  1.63 h
+[start] gpu 0  S068
+[done] gpu 3  S050  2.71 h
+[start] gpu 3  S024
+[done] gpu 2  S082  2.05 h
+[start] gpu 2  S042
+[done] gpu 3  S024  1.65 h
+[start] gpu 3  S066
+[done] gpu 0  S068  2.40 h
+[start] gpu 0  S061
+[done] gpu 2  S042  1.31 h
+[start] gpu 2  S064
+[done] gpu 1  S035  3.58 h
+[start] gpu 1  K2_1
+[done] gpu 3  S066  1.35 h
+[start] gpu 3  S094
+[done] gpu 2  S064  1.76 h
+[start] gpu 2  S076
+[done] gpu 0  S061  2.35 h
+[start] gpu 0  S083
+[done] gpu 3  S094  1.42 h
+[start] gpu 3  S044
+[done] gpu 0  S083  1.30 h
+[start] gpu 0  S009
+[done] gpu 1  K2_1  3.91 h
+[start] gpu 1  C5
+[done] gpu 3  S044  2.05 h
+[start] gpu 3  S011
+[done] gpu 2  S076  2.93 h
+[start] gpu 2  S095
+[done] gpu 0  S009  1.70 h
+[start] gpu 0  S018
+[done] gpu 3  S011  1.36 h
+[start] gpu 3  S019
+[done] gpu 1  C5  2.25 h
+[start] gpu 1  S088
+[done] gpu 0  S018  1.64 h
+[start] gpu 0  S037
+[done] gpu 2  S095  2.33 h
+[start] gpu 2  S079
+[done] gpu 0  S037  1.69 h
+[start] gpu 0  S033
+[done] gpu 3  S019  2.63 h
+[start] gpu 3  S052
+[done] gpu 2  S079  1.70 h
+[start] gpu 2  S022
+[done] gpu 1  S088  2.54 h
+[start] gpu 1  S038
+[done] gpu 3  S052  2.18 h
+[start] gpu 3  S081
+[done] gpu 0  S033  2.66 h
+[start] gpu 0  S051
+[done] gpu 2  S022  2.40 h
+[start] gpu 2  S085
+[done] gpu 1  S038  2.20 h
+[start] gpu 1  S060
+[done] gpu 3  S081  2.00 h
+[start] gpu 3  S026
+[done] gpu 0  S051  1.66 h
+[start] gpu 0  S002
+[done] gpu 1  S060  1.31 h
+[start] gpu 1  S077
+[done] gpu 2  S085  2.24 h
+[start] gpu 2  S006
+[done] gpu 3  S026  1.36 h
+[start] gpu 3  C3
+[done] gpu 1  S077  2.06 h
+[start] gpu 1  S041
+[done] gpu 2  S006  1.33 h
+[start] gpu 2  S070
+[done] gpu 0  S002  2.95 h
+[start] gpu 0  S043
+[done] gpu 3  C3  2.09 h
+[start] gpu 3  S040
+[done] gpu 1  S041  2.51 h
+[start] gpu 1  S031
+[done] gpu 2  S070  2.82 h
+[start] gpu 2  S056
+[done] gpu 0  S043  2.09 h
+[start] gpu 0  S092
+[done] gpu 3  S040  1.69 h
+[start] gpu 3  C2
+[done] gpu 1  S031  1.82 h
+[start] gpu 1  C7
+[done] gpu 0  S092  1.40 h
+[start] gpu 0  S045
+[done] gpu 3  C2  2.03 h
+[start] gpu 3  S084
+[done] gpu 0  S045  1.69 h
+[start] gpu 0  K1_2
+[done] gpu 1  C7  2.02 h
+[start] gpu 1  S062
+[done] gpu 2  S056  3.71 h
+[start] gpu 2  S049
+[done] gpu 3  S084  1.66 h
+[start] gpu 3  S015
+[done] gpu 0  K1_2  1.28 h
+[start] gpu 0  S034
+[done] gpu 2  S049  1.29 h
+[start] gpu 2  S023
+[done] gpu 1  S062  1.71 h
+[start] gpu 1  S008
+[done] gpu 0  S034  2.06 h
+[start] gpu 0  S055
+[done] gpu 2  S023  1.69 h
+[start] gpu 2  S012
+[done] gpu 3  S015  3.62 h
+[start] gpu 3  S003
+[done] gpu 1  S008  2.41 h
+[start] gpu 1  S007
+[done] gpu 2  S012  1.73 h
+[start] gpu 2  S058
+[done] gpu 0  S055  2.45 h
+[start] gpu 0  S021
+[done] gpu 3  S003  1.71 h
+[start] gpu 3  S016
+[done] gpu 1  S007  2.00 h
+[start] gpu 1  S087
+[done] gpu 3  S016  1.37 h
+[start] gpu 3  S017
+[done] gpu 2  S058  2.50 h
+[start] gpu 2  K4_2
+[done] gpu 0  S021  2.11 h
+[start] gpu 0  S020
+[done] gpu 1  S087  2.99 h
+[start] gpu 1  S093
+[done] gpu 3  S017  2.22 h
+[start] gpu 3  S000
+[done] gpu 0  S020  2.98 h
+[start] gpu 0  S027
+[done] gpu 2  K4_2  3.66 h
+[start] gpu 2  S047
+[done] gpu 1  S093  2.92 h
+[start] gpu 1  S054
+[done] gpu 3  S000  3.25 h
+[start] gpu 3  S073
+[done] gpu 0  S027  2.34 h
+[start] gpu 0  S059
+[done] gpu 2  S047  2.06 h
+[start] gpu 2  S032
+[done] gpu 1  S054  1.71 h
+[start] gpu 1  K4_1
+[done] gpu 0  S059  1.38 h
+[start] gpu 0  S014
+[done] gpu 2  S032  1.37 h
+[start] gpu 2  S030
+[done] gpu 3  S073  2.00 h
+[start] gpu 3  S001
+[done] gpu 3  S001  1.37 h
+[start] gpu 3  S013
+[done] gpu 0  S014  2.04 h
+[start] gpu 0  S004
+[done] gpu 2  S030  2.90 h
+[start] gpu 2  C1
+[done] gpu 1  K4_1  3.90 h
+[start] gpu 1  C0
+[done] gpu 0  S004  1.69 h
+[start] gpu 0  S069
+[done] gpu 3  S013  2.12 h
+[start] gpu 3  S090
+[done] gpu 0  S069  1.24 h
+[start] gpu 0  K1_1
+[done] gpu 2  C1  2.15 h
+[start] gpu 2  S080
+[done] gpu 1  C0  2.21 h
+[start] gpu 1  S067
+[done] gpu 0  K1_1  1.29 h
+[start] gpu 0  S029
+[done] gpu 3  S090  3.43 h
+[start] gpu 3  S071
+[done] gpu 0  S029  1.32 h
+[start] gpu 0  C4
+[done] gpu 1  S067  2.37 h
+[start] gpu 1  S025
+[done] gpu 2  S080  2.63 h
+[start] gpu 2  S065
+[done] gpu 3  S071  1.77 h
+[start] gpu 3  K3_2
+[done] gpu 0  C4  2.06 h
+[start] gpu 0  S036
+[done] gpu 3  K3_2  1.22 h
+[start] gpu 3  S086

@@ -21,8 +21,12 @@ import torch
 
 __all__ = ["Mesh"]
 
+_MESH_CREATED = False # used by set_precision to detect too-late precision changes
+
 class Mesh(object):
     def __init__(self, n, dx, origin=(0,0,0), pbc=(0,0,0)):
+        global _MESH_CREATED
+        _MESH_CREATED = True
         self.n = tuple(n)
         self.dx = tuple(dx)
         self.origin = tuple(origin)

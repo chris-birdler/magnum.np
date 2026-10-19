@@ -96,4 +96,4 @@ class ExchangeField(LinearFieldTerm):
             h += A_avg * (torch.roll(state.m, -1, dims=2) - state.m) / dz # m_i-1 - m_i
 
         h *= 2. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)

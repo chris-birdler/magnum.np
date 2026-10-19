@@ -1,0 +1,738 @@
+#!/usr/bin/env python
+"""
+Evaluate runs of run_loops.py in reduced units:
+w = W/K_d per cycle versus b_peak = B_peak/Js, and beta_eff = d ln w / d ln b.
+
+    python analyze.py runs/*                          # tables, features, ranking, csv, plot
+    python analyze.py --pair runs/T_L18 runs/T_L18_f2         # frequency separation
+    python analyze.py --compare runs/M_L12_dx3 runs/M_L12_dx15  # two runs at the same b
+    python analyze.py --skip 6 --compare runs/S_L12_dx3 runs/S_L12_dx15   # only the last cycles
+    python analyze.py --cycles runs/S_L12_dx15                  # per-cycle table and drift
+
+Per run and amplitude, w and b_peak are the MEAN over the cycles after the
+first SKIP cycles (--skip, default 1: the first cycle is a transient). If
+run_loops corrected the drive after cycle 0 (--b_list), at least 2 cycles are
+discarded.
+
+
+Errors (target: 10 % scatter of w from cycle to cycle, S_TARGET):
+  s_cyc     scatter of ln w from cycle to cycle, pooled over all amplitudes of
+            one run (more degrees of freedom than one amplitude with 2 or 3
+            cycles). Check: s_cyc <= S_TARGET.
+  lnw_err   standard error of ln w at one amplitude = max(s_cyc, S_TARGET) / sqrt(n_measured)
+            (conservative: with few amplitudes s_cyc has few degrees of freedom
+            and can be much too small by chance)
+  beta_err  from lnw_err of the two neighbour amplitudes (central difference);
+            the error of b_peak is small and is ignored
+  features  errors are interpolated like the features
+  ranking   the seeds of the base point give the realisation scatter of each
+            feature; see ranking()
+
+Flags per amplitude:
+  !   scatter above the target: also the last cycle differs by more than
+      dW_tol (0.10) from the cycle before (information: with 10 % scatter
+      about 1 stage in 4 has this flag)
+  c   loop not closed: |M(end) - M(start)| > closure_tol (drift)
+  o   loop centre shifted: |offset| > 0.10, offset = (M_max + M_min)/(M_max - M_min)
+      (a minor loop around a remanent state, not around the demagnetized state)
+  *   energy balance |w_dis/w_loop - 1| > 2 % (information: w_dis comes from
+      257 point samples per cycle and can miss short Barkhausen jumps)
+  #   the largest number of large-angle neighbour pairs per cycle changes by
+      more than 20 % (and by at least 3 pairs) between the measured cycles:
+      vortex-core / Bloch-point events -> mesh dependent
+
+Features per run (for the ranking of the parameters): local Steinmetz exponent
+from power-law fits over 3 neighbouring amplitudes (9-20-35, 35-50-70,
+70-100-150 mT), beta over all amplitudes, and ln w at 10 / 50 / 100 mT
+(see features()).
+--w dis uses the LLG dissipation per cycle instead of the loop area. Both
+agree on average; w_dis scatters less when the cycles are not periodic.
+
+Comparison (--compare A B): ln w of B is interpolated (linear in ln b) to
+the b values of A inside the common b range (up to 10 % outside it by linear
+extrapolation of the end segment). A weighted fit
+d(b) = ln w_A - ln w_B = c0 + d_beta * (ln b - <ln b>) gives the level
+difference c0 (relative change of w) and the change of the slope d_beta, with
+errors. Verdict against tolerances fixed before the runs (--tol_lnw, --tol_beta):
+PASS if the 90 % interval of c0 and of d_beta lies inside the tolerance.
+
+Frequency separation (--pair): W(f) = W_h + c f  ->  W_h = (f2 W1 - f1 W2)/(f2 - f1).
+"""
+import argparse
+import csv
+import json
+import math
+import pathlib
+import sys
+
+import warnings
+
+import numpy as np
+
+JS_T = 1.5            # Js of the unit system (units.py): b = B_peak / Js
+B_REF_MT = (10.0, 50.0, 100.0)   # study range 10 ... 150 mT (Chris, 2026-09-30)
+B_WINDOWS_MT = ((9, 20, 35), (35, 50, 70), (70, 100, 150))   # 3-point power-law windows (2026-10-04)
+WKEY = "w_loop"       # per-cycle loss used for w: w_loop (oint H dB) or w_dis (LLG dissipation), --w
+SKIP = 1            # cycles discarded at the start of each amplitude (--skip)
+S_TARGET = 0.10
+# parameters that define a run (the seed is the realisation); numerical ones are not ranked
+PARAMS = ["d_lex", "phi", "Leff_lex", "Q_eff", "r_p", "dx_lex", "f_rel", "alpha", "direction"]
+NUMERICAL = {"dx_lex", "f_rel", "alpha", "direction"}
+# two-sided 95 % Student-t quantiles; the realisation scatter comes from few seeds
+T975 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23}
+
+
+def run_key(cfg):
+    """Parameters as given on the command line (Q_eff = None: derived from L_eff)."""
+    return tuple(tuple(cfg[k]) if isinstance(cfg.get(k), list) else cfg.get(k) for k in PARAMS)
+
+
+def param_value(cfg, k):
+    v = cfg.get(k)
+    if k == "Q_eff" and v is None:
+        v = cfg.get("anisotropy", {}).get("Q_eff")
+    return tuple(v) if isinstance(v, list) else v
+
+
+OFFSET_TOL = 0.10
+
+
+def cycle_offsets(d, si, name, cycles):
+    """Loop centre / amplitude per cycle; from summary.json, else from the samples csv."""
+    if cycles and all("offset" in c for c in cycles):
+        return [c["offset"] for c in cycles]
+    f = pathlib.Path(d) / ("samples_%02d_%s.csv" % (si, name))
+    if not f.exists():
+        return [float("nan")] * len(cycles)
+    a = np.loadtxt(f, delimiter=",", comments="#", ndmin=2)
+    out = []
+    for c in cycles:
+        M = a[a[:, 0] == c["cycle"], 3]
+        out.append(float((M.max() + M.min()) / (M.max() - M.min())) if len(M) else float("nan"))
+    return out
+
+
+class UnconvergedRun(Exception):
+    """The virgin state of the run is not relaxed: the protocol precondition does not hold."""
+
+
+ALLOW_UNCONVERGED = False
+# steady-tail rule (PROTOKOLL 7.54, declared deviation): None = off (pre-registered); a number = keep only the measured
+# cycles after the last cycle with w_loop <= 0 or |w_dis / w_loop - 1| > STEADY_TAIL (a field-triggered state change,
+# 7.53); no cycle left: the stage is kept with w_loop = nan ("missing")
+STEADY_TAIL = None
+STEADY_MIN = 1            # fewer kept cycles than this: the stage is missing (7.54: 1; check with 2)
+
+
+def first_measured(st):
+    """Index of the first measured cycle of a stage record: 1; 2 after the drive correction with b of cycle 0
+    (h_amp_initial); 3 after the second correction with b of cycle 1 (h_amp_second, run_loops --b_tol, PROTOKOLL
+    7.107)."""
+    return 3 if "h_amp_second" in st else (2 if "h_amp_initial" in st else 1)
+
+
+def steady_tail(cycles, tol):
+    """The cycles after the last event cycle (w_loop <= 0 or |w_dis / w_loop - 1| > tol); may be empty."""
+    ev = [i for i, c in enumerate(cycles) if c["w_loop"] <= 0 or abs(c["w_dis"] / c["w_loop"] - 1.0) > tol]
+    return cycles[ev[-1] + 1:] if ev else cycles
+
+
+def load_run(d):
+    d = pathlib.Path(d)
+    cfg = json.loads((d / "config.json").read_text())
+    summ = json.loads((d / "summary.json").read_text())
+    cfg["relax_ok"] = not (cfg.get("protocol") == "virgin_asc"
+                           and not summ.get("init", {}).get("relax_converged", False))
+    if not cfg["relax_ok"] and not ALLOW_UNCONVERGED:
+        raise UnconvergedRun("%s: virgin relaxation not converged (use --allow_unconverged only for "
+                             "the audit of old runs)" % d)
+    rows = []
+    ss, dof = 0.0, 0
+    for si, st in enumerate(summ["stages"]):
+        if not st.get("measure") or not st.get("complete") or not st["cycles"]:
+            continue
+        skip = max(SKIP, first_measured(st)) if "h_amp_initial" in st else SKIP   # drive corrected after cycle 0 (1)
+        cyc = st["cycles"][skip:] if len(st["cycles"]) > skip else st["cycles"][-1:]
+        n_meas_all = len(cyc)
+        missing = False
+        if STEADY_TAIL is not None:
+            tail = steady_tail(cyc, STEADY_TAIL)
+            missing = len(tail) < STEADY_MIN
+            cyc = tail if tail else cyc                    # a missing stage keeps its b_peak (sort order), w_loop = nan below
+        w = np.array([c[WKEY] for c in cyc])
+        if missing:
+            w = np.full(len(cyc), np.nan)
+        if len(w) > 1 and np.all(w > 0):
+            lw = np.log(w)
+            ss += float(np.sum((lw - lw.mean()) ** 2))
+            dof += len(w) - 1
+        n60 = [c.get("n_pairs_gt60", 0) for c in cyc]
+        rows.append({"stage": st["name"], "h_amp": st["h_amp"],
+                     "b_peak": float(np.mean([c["b_peak"] for c in cyc])),
+                     "w_loop": float(w.mean()),
+                     "w_err": float(w.std(ddof=1) / math.sqrt(len(w))) if len(w) > 1 else float("nan"),
+                     "w_dis": float("nan") if missing else float(np.mean([c["w_dis"] for c in cyc])),
+                     "w_loop_raw": float(np.mean([c["w_loop"] for c in cyc])),
+                     "missing": missing, "n_dropped": n_meas_all - (0 if missing else len(cyc)),
+                     "closure": cyc[-1]["closure"], "dW_rel": cyc[-1].get("dW_rel", float("nan")),
+                     "offset": float(np.mean(cycle_offsets(d, si, st["name"], cyc))),
+                     "steady": st.get("steady", False), "closed": st.get("closed", True),
+                     "n_cycles": len(st["cycles"]), "n_meas": len(w),
+                     "frac_gt60": float(max(c.get("frac_pairs_gt60", 0.0) for c in cyc)),
+                     "n60_jump": bool(max(n60) > 1.2 * max(min(n60), 1) and max(n60) - min(n60) >= 3),
+                     "mean_dt": float(np.mean([c["mean_dt"] for c in cyc]))})
+    rows.sort(key=lambda r: r["b_peak"])
+    cfg["done"] = (d / "DONE").exists()
+    cfg["s_cyc"] = math.sqrt(ss / dof) if dof > 0 else float("nan")
+    cfg["s_cyc_dof"] = dof
+    for r in rows:
+        s_use = cfg["s_cyc"] if cfg["s_cyc"] > S_TARGET else S_TARGET      # also for nan
+        r["lnw_err"] = s_use / math.sqrt(r["n_meas"])
+        r["balance"] = r["w_dis"] / r["w_loop_raw"] if r["w_loop_raw"] != 0 else float("nan")
+    add_beta(rows, "w_loop", "beta", "lnw_err")
+    return cfg, rows
+
+
+def add_beta(rows, key, out_key, err_key=None):
+    """Central difference of ln(key) over ln b; with err_key (error of ln key) also out_key_err."""
+    n = len(rows)
+    lb = [math.log(r["b_peak"]) for r in rows]
+    lw = [math.log(r[key]) if r[key] > 0 else float("nan") for r in rows]
+    for i in range(n):
+        if n < 2:
+            rows[i][out_key] = float("nan")
+            if err_key:
+                rows[i][out_key + "_err"] = float("nan")
+            continue
+        j0, j1 = max(i - 1, 0), min(i + 1, n - 1)
+        rows[i][out_key] = (lw[j1] - lw[j0]) / (lb[j1] - lb[j0])
+        if err_key:
+            rows[i][out_key + "_err"] = math.hypot(rows[j0][err_key], rows[j1][err_key]) / abs(lb[j1] - lb[j0])
+
+
+def features(rows):
+    """Steinmetz exponent and level per run (PLAN 4.3, changed 2026-10-04):
+      beta@9-35mT, beta@35-70mT, beta@70-150mT: power law w = c B^beta fitted over 3 neighbouring
+          amplitudes (local Steinmetz exponent; centres ~18 / 50 / 102 mT), weighted by the cycle
+          error of ln w; 3 points leave 1 degree of freedom for a check of the power law;
+      beta_pow: power law over all amplitudes;
+      lnw@10mT, lnw@50mT, lnw@100mT: ln w interpolated linearly in ln b (the loss level).
+    A window whose amplitudes are not all in the run (within 10 %) gives nan."""
+    f, e = {}, {}
+    if len(rows) < 2:
+        return f, e
+    bm = np.array([1000.0 * JS_T * r["b_peak"] for r in rows])
+    lb = np.log([r["b_peak"] for r in rows])
+    lw = np.array([math.log(r["w_loop"]) if r["w_loop"] > 0 else np.nan for r in rows])
+    sw = np.array([r["lnw_err"] for r in rows])
+
+    def fit(sel):
+        x, y, wgt = lb[sel], lw[sel], 1.0 / sw[sel] ** 2
+        X = np.c_[np.ones_like(x), x]
+        cov = np.linalg.inv(X.T @ (X * wgt[:, None]))
+        coef = cov @ (X.T @ (wgt * y))
+        return float(coef[1]), float(math.sqrt(cov[1, 1]))
+
+    for win in B_WINDOWS_MT:
+        k = "beta@%d-%dmT" % (win[0], win[-1])
+        idx = [int(np.argmin(np.abs(bm - mT))) for mT in win]
+        if all(abs(bm[i] / mT - 1.0) < 0.1 for i, mT in zip(idx, win)) and np.all(np.isfinite(lw[idx])):
+            f[k], e[k] = fit(np.array(idx))
+        else:
+            f[k] = e[k] = float("nan")
+    ok = np.isfinite(lw)
+    f["beta_pow"], e["beta_pow"] = fit(ok) if ok.sum() >= 3 else (float("nan"), float("nan"))
+    for mT in B_REF_MT:
+        k = "lnw@%gmT" % mT
+        lbr = math.log(mT / 1000.0 / JS_T)
+        if ok.sum() >= 2 and lb[ok].min() - 0.1 <= lbr <= lb[ok].max() + 0.1:
+            j = int(np.clip(np.searchsorted(lb[ok], lbr), 1, ok.sum() - 1))
+            x0, x1, y0, y1 = lb[ok][j - 1], lb[ok][j], lw[ok][j - 1], lw[ok][j]
+            t = (lbr - x0) / (x1 - x0)
+            f[k] = float(y0 + t * (y1 - y0))
+            e[k] = float(math.hypot((1 - t) * sw[ok][j - 1], t * sw[ok][j]))
+        else:
+            f[k] = e[k] = float("nan")
+    return f, e
+
+
+def label(cfg):
+    return ("d/lex=%.1f phi=%.3f L_eff/lex=%g Q_eff=%.3g r_p=%g dx/lex=%g alpha=%g f/fM=%.3g dir=%s seed=%d" %
+            (cfg.get("d_lex_used", cfg["d_lex"]), cfg["phi_vox"], cfg["Leff_lex"], param_value(cfg, "Q_eff"),
+             cfg["r_p"], cfg["dx_lex"], cfg["alpha"], cfg["f_rel"], cfg["direction"], cfg["seed"]))
+
+
+def flags(r):
+    s = "" if (r["steady"] or not r["closed"]) else "!"
+    if not r["closed"]:
+        s += "c"
+    if abs(r["balance"] - 1.0) > 0.02:
+        s += "*"
+    if r["n60_jump"]:
+        s += "#"
+    if abs(r.get("offset", 0.0)) > OFFSET_TOL:
+        s += "o"
+    return s
+
+
+def print_table(name, cfg, rows):
+    print("\n== %s%s\n   %s" % (name, "" if cfg["done"] else "   (NOT FINISHED)", label(cfg)))
+    print("   scatter per cycle s_cyc = %.3f (dof %d, target %.2f)%s" %
+          (cfg["s_cyc"], cfg["s_cyc_dof"], S_TARGET, "  ABOVE TARGET" if cfg["s_cyc"] > S_TARGET else ""))
+    print("   %-6s %9s %9s %6s %10s %8s %7s %6s %6s %8s %7s %7s %3s %s" %
+          ("stage", "h", "b_peak", "B[mT]", "w(%s)" % WKEY[2:], "w_err", "beta", "+-", "wd/w", "closure",
+           "offset", "f>60", "n", "flags"))
+    for r in rows:
+        print("   %-6s %9.4g %9.4g %6.1f %10.4g %8.2g %7.3f %6.3f %6.3f %8.2g %+7.3f %7.2g %3d %s" %
+              (r["stage"], r["h_amp"], r["b_peak"], 1000 * JS_T * r["b_peak"], r["w_loop"], r["w_err"],
+               r["beta"], r["beta_err"], r["balance"], r["closure"], r["offset"], r["frac_gt60"],
+               r["n_cycles"], flags(r)))
+    f, e = features(rows)
+    if f:
+        print("   features: " + "  ".join("%s=%.3g+-%.2g" % (k, f[k], e[k]) if k != "b_at_beta_max"
+                                          else "%s=%.3g" % (k, f[k]) for k in f))
+
+
+def ranking(results, path):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)      # nanmean of all-nan features
+        return _ranking(results, path)
+
+
+def _ranking(results, path):
+    """
+    Change of each feature against the base point, with errors.
+
+    Base point = the largest group of runs that differ only in the seed.
+      var_seed   variance of a feature over the base seeds (realisation + statistics)
+      var_real   = max(var_seed - mean(stat. error^2 of the seeds), 0)
+      error of one run      sigma_run^2  = stat. error^2 + var_real
+      error of the base     sigma_base^2 = var_seed / n_seeds   (mean over the seeds)
+      error of the change   sigma_delta  = sqrt(sigma_run^2 + sigma_base^2)
+    Only runs that differ from the base in ONE physical parameter are ranked
+    (controls change dx, f or alpha). sens = delta / delta ln(p) where defined.
+    Sorted by the largest significance |delta| / sigma_delta over the features.
+    """
+    groups = {}
+    for name, cfg, rows in results:
+        if cfg.get("max_cycles") is not None or not cfg["done"] or len(rows) < 2:   # benchmark or unfinished
+            continue
+        groups.setdefault(run_key(cfg), []).append((name, cfg, rows))
+    if not groups:
+        print("\nranking: no finished runs")
+        return []
+    base_key, base = max(groups.items(), key=lambda kv: len(kv[1]))
+    if len(base) < 2:
+        print("\nranking: no base point with more than one seed -> realisation scatter unknown, "
+              "the errors contain only the statistics of the cycles")
+    bf = [features(rows) for _, _, rows in base]
+    keys = [k for k in bf[0][0] if k != "b_at_beta_max"]
+    t_crit = T975.get(len(base) - 1, 1.96) if len(base) > 1 else float("nan")
+    base_mean, base_var, real_var = {}, {}, {}
+    for k in keys:
+        v = np.array([f.get(k, np.nan) for f, _ in bf])
+        s = np.array([e.get(k, np.nan) for _, e in bf])
+        base_mean[k] = float(np.nanmean(v))
+        if np.sum(np.isfinite(v)) >= 2:
+            var_seed = float(np.nanvar(v, ddof=1))
+            real_var[k] = max(var_seed - float(np.nanmean(s ** 2)), 0.0)
+            base_var[k] = var_seed / np.sum(np.isfinite(v))
+        else:
+            real_var[k] = 0.0
+            base_var[k] = float(np.nanmean(s ** 2)) / max(np.sum(np.isfinite(v)), 1)
+
+    print("\n== ranking against the base point (%s, %d seeds: %s)" %
+          (", ".join("%s=%s" % kv for kv in zip(PARAMS, base_key)), len(base), " ".join(n for n, _, _ in base)))
+    print("   realisation scatter (1 sigma): " +
+          "  ".join("%s=%.3f" % (k, math.sqrt(real_var[k])) for k in keys))
+    print("   significance: |d|/sig > t = %.2f (95 %%, Student-t with %d dof of the seed scatter); "
+          "%d features x runs are tested, expect some false hits at this level" %
+          (t_crit, len(base) - 1, len(keys)))
+    out = []
+    for key, runs in groups.items():
+        if key == base_key:
+            continue
+        diff = [p for p, a, b in zip(PARAMS, key, base_key) if a != b]
+        if len(diff) != 1 or diff[0] in NUMERICAL:
+            continue
+        p = diff[0]
+        p_run, p_base = key[PARAMS.index(p)], base_key[PARAMS.index(p)]
+        try:
+            dlnp = math.log(p_run / p_base) if p_run > 0 and p_base > 0 else float("nan")
+        except TypeError:
+            dlnp = float("nan")
+        p_run = p_run if isinstance(p_run, (int, float)) else float("nan")
+        p_base = p_base if isinstance(p_base, (int, float)) else float("nan")
+        for name, cfg, rows in runs:
+            f, e = features(rows)
+            rec = {"run": name, "param": p, "value": p_run, "base": p_base, "dlnp": dlnp, "z_max": 0.0}
+            for k in keys:
+                d = f.get(k, float("nan")) - base_mean[k]
+                s = math.sqrt(e.get(k, float("nan")) ** 2 + real_var[k] + base_var[k])
+                rec["d_" + k], rec["err_" + k] = d, s
+                rec["sens_" + k] = d / dlnp if math.isfinite(dlnp) and dlnp != 0 else float("nan")
+                if math.isfinite(d) and s > 0:
+                    rec["z_max"] = max(rec["z_max"], abs(d) / s)
+            out.append(rec)
+    out.sort(key=lambda r: -r["z_max"])
+    print("   %-14s %-8s %9s %9s " % ("run", "param", "value", "base") +
+          " ".join("%-17s" % ("d " + k) for k in keys) + "  |d|/sig max")
+    for r in out:
+        print("   %-14s %-8s %9.4g %9.4g " % (r["run"], r["param"], r["value"], r["base"]) +
+              " ".join("%+7.3f +- %-6.3f" % (r["d_" + k], r["err_" + k]) for k in keys) +
+              "  %5.1f" % r["z_max"])
+    if out:
+        with open(path, "w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
+            w.writeheader()
+            w.writerows(out)
+        print("   ranking csv: %s  (sens_* = change per unit of ln p)" % path)
+    return out
+
+
+def pair(d1, d2):
+    c1, r1 = load_run(d1)
+    c2, r2 = load_run(d2)
+    f1, f2 = c1["f_rel"], c2["f_rel"]
+    ignore = {"f_rel", "freq", "out", "max_cycles", "stages", "git_commit", "torch", "device", "gpu",
+              "no_resume", "timer", "vti", "keep_stage_ckpt", "init_from", "s_cyc", "s_cyc_dof", "units"}
+    diff = [k for k in c1 if k not in ignore and c1.get(k) != c2.get(k)]
+    if diff:
+        print("WARNING: runs differ in more than the frequency: %s" % diff)
+    m2 = {r["stage"]: r for r in r2}
+    out = []
+    for a in r1:
+        b = m2.get(a["stage"])
+        if b is None:
+            continue
+        w_h = (f2 * a["w_loop"] - f1 * b["w_loop"]) / (f2 - f1)
+        s1, s2 = a["w_loop"] * a["lnw_err"], b["w_loop"] * b["lnw_err"]
+        s_h = math.hypot(f2 * s1, f1 * s2) / abs(f2 - f1)
+        dyn = 1.0 - w_h / a["w_loop"]
+        # dyn = f1 (w2/w1 - 1) / (f2 - f1); the errors of w1 and w2 are independent
+        s_dyn = abs(f1 / (f2 - f1)) * math.hypot(s2 / a["w_loop"], b["w_loop"] * s1 / a["w_loop"] ** 2)
+        out.append({"stage": a["stage"], "b_peak": 0.5 * (a["b_peak"] + b["b_peak"]),
+                    "db_rel": abs(a["b_peak"] - b["b_peak"]) / a["b_peak"],
+                    "w_f1": a["w_loop"], "w_f2": b["w_loop"], "w_h": w_h,
+                    "lnw_h_err": s_h / w_h if w_h > 0 else float("nan"), "lnw_f1_err": a["lnw_err"],
+                    "dyn_share_f1": dyn, "dyn_err": s_dyn})
+    out.sort(key=lambda r: r["b_peak"])
+    add_beta(out, "w_h", "beta_h", "lnw_h_err")
+    add_beta(out, "w_f1", "beta_f1", "lnw_f1_err")
+    print("\n== frequency separation  f1/fM=%.3g  f2/fM=%.3g" % (f1, f2))
+    print("   %-6s %9s %7s %10s %10s %10s %14s %14s %14s" %
+          ("stage", "b_peak", "db/b", "w(f1)", "w(f2)", "w_h", "dyn(f1)", "beta_h", "beta_f1"))
+    for r in out:
+        print("   %-6s %9.4g %7.2g %10.4g %10.4g %10.4g %6.2f +- %-4.2f %6.3f +- %-4.2f %6.3f +- %-4.2f" %
+              (r["stage"], r["b_peak"], r["db_rel"], r["w_f1"], r["w_f2"], r["w_h"],
+               r["dyn_share_f1"], r["dyn_err"], r["beta_h"], r["beta_h_err"], r["beta_f1"], r["beta_f1_err"]))
+    return out
+
+
+SIG_REAL_LNW = 0.5    # realisation scatter per run (8 runs, d/l_ex = 96, dx = 1.5, 9 and 50 mT)
+SIG_REAL_BETA = 0.45
+
+
+def compare(d1, d2, tol_lnw=0.15, tol_beta=0.2, sig_lnw=0.0, sig_beta=0.0):
+    """sig_lnw, sig_beta: realisation scatter per run. For two independent runs
+    the difference gets 2 sig^2 more variance. 0 = cycle statistics only (then
+    the verdict is only valid for runs with the same realisation)."""
+    c1, r1 = load_run(d1)
+    c2, r2 = load_run(d2)
+    lb2 = np.log([r["b_peak"] for r in r2])
+    lw2 = np.log([r["w_loop"] for r in r2])
+    e2 = np.array([r["lnw_err"] for r in r2])
+    x, y, s = [], [], []
+    print("\n== compare  A = %s\n             B = %s" % (d1, d2))
+    print("   A: %s\n   B: %s" % (label(c1), label(c2)))
+    print("   %-6s %9s %10s %10s %8s %6s" % ("stage", "b(A)", "ln w A", "ln w B(b)", "d", "+-"))
+    for r in r1:
+        lb = math.log(r["b_peak"])
+        # inside the b range of B, or at most 10 % outside (linear extrapolation of the end segment)
+        if not (lb2.min() - 0.1 <= lb <= lb2.max() + 0.1) or r["w_loop"] <= 0 or len(lb2) < 2:
+            continue
+        j = int(np.clip(np.searchsorted(lb2, lb), 1, len(lb2) - 1))
+        t = (lb - lb2[j - 1]) / (lb2[j] - lb2[j - 1])
+        yb = (1 - t) * lw2[j - 1] + t * lw2[j]
+        sb = math.hypot((1 - t) * e2[j - 1], t * e2[j])
+        d = math.log(r["w_loop"]) - yb
+        sd = math.hypot(r["lnw_err"], sb)
+        x.append(lb); y.append(d); s.append(sd)
+        print("   %-6s %9.4g %10.4f %10.4f %+8.4f %6.3f" % (r["stage"], r["b_peak"], math.log(r["w_loop"]), yb, d, sd))
+    if len(x) < 2:
+        print("   fewer than 2 points in the common b range: no fit")
+        return None
+    x, y, s = np.array(x), np.array(y), np.array(s)
+    wgt = 1.0 / s**2
+    xm = float(np.sum(wgt * x) / np.sum(wgt))
+    X = np.c_[np.ones_like(x), x - xm]
+    cov = np.linalg.inv(X.T @ (X * wgt[:, None]))
+    c0, db = cov @ (X.T @ (wgt * y))
+    sc0, sdb = math.sqrt(cov[0, 0] + 2 * sig_lnw**2), math.sqrt(cov[1, 1] + 2 * sig_beta**2)
+    errs = ("cycle statistics + realisation scatter (sig_lnw %.2f, sig_beta %.2f per run)" % (sig_lnw, sig_beta)
+            if (sig_lnw or sig_beta) else "cycle statistics ONLY (no realisation scatter)")
+    chi2 = float(np.sum(wgt * (y - X @ np.array([c0, db])) ** 2))
+    z = 1.645
+    ok_l = abs(c0) + z * sc0 < tol_lnw
+    ok_b = abs(db) + z * sdb < tol_beta
+    print("   level  c0     = %+.3f +- %.3f  (w_A/w_B = %.3f)  90%% within +-%.2f: %s" %
+          (c0, sc0, math.exp(c0), tol_lnw, "PASS" if ok_l else "FAIL"))
+    print("   slope  d_beta = %+.3f +- %.3f                     90%% within +-%.2f: %s" %
+          (db, sdb, tol_beta, "PASS" if ok_b else "FAIL"))
+    print("   chi2 = %.2f for %d dof (a large value: the difference is not linear in ln b)" % (chi2, len(x) - 2))
+    print("   errors: %s" % errs)
+    return {"c0": c0, "c0_err": sc0, "d_beta": db, "d_beta_err": sdb, "chi2": chi2, "n": len(x),
+            "pass": bool(ok_l and ok_b)}
+
+
+def cycles(d):
+    """Per-cycle table of every measured stage, and the drift of w over the kept
+    cycles (relative change per cycle from a linear fit, with its error)."""
+    d = pathlib.Path(d)
+    summ = json.loads((d / "summary.json").read_text())
+    print("\n== %s  (kept: cycles >= %d)" % (d, SKIP))
+    for si, st in enumerate(summ["stages"]):
+        if not st.get("measure"):
+            continue
+        offs = cycle_offsets(d, si, st["name"], st["cycles"])
+        skip = max(SKIP, first_measured(st)) if "h_amp_initial" in st else SKIP
+        print("   %s  h = %.4g%s%s" % (st["name"], st["h_amp"],
+                                      "  (corrected after cycle 0 from %.4g)" % st["h_amp_initial"]
+                                      if "h_amp_initial" in st else "",
+                                      "  (again after cycle 1 from %.4g)" % st["h_amp_second"]
+                                      if "h_amp_second" in st else ""))
+        print("     %3s %9s %11s %11s %7s %8s %7s %5s" % ("c", "b_peak", "w_loop", "w_dis", "wd/w", "closure",
+                                                        "offset", "n60"))
+        for c, off in zip(st["cycles"], offs):
+            print("     %3d %9.4g %11.4g %11.4g %7.3f %8.4f %+7.3f %5d%s" %
+                  (c["cycle"], c["b_peak"], c["w_loop"], c["w_dis"],
+                   c["w_dis"] / c["w_loop"] if c["w_loop"] else float("nan"), c["closure"], off,
+                   c.get("n_pairs_gt60", 0), "" if c["cycle"] >= skip else "   (skipped)"))
+        kept = st["cycles"][skip:]
+        if len(kept) >= 3:
+            for key in ("w_loop", "w_dis"):
+                w = np.array([c[key] for c in kept])
+                k = np.arange(len(w), dtype=float)
+                A = np.c_[np.ones_like(k), k - k.mean()]
+                coef, res, _, _ = np.linalg.lstsq(A, w, rcond=None)
+                dof = len(w) - 2
+                s2 = float(np.sum((w - A @ coef) ** 2)) / dof if dof > 0 else float("nan")
+                se = math.sqrt(s2 / np.sum((k - k.mean()) ** 2)) if dof > 0 else float("nan")
+                print("     %-6s mean %.4g  scatter %.1f %%  drift %+.2f +- %.2f %% per cycle" %
+                      (key, w.mean(), 100 * w.std(ddof=1) / abs(w.mean()), 100 * coef[1] / w.mean(),
+                       100 * se / abs(w.mean())))
+
+
+def two_point(d):
+    """ln w at the smallest and largest amplitude and beta between them."""
+    _, rows = load_run(d)
+    rows = [r for r in rows if r["w_loop"] > 0]
+    lo, hi = rows[0], rows[-1]
+    beta = (math.log(hi["w_loop"]) - math.log(lo["w_loop"])) / (math.log(hi["b_peak"]) - math.log(lo["b_peak"]))
+    return lo, hi, beta
+
+
+def paired(pairs):
+    """Pairs A:B (same realisation, one change). Per pair: difference of ln w at the
+    smallest and largest amplitude and of beta between them. Mean +- SE over the
+    pairs and the t value (the realisation scatter cancels partly in each pair)."""
+    rows = []
+    print("\n== paired comparison (A - B)")
+    print("   %-24s %-24s %9s %9s %8s" % ("A", "B", "d ln w lo", "d ln w hi", "d beta"))
+    for pr in pairs:
+        a, b = pr.split(":")
+        la, ha, ba = two_point(a)
+        lb, hb, bb = two_point(b)
+        r = (math.log(la["w_loop"] / lb["w_loop"]), math.log(ha["w_loop"] / hb["w_loop"]), ba - bb)
+        rows.append(r)
+        print("   %-24s %-24s %+9.3f %+9.3f %+8.3f" % (pathlib.Path(a).name, pathlib.Path(b).name, *r))
+    v = np.array(rows)
+    n = len(v)
+    if n < 2:
+        return v
+    m, se = v.mean(0), v.std(0, ddof=1) / math.sqrt(n)
+    t = T975.get(n - 1, 1.96)
+    for k, name in enumerate(("d ln w (smallest B)", "d ln w (largest B)", "d beta")):
+        print("   %-20s mean %+.3f +- %.3f (SE, n = %d)  95%% interval %+.3f ... %+.3f  scatter of the pairs %.3f" %
+              (name, m[k], se[k], n, m[k] - t * se[k], m[k] + t * se[k], v[:, k].std(ddof=1)))
+    return v
+
+
+T95_ONE = {1: 6.31, 2: 2.92, 3: 2.35, 4: 2.13, 5: 2.02, 6: 1.94, 7: 1.89, 8: 1.86, 9: 1.83, 10: 1.81}
+
+
+def freqtest(runs_f, runs_2f, max_dyn=0.30, max_dbeta=0.2):
+    """PLAN.md step 1. Runs at f and at 2 f with the same seeds (matched by the
+    seed). Per seed and amplitude: w_h = 2 w(f) - w(2 f) (w = w_h + c f), dynamic
+    share = 1 - w_h / w(f). Mean +- SE over the seeds; 90 % upper bound with the
+    one-sided Student-t. beta from the seed-mean curves of w(f) and of w_h; the
+    error of beta(w_h) - beta(w) by jackknife over the seeds.
+    Rule: PASS if the upper bound of the dynamic share < max_dyn at all
+    amplitudes and the upper bound of |beta(w_h) - beta(w)| < max_dbeta."""
+    def by_seed(runs):
+        out = {}
+        for d in runs:
+            cfg, rows = load_run(d)
+            if not cfg["done"]:
+                print("   skipped (not finished): %s" % d)
+                continue
+            out[cfg["seed"]] = (cfg, rows)
+        return out
+    F, F2 = by_seed(runs_f), by_seed(runs_2f)
+    seeds = sorted(set(F) & set(F2))
+    if len(seeds) < 2:
+        print("freqtest: fewer than 2 matched seeds")
+        return None
+    f1, f2 = F[seeds[0]][0]["f_rel"], F2[seeds[0]][0]["f_rel"]
+    if abs(f2 / f1 - 2.0) > 1e-6:
+        print("WARNING: f2/f1 = %.4f, not 2: the formula uses the general form" % (f2 / f1))
+    nst = min(min(len(F[s_][1]) for s_ in seeds), min(len(F2[s_][1]) for s_ in seeds))
+    wf = np.array([[F[s_][1][k]["w_loop"] for k in range(nst)] for s_ in seeds])
+    w2 = np.array([[F2[s_][1][k]["w_loop"] for k in range(nst)] for s_ in seeds])
+    bb = np.array([[F[s_][1][k]["b_peak"] for k in range(nst)] for s_ in seeds])
+    wh = (f2 * wf - f1 * w2) / (f2 - f1)
+    dyn = 1.0 - wh / wf
+    n = len(seeds)
+    t1 = T95_ONE.get(n - 1, 1.645)
+    print("\n== frequency test  f/f_M = %.4g and %.4g, seeds %s" % (f1, f2, seeds))
+    print("   %7s %11s %11s %11s %16s %10s" % ("B[mT]", "w(f)", "w(2f)", "w_h", "dyn share", "90% upper"))
+    ok_dyn = True
+    for k in range(nst):
+        m, se = dyn[:, k].mean(), dyn[:, k].std(ddof=1) / math.sqrt(n)
+        up = m + t1 * se
+        ok_dyn &= up < max_dyn
+        print("   %7.1f %11.4g %11.4g %11.4g %8.3f +- %.3f %10.3f" %
+              (1000 * JS_T * bb[:, k].mean(), wf[:, k].mean(), w2[:, k].mean(), wh[:, k].mean(), m, se, up))
+
+    def beta_curves(idx):
+        rows_w, rows_h = [], []
+        for k in range(nst):
+            base = {"b_peak": float(bb[idx, k].mean()), "lnw_err": 0.1}
+            rows_w.append(dict(base, w_loop=float(wf[idx, k].mean())))
+            rows_h.append(dict(base, w_loop=float(wh[idx, k].mean())))
+        return features(rows_w)[0], features(rows_h)[0]
+    fw, fh = beta_curves(np.arange(n))
+    jack = [beta_curves(np.array([i for i in range(n) if i != j])) for j in range(n)]
+    ok_beta = True
+    print("   %-10s %8s %8s %16s %10s" % ("", "beta(w)", "beta(w_h)", "difference", "90% upper"))
+    for key in fw:
+        d = fh[key] - fw[key]
+        dj = np.array([jh[key] - jw[key] for jw, jh in jack])
+        se = math.sqrt((n - 1) / n * np.sum((dj - dj.mean()) ** 2)) if np.all(np.isfinite(dj)) else float("nan")
+        up = abs(d) + 1.645 * se
+        ok_beta &= bool(up < max_dbeta)
+        print("   %-10s %8.3f %8.3f %8.3f +- %.3f %10.3f" % (key, fw[key], fh[key], d, se, up))
+    verdict = ok_dyn and ok_beta
+    print("   rule: dynamic share upper bound < %.2f: %s;  |d beta| upper bound < %.2f: %s  ->  %s" %
+          (max_dyn, "yes" if ok_dyn else "NO", max_dbeta, "yes" if ok_beta else "NO",
+           "PASS (step 2 at f only)" if verdict else "FAIL (options for Chris)"))
+    return {"dyn": dyn, "wf": wf, "w2f": w2, "wh": wh, "pass": verdict}
+
+
+def plot(results, path):
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available: no plot"); return
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.2))
+    for name, cfg, rows in results:
+        if not rows:
+            continue
+        b = [r["b_peak"] for r in rows]
+        ax1.errorbar(b, [r["w_loop"] for r in rows], yerr=[r["w_loop"] * r["lnw_err"] for r in rows],
+                     fmt="o-", ms=3, capsize=2, label=name)
+        ax2.errorbar(b, [r["beta"] for r in rows], yerr=[r["beta_err"] for r in rows],
+                     fmt="o-", ms=3, capsize=2, label=name)
+    ax1.set_xscale("log"); ax1.set_yscale("log")
+    ax2.set_xscale("log")
+    ax1.set_xlabel("b = B_peak / Js"); ax1.set_ylabel("w = W / K_d per cycle")
+    ax2.set_xlabel("b = B_peak / Js"); ax2.set_ylabel(r"$\beta_\mathrm{eff}$ = d ln w / d ln b")
+    for v in (2.0, 3.0):
+        ax2.axhline(v, color="0.7", lw=0.8, ls="--")
+    ax1.legend(fontsize=6)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    print("plot: %s" % path)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("runs", nargs="*")
+    ap.add_argument("--pair", nargs=2, metavar=("RUN_F1", "RUN_F2"))
+    ap.add_argument("--compare", nargs=2, metavar=("RUN_A", "RUN_B"))
+    ap.add_argument("--cycles", action="store_true", help="per-cycle tables and drift of the given runs")
+    ap.add_argument("--skip", type=int, default=1, help="cycles discarded at the start of each amplitude")
+    ap.add_argument("--w", choices=["loop", "dis"], default="loop", help="loss per cycle: loop area or LLG dissipation")
+    ap.add_argument("--tol_lnw", type=float, default=0.15, help="tolerance of the level difference (ln w)")
+    ap.add_argument("--tol_beta", type=float, default=0.2, help="tolerance of the slope difference")
+    ap.add_argument("--real", action="store_true",
+                    help="--compare of two independent realisations: add the realisation scatter "
+                         "(sig_lnw %.2f, sig_beta %.2f per run)" % (SIG_REAL_LNW, SIG_REAL_BETA))
+    ap.add_argument("--paired", nargs="+", metavar="RUN_A:RUN_B", help="paired comparison over realisations")
+    ap.add_argument("--freqtest", nargs=2, metavar=("GLOB_F", "GLOB_2F"),
+                    help="PLAN step 1: run directories at f and at 2 f (shell globs in quotes)")
+    ap.add_argument("--allow_unconverged", action="store_true",
+                    help="also use virgin runs whose relaxation did not converge (audit of old runs only)")
+    ap.add_argument("--csv", default="all_runs.csv")
+    ap.add_argument("--ranking_csv", default="ranking.csv")
+    ap.add_argument("--plot", default="beta_vs_b.png")
+    a = ap.parse_args()
+    global SKIP, WKEY, ALLOW_UNCONVERGED
+    ALLOW_UNCONVERGED = a.allow_unconverged
+    SKIP = a.skip
+    WKEY = "w_" + a.w
+
+    if a.cycles:
+        for d in a.runs:
+            cycles(d)
+        return
+    if a.pair:
+        pair(*a.pair)
+        return
+    if a.compare:
+        compare(*a.compare, tol_lnw=a.tol_lnw, tol_beta=a.tol_beta,
+                sig_lnw=SIG_REAL_LNW if a.real else 0.0, sig_beta=SIG_REAL_BETA if a.real else 0.0)
+        return
+    if a.paired:
+        paired(a.paired)
+        return
+    if a.freqtest:
+        import glob
+        freqtest(sorted(glob.glob(a.freqtest[0])), sorted(glob.glob(a.freqtest[1])))
+        return
+
+    results = []
+    for d in a.runs:
+        p = pathlib.Path(d)
+        if not (p / "summary.json").exists():
+            continue
+        try:
+            cfg, rows = load_run(p)
+        except UnconvergedRun as e:
+            print("EXCLUDED %s" % e)
+            continue
+        results.append((p.name, cfg, rows))
+        print_table(p.name, cfg, rows)
+    if not results:
+        sys.exit("no runs with summary.json found")
+
+    keys = PARAMS + ["phi_vox", "d_lex_used", "seed", "s_cyc"]
+    rk = next((list(rows[0].keys()) for _, _, rows in results if rows), [])
+    with open(a.csv, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["run"] + keys + rk)
+        for name, cfg, rows in results:
+            for r in rows:
+                w.writerow([name] + [param_value(cfg, k) for k in keys] + [r[k] for k in rk])
+    print("\ncsv: %s" % a.csv)
+    ranking(results, a.ranking_csv)
+    plot(results, a.plot)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except UnconvergedRun as e:
+        sys.exit("ERROR: %s" % e)

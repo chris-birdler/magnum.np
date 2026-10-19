@@ -95,7 +95,7 @@ class IntergrainExchangeField(LinearFieldTerm):
         h[self._domain2] = h2[self._domain2]
 
         h /= constants.mu_0 * state.material["Ms"]
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
 
 
@@ -182,7 +182,7 @@ class RKKYField(object):
             h[:,:,(self._id2,),:] = self._J_rkky * (m1 - (m1*m2).sum(axis = 3, keepdim=True) * m2)
 
         h /= constants.mu_0 * state.material["Ms"] * dz
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
     @torch.compile
     def E(self, state):
@@ -197,7 +197,7 @@ class RKKYField(object):
             m1 += 0.25 * (3*state.m[:,:,(self._id1,),:] - 4*state.m[:,:,(self._id1-1,),:] + state.m[:,:,(self._id1-2,),:])
             m2 += 0.25 * (3*state.m[:,:,(self._id2,),:] - 4*state.m[:,:,(self._id2+1,),:] + state.m[:,:,(self._id2+2,),:])
 
-        E = -(dx * dy * self._J_rkky * m1 * m2).sum()
+        E = -(dx * dy * self._J_rkky * m1 * m2).sum(dtype=torch.float64)
         return E
 
 
@@ -244,7 +244,7 @@ class BiquadraticRKKYField(object):
         #TODO: find out why there is a 2x discrepancy compared with oommf
         h /= constants.mu_0 * state.material["Ms"] * dz
 
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
     @torch.compile
     def E(self, state):
@@ -254,4 +254,4 @@ class BiquadraticRKKYField(object):
         dy = state.mesh.dx_tensor[1].reshape(1,-1,1)
 
         E = -dx * dy * self._J_rkky_BQ * (m1*m2).sum(dim=-1,keepdim=True)**2
-        return E.sum()
+        return E.sum(dtype=torch.float64)

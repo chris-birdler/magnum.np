@@ -22,7 +22,7 @@ import subprocess
 from magnumnp.common import logging, Material
 from magnumnp.common.io import write_vti, write_vtr
 
-__all__ = ["complex_dtype", "normalize", "randM", "Expression"]
+__all__ = ["complex_dtype", "normalize", "randM", "Expression", "accumulate_h", "set_precision"]
 
 
 complex_dtype = {
@@ -32,12 +32,83 @@ complex_dtype = {
     }
 
 
+def set_precision(precision, force = False):
+    r"""
+    Set the global floating point precision.
+
+    magnum.np defaults to double precision. Single precision halves the
+    memory consumption and is considerably faster (especially on GPUs,
+    where the FP64 throughput is a fraction of FP32), while the demag /
+    Oersted kernels are still evaluated in double precision internally.
+    Single precision is usually sufficient for LLG time integration;
+    tightly converged energy minimization or comparing energies of nearly
+    degenerate states may still require double precision.
+
+    Needs to be called before the first :class:`Mesh` or :class:`State`
+    is created, since the dtype is baked into the created tensors (which
+    would silently mix precisions otherwise).
+
+    :param precision: "single" / "float32" or "double" / "float64"
+    :type precision: str
+    :param force: skip the mesh-already-created check (use with care)
+    :type force: bool, optional
+
+    :Example:
+        .. code::
+            from magnumnp import *
+            set_precision("single")
+
+            mesh = Mesh(n, dx)
+            state = State(mesh)
+    """
+    dtypes = {"single": torch.float32, "float32": torch.float32,
+              "double": torch.float64, "float64": torch.float64}
+    if precision not in dtypes:
+        raise ValueError("Unknown precision '%s' (use one of %s)" % (precision, sorted(dtypes.keys())))
+
+    from magnumnp.common import mesh as _mesh
+    if _mesh._MESH_CREATED and not force:
+        raise RuntimeError("set_precision() has to be called before the first Mesh/State is created "
+                           "(existing tensors keep their dtype, which would silently mix precisions). "
+                           "Use force=True to override.")
+
+    torch.set_default_dtype(dtypes[precision])
+    logging.info_green("[magnum.np] floating point precision: %s" % precision)
+
+
+def accumulate_h(fields):
+    r"""
+    Helper function to sum up field contributions with minimal allocations.
+
+    Consumes the iterable lazily and accumulates in place, so at most two
+    full fields are alive at the same time (in contrast to sum([...]), which
+    materializes all contributions and allocates a new tensor for each add).
+    The first field is never modified, since field terms may return cached
+    or shared tensors.
+    """
+    it = iter(fields)
+    try:
+        total = next(it)
+    except StopIteration:
+        raise ValueError("accumulate_h() requires at least one field contribution")
+    accumulated = False
+    for f in it:
+        if not accumulated:
+            total = total + f # allocate the accumulator; never mutate the first field
+            accumulated = True
+        else:
+            total.add_(f)
+    if not accumulated:
+        total = total.clone() # single contribution: never hand out a term's own (possibly cached) tensor
+    return total
+
+
 def normalize(data):
     r"""
     Helper function to normalize vectorial data inplace
     """
     data /= torch.linalg.norm(data, dim = -1, keepdim = True)
-    data[...] = torch.nan_to_num(data, posinf=0, neginf=0)
+    data.nan_to_num_(posinf=0, neginf=0)
     return data
 
 def randM(data):

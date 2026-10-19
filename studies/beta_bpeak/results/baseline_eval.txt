@@ -1,0 +1,42 @@
+Repeats with the converged virgin state. d/l_ex 300 (1 um), dx 3, L_eff 12 l_ex, r_p 0, phi 0.65,
+f = 30 MHz. beta: analyze.features: power law over 3 neighbouring amplitudes (9-20-35, 35-50-70,
+70-100-150 mT) and over all amplitudes (beta_pow); P from ln w interpolated at 10 / 50 / 100 mT.
+Errors: sd = realisation scatter (one run), SE = sd / sqrt(n).
+
+1. baseline, alpha 0.1, n = 8
+run         relax  iter w_dis/w_loop per amplitude             closure  offset  b hit |   pow  9-35 35-70 70-150
+B300_s921    True 23000 1.40 1.01 1.07 1.01 1.01 1.83 1.00     0.0025   0.030   0.7% |  2.11  2.52  1.40  2.17
+B300_s922    True 16000 0.99 2.07 1.00 1.01 1.01 1.00 0.99     0.0030   0.046   0.4% |  1.74  1.84  1.64  1.61
+B300_s923    True 16000 0.98 1.01 1.00 1.01 1.00 1.00 1.00     0.0025   0.103   0.3% |  1.74  1.73  1.73  1.79
+B300_s924    True 22500 0.99 1.00 1.00 1.00 1.01 1.00 0.99     0.0046   0.053   0.4% |  1.64  1.72  1.47  1.71
+B300_s925    True 20000 1.13 1.00 1.21 1.02 1.01 0.99 1.00     0.0033   0.047   0.2% |  1.69  2.01  1.42  1.58
+B300_s926    True 43000 1.00 1.07 1.27 1.00 0.99 1.00 1.00     0.0034   0.090   0.4% |  1.66  1.76  1.50  1.78
+B300_s927    True 23000 1.02 0.97 0.99 1.01 0.99 0.99 0.99     0.0039   0.022   0.1% |  1.75  1.94  1.64  1.63
+B300_s928    True 22000 0.99 1.02 1.01 0.99 1.01 0.99 1.00     0.0015   0.117   0.2% |  1.73  1.69  1.81  1.85
+
+                  mean       sd       SE
+   beta_pow       1.76     0.15     0.05
+   beta@9-35mT     1.90     0.27     0.10
+   beta@35-70mT     1.58     0.15     0.05
+   beta@70-150mT     1.77     0.19     0.07
+   P@10  mT      9.86 W/cm^3  scatter factor x/ 1.51 (sd of ln P 0.41), mean x/ 1.16
+   P@50  mT       192 W/cm^3  scatter factor x/ 1.25 (sd of ln P 0.23), mean x/ 1.08
+   P@100 mT       576 W/cm^3  scatter factor x/ 1.14 (sd of ln P 0.13), mean x/ 1.05
+
+2. alpha 0.01 - 0.1 (Welch): 3-point power-law fits on the common amplitudes 9/20/50/100/150 mT
+   A010c_s904: relax True 22500 it, balance 1.03 1.02 0.98 1.00 0.91
+   A010c_s905: relax True 30000 it, balance 1.47 0.99 0.92 1.05 0.99
+   A010c_s906: relax True 36500 it, balance 0.95 1.00 0.97 0.95 0.89
+   9-20-50          clean (3 vs 8) -0.43 ± 0.17 (2.6 SE)   all (6 vs 11) -0.32 ± 0.09 (3.5 SE)
+   20-50-100        clean (3 vs 8) -0.40 ± 0.13 (3.1 SE)   all (6 vs 11) -0.32 ± 0.10 (3.2 SE)
+   50-100-150       clean (3 vs 8) -0.15 ± 0.11 (1.3 SE)   all (6 vs 11) -0.17 ± 0.10 (1.7 SE)
+   all (beta_pow)   clean (3 vs 8) -0.34 ± 0.14 (2.5 SE)   all (6 vs 11) -0.27 ± 0.08 (3.3 SE)
+
+3. Sobol points for SE <= 0.1 of the range effect on beta (PLAN 4.3)
+   Scaling of the review Monte Carlo: SE = 0.31 sigma sqrt(136 / N) (worst factor).
+   beta_pow   sigma 0.15  ->  N =   29  (N = 64: SE 0.067, N = 128: SE 0.047)
+   beta@9-35mT sigma 0.27  ->  N =   97  (N = 64: SE 0.123, N = 128: SE 0.087)
+   beta@35-70mT sigma 0.15  ->  N =   30  (N = 64: SE 0.068, N = 128: SE 0.048)
+   beta@70-150mT sigma 0.19  ->  N =   47  (N = 64: SE 0.086, N = 128: SE 0.061)
+   Note: sigma of one point of the design also contains the parameter dependence that the
+   15-term regression does not describe; the 8 centre replicates check this (lack of fit).

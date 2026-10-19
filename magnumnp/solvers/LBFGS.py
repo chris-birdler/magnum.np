@@ -1,4 +1,4 @@
-from magnumnp.common import logging, timedmethod
+from magnumnp.common import logging, timedmethod, accumulate_h
 import torch
 import numpy as np
 
@@ -13,30 +13,30 @@ class Minimizer_LBFGS(object):
         self.max_iter = max_iter
 
     def _dm(self, state):
-        h = sum([term.h(state) for term in self._terms])
+        h = accumulate_h(term.h(state) for term in self._terms)
         return torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
-    
+
     def linesearch(self, state, p):
         alpha = 1.0 #initial step size
         tau = 0.5  # Reduction factor
-        c = 0.1  # Sufficient decrease parameter   
-        h = sum([term.h(state) for term in self._terms])
+        c = 0.1  # Sufficient decrease parameter
+        h = accumulate_h(term.h(state) for term in self._terms)
         dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
-        E = sum([term.E(state) for term in self._terms])
-        m = (dm*p).sum()
+        E = float(sum([term.E(state) for term in self._terms]))
+        m = float((dm*p).sum())
         t = -c*m
         j = 0
         maxIter = 1000
-        
+
         while j < maxIter:
             m_new = state.m + alpha * p
             state.m = m_new
-            E_new = sum([term.E(state) for term in self._terms])
+            E_new = float(sum([term.E(state) for term in self._terms])) # single device sync per linesearch iteration
             sufficient_decrease = E - E_new - alpha * t
-            
+
             if sufficient_decrease >= 0:
                 break
-            
+
             alpha *= tau
             j += 1
     
@@ -47,12 +47,12 @@ class Minimizer_LBFGS(object):
         glob_step = 0
         glob_steps = []
         glob_steps.append(glob_step)
-        E = sum([term.E(state) for term in self._terms]) #Energy
+        E = float(sum([term.E(state) for term in self._terms])) #Energy
         energy = []
         energy.append(E)
-        h = sum([term.h(state) for term in self._terms])
-        s_vectors = [torch.zeros(state.m.size())]*memory_size
-        y_vectors = [torch.zeros(state.m.size())]*memory_size
+        h = accumulate_h(term.h(state) for term in self._terms)
+        s_vectors = [torch.zeros_like(state.m) for _ in range(memory_size)]
+        y_vectors = [torch.zeros_like(state.m) for _ in range(memory_size)]
         dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h)) #Gradient
 
         eps = 2.22e-16;
@@ -61,16 +61,12 @@ class Minimizer_LBFGS(object):
         tolf2 = np.sqrt(tolerance)
         tolf3 = np.power(tolerance, 0.3333333333333333333333333)
 
-        dm_max = dm.max()
-        if dm_max < epsr*(1+torch.abs(E)):
+        dm_max = float(dm.max())
+        if dm_max < epsr*(1+abs(E)):
             return state, energy, glob_steps
-        
-        alpha = np.zeros(memory_size, dtype=np.float64)
-        q = torch.zeros(state.m.size(), dtype=torch.float64)
-        s = torch.zeros(state.m.size(), dtype=torch.float64)
-        y = torch.zeros(state.m.size(), dtype=torch.float64)
+
+        alpha = [None]*memory_size # keep coefficients as 0-dim tensors to avoid device syncs
         E_old = 0.0
-        dm_old = torch.zeros(dm.size(), dtype=torch.float64)
         m_old = state.m;
         H0k = 1
 
@@ -94,7 +90,7 @@ class Minimizer_LBFGS(object):
                 z += s_vectors[i] * (alpha[i] - beta)
                 #z = -z for minimization?
                 
-            phiPrime0 = -(dm*z).sum()
+            phiPrime0 = float(-(dm*z).sum())
             if phiPrime0 > 0:
                 z = dm
                 step = 0
@@ -103,11 +99,11 @@ class Minimizer_LBFGS(object):
             state = self.linesearch(state, z)
             
             #update gradient
-            h = sum([term.h(state) for term in self._terms])
+            h = accumulate_h(term.h(state) for term in self._terms)
             dm = torch.linalg.cross(state.m, torch.linalg.cross(state.m, h))
 
-            dm_max = dm.max()
-            if dm_max < epsr*(1+torch.abs(E)):
+            dm_max = float(dm.max())
+            if dm_max < epsr*(1+abs(E)):
                 return state, energy, glob_steps
             
             m_diff = state.m - m_old

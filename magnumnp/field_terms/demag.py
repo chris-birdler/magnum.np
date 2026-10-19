@@ -72,26 +72,52 @@ def newell(func, x, y, z, dx, dy, dz, dX, dY, dZ):
 def dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = (2.*x**2 - y**2 - z**2) * pow(x**2 + y**2 + z**2, -5./2.)
-    res[0,0,0] = 0.
+    # only the true self-term (r = 0) is undefined and gets replaced by the
+    # Newell near-field; couplings to PBC images and far non-equidistant
+    # layer pairs are located at the same local index but have r != 0 and
+    # must be kept (previous versions zeroed the local [0,0,0] entry
+    # positionally, silently dropping the on-axis coupling whenever the
+    # image/layer distance exceeded the Newell radius p)
+    res[(x == 0.) & (y == 0.) & (z == 0.)] = 0.
     return res * dx*dy*dz / (4.*pi)
 
 def dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ):
     z = z + dZ/2. - dz/2. # diff of cell centers for non-equidistant demag
     res = 3.*x*y * pow(x**2 + y**2 + z**2, -5./2.)
-    res[0,0,0] = 0.
+    res[(x == 0.) & (y == 0.) & (z == 0.)] = 0. # see dipole_f
     return res * dx*dy*dz / (4.*pi)
 
 def demag_f(x, y, z, dx, dy, dz, dX, dY, dZ, p):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
     res = dipole_f(x, y, z, dx, dy, dz, dX, dY, dZ)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(f, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
 
 def demag_g(x, y, z, dx, dy, dz, dX, dY, dZ, p):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
     res = dipole_g(x, y, z, dx, dy, dz, dX, dY, dZ)
     near = (x**2 + y**2 + z**2) / max(dx**2 + dy**2 + dz**2, dX**2 + dY**2 + dZ**2) < p**2
     res[near] = newell(g, x[near], y[near], z[near], dx, dy, dz, dX, dY, dZ)
     return res
+
+
+def block_demag_factors(state):
+    r"""
+    Diagonal demagnetization tensor at the centre of the block of periodic
+    images (a rectangular prism with half edges a_i = (2 pbc_i + 1) n_i dx_i / 2):
+
+    .. math::
+        N_{zz} = \frac{2}{\pi} \arctan \frac{a_x a_y}{a_z \sqrt{a_x^2 + a_y^2 + a_z^2}}
+
+    (field of the two charged faces from their solid angle), x and y cyclic;
+    the trace is 1, a cube gives 1/3 in each direction.
+    """
+    if any(int(state.mesh.pbc[i]) <= 0 for i in range(3)):
+        raise ValueError("true_pbc needs periodic images in all three directions (mesh.pbc > 0)")
+    a = [(2 * int(state.mesh.pbc[i]) + 1) * state.mesh.n[i] * state.mesh.dx[i] / 2. for i in range(3)]
+    r = np.sqrt(a[0]**2 + a[1]**2 + a[2]**2)
+    return [2. / np.pi * np.arctan(a[(i+1)%3] * a[(i+2)%3] / (a[i] * r)) for i in range(3)]
 
 
 class DemagField(LinearFieldTerm):
@@ -110,10 +136,41 @@ class DemagField(LinearFieldTerm):
 
     :param p: number of next neighbors for near field via Newell's equation (default = 20)
     :type p: int, optional
+    :param chunk_cells: chunk size (in cells) for the kernel setup; bounds the size of
+        the temporaries during initialization (default = 1024**2, i.e. 8 MB per
+        double-precision temporary)
+    :type chunk_cells: int, optional
+    :param kernel_device: device used to evaluate the demag kernel during setup
+        (default: the simulation device). Pass "cpu" to keep the device memory
+        usage during setup at the size of the final kernel.
+    :type kernel_device: str, optional
+    :param true_pbc: only with periodic images in all three directions
+        (mesh.pbc > 0). The images form a block of (2 pbc_i + 1) boxes per
+        direction. Its outer surface charges add the field -N_block <M> at the
+        box (N_block: demagnetization tensor of the rectangular block at its
+        centre, diagonal). true_pbc=True adds +N_block <M> and thus gives the
+        infinite periodic medium with zero mean field, the convention of
+        DemagFieldPBC (default = False: the finite block of images)
+    :type true_pbc: bool, optional
+    :param extrapolate: only with true_pbc and the same number k >= 2 of
+        image shells in all three directions. The image sum without the
+        uniform part converges as 1 / (2k + 1)^2 with the number k of shells
+        (cube arrangement). The kernel N_k and the partial sum N_i over the
+        inner k_i = k // 2 shells (the same loop, no extra cost) give the
+        extrapolated kernel N_k + (N_k - N_i) x_k / (x_i - x_k) with
+        x_j = 1 / (2j + 1)^2 (default = False)
+    :type extrapolate: bool, optional
     """
-    def __init__(self, p = 20, cache_dir = None):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None, true_pbc = False,
+                 extrapolate = False):
+        if extrapolate and not true_pbc:
+            raise ValueError("extrapolate needs true_pbc")
+        self._true_pbc = true_pbc
+        self._extrapolate = extrapolate
         self._p = p
         self._cache_dir = cache_dir
+        self._chunk_cells = chunk_cells
+        self._kernel_device = kernel_device
 
     def _shape(self, state): # TODO: try padding to 2N-1 for small N like mumax does
         s = [1,1,1]
@@ -130,19 +187,46 @@ class DemagField(LinearFieldTerm):
         dx = np.array(state.mesh.dx)
         dx /= dx.min() # rescale dx to avoid NaNs when using single precision
 
+        # the kernel is evaluated in double precision in bounded chunks, so the
+        # peak memory during setup stays close to the padded kernel volume;
+        # 1-D coordinate vectors + broadcasting replace the full padded
+        # meshgrids. kernel_device="cpu" additionally keeps the whole setup off
+        # the simulation device (only the final rfft components are moved).
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         shape = self._shape(state)
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
-        ij = torch.meshgrid(*ij,indexing='ij')
-        x, y, z = [ij[ind]*dx[ind] for ind in perm]
+        coords = []
+        for i, n in enumerate(shape):
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device) * dx[i] # local indices
+            coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
+        x, y, z = [coords[ind] for ind in perm]
         Lx = [state.mesh.n[ind]*dx[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1) for ind in perm] # offset of pseudo PBC images
+        offsets = [torch.arange(-state.mesh.pbc[ind], state.mesh.pbc[ind]+1, device=device) for ind in perm] # offset of pseudo PBC images
         offsets = torch.stack(torch.meshgrid(*offsets, indexing="ij"), dim=-1).flatten(end_dim=-2)
 
-        Nc = torch.zeros(shape)
-        for offset in offsets:
-            Nc += func(x + offset[0]*Lx[0], y + offset[1]*Lx[1], z + offset[2]*Lx[2], *dx, *dx, self._p)
+        Nc = torch.zeros(shape, dtype=torch.float64, device=device)
+        if self._extrapolate:
+            k = int(state.mesh.pbc[0])
+            if any(int(state.mesh.pbc[i]) != k for i in range(3)) or k < 2:
+                raise ValueError("extrapolate needs the same number k >= 2 of image shells in all three directions")
+            k_in = k // 2
+            inner = [bool(o.abs().max() <= k_in) for o in offsets]
+            Nc_in = torch.zeros(shape, dtype=torch.float64, device=device)
+        # evaluate in chunks along the first grid axis to bound the size of
+        # the elementwise temporaries (~10 temporaries of chunk size)
+        nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
+        for i0 in range(0, shape[0], nc):
+            xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]
+            for io, offset in enumerate(offsets):
+                v = func(xs + offset[0]*Lx[0], ys + offset[1]*Lx[1], zs + offset[2]*Lx[2], *dx, *dx, self._p)
+                Nc[i0:i0+nc] += v
+                if self._extrapolate and inner[io]:
+                    Nc_in[i0:i0+nc] += v
+
+        if self._extrapolate:
+            x_k, x_in = 1. / (2*k + 1)**2, 1. / (2*k_in + 1)**2
+            Nc = Nc + (Nc - Nc_in) * (x_k / (x_in - x_k))
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -151,24 +235,27 @@ class DemagField(LinearFieldTerm):
 
 
     def _init_N(self, state):
-        name = "/N_%s.pt" % str(state.mesh).replace(" ","")
+        name = "/N_%s%s.pt" % (str(state.mesh).replace(" ",""), "_ext" if self._extrapolate else "")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = torch.load(self._cache_dir + name, map_location=state.device)
+            dtype = torch.get_default_dtype()
+            if Nxx.dtype != dtype: # cache file was written at a different precision
+                if Nxx.dtype.itemsize < dtype.itemsize:
+                    logging.warning("[DEMAG]: Cached kernel '%s' has lower precision (%s) than the current run (%s). Delete it to recompute at full precision." % (self._cache_dir + name, Nxx.dtype, dtype))
+                [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz] = [N.to(dtype=dtype) for N in [Nxx,Nxy,Nxz,Nyy,Nyz,Nzz]]
             logging.info("[DEMAG]: Use cached demag kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()
-            torch.set_default_dtype(torch.float64) # always use double precision
             time_kernel = time()
 
-            Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype)
-            Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype)
-            Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype)
-            Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype)
-            Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype)
-            Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype)
+            Nxx = self._init_N_component(state, [0,1,2], demag_f).to(dtype=dtype, device=state.device)
+            Nxy = self._init_N_component(state, [0,1,2], demag_g).to(dtype=dtype, device=state.device)
+            Nxz = self._init_N_component(state, [0,2,1], demag_g).to(dtype=dtype, device=state.device)
+            Nyy = self._init_N_component(state, [1,2,0], demag_f).to(dtype=dtype, device=state.device)
+            Nyz = self._init_N_component(state, [1,2,0], demag_g).to(dtype=dtype, device=state.device)
+            Nzz = self._init_N_component(state, [2,0,1], demag_f).to(dtype=dtype, device=state.device)
 
             logging.info(f"[DEMAG]: Time calculation of demag kernel = {time() - time_kernel} s")
-            torch.set_default_dtype(dtype) # restore dtype
 
             # cache demag tensor
             if self._cache_dir != None:
@@ -201,8 +288,9 @@ class DemagField(LinearFieldTerm):
         hy = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.device)
         hz = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.device)
 
+        M = state.material["Ms"] * state.m # compute M once; M[...,ax] below is a view (no copy)
         for ax in range(3):
-            m_pad_fft1D = torch.fft.rfftn(state.material["Ms"] * state.m[:,:,:,(ax,)], dim = dim, s = s).squeeze(-1)
+            m_pad_fft1D = torch.fft.rfftn(M[:,:,:,ax], dim = dim, s = s)
 
             hx += self._N[0][ax] * m_pad_fft1D
             hy += self._N[1][ax] * m_pad_fft1D
@@ -212,10 +300,15 @@ class DemagField(LinearFieldTerm):
         hy = torch.fft.irfftn(hy, dim = dim)
         hz = torch.fft.irfftn(hz, dim = dim)
 
-        return torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                            hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                         hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                         hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        if self._true_pbc:
+            if not hasattr(self, "_N_block"):
+                self._N_block = torch.tensor(block_demag_factors(state), dtype=h.dtype, device=h.device)
+            h = h + self._N_block * M.mean(dim=(0,1,2))
+        return h
 
     def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
-        return E[domain].sum()
+        return E[domain].sum(dtype=torch.float64)

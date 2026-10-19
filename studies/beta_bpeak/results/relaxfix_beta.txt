@@ -1,0 +1,37 @@
+beta(B_peak) with a valid 9 mT value: 9 mT from X* (converged relaxation), 20 ... 150 mT from
+F_base_f_* (alpha 0.1) / A010_* (alpha 0.01), same seeds 901 ... 903. Mean ± SE over the realisations.
+d/l_ex 300 (1 um), dx 3, L_eff 12 l_ex, r_p 0, phi 0.65, f = 30 MHz. B = B_peak.
+
+alpha = 0.1   (n = 3 realisations)
+  splice check, ln w(20 mT) X* - old run: 0.020 ± 0.033  (single values +0.054 +0.054 -0.046)
+  beta per segment:
+        9 ->    20 mT   1.78 ± 0.12
+       20 ->    35 mT   1.82 ± 0.02
+       35 ->    50 mT   1.64 ± 0.09
+       50 ->    70 mT   1.96 ± 0.21
+       70 ->   100 mT   1.43 ± 0.25
+      100 ->   150 mT   1.74 ± 0.07
+  power law 9 ... 150 mT:  beta = 1.74 ± 0.03   (chi2/dof 0.1 ... 9.8)
+  quadratic fit: curvature d beta / d ln B = -0.07 ± 0.09
+    B =  10 mT: beta = 1.84 ± 0.13   P = 11.5 W/cm^3 (x/ 1.07, geometric mean, factor = exp(SE))
+    B =  50 mT: beta = 1.72 ± 0.03   P = 201 W/cm^3 (x/ 1.04, geometric mean, factor = exp(SE))
+    B = 100 mT: beta = 1.67 ± 0.07   P = 650 W/cm^3 (x/ 1.02, geometric mean, factor = exp(SE))
+
+alpha = 0.01   (n = 3 realisations)
+  splice check, ln w(20 mT) X* - old run: 0.058 ± 0.043  (single values +0.079 +0.121 -0.025)
+  beta per segment:
+        9 ->    20 mT   1.57 ± 0.16
+       20 ->    50 mT   1.60 ± 0.22
+       50 ->   100 mT   1.28 ± 0.07
+      100 ->   150 mT   1.95 ± 0.42
+  power law 9 ... 150 mT:  beta = 1.55 ± 0.07   (chi2/dof 0.1 ... 3.7)
+  quadratic fit: curvature d beta / d ln B = -0.03 ± 0.17
+    B =  10 mT: beta = 1.57 ± 0.13   P = 10.4 W/cm^3 (x/ 1.06, geometric mean, factor = exp(SE))
+    B =  50 mT: beta = 1.53 ± 0.15   P = 127 W/cm^3 (x/ 1.04, geometric mean, factor = exp(SE))
+    B = 100 mT: beta = 1.51 ± 0.26   P = 364 W/cm^3 (x/ 1.11, geometric mean, factor = exp(SE))
+
+alpha 0.01 - 0.1 (Welch, n = 3 + 3):
+  power      -0.19 ± 0.08  (2.4 SE)
+  beta@10    -0.26 ± 0.18  (1.4 SE)
+  beta@50    -0.19 ± 0.15  (1.3 SE)
+  beta@100   -0.16 ± 0.27  (0.6 SE)

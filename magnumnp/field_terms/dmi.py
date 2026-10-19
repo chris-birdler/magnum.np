@@ -122,7 +122,7 @@ class DMIField(LinearFieldTerm):
             h += D_avg * torch.linalg.cross(v, torch.roll(state.m, -1, dims=2)) / 2.
 
         h *= 2. / (constants.mu_0 * Ms)
-        return h.nan_to_num(posinf=0, neginf=0)
+        return h.nan_to_num_(posinf=0, neginf=0)
 
 
 

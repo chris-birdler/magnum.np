@@ -21,7 +21,7 @@ import torch
 import errno
 from magnumnp.common import logging, read_vti
 from xml.etree import cElementTree
-from xml.dom import minidom
+from xml.sax.saxutils import quoteattr
 
 __all__ = ["FieldLogger"]
 
@@ -69,6 +69,7 @@ class FieldLogger(object):
         self._i_start = 0
         self._xmlroot = cElementTree.Element("VTKFile", type="Collection", version="0.1", byte_order="LittleEndian")
         cElementTree.SubElement(self._xmlroot, "Collection")
+        self._entry_lines = [] # pre-formatted <DataSet .../> lines (kept in sync with _xmlroot)
 
     def log(self, state):
         self._i += 1
@@ -121,10 +122,21 @@ class FieldLogger(object):
             filename += ".vtr"
         state.write_vtk(values, filename)
 
-        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=str(float(state.t)), file=os.path.basename(filename))
+        timestep = str(float(state.t))
+        cElementTree.SubElement(self._xmlroot[0], "DataSet", timestep=timestep, file=os.path.basename(filename))
+        self._entry_lines.append('    <DataSet timestep=%s file=%s/>\n' % (quoteattr(timestep), quoteattr(os.path.basename(filename))))
+        self._write_pvd()
+
+    def _write_pvd(self):
+        # serialize from the cached entry lines instead of re-parsing and
+        # pretty-printing the whole (growing) document on every log call
         with open(self._filename + ".pvd", 'w') as fd:
-            fd.write(minidom.parseString(" ".join(cElementTree.tostring(self._xmlroot).decode().replace("\n","").split()).replace("> <", "><")).toprettyxml(indent="  "))
-            fd.flush()
+            fd.write('<?xml version="1.0" ?>\n')
+            fd.write('<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">\n')
+            fd.write('  <Collection>\n')
+            fd.writelines(self._entry_lines)
+            fd.write('  </Collection>\n')
+            fd.write('</VTKFile>\n')
 
     def __lshift__(self, state):
         self.log(state)
@@ -189,3 +201,5 @@ class FieldLogger(object):
         self._i = i
         self._i_start = self.last_recorded_step() + 1
         self._xmlroot = cElementTree.parse(self._filename + ".pvd").getroot()
+        self._entry_lines = ['    <DataSet timestep=%s file=%s/>\n' % (quoteattr(item.attrib['timestep']), quoteattr(item.attrib['file']))
+                             for item in self._xmlroot.find('Collection')]

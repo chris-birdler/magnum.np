@@ -1,0 +1,8 @@
+3a323a5 study: domains.py CAL 0.85 +-12 % (wall width 0.5-2x), rotation limit of the switched volume; PROTOKOLL 7.14 with the per-particle smoothing results (completes 09af9d4)
+jobs/alphatest2.txt
+[start] gpu 0  A010c_s904
+[start] gpu 1  A010c_s905
+[start] gpu 2  A010c_s906
+[done] gpu 0  A010c_s904  2.63 h
+[done] gpu 1  A010c_s905  2.75 h
+[done] gpu 2  A010c_s906  2.88 h

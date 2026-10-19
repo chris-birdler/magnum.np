@@ -1,0 +1,38 @@
+1) Verlustdichte P bei 30 MHz [W/cm3], Mittel ± sigma (SE)
+   B[mT]    alpha 0.01                     alpha 0.03                     alpha 0.1                   
+   9            5.5 ± 1.7    (0.97  )        6.22 ± 1.5    (0.86  )        7.63 ± 2.4    (1.2   )  
+   20          31.5 ± 8.1    (4.7   )        36.8 ± 1.1    (0.63  )        41.3 ± 4.2    (2.1   )  
+   50           134 ± 9.3    (5.4   )         145 ± 3.8    (2.2   )         197 ± 7.1    (3.6   )  
+   100          327 ± 45     (26    )         391 ± 34     (19    )         619 ± 30     (15    )  
+   150          754 ± 3.2e+02 (1.8e+02)         889 ± 3.4e+02 (2e+02 )     1.25e+03 ± 84     (42    )  
+
+2) Exponent k in w ~ alpha^k (Regression ln w auf ln alpha ueber alle Laeufe, SE aus Residuen)
+     9 mT: k = +0.14 ± 0.10  (Faktor ueber eine Dekade alpha: 1.37)
+    20 mT: k = +0.12 ± 0.05  (Faktor ueber eine Dekade alpha: 1.33)
+    50 mT: k = +0.17 ± 0.02  (Faktor ueber eine Dekade alpha: 1.49)
+   100 mT: k = +0.29 ± 0.04  (Faktor ueber eine Dekade alpha: 1.93)
+   150 mT: k = +0.25 ± 0.09  (Faktor ueber eine Dekade alpha: 1.77)
+
+3) beta zwischen zwei Amplituden: Mittel ± SE je alpha, Steigung pro Dekade alpha (Regression)
+     9-> 20 mT: 0.01: 2.15±0.20  0.03: 2.23±0.13  0.1: 2.18±0.23   d beta/d log10(alpha) = +0.02 ± 0.26 (0.1 SE)
+    20-> 50 mT: 0.01: 1.60±0.22  0.03: 1.49±0.04  0.1: 1.71±0.05   d beta/d log10(alpha) = +0.12 ± 0.17 (0.8 SE)
+    50->100 mT: 0.01: 1.28±0.07  0.03: 1.43±0.06  0.1: 1.65±0.04   d beta/d log10(alpha) = +0.38 ± 0.08 (5.0 SE)
+   100->150 mT: 0.01: 1.95±0.42  0.03: 1.91±0.40  0.1: 1.74±0.05   d beta/d log10(alpha) = -0.22 ± 0.38 (0.6 SE)
+    20->150 mT: 0.01: 1.56±0.20  0.03: 1.56±0.11  0.1: 1.69±0.04   d beta/d log10(alpha) = +0.14 ± 0.15 (0.9 SE)
+
+4) Qualitaet: Streuung pro Zyklus (w_loop), Energiebilanz w_dis/w_loop, Ereignisse (#)
+   alpha 0.01   9 mT: Streuung  133 %  Bilanz 41.39 44.34 17.42  Ereignisse 1/3
+   alpha 0.01  20 mT: Streuung   12 %  Bilanz 1.06 1.09 0.99  Ereignisse 0/3
+   alpha 0.01  50 mT: Streuung   42 %  Bilanz 0.94 4.07 0.98  Ereignisse 2/3
+   alpha 0.01 100 mT: Streuung   19 %  Bilanz 0.89 1.04 0.99  Ereignisse 0/3
+   alpha 0.01 150 mT: Streuung   36 %  Bilanz 0.96 0.97 1.04  Ereignisse 0/3
+   alpha 0.03   9 mT: Streuung  116 %  Bilanz 38.88 25.80 7.22  Ereignisse 3/3
+   alpha 0.03  20 mT: Streuung   10 %  Bilanz 1.02 0.98 1.00  Ereignisse 0/3
+   alpha 0.03  50 mT: Streuung   23 %  Bilanz 0.96 3.72 1.03  Ereignisse 1/3
+   alpha 0.03 100 mT: Streuung   14 %  Bilanz 1.02 1.08 1.00  Ereignisse 0/3
+   alpha 0.03 150 mT: Streuung   15 %  Bilanz 1.00 0.99 1.04  Ereignisse 1/3
+   alpha 0.1    9 mT: Streuung   75 %  Bilanz 23.42 6.73 1.89 22.82  Ereignisse 1/4
+   alpha 0.1   20 mT: Streuung    3 %  Bilanz 1.00 1.02 1.00 1.00  Ereignisse 0/4
+   alpha 0.1   50 mT: Streuung    5 %  Bilanz 1.01 0.99 1.00 1.01  Ereignisse 0/4
+   alpha 0.1  100 mT: Streuung    6 %  Bilanz 1.01 1.00 0.99 1.00  Ereignisse 1/4
+   alpha 0.1  150 mT: Streuung    3 %  Bilanz 1.00 1.00 1.00 0.99  Ereignisse 1/4

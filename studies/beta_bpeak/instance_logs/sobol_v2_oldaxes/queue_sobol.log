@@ -1,0 +1,46 @@
+2026-10-06 19:11:20 chain (re)start at 181b9ff PLAN 4.0 re-check fixes (numbers, terms, units); run_queue: retry after a gate retry resumes
+[start] gpu 0  K1_0
+[start] gpu 1  K2_0
+[start] gpu 2  K3_0
+[start] gpu 3  K4_0
+[done] gpu 0  K1_0  1.30 h
+[start] gpu 0  S005
+[done] gpu 2  K3_0  1.31 h
+[start] gpu 2  S028
+[done] gpu 1  K2_0  3.66 h
+[start] gpu 1  S048
+[done] gpu 2  S028  2.37 h
+[start] gpu 2  S053
+[done] gpu 3  K4_0  3.84 h
+[start] gpu 3  S091
+[done] gpu 0  S005  2.86 h
+[start] gpu 0  C6
+[done] gpu 1  S048  1.96 h
+[start] gpu 1  S039
+[done] gpu 3  S091  2.04 h
+[start] gpu 3  K2_2
+[done] gpu 0  C6  2.08 h
+[start] gpu 0  S078
+[done] gpu 2  S053  2.67 h
+[start] gpu 2  S089
+[done] gpu 1  S039  1.32 h
+[start] gpu 1  S046
+[done] gpu 2  S089  1.44 h
+[start] gpu 2  S075
+[done] gpu 0  S078  2.36 h
+[start] gpu 0  S072
+[done] gpu 3  K2_2  3.54 h
+[start] gpu 3  S057
+[done] gpu 0  S072  1.39 h
+[start] gpu 0  S050
+[done] gpu 2  S075  2.72 h
+[start] gpu 2  K3_1
+[done] gpu 1  S046  3.70 h
+[start] gpu 1  S074
+[done] gpu 3  S057  2.08 h
+[start] gpu 3  S082
+[done] gpu 2  K3_1  1.26 h
+[start] gpu 2  S035
+[done] gpu 1  S074  1.72 h
+[start] gpu 1  S068
+2026-10-07 07:57:22 chain stopped by Chris (stress-axis set not isotropic, PROTOKOLL 7.36)

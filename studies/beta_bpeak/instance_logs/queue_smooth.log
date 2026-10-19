@@ -1,0 +1,22 @@
+adc508a study: relaxation of the virgin state to convergence (energy criterion, logged history), relaxtest jobs (step 1d); finding: 9 mT stage not steady at 1 um with the fixed relaxation
+jobs/smoothtest.txt
+[start] gpu 0  S300_dx3f_s1_b9
+[start] gpu 1  S300_dx3f_s1_b50
+[start] gpu 2  S300_dx3f_s2_b9
+[start] gpu 3  S300_dx3f_s2_b50
+[done] gpu 1  S300_dx3f_s1_b50  0.53 h
+[start] gpu 1  S300_dx3f_s3_b9
+[done] gpu 0  S300_dx3f_s1_b9  0.53 h
+[start] gpu 0  S300_dx3f_s3_b50
+[done] gpu 2  S300_dx3f_s2_b9  0.53 h
+[start] gpu 2  S212_dx3f_s911
+[done] gpu 3  S300_dx3f_s2_b50  0.54 h
+[start] gpu 3  S212_dx3f_s912
+[done] gpu 3  S212_dx3f_s912  0.34 h
+[start] gpu 3  S212_dx3f_s913
+[done] gpu 2  S212_dx3f_s911  0.35 h
+[start] gpu 2  S212_dx3f_s914
+[done] gpu 1  S300_dx3f_s3_b9  0.53 h
+[done] gpu 0  S300_dx3f_s3_b50  0.53 h
+[done] gpu 3  S212_dx3f_s913  0.32 h
+[done] gpu 2  S212_dx3f_s914  0.34 h

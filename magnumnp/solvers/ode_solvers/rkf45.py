@@ -16,6 +16,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import math
 import torch
 from magnumnp.common import logging
 
@@ -52,19 +53,24 @@ class RKF45(object):
         return x+dx, t+dt, rk_error
 
     def _optimal_stepsize(self, x, err, atol, rtol):
-        norm = torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)
-        if torch.isnan(norm):
+        # single device sync per attempted step; all step-size control
+        # afterwards is plain python float arithmetic
+        norm = float(torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf))
+        if math.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
         if norm > 1.1:
             # decrease step, no more than factor of 5, but a fraction S more
             # than scaling suggests (for better accuracy)
-            r = self._headroom / torch.pow(norm, 1.0/self._order)
+            r = self._headroom / norm**(1.0/self._order)
             if (r < self._minscale):
                 r = self._minscale
         elif norm < 0.5:
             # increase step, but no more than by a factor of 5
-            r = self._headroom / torch.pow(norm, 1.0/(self._order+1.0));
+            if norm > 0.:
+                r = self._headroom / norm**(1.0/(self._order+1.0))
+            else:
+                r = self._maxscale
             if r > self._maxscale: # increase no more than factor of 5
                 r = self._maxscale
             if r < 1.: # don't allow any decrease caused by S<1
@@ -75,24 +81,25 @@ class RKF45(object):
         dt_opt = self._dt * r
         if dt_opt > self._maxstep:
             dt_opt = self._maxstep
-        return float(dt_opt)
+        return dt_opt
 
     def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
-        t1 = t + dt
-        while t < t1:
+        remaining = float(dt) # track remaining time in python to avoid device syncs
+        while remaining > 0.:
             _x1, _t1, err = self._try_step(t, x, **kwargs)
             if atol == None:
                 atol = self._atol
             dt_opt = self._optimal_stepsize(x, err, atol, rtol or self._rtol)
-            if self._dt > dt_opt or self._dt > t1 - t:
+            if self._dt > dt_opt or self._dt > remaining:
                 # step size was too large, retry with optimal stepsize
-                self._dt = min(dt_opt, t1 - t)
-                logging.debug("REVERT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, t))
+                self._dt = min(dt_opt, remaining)
+                logging.debug("REVERT step: %g, new step size: %g", self._dt, dt_opt)
             else:
                 # accept step, adapt stepsize for next step
+                remaining -= self._dt
                 x = _x1
                 t = _t1
-                logging.debug("ACCEPT step: %g, new step size: %g, time: %g" % (self._dt, dt_opt, t))
+                logging.debug("ACCEPT step: %g, new step size: %g", self._dt, dt_opt)
                 self._dt = dt_opt
                 kwargs["state"]._step += 1
         return t, x

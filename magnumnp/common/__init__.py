@@ -17,6 +17,7 @@
 #
 
 from magnumnp.common.constants import *
+from magnumnp.common.cow import *
 from magnumnp.common.logging import *
 from magnumnp.common.material import *
 from magnumnp.common.mesh import *
@@ -28,6 +29,7 @@ from magnumnp.common.time_interpolator import *
 from magnumnp.common.utils import *
 
 __all__ = (["constants"] +
+           cow.__all__ +
            logging.__all__ +
            material.__all__ +
            mesh.__all__ +

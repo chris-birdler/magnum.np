@@ -60,10 +60,11 @@ def krueger_g(x, y, z, dx, dy, dz):
 def dipole_g(x, y, z, dx, dy, dz):
     R = sqrt(x**2 + y**2 + z**2)
     res = -z/R**3
-    res[0,0,0] = 0.
+    res[(x == 0.) & (y == 0.) & (z == 0.)] = 0. # only the true self-term is undefined (replaced by the Krueger near-field)
     return res * dx*dy*dz / (4.*np.pi)
 
 def oersted_g(x, y, z, dx, dy, dz, p):
+    x, y, z = torch.broadcast_tensors(x, y, z) # no-op for already dense inputs
     res = dipole_g(x, y, z, dx, dy, dz)
     near = (x**2 + y**2 + z**2) / (dx**2 + dy**2 + dz**2) < p**2
     res[near] = krueger_g(x[near], y[near], z[near], dx, dy, dz)
@@ -82,22 +83,40 @@ class OerstedField(FieldTerm):
 
     :param p: number of next neighbors for near field via Krueger's equations (default = 20)
     :type p: int, optional
+    :param chunk_cells: chunk size (in cells) for the kernel setup; bounds the size of
+        the temporaries during initialization (default = 1024**2)
+    :type chunk_cells: int, optional
+    :param kernel_device: device used to evaluate the kernel during setup
+        (default: the simulation device); pass "cpu" to minimize device memory
+    :type kernel_device: str, optional
     """
-    def __init__(self, p = 20, cache_dir = None):
+    def __init__(self, p = 20, cache_dir = None, chunk_cells = 1<<20, kernel_device = None):
         self._p = p
         self._cache_dir = cache_dir
+        self._chunk_cells = chunk_cells
+        self._kernel_device = kernel_device
 
     def _init_K_component(self, state, perm, func):
         # dipole far-field
         dx = np.array(state.mesh.dx)
 
+        # the kernel is evaluated in double precision in bounded chunks (see
+        # DemagField._init_N_component); 1-D coordinate vectors + broadcasting
+        # replace the full padded meshgrids
+        device = torch.device(self._kernel_device) if self._kernel_device is not None else state.device
         shape = [1 if n==1 else 2*n for n in state.mesh.n]
-        ij = [torch.fft.fftfreq(n,1/n) for n in shape] # local indices
-        ij = torch.meshgrid(*ij,indexing='ij')
-        x, y, z = [ij[ind]*dx[ind] for ind in perm]
+        coords = []
+        for i, n in enumerate(shape):
+            v = torch.fft.fftfreq(n, 1/n, dtype=torch.float64, device=device) * dx[i] # local indices
+            coords.append(v.reshape([n if j == i else 1 for j in range(3)]))
+        x, y, z = [coords[ind] for ind in perm]
         dx = [dx[ind] for ind in perm]
 
-        Kc = func(x, y, z, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
+        Kc = torch.zeros(shape, dtype=torch.float64, device=device)
+        nc = max(1, int(self._chunk_cells) // max(1, shape[1]*shape[2]))
+        for i0 in range(0, shape[0], nc):
+            xs, ys, zs = [c[i0:i0+nc] if ind == 0 else c for ind, c in zip(perm, (x, y, z))]
+            Kc[i0:i0+nc] = func(xs, ys, zs, *dx, self._p) # TODO: handle PBCs and non-equidistant grids
 
         dim = [i for i in range(3) if state.mesh.n[i] > 1]
         if len(dim) > 0:
@@ -112,18 +131,21 @@ class OerstedField(FieldTerm):
         name = "/K_%s.pt" % str(state.mesh).replace(" ","")
         if self._cache_dir != None and os.path.isfile(self._cache_dir + name):
             [Kxy, Kyz, Kxz] = torch.load(self._cache_dir + name, map_location=state.device)
+            cdtype = complex_dtype[torch.get_default_dtype()]
+            if Kxy.dtype != cdtype: # cache file was written at a different precision
+                if Kxy.dtype.itemsize < cdtype.itemsize:
+                    logging.warning("[OERSTED]: Cached kernel '%s' has lower precision (%s) than the current run (%s). Delete it to recompute at full precision." % (self._cache_dir + name, Kxy.dtype, cdtype))
+                [Kxy, Kyz, Kxz] = [K.to(dtype=cdtype) for K in [Kxy, Kyz, Kxz]]
             logging.info("[OERSTED]: Use cached Oersted kernel from '%s'" % (self._cache_dir + name))
         else:
             dtype = torch.get_default_dtype()
-            torch.set_default_dtype(torch.float64) # always use double precision
             time_kernel = time()
 
-            Kxy = self._init_K_component(state, [0,1,2], oersted_g).to(dtype=complex_dtype[dtype])
-            Kyz = self._init_K_component(state, [1,2,0], oersted_g).to(dtype=complex_dtype[dtype])
-            Kxz = self._init_K_component(state, [2,0,1], oersted_g).to(dtype=complex_dtype[dtype])
+            Kxy = self._init_K_component(state, [0,1,2], oersted_g).to(dtype=complex_dtype[dtype], device=state.device)
+            Kyz = self._init_K_component(state, [1,2,0], oersted_g).to(dtype=complex_dtype[dtype], device=state.device)
+            Kxz = self._init_K_component(state, [2,0,1], oersted_g).to(dtype=complex_dtype[dtype], device=state.device)
 
             logging.info(f"[OERSTED]: Time calculation of oersted kernel = {time() - time_kernel} s")
-            torch.set_default_dtype(dtype) # restore dtype
 
             # cache Oersted tensor
             if self._cache_dir != None:
