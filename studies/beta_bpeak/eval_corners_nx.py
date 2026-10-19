@@ -117,10 +117,11 @@ def reading(db, by_corner):
     return "not determined", s
 
 
-def main(root=R):
+def main(root=R, arm=CJ.NX_SUFFIX):
+    """arm: suffix of the new runs (default _nx, the corner test; _ad: option C, PROTOKOLL 7.118)."""
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     runs = [n.replace(CJ.NX_SUFFIX, "") for n, _ in CJ.corner_newell_lines()]
-    W = {n: (lnw(old_dir(root, n)), lnw(root / (n + CJ.NX_SUFFIX))) for n in runs}
+    W = {n: (lnw(old_dir(root, n)), lnw(root / (n + arm))) for n in runs}
     B = {n: beta_pair(o, nw) for n, (o, nw) in W.items()}
     db = [B[n][1] - B[n][0] for n in runs]
     by_c = {c: [B[n][1] - B[n][0] for n in runs if n.startswith(c + "_")] for c in CJ.CORNERS_NX}
@@ -148,16 +149,16 @@ def main(root=R):
                        else "–") for k, b in enumerate(AD.AMPS_MT)) + "."]
     L += ["", "Mean Δβ over the runs: %s. **Reading: %s.**" % (
         "%+.3f ± %.3f (SE, n %d; 90 %% CI %+.3f … %+.3f)" % (s[0], s[1], s[4], s[2], s[3]) if s else "–", key)]
-    L += info_lines(root, runs, W)
+    L += info_lines(root, runs, W, arm)
     print("\n".join(L))
 
 
-def info_lines(root, runs, W):
+def info_lines(root, runs, W, arm=CJ.NX_SUFFIX):
     """PLAN 4.13 information parts: S9 flags, Δβ without the flagged stages, S5 energy-terms check, relaxation."""
     L = ["", "## Information (PLAN 4.13)", ""]
     fl, Wf, bal = {}, {}, {k: [] for k in range(len(AD.AMPS_MT))}
     for n in runs:
-        d = root / (n + CJ.NX_SUFFIX)
+        d = root / (n + arm)
         sts = measured_stages(d)
         f = [stage_flags(s) for s in sts]
         fl[n] = f
@@ -184,7 +185,7 @@ def info_lines(root, runs, W):
                  "%.4f" % np.median(np.abs(r[:, 2])), "%.4f" % np.abs(r[:, 2]).max()) if r is not None else ("–",) * 3)))
     it = []
     for n in runs:
-        d = root / (n + CJ.NX_SUFFIX) / "summary.json"
+        d = root / (n + arm) / "summary.json"
         if d.exists():
             i = json.loads(d.read_text()).get("init", {})
             it.append("%s %s" % (n, i.get("relax_iterations", "–")))

@@ -74,11 +74,12 @@ def fmt(v, f="%.2f"):
     return " ".join(f % x if np.isfinite(x) else "–" for x in np.atleast_1d(v))
 
 
-def main(root=R):
+def main(root=R, arm=CJ.NX_SUFFIX):
+    """arm: suffix of the new runs (default _nx, the corner test; _ad: option C, PROTOKOLL 7.118)."""
     analyze.STEADY_TAIL, analyze.STEADY_MIN = AD.BAL_EVENT, 2
     u = U.units()
     lnF = math.log(u["Kd"] * U.F_REL_DEFAULT * u["f_M"] / 1e6)
-    D = {n: (record(EN.old_dir(root, n), lnF), record(root / (n + CJ.NX_SUFFIX), lnF)) for n in RUNS}
+    D = {n: (record(EN.old_dir(root, n), lnF), record(root / (n + arm), lnF)) for n in RUNS}
     L = ["# Corner test: further evaluations, old against new (eval_corners_fields.py, descriptive)", "",
          "Old: DemagFieldPBC, atol 1e-5 (eval_corners_nx.old_dir); new: setup of PLAN 4.13. Mean over the 3 seeds of a "
          "corner; amplitudes 9, 20, 35, 50, 70, 100, 150 mT.", ""]

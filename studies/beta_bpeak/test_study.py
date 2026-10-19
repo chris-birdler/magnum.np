@@ -2495,3 +2495,22 @@ def test_bloch_smooth_cut():
                 "init_from", "init_wait_h", "bloch_smooth", "b_list", "n_amp", "snap_phases", "snap_cycles", "snap_mT",
                 "acc", "acc_harm", "keep_stage_ckpt"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+
+
+def test_eval_corners_ad_window_beta():
+    """eval_corners_ad.window_beta (Chris 2026-10-19, three-arm corner evaluation): on synthetic ln w = c + β ln B it
+    returns β in each window; all arrays use the same amplitudes; a missing amplitude in the 9 … 50 mT window gives NaN
+    (all 4 needed), in the full window at most 1 may miss (at least 6 of 7)."""
+    import eval_corners_ad as EA
+    x = np.log(EA.AMPS)
+    a, b = -3.0 + 2.3 * x, 1.0 + 1.8 * x
+    for w in ("full", "low", "high"):
+        assert np.allclose(EA.window_beta([a, b], w), [2.3, 1.8])
+    c = b.copy()
+    c[1] = np.nan                                       # 20 mT missing in one run
+    assert np.all(np.isnan(EA.window_beta([a, c], "low")))
+    assert np.allclose(EA.window_beta([a, c], "full"), [2.3, 1.8])
+    d = c.copy()
+    d[5] = np.nan                                       # a second amplitude missing: 5 of 7
+    assert np.all(np.isnan(EA.window_beta([a, d], "full")))
+    assert np.allclose(EA.window_beta([a, d], "high")[0], np.nan, equal_nan=True)
