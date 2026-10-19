@@ -6331,6 +6331,122 @@ count and the share of the samples with at least one BP.
   the same. The unit tests and two smoke runs passed (7.114).
 - Credit at 05:05: 23.72 $.
 
+### 7.116 Smoothing of Bloch points: test on the relaxed virgin states stopped, test after one AC pass in the queue; corner runs first (2026-10-19)
+
+All times UTC. Terms as in 7.112 (V, K_d), 7.114 and 7.115 (BP, prepared state, pass, clean, option C, attempt). New
+terms: smoothing = the method of run_loops --bloch_smooth N (below); cut = the change of m in the tubes; step = one cut
+and the relaxation after it.
+
+**Why.** Option C gives a new random start if the prepared state keeps a BP. After 3 attempts a run with a BP is
+marked (7.115). Smoothing is to be the last stage of option C in the main study, for a run that keeps a BP after its 3
+attempts (decision of Chris, about 09:55). The corner runs have not needed it so far: 10 of 12 have a clean prepared
+state (K1_2_ad is in its preparation, K3_2_ad waits).
+
+**Method** (commit eba2dfd; unit test test_bloch_smooth_cut). Each BP gets a tube of radius r cells from its cube to
+the nearest surface cell of its particle. The charge of a BP can leave the particle only at its surface. The cut gives
+all cells of the tube one direction of m: the mean of the cells just behind the BP, on the side away from the surface.
+Then the relaxation runs. If a BP remains, the next step uses r + 1 cell. N 3 gives at most 3 steps, with r 2, 3 and 4
+cells. In option C, smoothing starts only if the relaxation before it converged. Two variants failed on synthetic
+fields before the runs and are not used: a harmonic smoothing of the tube (the BP formed again at its old cube) and one
+tube between the two points of a pair (the charges moved to the wall of the tube). The help text of --bloch_smooth
+still named the pair tube; commit 9bed80d corrects the text (no change of the code).
+
+**Test on the relaxed virgin states** (jobs/smooth_test.txt, conv_jobs.smooth_lines, eval_smooth.py main).
+- Each run loads the relaxed virgin state of a corner run with BPs (<run>_nx/init.pt, no AC pass), smooths with N 3
+  and runs the 9 mT stage. 9 runs were planned. No cost estimate was recorded before the runs. Start 10:35.
+- Reading: "works" if at least 3 runs are clean. This rule is not the rule of 7.114 (all test runs clean). It was part
+  of the plan that Chris approved at about 09:55.
+- Clean in this test and in the test below: no BP after the last relaxation, no BP at any sample of the 9 mT stage,
+  and a converged relaxation. The remanence criterion of 7.114 is not part of these tests.
+- Data from the box logs, summary.json and bloch_00_amp00.csv. The run folders are not downloaded yet.
+
+| run | BPs in the loaded state | BPs after the cut, step 0 / 1 / 2 | BPs after the relaxation, step 0 / 1 / 2 | 9 mT stage: largest count (samples with a BP) | GPU-h |
+|---|---|---|---|---|---|
+| K1_2_nx_sm | 1 | 1 / 1 / – | 1 / 0 / – | 0 (0 of 1799) | 0.45 |
+| K2_0_nx_sm | 9 | 11 / 8 / 8 | 4 / 4 / 6 | 6 (1799 of 1799) | 1.42 |
+| K2_1_nx_sm | 5 | 6 / 6 / 2 | 5 / 2 / 1 | runs at 14:07 | – |
+
+- Clean: 1 of 3 runs (K1_2_nx_sm).
+- In K1_2_nx_sm the cut of step 0 (tube length 20.9 cells) moved the BP by about 2 cells only. Step 1 removed it.
+  E / (K_d V): loaded 1.7475·10⁻³, after step 1 1.7320·10⁻³ (n 1).
+- In 5 of 8 steps (n 2 runs: K2_0, K2_1) the count after the cut is larger than before it (K2_0: 9 → 11, 4 → 8,
+  4 → 8). Thus the cut can make new BPs. Where they form is not known: summary.json has the positions before the cut
+  and after the relaxation, not after the cut.
+- **Decision of Chris (about 13:45): this test stops** after the 3 runs that had started. The 6 other runs (K2_2,
+  K3_1, K3_2, K4_0, K4_1, K4_2) do not run. Reason: in option C, smoothing acts after the AC pass. After the AC pass
+  of attempt 0 the option C runs had 2 BPs (K3_1_ad, a pair), 1 BP (K4_0_ad, K2_2_ad) or 0 BPs (K1_0_ad, K1_1_ad,
+  K3_0_ad, K4_2_ad), not up to 9 BPs as in the relaxed virgin state. The stopped test has no reading (3 of 9 runs).
+
+**Test of smoothing after one AC pass** (decision of Chris, option 1 of 2; conv_jobs.smooth_ad_lines,
+jobs/smooth_ad_test.txt, commit d78308b; names <run>_sm). Option 2, not chosen: load saved states after the AC pass
+and smooth them. It is faster, but it is not the sequence of the main study, and not all of these states are saved.
+- Runs: the 3 option C runs whose attempt 0 (the random start, the relaxation, AC from 300 mT, the relaxation) kept
+  BPs: K3_1_ad (2, a pair; 7.115), K4_0_ad (1) and K2_2_ad (1) (box logs, stdout.log "[bloch] attempt 0").
+- Each test run uses the option C line of its run with one attempt (--bloch_free_tries 1) and --bloch_smooth 3. It
+  runs only the 9 mT stage, without snapshots, accumulators and stage checkpoints (--keep_stage_ckpt). Sequence: the
+  random start, the relaxation, the AC pass, the relaxation; if the state then has a BP, smoothing; then the 9 mT
+  stage.
+- All other arguments are equal to the line of the option C run (checked argument by argument against
+  jobs/corners_ad300.txt; the seed, the seed of the random start and the AC amplitude are the same). Thus we expect
+  the state of attempt 0 with its BP again. Evidence (n 1): attempt 0 of K3_1_ad repeated the random start of K3_1_nx,
+  and after the AC pass it had the BP pair again, as K3_1_nx_pd300 (which loaded K3_1_nx/init.pt).
+- Reading (fixed before the runs; eval_smooth.py main_ad). A run is "tested" if its state after the AC pass has a BP.
+  Clean as above. Then:
+  - "works": all tested runs clean;
+  - "does not work": at least one tested run not clean;
+  - "not determined": no run tested;
+  - "open": a run has no DONE file. Example: a relaxation does not converge, run_loops ends with exit code 3, and the
+    queue repeats the run once with a larger iteration limit (7.33).
+  The report gives the number of tested runs. "Works" can rest on fewer than 3 runs.
+- Consequence: after the result Chris decides if smoothing becomes the last stage of option C in the main study. If
+  K1_2_ad or K3_2_ad keeps a BP in attempt 0, a decision of Chris is necessary to add it to the test.
+- Cost (estimate from the option C runs; the relaxation after the AC pass is not timed separately): virgin relaxation
+  0.19 … 0.34 h at d/l_ex 212 and 1.32 h at d/l_ex 300 (K4_2_ad); AC pass 0.33 … 0.38 h and 0.95 h; smoothing and the
+  9 mT stage 0.45 … 1.42 h (first test). Thus about 1 … 2 GPU-h for K3_1 and 3 … 4 GPU-h each for K4_0 and K2_2,
+  about 7 … 10 GPU-h in all, 0.7 … 1.0 $ (0.10 $ per GPU-h). The estimate given to Chris before his decision was
+  about 5 GPU-h (0.5 $). It was low, because it did not count the virgin relaxation and the AC pass at d/l_ex 300.
+- Tests: test_protocol_s checks the new lines. The study suite in a new laptop venv: 115 passed, 3 skipped, 3 failed
+  (statsmodels missing). After the install of requirements-analysis.txt the 3 tests passed (exit code 0).
+
+**Corner runs of option C** (state 14:07, box logs and bloch_<i>_<stage>.csv; data not downloaded except K2_0_ad,
+K2_1_ad and K3_1_ad).
+- Finished: K1_0, K1_1, K2_0, K2_1, K3_0, K3_1, K4_1 and K4_2 (_ad), 8 of 12. K4_2_ad ended at 13:38:47.
+- Running: K2_2_ad (150 mT stage), K4_0_ad (100 mT stage), K1_2_ad (since 13:41, preparation). In the queue: K3_2_ad.
+- BPs in the cycles: K1_0_ad, K1_1_ad, K3_0_ad, K4_1_ad and K4_2_ad have 0 BPs at all samples of all 7 stages.
+  K4_0_ad has 0 BPs in the stages 9 … 70 mT. K2_2_ad has 0 BPs in the stages 9 … 100 mT and up to 1 BP in the 150 mT
+  stage (83 of 514 samples so far). Thus all 3 K2 runs have BPs in the cycles at large B (K2_0_ad and K2_1_ad: 7.115).
+- Code commit (config.json): K1_0_ad and K4_1_ad 143535f; K1_1_ad, K3_0_ad, K4_2_ad, K2_2_ad and K4_0_ad b325736;
+  K1_2_ad eba2dfd. The dispatcher worktree is at eba2dfd since 10:14, thus K3_2_ad will also run at eba2dfd. From the
+  diff b325736 → eba2dfd: with --bloch_smooth 0 the sequence of option C is the same. eba2dfd adds the option,
+  smoothing in option C and smoothing after --init_from.
+
+**Operation.**
+- Decision of Chris (about 13:30): the corner runs start before the smoothing test.
+- The running queue loads each job file once and keeps the order in memory. A further job file with a smaller priority
+  number (an earlier start) would leave the old entries of K1_2_ad and K3_2_ad in the queue. They would start a second
+  time in the same run folder, because run_loops has no lock on a run folder. Thus I changed the order with 2 restarts
+  of the dispatcher, the same way as in 7.115:
+  1. stop the queue process, then the dispatcher and the post-processing, by PID; the running jobs continue;
+  2. check that the lock of the dispatcher is free;
+  3. move the old job files to spool/archive_20261019/;
+  4. start the dispatcher again; submit only jobs that had not started (checked: no run folder of these names).
+- Restart 1 (13:37 … 13:39): 10_c8d.jobs (K1_2_ad, K3_2_ad) and 20_smoothb.jobs (the 6 tests that had not started)
+  replaced 30_c8c.jobs and 20_smooth.jobs. K1_2_ad started on GPU 2 at 13:41.
+- Restart 2 (13:56 … 13:57): 10_c8e.jobs (K3_2_ad) and 20_smoothad.jobs (K3_1_ad_sm, K4_0_ad_sm, K2_2_ad_sm) replaced
+  10_c8d.jobs and 20_smoothb.jobs.
+- The code of the dispatcher stays eba2dfd. run_loops.py is the same in d78308b. Only the job file came from d78308b
+  (md5 on the box equal to the local file).
+- No queue supervises K4_0_ad, K2_2_ad, K2_1_nx_sm and K1_2_ad: no retry and no timeout. The new queue does not log
+  their end; their DONE file is the record.
+- The disk guard of the new queue does not count the bytes still to come of these 4 runs: 10.2 GB at 14:07
+  (run_queue.expected_bytes minus the bytes in the folder; K4_0_ad 4.0 GB, K2_2_ad 3.4 GB, K1_2_ad 2.9 GB). Free
+  disk at 14:07: 16 GB. K3_2_ad needs about 2.9 GB (estimate: as K1_2_ad, the same d/l_ex). The post-processing
+  deletes the snapshots of a finished run after its analysis.
+- Before restart 1, the permission check of this session blocked the stop command three times. The command did not
+  run; the box state at 13:34 was unchanged.
+- Credit at 13:26: 20.33 $ (23.72 $ at 05:05, thus about 0.41 $/h).
+- Report and md5: after the download, runs/smooth_report.md (eval_smooth.py) and an md5 manifest of the run files.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
