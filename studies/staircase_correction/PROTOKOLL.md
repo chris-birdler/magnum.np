@@ -673,3 +673,27 @@ passed (largest deviation from φ (1 − φ)/3: 1.2·10⁻⁵).
   (0.11 |E_K|) and 1.0·10⁻³ K_d for K4 (0.54 |E_K|) (estimates).
 - The volume fraction alone changes its sign of error between q = 2 (−0.45 S) and q = 4 (+0.05 S of the larger S);
   its field error in the layer stays about 0.3 of that of the voxel model (P3: 0.004).
+
+### 3.9 Stage B on the geometry of the dynamic arms (d/l_ex 96, φ 0.55): the correction holds; the staircase effect is about 1 … 2 |E_K| (2026-10-20, night mandate)
+
+**Decision under the night mandate.** Stage B of PLAN.md was planned on the B0b geometry (φ 0.65); after D2 the
+dynamic arms use φ 0.55. Stage B therefore uses the geometry and the states of the dynamic arms: the prepared states
+(init.pt) of the four finished D3 runs (d/l_ex 96, φ 0.55, L_eff 12 l_ex, r_p 0, dx 3, Newell solver with full PBC,
+option C, seeds 941 … 944). Production setting on both meshes (fine meshes 96³ and 192³), centroid term, p = 1 … 3.
+Files: results/stageB_static_A_d96_phi0.55_q2_c.json and _q4_c.json.
+
+- Step 2 passed for all four states (total energy against the run record within 4·10⁻⁹ K_d; |m| − 1 at most
+  1.5·10⁻⁷; 0 Bloch points). Thus init.pt holds the prepared state of the option-C run.
+- R0 passed (q = 2: 8 736 modified, 4 704 new cells; q = 4: 13 760 and 7 200; φ_vox 0.54948, φ_f 0.55241 / 0.54971).
+  R1 passed (largest deviation 1.3·10⁻⁸).
+
+| q | S (K_d), 4 states | S / \|E_K\| | E_frac − E_ref | P3: e_E / e_h | L3: e_E / e_h | P2: e_E / e_h | L2: e_E / e_h |
+|---|---|---|---|---|---|---|---|
+| 2 | 1.398 … 1.420 e-3 | 1.03 … 1.10 | −5.8e-4 | 0.012 … 0.013 / 0.002 … 0.003 | 0.013 … 0.015 / 0.053 … 0.055 | 0.036 … 0.037 / 0.007 | 0.036 … 0.039 / 0.054 … 0.056 |
+| 4 | 2.569 … 2.611 e-3 | 1.89 … 2.02 | +3.1e-4 | 0.010 / 0.002 … 0.003 | 0.010 … 0.011 / 0.055 … 0.056 | 0.027 … 0.028 / 0.007 … 0.008 | 0.027 … 0.029 / 0.056 … 0.058 |
+
+- R2: both forms "sufficient" from p = 2 on, in all four states and for both q.
+- At this geometry (dx/d 0.033, three times coarser relative to the particle than the production geometry) the
+  staircase raises the stray-field energy by about one (q = 2) and two (q = 4) times the anisotropy energy of the
+  state. S(q = 4) / S(q = 2) = 1.84. A strong effect of the correction on the loss is therefore possible in the
+  dynamic arms.
