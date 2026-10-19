@@ -101,10 +101,10 @@ def centroid_field(Nhat, v, d, m, shape=None):
     D_k K = central difference of the kernel along k (i sin w_k in Fourier space). Arrays [N, N, N(, 3)]."""
     N = v.shape[0]
     s = tuple(shape) if shape is not None else (N, N, N)
-    dev = Nhat[0][0].device
-    w = [2 * np.pi * torch.fft.fftfreq(s[0], dtype=torch.float64, device=dev),
-         2 * np.pi * torch.fft.fftfreq(s[1], dtype=torch.float64, device=dev),
-         2 * np.pi * torch.fft.rfftfreq(s[2], dtype=torch.float64, device=dev)]
+    dev, dt = Nhat[0][0].device, torch.real(Nhat[0][0]).dtype
+    w = [2 * np.pi * torch.fft.fftfreq(s[0], dtype=dt, device=dev),
+         2 * np.pi * torch.fft.fftfreq(s[1], dtype=dt, device=dev),
+         2 * np.pi * torch.fft.rfftfreq(s[2], dtype=dt, device=dev)]
     S = [torch.sin(w[0]).reshape(-1, 1, 1), torch.sin(w[1]).reshape(1, -1, 1), torch.sin(w[2]).reshape(1, 1, -1)]
     vm = (v[..., None] * m)
 
@@ -118,10 +118,12 @@ def centroid_field(Nhat, v, d, m, shape=None):
 
     hv = conv(vm)
     h = torch.zeros_like(m)
+    src = [0, 0, 0]
     for k in range(3):
         h += d[..., k:k + 1] * torch.stack([back(1j * S[k] * hv[b]) for b in range(3)], -1)
         hk = conv(vm * d[..., k:k + 1])
-        h -= torch.stack([back(1j * S[k] * hk[b]) for b in range(3)], -1)
+        src = [src[b] + 1j * S[k] * hk[b] for b in range(3)]   # source terms summed in Fourier space
+    h -= torch.stack([back(src[b]) for b in range(3)], -1)
     return h
 
 
@@ -262,17 +264,25 @@ class DemagStaircaseCorrection(LinearFieldTerm):
     :param Ms: saturation magnetisation of the full material [A/m]
     :param form: "pair" (eq. 5) or "local" (eqs. 8 and 9)
     :param periodic: window across the box edge (PBC)
+    :param centroid: far field also with the first moment of the cut cells (centroid_field); needs demag
+    :param demag: the DemagField term of the far field (its kernel is used for the centroid term)
     """
-    def __init__(self, n, occ, q, p, Ms, form="pair", periodic=True):
+    def __init__(self, n, occ, q, p, Ms, form="pair", periodic=True, centroid=False, demag=None):
         if form not in ("pair", "local"):
             raise ValueError("form must be 'pair' or 'local'")
+        if centroid and demag is None:
+            raise ValueError("centroid needs the DemagField term (demag)")
         self._n, self._occ, self._q, self._p = n, occ, q, p
         self._Ms, self._form, self._periodic = float(Ms), form, periodic
+        self._centroid, self._demag = centroid, demag
         self._ready = False
 
     def _setup(self, state):
-        nc = NearCorrection(self._n, self._occ, self._q, self._p, periodic=self._periodic)
+        nc = NearCorrection(self._n, self._occ, self._q, self._p, periodic=self._periodic, centroid=self._centroid)
         dev, dt = state.device, state.dtype
+        if self._centroid:
+            self._v = torch.as_tensor(np.asarray(self._n) / self._q ** 3, device=dev, dtype=dt)
+            self._d = centroid_offsets(self._occ, self._q).to(device=dev, dtype=dt)
         if self._form == "local":
             k = nc.k_local()
             idx = torch.nonzero((k != 0).any(-1)).reshape(-1)
@@ -304,7 +314,13 @@ class DemagStaircaseCorrection(LinearFieldTerm):
             h[self._idx] = sym_matvec(self._k, m[self._idx])
         else:
             h = torch.zeros_like(m).index_add_(0, self._tgt, sym_matvec(self._cf, m[self._src]))
-        return (self._Ms * h).reshape(self._shape + (3,))
+        h = (self._Ms * h).reshape(self._shape + (3,))
+        if self._centroid:
+            dem = self._demag
+            if not hasattr(dem, "_N"):
+                dem._N = dem._init_N(state)
+            h = h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=tuple(dem._shape(state)))
+        return h
 
     def E(self, state, domain = Ellipsis): # without torch.compile, as DemagField.E
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes

@@ -161,3 +161,24 @@ def test_centroid_operator_is_symmetric():
     a = float((v[..., None] * m1 * h(m2)).sum())
     b = float((v[..., None] * m2 * h(m1)).sum())
     assert abs(a - b) <= 1e-11 * (abs(a) + abs(b))
+
+
+@pytest.mark.parametrize("form", ["pair", "local"])
+def test_field_term_with_centroid_equals_static_model(form):
+    """DemagStaircaseCorrection(centroid=True) gives M_s times (window term + centroid far-field term)."""
+    from magnumnp import Mesh, State, DemagField, DemagStaircaseCorrection
+    N, q, Ms = 16, 2, 8e5
+    ids = fcc_box(q * N, 6.0, 0.5)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    nc = NearCorrection(n, occ, q, p=2, periodic=True, centroid=True)
+    m = random_m((N, N, N), 10)
+    state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(1, 1, 1)))
+    state.m = m
+    state.material["Ms"] = torch.as_tensor(n / q ** 3 * Ms).reshape(N, N, N, 1)
+    dem = DemagField(true_pbc=True)
+    dem.h(state)
+    term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form=form, centroid=True, demag=dem)
+    v = torch.as_tensor(n / q ** 3)
+    ref = Ms * ((nc.h_pair(m) if form == "pair" else nc.h_local(m))
+                + centroid_field(dem._N, v, centroid_offsets(occ, q), m))
+    assert float((term.h(state) - ref).abs().max()) <= 1e-10 * Ms

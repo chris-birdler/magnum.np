@@ -104,7 +104,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "init_mode": "block",                                 # 2026-10-18, Bloch points, way 2 (Chris)
             "bloch_free_tries": 0,                                # 2026-10-18, Bloch points (Chris)
             "bloch_smooth": 0,                                    # 2026-10-19, Bloch points (Chris)
-            "staircase": "none", "staircase_q": 2, "staircase_p": 3}  # 2026-10-20, staircase correction (Chris)
+            "staircase": "none", "staircase_q": 2, "staircase_p": 3,  # 2026-10-20, staircase correction (Chris)
+            "staircase_centroid": False}
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -116,7 +117,7 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
-             "bloch_free_tries", "bloch_smooth", "staircase", "staircase_q", "staircase_p"]
+             "bloch_free_tries", "bloch_smooth", "staircase", "staircase_q", "staircase_p", "staircase_centroid"]
 
 
 def parse_args(argv=None):
@@ -140,6 +141,9 @@ def parse_args(argv=None):
                         "tensor (eqs. 8, 9). Needs --surface fraction and a Newell --strayfield")
     g.add_argument("--staircase_q", type=int, default=2, help="sub-cells per axis and cell of the correction")
     g.add_argument("--staircase_p", type=int, default=3, help="half width of the correction window in cells")
+    g.add_argument("--staircase_centroid", action="store_true",
+                   help="far field with the first moment of the cut cells (moment at the centroid of the body part; "
+                        "studies/staircase_correction PROTOKOLL 3.7)")
 
     g = p.add_argument_group("reduced material")
     g.add_argument("--Leff_lex", type=float, default=18.0,
@@ -846,7 +850,7 @@ def main(argv=None):
     d, dx = d_lex * lex, args.dx_lex * lex
     rep = geometry_rep(args)
     if args.staircase != "none" and (args.surface != "fraction" or args.strayfield not in ("newell", "newell_ext")
-                                     or rep != 1 or args.strayfield_cycles == "fd"):
+                                     or rep != 1 or args.strayfield_cycles not in (None, args.strayfield)):
         sys.exit("ERROR: --staircase needs --surface fraction, a Newell --strayfield (also in the cycles) and no "
                  "--geom_dx_lex")
     sub = (args.staircase_q if args.staircase != "none" else 8) if args.surface == "fraction" else 0
@@ -893,7 +897,8 @@ def main(argv=None):
         n_s, pid_s, occ_s = staircase_cells(fcc_box(q_s * N, d, dx / q_s)["ids"], q_s)
         if not (np.array_equal(pid_s, ids.astype(np.int64)) and np.allclose(n_s / q_s**3, geo["frac"], atol=1e-6)):
             sys.exit("ERROR: --staircase: the sub-cells do not agree with the fraction geometry")
-        terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase))
+        terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
+                                                 centroid=args.staircase_centroid, demag=strayfield))
         term_names.insert(1, "demag_corr")
         del n_s, pid_s, occ_s
     n_cubes = [0, 0, 0, 0]
