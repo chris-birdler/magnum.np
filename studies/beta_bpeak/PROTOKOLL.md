@@ -6765,9 +6765,17 @@ data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
   9 … 50 mT: × 1.67 … 1.82 (0.02 … 0.29). Thus the mean factor near 1 hides a clear increase at K4.
 - At K4 the ad runs have the S9 flag ε in 9 of 21 stages: the mean |ε| of the calm tail is up to 0.10 (K4_0 at 35 and
   50 mT), and a single cycle has up to 0.125 (K4_0, 50 mT, cycle 5). 4 of the 9 flagged stages are in 9 … 50 mT (K4_0
-  at 35 and 50 mT, K4_2 at 9 and 35 mT). The energy-terms check gives a small d for these stages. Thus ε is a change
-  of the internal energy over the cycle: the state still changes from cycle to cycle. The K4 loss level of ad at
-  9 … 50 mT can contain this transient (inference, not tested).
+  at 35 and 50 mT, K4_2 at 9 and 35 mT). The energy-terms check gives a small d for these stages, thus ε is a change
+  of the internal energy over the cycle. (Corrected 2026-10-19 after a check of the single cycles; the first version
+  called this a transient.) In 7 of the 9 stages the sign of ε changes at each cycle of the calm tail, and the sum of
+  two neighbouring cycles is small (mean |ε_i + ε_i+1| 0.003 … 0.027; K4_0 at 35 mT: ε +0.087, −0.085, +0.095,
+  −0.097, +0.089). Thus the state alternates between two configurations with a period of 2 cycles, and the energy
+  balance closes over 2 cycles. w_loop changes little (SD of ln w_loop 0.004 … 0.044). The same pattern occurs in
+  11 of the 16 ε-flagged stages of ad and in 11 of the 15 of nx, also at K1, K2 and K3.
+- The higher K4 loss of ad at 9 … 50 mT is a steady level. The drive field and μ_r (about 5) are the same as in nx.
+  In the 9 mT stage of each K4 ad run, cycle 0 has a w_loop near the nx level; w_loop then rises over 2 … 3 cycles
+  (ε −0.40, −0.13 … −0.28, the internal energy rises) and stays constant after that (K4_1 and K4_2 within 1 %). Why
+  the prepared state of option C changes into a state with a higher loss at K4 is not known.
 
 **Fields (descriptive; paired mean ± SE, n 12).**
 - Fundamental share R1 of the dissipation: ad − old +0.17 … +0.24 at 20 … 50 mT and +0.05 … +0.15 at 70 … 150 mT.
