@@ -6604,65 +6604,74 @@ make, not the staircase.
 - Miltat & Donahue 2007: https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=50910; García-Cervera review 2007:
   https://web.math.ucsb.edu/~cgarcia/Papers/Garcia-Cervera_ReviewSEMA.pdf; Abert 2019: https://arxiv.org/pdf/1810.12365
 
-### 7.118 Option C on the 12 corners: Bloch points of the start states and the cycles; smoothing after one AC pass does not work (2026-10-19)
+### 7.118 Option C on the 12 corner runs: Bloch points of the start states and the cycles; smoothing after one AC pass: reading "does not work" (1 tested run, a BP pair) (2026-10-19)
 
-All times UTC. Terms as in 7.114 … 7.116 (BP, prepared state, attempt, clean, smoothing). Option C: the random
-start, the relaxation, AC from 300 mT and the relaxation; if a BP remains, a new random start of the same
-microstructure, at most 3 attempts. Data: summary.json (bloch_tries, bloch_virgin, predemag) and
-bloch_<i>_<stage>.csv (BP count at each sample; the outer cell layer of each particle is not counted, 7.114) of the
-runs <run>_ad. All 12 run folders are local without the state files (.pt, 2.9 GB, kept on the box); md5 of 309 files
-in runs/md5_corners_ad_20261019.txt, equal to the box.
+All times UTC. Terms as in 7.114 … 7.116: BP, prepared state, pass, attempt, clean, smoothing, cut, step, tested.
+Attempts and steps count from 0, as in the logs. Option C uses this sequence: the random start, the relaxation, AC from
+300 mT, the relaxation. If a BP remains, a new random start of the same microstructure follows (at most 3 attempts).
+Data: summary.json (bloch_tries, predemag), stdout.log (BPs of the relaxed random start of each attempt) and
+bloch_<i>_<stage>.csv (BP count at each sample) of the runs <run>_ad. The count leaves out the outer cell layer of each
+particle (7.114). All 12 run folders are local without the state files (.pt, 2.9 GB, kept on the box); md5 of 309
+files in runs/md5_corners_ad_20261019.txt, equal to the box.
 
-**Table: BPs of the 12 corner runs.** Each stage cell gives the largest number of BPs at one sample and, in brackets,
-the share of the samples with at least 1 BP. A stage has 1799 samples (the 9 mT stage of the K4 runs: 2056).
+**Table: BPs of the 12 corner runs.** The bold value is the attempt that gave the prepared state. Each stage cell gives
+the largest number of BPs at one sample and, in brackets, the share of the samples with at least 1 BP. A stage has 7
+cycles × 257 samples = 1799 samples. The 9 mT stage of the K4 runs has 8 cycles (2056 samples), because the second
+drive correction adds a cycle (as in 7.112).
 
-| corner | BPs in the relaxed random start | BPs after AC and relaxation, attempt 1 / 2 / 3 | 9 | 20 | 35 | 50 | 70 | 100 | 150 mT |
+| corner run | BPs in the relaxed random start, attempt 0 / 1 / 2 | BPs after AC and relaxation, attempt 0 / 1 / 2 | 9 | 20 | 35 | 50 | 70 | 100 | 150 mT |
 |---|---|---|---|---|---|---|---|---|---|
 | K1_0 | 0 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K1_1 | 0 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K1_2 | 1 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K2_0 | 9 | **0** (a) | 0 | 0 | 0 | 0 | 0 | 1 (31 %) | 2 (40 %) |
 | K2_1 | 5 | **0** (a) | 0 | 0 | 0 | 0 | 1 (12 %) | 1 (30 %) | 2 (86 %) |
-| K2_2 | 6 (b) | 1 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 1 (16 %) |
+| K2_2 | 5 / 6 | 1 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 1 (16 %) |
 | K3_0 | 0 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| K3_1 | 2 (b) | 2 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| K3_1 | 2 / 2 | 2 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K3_2 | 1 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| K4_0 | 1 (b) | 1 / 1 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| K4_0 | 2 / 6 / 1 | 1 / 1 / **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K4_1 | 2 | **0** (a) | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | K4_2 | 2 | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
 (a) The run started from the prepared state of its AC-300 test run <run>_nx_pd300 (7.114, 7.115). That test had the
-sequence of attempt 1: the same random start, the relaxation, AC from 300 mT, the relaxation.
-(b) summary.json keeps the relaxed random start of the last attempt only. The value is that of attempt 2 (K2_2,
-K3_1) or attempt 3 (K4_0).
+sequence of attempt 0: the relaxed random start of <run>_nx, AC from 300 mT, the relaxation.
 
-- **Prepared states: all 12 clean.** 9 runs were clean after attempt 1, K2_2 and K3_1 after attempt 2, K4_0 after
-  attempt 3. 4 of 16 attempts kept a BP (K2_2 1, K3_1 1, K4_0 2).
+- **All 12 runs are clean** (all 3 criteria of 7.114): 0 BPs in the prepared state, remanence |M| / M_s 0.0004 …
+  0.0058 (limit 0.01), and 0 BPs at all samples of the 9 mT stage.
+- 9 runs were clean in attempt 0, K2_2 and K3_1 in attempt 1, K4_0 in attempt 2. Of the 16 attempts, 4 kept a BP:
+  1 attempt of K2_2, 1 of K3_1 and 2 of K4_0. 3 of the 16 attempts are the AC-300 test runs of note (a).
+- The relaxed random start of attempt 0 has the same number of BPs as the start of the corner run <run>_nx (7.112) in
+  all 12 runs.
 - **Stages 9 … 50 mT: 0 BPs at all 87 123 samples of the 12 runs** (4 corners × 3 microstructures).
-- Stages 70 … 150 mT: BPs only in the 3 K2 runs, from 70 mT (K2_1), 100 mT (K2_0) and 150 mT (K2_2) on; at most 2
-  at one sample. The other 9 runs have 0 BPs at all samples of all 7 stages. The stages with a BP are marked in the
-  evaluation (decision of Chris, 7.115).
-- Limits: n 3 microstructures per corner; the count leaves out the outer cell layer (7.114); "form" in the cycles
-  is an inference (7.115).
+- Stages 70 … 150 mT: BPs occur only in the 3 K2 runs, from 70 mT (K2_1), 100 mT (K2_0) and 150 mT (K2_2) on, at
+  most 2 at one sample. The other 9 runs have 0 BPs at all samples of all 7 stages. The evaluation marks each stage
+  with a BP (decision of Chris, 7.115).
+- Limits: n 3 microstructures per corner; the count leaves out the outer cell layer (7.114).
 - End of the runs (DONE): K3_1 00:15, K2_0 02:05, K2_1 02:21, K4_1 06:52, K1_0 07:08, K3_0 08:13, K1_1 10:33,
   K4_2 13:38, K2_2 14:38, K4_0 15:33, K1_2 16:04, K3_2 16:26. Code commit (config.json): K3_1, K2_0, K2_1 4f558a7;
   K4_1, K1_0 143535f; K1_1, K3_0, K4_2, K2_2, K4_0 b325736; K1_2, K3_2 eba2dfd. With --bloch_smooth 0 the sequence of
   option C is the same in these commits (7.115, 7.116).
 
-**Smoothing after one AC pass (test of 7.116): reading "does not work".**
-- K3_1_ad_sm (done 15:39, 0.97 GPU-h): attempt 1 gave the BP pair again (2 BPs after the AC pass, as attempt 1 of
-  K3_1_ad; n 1). BPs after the cut / after the relaxation: step 1 2 / 2, step 2 3 / 2, step 3 1 / 2. 9 mT stage: 2 BPs
-  at all 1799 samples. Thus the run is tested and not clean.
-- By the rule fixed before the runs ("does not work": at least one tested run not clean) the reading is "does not
-  work". K4_0_ad_sm and K2_2_ad_sm still run (state 17:08). They can only show if smoothing removes a single BP
-  (information, no change of the reading).
+**Smoothing after one AC pass (test of 7.116).**
+- K3_1_ad_sm (done 15:39, 0.97 GPU-h; run folder local, md5 in runs/md5_smooth_ad_20261019.txt): attempt 0 gave the
+  BP pair again (2 BPs after the AC pass, as attempt 0 of K3_1_ad; n 1). BPs after the cut / after the relaxation:
+  step 0 2 / 2, step 1 3 / 2, step 2 1 / 2. 9 mT stage: 2 BPs at all 1799 samples. Thus the run is tested and not
+  clean.
+- Reading: "does not work", by the rule fixed before the runs (at least one tested run not clean). The 2 open runs
+  K4_0_ad_sm and K2_2_ad_sm cannot change this reading. They can only show whether smoothing removes a single BP
+  (information). The tested case is a BP pair; no run with a single BP is tested yet.
+- The report runs/smooth_report.md (eval_smooth.py) follows when the 2 open runs are done.
 
 **Operation.**
-- The queue had no more jobs after the start of the last smoothing test. GPU 2 was idle from 16:04 (end of K1_2_ad)
-  and GPU 1 from 16:26 (end of K3_2_ad) to 17:06.
-- From 17:06, GPU 1 and GPU 2 run the measurement of the time share of the stray field (option 1 of Chris; prof_terms.py,
-  commit e7e2358): K4_2_ad (d/l_ex 300) and K1_0_ad (d/l_ex 212), each from its prepared state, 3 cycles at 9 mT,
-  output runs/PROF_<run>, log /root/prof_<run>.log.
+- After the start of the last smoothing test, the queue had no more jobs. GPU 2 was idle from 16:04 (end of K1_2_ad)
+  and GPU 1 from 16:26 (end of K3_2_ad) to 17:06: 1.7 GPU-h, about 0.17 $ (0.10 $ per GPU-h).
+- Since 17:06, GPU 1 and GPU 2 run a measurement of the stray-field time share. This is the share of the wall time of
+  the drive cycles that the evaluation of the stray field uses. The measurement is option 1 of Chris of 2026-10-19
+  (first measure this share; a test of the time extrapolation of the stray field of the magnum.np upstream branch
+  feature/demag-extrapolation follows only if the share is large).
+- Tool: prof_terms.py, commit e7e2358. Runs: K4_2_ad (d/l_ex 300) and K1_0_ad (d/l_ex 212), each from its prepared
+  state, 3 cycles at 9 mT. Output: runs/PROF_<run>; log: /root/prof_<run>.log.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
