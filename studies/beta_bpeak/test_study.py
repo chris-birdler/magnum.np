@@ -2431,6 +2431,17 @@ def test_protocol_s(tmp_path):
     full = dict(CJ.ad300_lines(src, runs))
     assert len(full) == 12 and all(full[n] == a for n, a in cont + CJ.ad_rest_lines(src, runs))
     assert full["K3_1_ad"] == ad["K3_1_ad"]
+    sa = CJ.smooth_ad_lines(src, runs)                  # Chris 2026-10-19: one AC pass, then the cut
+    assert [n for n, _ in sa] == [n + "_sm" for n in CJ.SA_RUNS]
+    for n, line in sa:
+        tok, ref = shlex.split(line), shlex.split(ad[n[:-3]])
+        assert get_arg(tok, "bloch_free_tries") == ["1"] and get_arg(tok, "bloch_smooth") == ["3"]
+        assert get_arg(tok, "b_list") == ["0.006"] and get_arg(tok, "acc") is None and get_arg(tok, "init_from") is None
+        assert get_arg(tok, "predemag_h") == get_arg(ref, "predemag_h") is not None
+        for k in {t[2:] for t in tok + ref if t.startswith("--")} - {
+                "bloch_free_tries", "bloch_smooth", "b_list", "n_amp", "snap_phases", "snap_cycles", "snap_mT",
+                "acc", "acc_harm", "keep_stage_ckpt"}:
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
 
 
 def test_bloch_smooth_cut():

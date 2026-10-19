@@ -454,6 +454,8 @@ def satstart_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
 
 SM_RUNS = ("K1_2_nx", "K2_0_nx", "K2_1_nx", "K2_2_nx", "K3_1_nx", "K3_2_nx", "K4_0_nx", "K4_1_nx", "K4_2_nx")
 # the corner runs whose relaxed virgin state (init.pt) has Bloch points (census_bloch_nx_v2.json, PROTOKOLL 7.112)
+SA_RUNS = ("K3_1_ad", "K4_0_ad", "K2_2_ad")
+# the option C runs whose first attempt (AC from 300 mT and the relaxation) kept a Bloch point (PROTOKOLL 7.115)
 
 
 def smooth_lines(src="jobs/sobol_corners.txt"):
@@ -468,6 +470,24 @@ def smooth_lines(src="jobs/sobol_corners.txt"):
             t = set_arg(t, k, None)
         t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
         t = set_arg(set_arg(t, "init_from", ["%s/init.pt" % n]), "init_wait_h", ["0.0"])
+        out.append((n + "_sm", " ".join(set_arg(t, "bloch_smooth", ["3"]))))
+    return out
+
+
+def smooth_ad_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """Test of the Bloch-point cut after one AC pass (Chris 2026-10-19; replaces the rest of the test of smooth_lines):
+    the option C line of each run of SA_RUNS with one attempt (--bloch_free_tries 1: the random start, the relaxation,
+    AC from 300 mT, the relaxation) and --bloch_smooth 3 (if a Bloch point remains: at most 3 cuts, each with the
+    relaxation after it), then the 9 mT stage (<run>_sm). All other settings as the option C run, without snapshots and
+    accumulators."""
+    ad = dict(start_lines("ad300", src, runs_dir))
+    out = []
+    for n in SA_RUNS:
+        t = shlex.split(ad[n])
+        for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+            t = set_arg(t, k, None)
+        t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+        t = set_arg(t, "bloch_free_tries", ["1"])
         out.append((n + "_sm", " ".join(set_arg(t, "bloch_smooth", ["3"]))))
     return out
 
@@ -503,7 +523,7 @@ if __name__ == "__main__":
                 initmode_lines() if st == "initmode" else
                 satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
                 ad_rest_lines() if st == "adrest" else
-                smooth_lines() if st == "smooth" else
+                smooth_lines() if st == "smooth" else smooth_ad_lines() if st == "smoothad" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
