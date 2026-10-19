@@ -4191,7 +4191,9 @@ not depend on A at fixed K_eff (it does not explain the shift by the factor 2 of
 Transfer (estimate): real nanocrystalline powders have a much smaller K_eff (a few J/m³ from the grains, Herzer 1990;
 up to some 100 J/m³ with stress). Their internal time scale is then of the order of 0.1 … 5 MHz, and a drive at 30 MHz
 lies above it, in another regime than in the simulation. The frequency results of the simulation may not transfer to a real
-powder.
+powder. (Corrected in 7.106: with a small K_eff, exchange at the particle scale
+and the stress anisotropy are candidates for the restoring field; for particles of about 1 µm the internal frequency
+can lie at about 8 … 22 MHz (estimate); which field sets the onset is open.)
 
 ### 7.95 Frequency data at 9 mT: what was computed, and how accurate (2026-10-14, question of Chris)
 
@@ -4789,7 +4791,8 @@ not set β (7.19, 7.46); the texture now comes from the per-cell accumulators.
 - Cost (estimate from the C′ times: large particle 39 min relaxation and 122 s per cycle, small particle 5 min and 48 s
   per cycle): ≈ 11 GPU h, ≈ 3 h on 4 GPUs, ≈ 1.3 $.
 
-### 7.104 Energy checks after B0b: the staircase surface carries the mesh error; 10 % criterion (2026-10-15)
+### 7.104 Energy checks after B0b: the staircase surface carries the mesh error; 10 % criterion (2026-10-15) (limited in 7.105)
+Note (2026-10-15, 7.105): all stray-field energies in this section are DemagFieldPBC values; 7.105 lists the corrections.
 
 Question of Chris after the B0b reading "stop" (7.102): a loss that does not converge and scatters more on finer meshes
 cannot be physics; find the error. Order of the check: the measuring method, then the code, then the model. All
@@ -4806,7 +4809,8 @@ stress anisotropy of a particle in units of K_eff; the B0b arms F, I and T as in
   commit ecc9537; only a code test): each term converges with the cell size. The exchange energy of a helix approaches
   the continuum value as −10 / −5 / −2.1 % on 3 / 1.5 / 0.75 l_ex. This is the free boundary at the staircase, first
   order in Δx. The stray-field energy of a vortex falls by about half with each halving of Δx. No error is found in the
-  energy terms.
+  energy terms. (Corrected in 7.105: the sentence "No error is found in the energy terms" is wrong; DemagFieldPBC
+  has an error at edges and corners and cell-scale null modes.)
 - Not valid for B0b and not used: the comparison with the smoothed surface and the corrugation test of the same script
   (results/mesh_energy.md, results/mesh_corrugation.md). They used an invented geometry (d/l_ex 48, φ 0.45) and a
   synthetic vortex. Decision of Chris: checks use the geometry and the states of the result. The smoothed surface
@@ -4889,12 +4893,1559 @@ with independent relaxation):
   expected to converge to the value of a cube; no cube run exists. A cube is a different model, not a correction of the
   sphere.
 
-**Status.** The code is not the cause. The staircase surface adds a stray-field energy that falls only about as fast as
+**Status.** The code is not the cause (limited in 7.105: the stray-field term DemagFieldPBC has an error). The staircase surface adds a stray-field energy that falls only about as fast as
 Δx. In the parameter study it is of the size of the anisotropy energy (estimate). Which part of the loss error it
 causes is not shown. The error of one frozen state is a proxy; the pinning comes from the part that differs between
 states. Open decision of Chris (re-scope after 7.102): a particle shape without a curved surface; the results on 3 l_ex
 as a staircase model with these limits; or a GPU with 80 GB (about 286 million cells; one relaxation iteration about
 22 s at the 10 % line; estimates).
+
+### 7.105 Results of the long runs at 60 MHz; demag solver check: DemagFieldPBC has an error at edges and corners and cell-scale null modes, and underestimates the stray-field energy of the B0b states (2026-10-15)
+
+**Long runs at 60 MHz (readings of 7.103).** Files: results/long60.md and results/long60.json; the raw data are local
+(runs/MANIFEST_long60.md5, 81 files, no .pt states). All 9 runs repeat the C′ history bit-identically (largest
+relative difference of w_loop 0). No run has a restart. c_settle and the motion classes are defined in 7.100.
+
+| group (3 seeds) | motion | P of the last 10 cycles / C′ value, seeds 0 / 1 / 2 | reading |
+|---|---|---|---|
+| large particle (K1A10_k, d/l_ex 300), 9 mT | periodic (c_settle 8 / 4 / 7) | 1.02 / 0.99 / 0.98 | the C′ value holds |
+| small particle (K1_k, d/l_ex 212), 20 mT | stays irregular (seed 0 periodic from cycle 34) | 1.01 / 0.98 / 1.01 | the C′ value holds |
+| small particle (K1_k, d/l_ex 212), 35 mT | stays irregular (seed 0 marginal) | 0.97 / 1.03 / 0.99 | the C′ value holds |
+
+The SD of P over the last 10 cycles of each run is in results/long60.md.
+- A effect on β at 60 MHz with the long-run values: −0.336 ± 0.013 (SE, n 3; 90 % CI −0.375 … −0.298). With the C′
+  values: −0.339 ± 0.016. **Reading: the sign change holds.**
+- Calm cycles (|w_dis / w_loop − 1| ≤ 0.2) in the cycles 2 … 39 of the tested stage: 31 … 38 of 38 per run. The event
+  cycles lie in the cycles 2 … 9 of three runs (K1A10_0 at 9 mT: 2 … 4; K1_2 at 20 mT: 2 … 6; K1_0 at 35 mT: 2 and
+  4 … 9). These are the three C′ stages that 7.103 names. No run has an event in its last 10 cycles.
+- The loops of the small particle do not repeat from one cycle to the next. Per-run median of the closure over the
+  cycles 2 … 39: large particle 0.00 … 0.01 %; small particle 0.06 … 0.18 % at 20 mT and 0.07 … 0.44 % at 35 mT. C′
+  (results/closure_state.md, section 6) has a different statistic, one median over the steady-tail cycles of all 21
+  stages (7 amplitudes, 3 seeds) of the small particle: 0.101 % at 60 MHz, 0.053 % at 30 MHz. SD of w over the last
+  10 cycles, relative to the mean: 0.0 … 1.8 % (large particle), 1.4 … 3.9 % (20 mT), 1.5 … 7.7 % (35 mT).
+- Exploratory (after the readings; second review of this section): a period scan over the cycles 24 … 39, largest
+  relative difference of w_loop between cycle c and cycle c − p for p = 1 … 16. Small particle: K1_2 at 20 mT and K1_0
+  at 35 mT repeat with period 2 (5e-4 and 4e-6; w_loop alternates, and ΔM alternates its sign); K1_1 at 35 mT
+  repeats approximately with period 8 (1.8e-2); K1_0 and K1_1 at 20 mT and K1_2 at 35 mT have no period up to 16
+  (best 5 %, 8 %, 5 %). Large particle: K1A10_1 repeats with period 6 (5e-4) and changes 4 % from cycle to cycle;
+  K1A10_0 and K1A10_2 repeat with period 1 (5e-5). The same scan of atol60 (7.102, small particle, 9 mT, 60 MHz, both
+  tolerances): seed 1 period 2 (3e-5), seed 2 period 4 (5e-4), seed 0 no period up to 16 (6 %). Thus the class "stays
+  irregular" of 7.100 also contains closed orbits of 2 … 8 cycles: RN and the closure test only compare one cycle with
+  the next. The pre-registered readings stay; for period-2 orbits the same-sign share of ΔM is 0.
+- P of the last 10 cycles agrees with the C′ value within 3.2 % in all 9 runs (largest deviation K1_0 at 35 mT:
+  0.968).
+- Tolerance: the long runs use atol 1e-5, because the history control needs the tolerance of C′. The tolerance test
+  at 60 MHz (atol60, 7.102) covers only the small particle at 9 mT.
+- Statements that this section closes or limits: 7.102 left "the factor 2 and the sign change at 60 MHz" open. The
+  sign change of the A effect at 60 MHz holds within the DemagFieldPBC model (n 3). The factor 2 of 7.96 is tested only
+  through the 60 MHz values of C′, not at the other frequencies.
+- Deck beta_powder_sobol: the frequency slide and the validity table show the 40-cycle check (slide_decks commit
+  959a6a6). The deck does not yet show the solver finding below.
+- All these runs use DemagFieldPBC (see below).
+
+**Demag solver: method.** Found while test A was prepared. Test A (go of Chris 2026-10-15, after the literature
+check of the staircase corrections): a static script check of a near-field correction of the staircase after Donahue
+& McMichael (IEEE Trans. Magn. 43, 2878, 2007: the FFT stray field of the coarse cells plus a local correction from a
+finer submesh) on the B0b states. Test A is stopped: its reference on the fine mesh carries the same solver error.
+- DemagFieldPBC is the stray-field term of all runs of this study. It is the finite-difference method of Bruckner et
+  al., Sci. Rep. 11, 9202 (2021), Eq. 4 (paper section "Finite difference discretization"): the potential u and div M
+  on the cell vertices, M and H in the cell centres, a backward difference for the divergence, a forward difference for
+  the gradient. Each term of the divergence sits at a different face centre, and each component of the gradient sits
+  half a cell off the cell centre in the two other directions.
+- Consequence in Fourier space (q: wave vector of a Fourier mode of m): the discrete kernel has the trace 1, as the
+  continuum. Thus m along a grid axis gives the exact energy for bodies with cubic symmetry. The coupling of two
+  components, e.g. x with y, keeps an even part ∝ (1 − cos(q_x Δx))(1 − cos(q_y Δx)) that the continuum does not have.
+- Validation in the paper (section "Numerical experiments"): one analytic test (films magnetised perpendicular to their
+  plane, a 1D field) and FE and FD hysteresis loops of a composite side by side (Fig. 6) without a numerical
+  comparison. The FD simulations of the paper used magnum.af with the same method. The invariant test of 7.40
+  (test_demag_pbc_slab_and_zero_mean) tests only 1D fields and the mean field.
+- Our code equals the upstream code (git fde0c62, the last upstream change, 2025-02-05): largest relative difference
+  of h 5.8e-16 for a random m (results/demag_uniform.md, section 3). Our commit 8654eb7 cached the spectral factors and
+  changed to the real FFT.
+- Exact reference for uniform m: an arrangement of bodies with cubic symmetry in a periodic cube with zero mean field
+  (the convention of DemagFieldPBC) has the energy φ_vox (1 − φ_vox) / 3 K_d per box volume for each direction of m
+  (φ_vox: magnetic volume fraction of the voxel model). The voxel spheres of our geometry have cubic symmetry (centres
+  on cell vertices, FCC sites). Thus the staircase changes this energy only through φ_vox.
+- Reference solver: DemagField of magnum.np (Newell cell coupling) with k image shells in a cube arrangement, plus the
+  compensation of the outer surface charges of the image block (field +<M>/3, energy −μ0 V |<M>|² / 6;
+  check_mesh_energy.newell_pbc). The 3D image sum is not absolutely convergent (the reason that Bruckner 2021 gives
+  against the integral form). This affects only the shape term, which is −<M>/3 for a cube-shaped sum (Ewald lattice
+  sums; de Leeuw, Perram & Smith, Proc. R. Soc. A 373, 27, 1980). Names below: E_FD = stray-field energy with
+  DemagFieldPBC; E_ref = with the reference solver (4 image shells); Δ = E_FD − E_ref.
+
+**Demag solver: tests with uniform m and with a pattern** (check_demag_uniform.py, results/demag_uniform.md;
+check_demag_alias.py, results/demag_alias.md; unit test test_newell_pbc_compensation_exact_and_fd_off_axis_error).
+- B0b geometry (d/l_ex 97.5, nominal 96, φ 0.65), DemagFieldPBC, relative error: m along (100) 0 (−2e-8 from the
+  void cells, which carry M_s 1e-8 M_s); along (110) +4.8 / 2.4 / 1.2 %; along (111) +9.5 / 4.7 / 2.4 % on 3 / 1.5 / 0.75 l_ex (first order in
+  Δx). Reference solver with 1 shell on 3 and 1.5 l_ex: relative error at most 1.4e-4 for all three directions.
+- Aligned cube (edge a/2, filling 1/8, exact 7/192), DemagFieldPBC, m along (111): +13.7 / 4.6 / 1.4 / 0.43 % for 4 / 8
+  / 16 / 32 cells per edge (order about 1.7); along (110) half of it. Reference solver with 1 shell: relative error at
+  most 2.4e-12.
+- Checkerboard m = (1, −1, 0)/√2 · (−1)^(i+j) in a full box (no surface): DemagFieldPBC 0; reference solver 0.50 K_d;
+  alias sum, extrapolated in 1/G, 0.499 K_d (truncated sums 0.456 / 0.476 / 0.488). The finite-difference stencil has cell-scale patterns with zero energy (null
+  modes).
+- Thus the error has two sources: (i) edges and corners of the body for m off the grid axes; (ii) cell-scale null
+  modes. Scaling (estimate): the error per edge length scales with Δx². A cube has a fixed edge length (order 2, 1.7
+  measured); the step-edge length of a staircase scales with 1/Δx (order 1, measured). Where the error sits in the
+  relaxed states is not measured.
+
+**Demag solver: check on the B0b states** (check_mesh_energy.py solver; on the instance, one V100, 27 min; files
+results/demag_solver.md and .json; readings fixed in the docstring, commit 35c3087, before the run in 952571c). Per box
+volume; mean ± SE over the 4 seeds (for two arms first the mean of the arms per seed):
+
+| state | Δx (l_ex) | E_FD (K_d) | E_ref (K_d) | E_ref / E_FD | abs(Δ) / abs(E_K) |
+|---|---|---|---|---|---|
+| F, relaxed | 0.75 | 0.00063 ± 0.00001 | 0.00152 ± 0.00001 | 2.41 ± 0.02 | 0.56 ± 0.01 |
+| F→1.5, block average of F | 1.5 | 0.00137 ± 0.00001 | 0.00296 ± 0.00001 | 2.16 ± 0.02 | 1.00 ± 0.01 |
+| F→3, block average of F | 3 | 0.00311 ± 0.00005 | 0.00592 ± 0.00001 | 1.90 ± 0.03 | 1.77 ± 0.02 |
+| I15 and T15, relaxed | 1.5 | 0.00082 ± < 0.00001 | 0.00304 ± 0.00001 | 3.70 ± 0.01 | 1.39 ± 0.02 |
+| I3 and T3, relaxed | 3 | 0.00090 ± < 0.00001 | 0.00669 ± 0.00002 | 7.45 ± 0.02 | 3.63 ± 0.06 |
+
+E_K is the anisotropy energy of the state. The arms are defined in 7.102: I relaxes from a random start on its own
+mesh; T starts from the block average of F.
+- Reading, convergence: the largest |E(2 shells) − E(4 shells)| is 2.3e-5 K_d, above the limit 1e-6: **not
+  converged**. Exploratory (after the reading): this is the change from 2 to 4 shells (seed 943, at most 2.6 % of the
+  smallest abs(Δ)). The other seeds change by at most 5e-6 K_d (state F: 941 1e-6, 942 5e-6, 944 1e-7); the cause of
+  the slow seed is not known. For seed 943 the ratio of the changes 1 → 2 and 2 → 4 shells is 2.7, nearer to a
+  1/(2k + 1)² law (2.6) than to 1/k (2.0); the remaining error is then about 1e-5 K_d (estimate): about 0.7 % of E_ref
+  at dx 0.75 and 0.2 % at dx 3, small against Δ.
+- Reading, solver share: s(dx) = [Δ(dx) − Δ(0.75)] / [E_FD(dx) − E_FD(0.75)] for the block-averaged F state;
+  s(3) = −0.78 ± 0.03 (SE, n 4). By the letter of the rule: **"the solver is minor"**. The rule did not foresee s < 0.
+  Meaning: with the reference the difference of the block-averaged F state between the meshes is larger, 0.00440 K_d
+  (dx 3 − dx 0.75) and 0.00144 K_d (dx 1.5 − dx 0.75), against 0.00248 and 0.00074 K_d with DemagFieldPBC
+  (s(1.5) = −0.95 ± 0.02). Thus this difference is not a solver artefact; DemagFieldPBC hides 44 % of it at dx 3 and
+  49 % at dx 1.5. Not separated: the part from the staircase and the part from the block-averaged, normalised m
+  (run_loops.transfer_m).
+- Reading, 10 % rule: abs(Δ) / abs(E_K) of the relaxed dx 3 states is 3.63 ± 0.05 (SE, n 8 as pre-set; with the seed
+  as unit 3.63 ± 0.06, n 4): **the solver error is relevant**.
+- Independent check of the reference (check_demag_alias.py, results/demag_alias.md, local CPU): the exact energy of
+  the piecewise constant M as a Fourier sum over the aliases G of the cell form factor (truncated at |G| ≤ 4, 8, 16,
+  extrapolated in 1/G). I3 and T3 of seed 941 (2 states): 0.00664 and 0.00677 K_d; reference 0.00666 and 0.00678 K_d
+  (within 0.3 %); DemagFieldPBC 0.00089 K_d for both.
+- The relaxation with DemagFieldPBC lowers E_FD and raises E_ref. From the block-averaged F state on dx 3 to the
+  relaxed T3 state (which starts from it): E_FD falls from 0.00311 ± 0.00005 to 0.000895 ± 0.000002 K_d, E_ref rises
+  from 0.00592 ± 0.00001 to 0.00670 ± 0.00005 K_d (mean ± SE, n 4). Candidate explanation: the relaxed states contain
+  structure that DemagFieldPBC does not penalise (the null modes above). Not shown: the rise of E_ref can also come from
+  changes that exchange or anisotropy drive; the total energy with the reference solver is not computed. For the
+  relaxed states, E_ref / E_FD grows with Δx: 2.4 (dx 0.75), 3.7 (dx 1.5), 7.5 (dx 3).
+- Consequence: all magnetisation states, losses and β values of this study are computed with DemagFieldPBC. The effect
+  on P and β is not measured. Bruckner 2021 and Ducevic et al., Sci. Rep. 15, 17782 (2025) use the same method; their
+  results may carry the error (not checked). The error depends on Δx and acts on the states. Thus it is a candidate for
+  the missing mesh convergence of the loss (B0b, 7.102).
+
+**Corrections to 7.104.**
+- The sentence "No error is found in the energy terms" is wrong. The rows with uniform m in results/mesh_energy.md
+  (code-test geometry d/l_ex 48, φ 0.45) show the solver error (m along (111): +11.6 / 5.9 / 2.9 % against
+  φ_vox (1 − φ_vox) / 3; on the B0b geometry +9.5 / 4.7 / 2.4 %). The check compared the meshes with each other, not
+  with the exact value.
+- The title ("the staircase surface carries the mesh error") and the status ("The code is not the cause") are limited.
+  The check code computes the same energies as the runs, but the stray-field term of the runs has the error above. The
+  mesh difference of the block-averaged state remains with the reference solver; its split into the staircase and the
+  coarsened m is open.
+- All stray-field energies of 7.104 are DemagFieldPBC values: the block-averaged states, the law E_st ≈ 0.221
+  (Δx/d)^1.23 K_d, the check at 1 µm, R_K, the 10 % line and the deck staircase_energy_map. The law and R_K must be
+  determined again with the reference solver.
+- The relaxed states of 7.104 (stray field +31 / +43 % on 1.5 / 3 l_ex; arm I3: exchange +16 %, stray field +43 %;
+  M300 +6 %) and the reading "the coarse states follow the steps and pay with exchange energy" are DemagFieldPBC
+  values. With the reference, the stray-field energy of the relaxed states is × 2.01 ± 0.01 (dx 1.5) and × 4.41 ± 0.01
+  (dx 3) against F (mean ± SE, n 4). The reading is open.
+- The relaxed energies of B0b in 7.102 (E/K_d per mesh) contain DemagFieldPBC values as well.
+- "Cubic particles ... the loss is expected to converge": this holds only with the reference solver. DemagFieldPBC has
+  the edge and corner error also on a cube (+13.7 % at 4 cells per edge, m along (111)).
+- The reading of the remark of Chris ("Strong pinning then keeps the state still: less loss.") is open.
+
+**Decision of Chris (2026-10-15).** Options put to Chris: (1) the reference solver (Newell with compensated outer
+surface charges) becomes the production solver, then a staged B0b test of the loss convergence; (2) a repair of the
+finite-difference stencils (new numerics with its own null modes); (3) DemagFieldPBC with the error as a model limit.
+**Decision: option 1.** Open for Chris: a report to the magnum.np authors.
+- Code (Chris: a new magnum.np branch): branch feature/newell-pbc (worktree magnum.np-newell, based on
+  study/beta-bpeak-pinning). Commit 3efb906 is 25d0308 of fix/preexisting-issues (on-axis dipole couplings to the
+  periodic images are kept; in the cube arrangement the dropped couplings sum to zero for each cell, thus the solver
+  check above is not affected). Commit fba0c4b: DemagField(true_pbc=True) adds +N_block <M> (N_block: demagnetization
+  tensor at the centre of the image block, 1/3 for a cubic block; a ValueError at the first field evaluation without
+  images in all three directions); run_loops.py --strayfield fd|newell and --strayfield_shells (default fd and 4; both
+  in INIT_KEYS; an old config counts as fd, so old runs resume). Commit 880fa54 removes three test functions that were
+  defined twice (an interrupted command had appended a first version; pytest ran only the final one). Commit c046160:
+  the jobs and the evaluation of PLAN 4.11.
+- Tests (local CPU, exit code 0): magnum.np tests/unit/demag_test.py -k "true_pbc or block_demag or truePBC or
+  pseudoPBC or far_layers": 11 passed (block factors; aligned cube exact for (100), (110), (111); checkerboard 0.50;
+  box mean of h below 1e-3 M_s). Study test_study.py -k "strayfield or true_pbc or newell_pbc or demag_pbc or init_from
+  or all_study_scripts_compile or atol_job or long60 or transfer_m or state_files": 13 passed (option and keys;
+  DemagField(true_pbc=True) equals check_mesh_energy.energy_newell_pbc within 1e-12); -k "conv_jobs or eval_conv or
+  strayfield or true_pbc or all_study_scripts_compile": 7 passed, 1 skipped (raw data not in the branch worktree).
+- Smoke run (local CPU, B0b geometry on dx 3, --strayfield newell, 1 shell, one saturation cycle): exit code 0, energy
+  balance w_dis / w_loop 1.06, time step 4.9 ps.
+- Kernel time of the reference solver (V100, double, from the solver check): 192³ cells 39 / 175 / 1011 s with 1 / 2 /
+  4 shells; 96³ 6 / 25 / 143 s; 48³ 8 / 27 / 145 s. The small meshes do not scale with the cell count. Probable reason
+  (not checked): on 48³ and 96³ many image cells lie within the Newell radius (20 cell diagonals, about 35 cells) and
+  need the costly Newell formula; on 192³ all image cells lie beyond it.
+- The plan and the costs of the B0b runs follow in PLAN.md before any run.
+
+### 7.106 Correction of 7.94 (internal frequency of real powders); frequency test at the corner K3: prepared, design open (2026-10-15, decisions of Chris)
+
+Term: internal frequency f_int = γ μ0 H_r / 2π, the precession frequency in a restoring field H_r (γ/2π = 28 GHz/T,
+J_s 1.5 T). With α 0.1 the relaxation rate is α 2π f_int ≈ 0.63 f_int (the measure of 7.94 and 7.99). All values in this
+section are estimates.
+
+**Correction of 7.94.** Remark of Chris: a smaller K_eff would be even worse for us (the drive would lie even further
+above the time scale of the anisotropy).
+- 7.94 took only the anisotropy field as the restoring field (μ0 H_K = 2 K / M_s). For the anisotropy alone this holds:
+  f_int is about 0.5 / 5 / 14 MHz for K 10 / 100 / 300 J/m³. A drive at 30 … 60 MHz then lies 2 … 130 × above it.
+- With a small K_eff, other restoring fields remain:
+  - exchange at the scale of the particle, μ0 H_ex = (2 A / M_s)(2π / λ)² with A 10 pJ/m. For the lowest exchange mode
+    of a sphere with a free surface k ≈ 2.08 / R, thus λ ≈ 1.5 d: about 0.28 mT (8 MHz) at d 1 µm, about 0.02 mT
+    (0.5 MHz) at 4 µm (∝ 1/λ²). (With λ = d, as in 7.96: 0.64 mT, 18 MHz, at 1 µm.)
+  - the stress anisotropy (7.94: up to a few hundred J/m³; no measured value for our powders): about 9 … 14 MHz for
+    200 … 300 J/m³;
+  - magnetostatic restoring fields of textures (for example the gyration of a vortex): not estimated for spheres.
+- Sum of the fields (rough rule): exchange (sphere mode) plus stress gives about 8 … 22 MHz at 1 µm, near or in the
+  drive band. The sentence of 7.94 "Their internal time scale is then of the order of 0.1 … 5 MHz" is too simple.
+- Consequence: if a restoring field sets the onset of the irregular motion, the relevant quantity is f / f_int, and
+  the frequency results at K1 (7.98, 7.99) cannot be transferred as absolute frequencies. Which field sets the onset is
+  open: 7.99 found the lower onset for the smaller particle, whose exchange field (∝ A / d²) is larger; this goes
+  against a control by the exchange at the particle scale.
+- Wall width π √(A / K): real K 10 … 300 J/m³ at A 10 pJ/m gives about 3.1 … 0.57 µm, so a particle of 1 µm is
+  smaller than about 2 wall widths. In the model, K_eff 1.0 … 6.2 kJ/m³ at A 10 … 20 pJ/m gives about 0.13 … 0.44 µm;
+  with the stress anisotropy K_p = r_p K_eff, r_p 1.5 (as at the corners), about 0.08 … 0.28 µm: a particle of 0.71 … 1 µm is about 2 … 12 wall widths
+  across. This limits the
+  transfer to real powders (open, decision of Chris).
+
+**Frequency test at the corner K3: prepared, not run.** Go of Chris for the preparation. Code: commit aea8576 on
+feature/newell-pbc (pair_jobs.py --k3freq [newell]: K3 at 30, 42.4, 60, 84.9, 120, 169.7 MHz, seeds 2031 … 2033, C′
+settings; eval_k3freq.py; instance/chain_k3freq.sh). Idea: at K1 the motion of the small particle (d/l_ex 212) at
+9 mT stops repeating between 42 and 60 MHz (7.99; the large particle at 60 … 85 MHz); if the anisotropy field sets the
+onset, K3 (K_eff 2.76 kJ/m³ = 2.78 × K1) would shift it to about 118 … 167 MHz. The code (pair_jobs.py, eval_k3freq.py)
+still says 2.76 × K1 and 116 … 166 MHz; to be fixed with the design.
+A context-free review found faults and weaknesses; the design is open:
+- Fault: eval_k3freq.py did not switch on the steady-tail rule (analyze.STEADY_TAIL stays None). Runs with events at
+  the end of a stage would count, and β would not be comparable with C′. No run was evaluated with it.
+- K3 differs from K1 in more than K_eff:
+  - Herzer cubes 18 against 30 l_ex (about 1 200 against 320 per particle, config.json n_cubes_per_particle);
+  - φ 0.69 against 0.62; at 9 mT μ0 H_peak is 0.82 against 1.30 mT (from the runs) and H_peak / H_K 0.18 against 0.78:
+    the relative drive is about 4 × weaker at K3 (K_eff and φ both contribute; the share of each is not shown);
+  - wall parameter √(A / ((1 + r_p) K_eff)) 3.8 against 6.3 cells on dx 3 (wall width π × this: 12 against 20 cells),
+    thus stronger pinning at the mesh is possible;
+  - other seeds;
+  - for the newell variant the K1 reference was measured with DemagFieldPBC (another solver).
+- The K1 reference: the onset by the seed mean is 42 … 60 MHz; per seed it is 60 / 120 / 60 MHz, and RN falls from 60 to
+  85 MHz (0.201 to 0.086).
+- On the √2 grid the readings do not separate an anisotropy control (× 2.78) from a mixed restoring field (exchange does
+  not scale with K_eff: × 2.0 … 2.4).
+- At 120 … 170 MHz a stage of 7 … 12 cycles lasts only 41 … 100 ns; a start transient can look non-repeating.
+- The steady rule is validated only for K1 at 60 MHz and only for the loss value (7.105).
+- Options put to Chris: (A) K3 as prepared with the fixes; (B) a test at K1 with only K_eff × 4 (--Q_eff: the same
+  cubes, φ, seeds and particle size), K1 and K1 × 4 with the reference solver, 9 mT, 30 … 240 MHz, at the same B_peak
+  or at the same H_peak / H_K; (C) the frequency question after stage 2 of PLAN 4.11. Recommendation: B after stage 2.
+  Limits of B: K_eff × 4 halves the wall parameter (6.3 → 3.2 cells on dx 3), so the mesh-pinning confound stays; the
+  predicted onset 4 × (42 … 60) = 170 … 240 MHz gives stages of only 29 … 41 ns (7 cycles), the same start-transient
+  risk; a 40-cycle check at the onset frequency is needed.
+
+### 7.107 PLAN 4.11, stage 1: with the reference solver the mesh difference 3 → 1.5 l_ex is much smaller; second drive correction; stage 2 started (2026-10-15, decisions of Chris)
+
+**Stage 1 (go of Chris).** Runs N0b_I3 and N0b_I15, seeds 941 … 944 (jobs/newell_b0_s1.txt, commit 880fa54 on
+feature/newell-pbc; the B0b lines of 7.102 with --strayfield newell --strayfield_shells 4). Instance, 4 V100, 12:23 …
+13:21 UTC (30 MHz, 9 mT); all 8 runs DONE, all relaxations converged. Report: results/newell_b0_s1.md (eval_conv.py
+--prefix N0b; the first report stopped at a format fault of eval_conv.py, fixed in b1adab7 and written again by the
+chain). Raw data local
+(runs/MANIFEST_newell_s1.md5, 40 files, no .pt).
+
+| 9 mT, I arms, n 4 | DemagFieldPBC (B0b) | reference solver (N0b) |
+|---|---|---|
+| ln P(3 l_ex) − ln P(1.5 l_ex), mean ± SE (90 % CI) | −0.79 ± 0.31 (−1.51 … −0.07) | −0.19 ± 0.13 (−0.51 … +0.12) |
+| P(3 l_ex) / P(1.5 l_ex) as a factor (geometric mean) | × 0.45 | × 0.82 |
+| P on 1.5 l_ex, geometric mean of 4 seeds | 3.25 W/cm³ | 1.34 W/cm³ |
+| P on 3 l_ex, geometric mean of 4 seeds | 1.47 W/cm³ | 1.11 W/cm³ |
+| SD of ln P over the seeds, 1.5 / 3 l_ex | 0.65 / 0.09 | 0.53 / 0.29 |
+
+- **Reading (PLAN 4.11, pre-registered): "much smaller"** (|mean| 0.19 ≤ 0.30).
+- Paired by seed, the difference changes by +0.60 ± 0.20 (SE, n 4; 90 % CI +0.12 … +1.07) from DemagFieldPBC to the
+  reference solver: about 3/4 of the B0b difference (point estimate; the 90 % CI is 15 … 135 % of it).
+  ln P(N0b) − ln P(B0b) per seed (SE, n 4): −0.88 ± 0.16 on 1.5 l_ex (P × 0.41; 90 % CI × 0.28 … × 0.61) and −0.29 ±
+  0.15 on 3 l_ex (P × 0.75; 90 % CI × 0.52 … × 1.08, includes × 1). Per seed (941 / 942 / 943 / 944): Δ_N −0.32 /
+  −0.29 / −0.36 / +0.20; Δ_FD −0.92 / −0.66 / −1.53 / −0.06; Δ_N − Δ_FD +0.60 / +0.37 / +1.17 / +0.26.
+- Thus DemagFieldPBC raised the loss on 1.5 l_ex (× 2.4); on 3 l_ex a change is not shown. The cause is not shown
+  (candidate: the cell-scale null modes of 7.105 as an extra channel of loss). Limits: n 4; the seed scatter stays
+  large (independent relaxations select different states).
+- Drive amplitude: b_peak / b_target of the measured cycles 0.941 … 1.002 (N0b), 0.965 … 1.014 (B0b). ln P is taken at
+  the measured b_peak without a correction (as pre-registered); 6 % less b lowers ln P by about 0.12 at β 2. With a
+  correction to the target at β 2 (estimate): Δ_N changes by −0.005, Δ_FD by +0.045 (to about −0.75), the paired change
+  to about +0.55; the reading does not change.
+- Cost data of the reference solver against DemagFieldPBC (V100, single, atol 1e-6, d/l_ex 96; means of 4 seeds):
+
+| quantity | dx 1.5 | dx 3 |
+|---|---|---|
+| relaxation iterations | 10 000 / 5 375 (× 1.86) | 4 875 / 5 875 (× 0.83) |
+| wall time per iteration (with the one-time kernel of 2.4 min) | 0.095 / 0.055 s (× 1.74) | 0.071 / 0.025 s (× 2.8) |
+| wall time per cycle | 278 … 322 / 201 … 218 s (× 1.46) | 80 … 105 / 68 … 75 s (× 1.24) |
+| time step | 2.15 / 2.10 ps | 7.1 … 7.2 / 6.15 … 6.17 ps |
+
+
+**Drive amplitude: finding, cause, patch (go of Chris).**
+- Finding: N0b_I15_s941 stays at 94.1 % and N0b_I3_s944 at 95.0 % of the target amplitude in all measured cycles.
+  Smaller deviations: B0b I15 s943 +1.4 %, B0b I3 s942 / s943 / s944 −2.2 / −1.1 / −3.5 %, B0b F s941 and s944
+  −1.3 … −2 %.
+- Cause: run_loops.py corrects the drive once, with b of cycle 0. b/h of cycle 0 was 6 % (s941) and 5 % (s944) above
+  b/h of the later cycles, so the correction lowered the drive too much. Cycle 0 starts from the relaxed virgin state;
+  that it is a transient is an inference (a non-linear b(h) is not separated).
+- Patch (commit 4cd1c45, feature/newell-pbc): --b_tol (default 0: the old behaviour; an old config counts as 0). With
+  b_tol > 0 the drive is corrected again with b of cycle 1 (the first cycle at the corrected drive) if |b / b_target − 1|
+  > b_tol, at a zero crossing of the field, factor limited to 0.67 … 1.5. Then cycle 2 is discarded too (analyze.
+  first_measured, used by run_loops, analyze and eval_jumps_time), the stage gets one more cycle, the cycle limit rises
+  by one and the accumulators start one cycle later. The stage 2 jobs use --b_tol 0.01. Other evaluation scripts of
+  older studies keep the rule "from cycle 2 after a correction"; they see no runs with a second correction.
+- Tests: test_second_drive_correction_and_discard_rule (the helpers; the main-loop branch is covered only by the smoke
+  run); the full test_study.py passes (85 passed, 3 skipped, local CPU, exit code 0). Smoke run on the instance, GPU 0 (B0b geometry on dx 3, DemagFieldPBC, a short fixed relaxation with --allow_unconverged, b_tol
+  1e-6 to force the second correction): b of cycle 0 +4.4 % (first correction), of cycle 1 +1.4 % (second correction),
+  of cycles 2 and 3 −0.17 %; the stage ends after 4 cycles (3 + 1) with h_amp_initial and h_amp_second in the record;
+  exit code 0 (values from its stdout; the files were deleted afterwards, a local start on the CPU was stopped).
+- Design change of PLAN 4.11: the stage 2 lines have --b_tol 0.01, the stage 1 I arms ran without it. Comparisons of
+  I arms with F or T (I15 − F, I3 − F, T − I, SD_I) therefore mix two drive rules; the comparisons inside stage 2
+  (T15 − F, T3 − T15, T3 − F) do not. Option for Chris: run N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01. Decision of Chris: yes, after stage 2. Chain instance/chain_newell_s1b.sh (commit 922288a; conv_jobs.py --newell
+  1b): waits for NEWELL_S2_DONE, keeps the old folders as *_nobtol, runs the two jobs and writes the report over all
+  arms to runs/newell_b0_s1b_report.md. Started at 17:37 UTC (waiting).
+- Not yet reported (PLAN 4.11 stage 1, information): E_ref and E_FD of the new relaxed states (the init.pt files are on
+  the instance; check_mesh_energy.py after stage 2).
+
+**Stage 2 (go of Chris).** Runs N0b_F (dx 0.75), then N0b_T15 and N0b_T3, seeds 941 … 944 (jobs/newell_b0_s2.txt):
+4 F runs at the same time, one per GPU; the T runs wait for the init.pt of their F run (--init_wait_h 40). Relaxation:
+to convergence, at most 80 000 iterations; a run that does not converge is not used and is reported (estimate for F
+with the reference solver: 10 000 … 26 000 iterations, 5 … 13 h). Readings: PLAN 4.11 and eval_conv.py. Cost (estimate):
+relaxation of F 10 000 … 27 000 iterations (× 1.86 of B0b F) at the measured 1.3 s per iteration (17:20 UTC, all 4 runs
+at 8 000 … 8 500 iterations) = 4 … 10 h; 5 … 6 cycles of about 1.7 … 2.1 h (B0b F 1.4 h × 1.24 … 1.46; one more cycle
+for each run with a second correction); T arms about 1 h. Total about 15 … 24 h, about 6 … 10 $. A one-stage run has no
+checkpoint inside the stage: cycles done before a stop are lost. Started at 14:19 UTC (commit
+4cd1c45), 4 F runs on the 4 GPUs. Credit at 14:41 UTC: 5.73 $ at 0.405 $/h, about 14 h; less than the estimate of
+the stage. Chris must add credit, else the instance stops before the F runs end.
+
+### 7.108 PLAN 4.11 stage 2: "not converging" from 1.5 to 0.75 l_ex; energy balance on the N0b meshes; checks 1 and 2 (2026-10-16, decisions of Chris)
+
+**Stage 2 and stage 1b (go of Chris, 7.107).** Instance with 4 V100.
+- Stage 2 ran 12 runs (F, T15, T3; seeds 941 … 944). The queue ended 2026-10-16 01:40 UTC.
+- Stage 1b ran N0b_I15_s941 and N0b_I3_s944 again with --b_tol 0.01. The old folders stay as *_nobtol.
+- All runs ended with DONE. All virgin relaxations converged (F: 8 000 … 14 500 iterations, 2.8 … 4.8 h). One drive
+  cycle on dx 0.75 takes about 4 700 s.
+- The second drive correction did not occur in the 12 stage 2 runs. It occurred in both stage 1b runs, and their
+  measurement starts at cycle 3.
+- b_peak / b_target in the measured tails: N0b 0.993 … 1.008, B0b 0.965 … 1.014.
+- Reports: results/newell_b0_s2.md and results/newell_b0_s1b.md (the second report has all arms with the stage 1b
+  runs). The raw data are local (runs/MANIFEST_newell.md5, 110 files, no .pt).
+
+Loss density P at 9 mT (W/cm³): geometric mean over 4 seeds, in brackets the SD of ln P over the seeds:
+
+| arm | DemagFieldPBC (B0b) | reference solver (N0b) |
+|---|---|---|
+| F, dx 0.75 | 10.5 (0.96) | 4.5 (0.66) |
+| T15, dx 1.5, start from F | 4.0 (0.54) | 1.37 (0.16) |
+| T3, dx 3, start from F | 1.51 (0.07) | 1.79 (1.13) |
+| I15, dx 1.5 | 3.25 (0.65) | 1.38 (0.54) |
+| I3, dx 3 | 1.47 (0.09) | 1.13 (0.25) |
+
+- **Reading of PLAN 4.11 stage 2: "not converging".** ln P(T15) − ln P(F) is −1.19 ± 0.38 (SE, n 4; P × 0.31, 90 % CI
+  × 0.12 … × 0.75). This is outside ± 0.10. The step 1.5 → 0.75 is not smaller than the step 3 → 1.5
+  (+0.27 ± 0.50).
+- **Reading of PLAN 4.10 (eval_conv.py): "stop".** The SD of the paired difference T15 − F is 0.76 (≥ 0.10). The
+  transferred state does not remove the scatter.
+- **Consequence (PLAN 4.10).** At 9 mT the loss is not mesh-converged in this model. Only ensemble means over many
+  seeds can be used. The per-seed mesh errors so far are withdrawn. The plan names a re-scope.
+- **Stage 1 reading with the stage 1b runs: "much smaller"** (ln P(I3) − ln P(I15) is −0.19 ± 0.17, SE, n 4).
+- Facts, no interpretation yet:
+  - The step 3 → 1.5 of the T arm has a positive mean only because of one seed. Per seed, ln P(T3) − ln P(T15) is
+    −0.19 / −0.24 / +1.77 / −0.27 (s941 … s944). The mean without s943 is −0.23. T3 s943 (9.56 W/cm³, 8 × the other
+    seeds) has a periodic and calm loop (ε +0.0002, closure 9·10⁻⁵). Its relaxed energy (E / K_d 0.00546) lies inside
+    the range of the other seeds (0.00541 … 0.00552). The cause of this value is open.
+  - The point estimates of the step 1.5 → 0.75 agree for both solvers. ln P(I15) − ln P(F) is −1.17 ± 0.17 with B0b
+    (7.104) and −1.18 ± 0.55 with N0b (SE, n 4). The solver difference of this step, paired by seed, is
+    −0.01 ± 0.63 (SE, n 4; 90 % CI −1.49 … +1.46). Thus a solver effect on this step is not excluded.
+  - The F loops of N0b are periodic: closure ≤ 3·10⁻⁴, SD of w_loop over the tail cycles ≤ 0.6 %. But P of F changes
+    strongly with the seed: 2.15 / 3.55 / 5.14 / 10.40 W/cm³ (s941 … s944). T15 from the same states gives
+    1.10 … 1.63 W/cm³.
+
+**Energy balance on the N0b meshes.** Section 5 and run_loops.py define w_loop and w_dis: the loop work ∮ H dB and the
+LLG dissipation ∫ p_dis dt per cycle. Both are trapezoid sums over the 256 samples of a cycle. ε is w_dis / w_loop − 1,
+as a mean over the steady tail (7.101). In a periodic loop ε must be 0. The surplus S is f (W_dis − W_loop), with the
+means over the tail, in W/cm³ (the unit of P).
+- N0b F (dx 0.75): ε is +0.170 / +0.091 / +0.054 / +0.032 (s941 … s944), inside the calm limit (± 0.2). N0b dx 1.5:
+  −0.006 … +0.028. N0b dx 3: +0.000 … +0.003.
+- Surplus S (W/cm³) of the runs with a periodic loop (closure ≤ 3·10⁻⁴):
+
+| mesh, arm | N0b | B0b |
+|---|---|---|
+| dx 0.75, F | +0.365 / +0.324 / +0.279 / +0.331 | +0.272 (s944) |
+| dx 1.5, T15 | +0.0144 / +0.0155 / +0.0162 / +0.0134 | +0.0097 / +0.0106 / +0.0087 (s941, s943, s944) |
+| dx 1.5, I15 | +0.0157 / +0.0136 / +0.0174 (s941, s943, s944) | +0.0120 / +0.0037 / +0.0096 (s942 … s944) |
+| dx 3, T3 and I3 | +0.0016 … +0.0029 (8 runs) | +0.0013 … +0.0022 (8 runs) |
+
+- The table does not include the runs without a periodic loop (closure 1·10⁻³ … 2·10⁻²: B0b F s941 … s943, B0b T15
+  s942, B0b I15 s941, N0b I15 s942). In these runs the energy of the state changes from cycle to cycle, thus S
+  includes this change.
+- N0b: on dx 0.75 and dx 1.5, S of the periodic runs lies within ± 15 % of the mesh mean, while P of F changes by
+  × 4.8 over the seeds. On dx 3 S changes by a factor of 1.8. The mean of S increases by × 7.2 from dx 3 to dx 1.5
+  (T3 → T15) and by × 22 from dx 1.5 to dx 0.75 (T15 → F; per seed × 17 … × 25).
+- B0b gives values of the same order on each mesh (dx 1.5: +0.004 … +0.012 against +0.013 … +0.017 with N0b). On dx
+  0.75 7.102 found the same in B0b F s944 (w_dis / w_loop 1.071 … 1.073, "w_dis is not reliable on dx 0.75"; the cause
+  stayed open there).
+- Earlier results on the same question: 7.88 (d/l_ex 48, dx 0.75, DemagFieldPBC): w_dis / w_loop 1.96 … 1.99 at
+  atol 1e-5 and 1.01 … 1.02 at atol 1e-6, with w_loop the same to 4 digits. 7.75 test B (corner K1, dx 3, f/2): with
+  1024 instead of 256 samples w_dis / w_loop changed from 1.08 … 1.10 to 1.07 … 1.08.
+- Order of the check: the measuring method first.
+
+**Thinned samples (go of Chris 2026-10-16; no new simulation).** eval_subsample.py computes both energies from the
+sample files with all 256 samples, with every 2nd sample (128) and with every 4th sample (64). It does this for all 40
+N0b and B0b runs (results/eps_subsample.md).
+- Check of the method: with 256 samples the script gives the values of summary.json (largest relative deviation
+  1.5·10⁻⁸).
+- N0b F, ε at 256 / 128 / 64 samples: s941 +0.170 / +0.170 / +0.167; s942 +0.091 / +0.091 / +0.095; s943 +0.054 /
+  +0.055 / +0.056; s944 +0.032 / +0.032 / +0.033. S at 64 samples: +0.29 … +0.36 W/cm³.
+- ln w_loop changes by −0.0003 at 128 samples and by −0.0015 at 64 samples, in all runs.
+- One exception: N0b T3 s943 (the value 9.56 W/cm³) has ε +0.056 at 64 samples (+0.000 at 256). In this run a fast
+  event inside the cycle needs more than 64 samples.
+- Limit: thinning does not show the error of the signal components at multiples of the 256-sample rate. Only more
+  samples (check 1) show it.
+
+**Check 1, energy balance with 1024 samples (go of Chris 2026-10-16; reading fixed before the runs in eval_eps075.py,
+commit dee4961, tested).**
+- Design: the F runs of s941 and s942 (the largest ε) run again with 1024 instead of 256 samples per cycle
+  (conv_jobs.py --newell eps; runs N0b_F_s941_smp1024 and N0b_F_s942_smp1024). --init_from loads the relaxed m of the
+  stage 2 run without a new relaxation. The drive correction after cycle 0 runs as in the stage 2 runs.
+- Difference from the stage 2 runs: the start path. The stage 2 runs relaxed in the same process, and the new runs
+  load init.pt. In 7.102 this change of the start path changed w_dis by up to 1.3·10⁻² (B0b F s942, a loop that is not
+  periodic). For s942, |ε_256| / 3 is 0.030, the same as the limit 0.03.
+- Values per seed over the steady tail: ε_256, ε_1024 and d_w = ln w_loop(1024) − ln w_loop(256).
+- Reading per seed:
+  - "sampling" if |ε_1024| ≤ 0.03 and |ε_1024| ≤ |ε_256| / 3;
+  - "not sampling" if |ε_1024| ≥ 2/3 |ε_256| (the error is elsewhere: the time integration or the model);
+  - "partly" in all other cases;
+  - "not determined" if a tail has fewer than 2 cycles.
+- Overall reading: the class of both seeds if they agree, else "mixed". Loss value: "w_loop unaffected" if
+  |d_w| ≤ 0.02 in both seeds. Else the largest |d_w| is the size of the sampling error of the stage 2 F values.
+- Limit: n 2. The result applies to s941 and s942 only. It gives no effect claim.
+- Cost (estimate): 5 cycles of about 4 700 s, + 7 % steps with 1024 samples (7.75), about 7 … 8 h on GPUs 0 and 1.
+  The instance costs 0.405 $/h, thus about 3 $. Credit on 2026-10-16, 06:25 UTC: 24.4 $.
+
+**Check 2, stray-field energies of the N0b states (information item of PLAN 4.11 stage 1; go of Chris).**
+check_mesh_energy.py solver N0b runs at the same time on GPU 2. It gives E_FD and E_ref with 1, 2 and 4 image shells
+for the N0b relaxed states (runs/demag_solver_N0b.md). Information only, no reading. Duration about 30 … 40 min
+(estimate).
+
+Chain: instance/chain_eps075.sh on feature/newell-pbc, pinned to commit dee4961, started 2026-10-16 06:12 UTC.
+
+**Statements that this section replaces or limits (7.107, stage 1 with the stage 1b runs):**
+- ln P(3 l_ex) − ln P(1.5 l_ex) with N0b: −0.19 ± 0.13 → −0.19 ± 0.17 (90 % CI −0.59 … +0.20).
+- P on 1.5 l_ex with N0b, geometric mean: 1.34 → 1.38 W/cm³.
+- Change of this difference from DemagFieldPBC to N0b, paired: +0.60 ± 0.20 → +0.60 ± 0.19 (90 % CI +0.15 … +1.05).
+
+**Decision of Chris on check 1 (2026-10-16).** Options: A, check 1 to its end; B, stop check 1 and run the F runs of
+s941 and s942 with a tighter integrator tolerance (this needs a patch: a separate tolerance for the cycles); C, A and B
+at the same time on GPUs 0/1 and 2/3. Chris chose C, with the variant C2 (below).
+
+**Integrator test (decision of Chris 2026-10-16: option C, as variant C2).**
+- Finding before the patch: the RKF45 solver controls the step with the maximum over all components of
+  err / (atol + rtol |m_i|) (magnumnp/solvers/ode_solvers/rkf45.py). run_loops.py sets only atol, and rtol stays at the
+  RKF45 default 1e-5. Thus atol is the larger term only where |m_i| < atol / rtol (0.1 at atol 1e-6). In 7.88 a change
+  of atol alone moved w_dis / w_loop from 1.97 to 1.01.
+- Chris chose C2 (C1 was atol 1e-7 alone). In C2 the drive cycles use atol 1e-7 and rtol 1e-6, both 10 × tighter than
+  atol 1e-6 and rtol 1e-5. rtol 1e-6 is 8 × the float32 machine epsilon (2⁻²³ ≈ 1.2·10⁻⁷).
+- Patch (commit 4ec5ce4, tested): run_loops.py --atol_cycles and --rtol_cycles set the RKF45 tolerance of the drive
+  cycles. They are not INIT_KEYS. The relaxation keeps --atol, and an --init_from state can run its cycles with another
+  tolerance. The run prints "[cycles] RKF45 atol … rtol …".
+- Design: the F runs of s941 and s942 run again from their relaxed state (init.pt, the start path of check 1). They
+  use --atol_cycles 1e-07 --rtol_cycles 1e-06 and 256 samples. All other arguments are as in stage 2
+  (conv_jobs.py --newell tol; runs N0b_F_s941_atol1e-07_rtol1e-06 and N0b_F_s942_atol1e-07_rtol1e-06).
+- Values per seed over the steady tail: ε_256 of the stage 2 run, ε_tol of the new run, and
+  d_w = ln w_loop(new run) − ln w_loop(stage 2 run).
+- Reading (fixed before the runs, eval_eps075.py tol):
+  - "integrator" if |ε_tol| ≤ 0.03 and |ε_tol| ≤ |ε_256| / 3;
+  - "not integrator" if |ε_tol| ≥ 2/3 |ε_256|;
+  - "partly" in all other cases; "not determined" if a run has no DONE or its tail has fewer than 2 cycles
+    (commit 118a8be, tested).
+  - Overall reading: the class of both seeds if they agree, else "mixed". Loss value: "w_loop unaffected" if
+    |d_w| ≤ 0.02 in both seeds.
+  - Read together with check 1 (both use the start path from init.pt).
+- Abort rules (fixed before the runs): the watchdog stops a run whose stdout.log has no new line for 3 × 4 700 s (one
+  cycle 3 × longer than in stage 2). run_queue stops a job after 24 h (--job_timeout_h 24). A stopped run gives no value.
+- Run: instance/chain_tol075.sh (the version of commit 4ec5ce4) runs in its own worktree on the instance
+  (/root/magnum.np-tol). Its runs/ is a link to the shared run folder. Start 2026-10-16 06:40 UTC: s941 on GPU 3, s942
+  on GPU 2. Check 1 runs on GPUs 0 and 1 at commit dee4961 without change.
+- Two deviations of the chain:
+  - The chain had to start s942 only after check 2. Its process pattern did not match, because magnum.np sets the
+    process title without the arguments. Thus s942 started at once and shares GPU 2 with check 2 until check 2 ends.
+    This changes the wall time, not the computed values. Fix in the repository: commit 78cf1eb.
+  - For the same reason, the abort rule of the chain cannot find the PID of a run. instance/watchdog_tol075.sh (commit
+    7b2e246, started 06:43 UTC) applies the rule. It finds the PID by the link of the stdout of the run.
+- Cost (estimate): a tighter tolerance needs up to 10^(1/5) ≈ 1.6 × more steps, because the local error of RKF45
+  scales with the fifth power of the step (if the accuracy limits the step; in 7.88 the step count did not change).
+  Thus one cycle takes 4 700 … 7 500 s, and 5 cycles take 7 … 11 h. Worst case: the steady rule allows up to 12 cycles,
+  and the job timeout stops a run after 24 h. Check 1 keeps the instance busy until about 14:30 UTC (estimate). Extra
+  cost after that: about 1.6 $ for 11 h, at most about 6.5 $ for 24 h (0.405 $/h).
+
+**Question of Chris: can the float32 resolution cause the problem (the energy-balance surplus S)?** Estimate, no
+measurement. A cell-scale error δm per component of m gives an exchange field noise with the rms per component
+
+    H_n = (2A / (μ0 M_s)) · √42 · δm / Δx²
+
+and a dissipation surplus, as a box mean with the volume fraction φ,
+
+    S ≈ α γ μ0 / (1 + α²) · M_s · 2 H_n² · φ
+
+(A 10 pJ/m, J_s 1.5 T, α 0.1, γ 2.213·10⁵ m/(A s), φ 0.65; √42 δm / Δx² is the rms of the discrete Laplacian of white
+noise; 2 H_n² approximates |m × H|²). The surplus scales with Δx⁻⁴, thus × 16 for each halving of the cell size; the
+measured factors are × 7.2 and × 22.
+- float32: one rounding per step with δm = 2⁻²⁴ / √12 up to an accumulation over the damping time of the cell-scale
+  mode (about 3 steps) with δm = 2⁻²⁴ √3. This gives S ≈ 0.002 … 0.09 W/cm³ on Δx 0.75 l_ex, that is 1 … 30 % of the
+  measured 0.28 … 0.37 W/cm³ (n 4).
+- The measured S corresponds to δm ≈ 1.6 … 3.0·10⁻⁷ on all three meshes (Δx 0.75 / 1.5 / 3 l_ex: 1.9 … 2.1 /
+  1.6 … 1.9 / 2.3 … 3.0·10⁻⁷, from the periodic N0b runs of the table above). This is about 3 … 5 float32 steps (2⁻²⁴)
+  or about 0.2 × atol 1e-6. The estimate does not separate the two causes.
+- The loss value w_loop did not depend on the precision in 7.3 and 7.88 (d/l_ex 48: the same to 4 digits). 7.88 found
+  no float32 cause of the w_dis error at atol 1e-5 (double precision gave 2.49 … 2.51 against 1.96 … 1.99). Double
+  precision at atol 1e-6 was not tested. A double-precision test is an option for Chris after the integrator test.
+
+**Check 2, result (information only; results/demag_solver_N0b.md, commit fd16cf6).** check_mesh_energy.py solver N0b
+ended 2026-10-16 between 06:40 and 06:52 UTC. Energies per box volume in units of K_d. E_N(k) is the reference solver
+with k image shells, and Δ = E_FD − E_N(4).
+- E_FD lies above E_N(4) in all 28 states, by 4 … 21 % of E_N(4). The sign is opposite to 7.105, where Δ < 0 in all
+  B0b states. The states differ: they were relaxed with different solvers.
+- The readings that 7.105 fixed for B0b give, here as information:
+  - frozen F state, dx 3 − dx 0.75: solver share s = 0.10 ± 0.02 (SE, n 4), "the solver is minor";
+  - relaxed dx 3 states (I3, T3): |Δ| / |E_K| = 0.37 ± 0.06 (SE over 8 states) or 0.37 ± 0.08 (SE, seed as the unit,
+    n 4), "the solver error is relevant for the 10 % criterion".
+- **New finding: the reference solver with 4 shells is not converged on the N0b states.** The largest
+  |E_N(4) − E_N(2)| is 1.7·10⁻⁴ K_d (limit 1·10⁻⁶). As a part of E_N(4) on the F states it is +1.5 / +12.3 / +9.6 /
+  +13.6 % (s941 … s944). On the B0b states (7.105) the largest change was 2.3·10⁻⁵ K_d, that is at most 1.5 % of E_N(4).
+- The ratio (E_N(2) − E_N(1)) / (E_N(4) − E_N(2)) is 2.65 … 2.70 in 26 of 28 states (941 T15 2.85 and 941 T3 2.74,
+  the two states with the smallest change). Thus the data agree with one law in k for all states. Only the amplitude
+  (the size of the change at a given k) depends on the state. The amplitude is negative in 2 states (941 I3, 944 I15).
+- The F state and its block averages on dx 1.5 and 3 have almost the same absolute change E_N(4) − E_N(2) (all 4 seeds
+  within 1.5 %; s942: 1.53 / 1.52 / 1.51·10⁻⁴ K_d on dx 0.75 / 1.5 / 3).
+- The remaining error of E_N(4) depends on the law (estimate). With 1 / (2k + 1)² it is 0.45 × (E_N(4) − E_N(2)), up to
+  6 % of E_N(4). With the power law k^−1.42 (fitted to the ratio 2.67) it is 0.6 × (E_N(4) − E_N(2)), up to 8 %. The
+  law 1 / (2k + 1)² alone gives the ratio 2.57; a 1 / (2k + 1)⁴ part raises it. Thus 2.67 does not favour the power law.
+- Against the extrapolated value (estimate) the error of DemagFieldPBC on the F states is 4 … 15 % (1 / (2k + 1)²) or
+  3 … 13 % (k^−1.42) instead of 9 … 21 %. The two readings above stay almost the same (s 0.105, |Δ| / |E_K| 0.35).
+- Check 1 and the integrator test compare N0b runs with 4 shells among themselves; this finding does not change them.
+  The error of the stage 2 loss values of N0b from the 4 shells is open. The "4 shells" reading of the shell test
+  decides it for the energy.
+
+**Shell test (decision of Chris 2026-10-16, option A; no new dynamics).**
+- Hypothesis (not proven): the field of the outer surface charges of a finite block of (2k + 1)³ boxes changes inside
+  the central box. After the compensation a field −(N(r) − I/3) <M> remains (N(r): demag tensor of the block at the
+  point r; N_block is its value at the centre). It couples the box mean <M> to the non-uniform part of M. The coupling
+  is linear in <M>, it can have either sign, and it falls as 1 / (2k + 1)². A cubic-symmetric arrangement with uniform
+  m has no such coupling.
+- A second term of the same order (review): the first moments ∫ r (M − <M>) dV of the far images also give a
+  1 / (2k + 1)² tail. Thus the zero-mean variant can have its own tail. The law reading cannot separate the two
+  terms, and the uniform test of 7.105 does not favour one of them.
+- Design (check_mesh_energy.py shells, commit 450547e, tested): the relaxed F states of N0b (seeds 941 … 944) on dx 0.75
+  and their block averages on dx 1.5 and dx 3, with k = 1, 2, 4, 6, 8, in double precision. The test also computes the
+  zero-mean variant of each state: M = Ms m minus its box mean <M>.
+- Readings (fixed in the code before the run):
+  - law: q = (E(6) − E(4)) / (E(8) − E(6)), mean over the states with |E(8) − E(4)| ≥ 1·10⁻⁶ K_d. The reading is the
+    nearer of 2.62 (1 / (2k + 1)²) and 2.32 (k^−1.42). Correction: the code had 2.30, a computing error. Commit 678befb
+    sets 2.32 (found by the review; the boundary moves from 2.46 to 2.47).
+  - cause: "coupling to the box mean" if the largest |E0(8) − E0(4)| is at most 0.1 × the largest |E(8) − E(4)|.
+    E0 is the energy of the zero-mean variant. Else "not the box mean".
+  - 4 shells: E∞ from the fit c0 + c1 x + c2 x² with x = 1 / (2k + 1)² over k = 2, 4, 6, 8. The fit assumes this law
+    also if the law reading gives the power law. r4 = max |E∞ − E(4)| / |E∞|: "4 shells adequate" if r4 ≤ 1 %,
+    "not adequate" if r4 ≥ 5 %, else "marginal".
+- Run: instance/chain_shells.sh on the CPU of the instance (the 4 GPUs run check 1 and the integrator test), one
+  process per mesh, own worktree /root/magnum.np-shells (at 678befb for the report). Start 2026-10-16 07:26 UTC.
+  Duration on the CPU: about 2.4 s per image box on dx 0.75 (65 s for k = 1). dx 0.75 needs 7 991 image boxes for all
+  k, thus about 5.3 h, end about 12:45 UTC (estimate). dx 1.5 and dx 3 end within 1 h. No extra cost: check 1 keeps
+  the instance busy until about 14:30 UTC.
+- Values seen before this text: for k = 1 and 2 the new values reproduce check 2 to 7 digits (for example 942 F
+  0.00068299), and in all 12 states E0 equals E to 8 digits. A local test of zero_mean on a random state (8³ cells,
+  <m> up to 0.22) gives E0 − E of about 2·10⁻⁶ K_d at k = 1, falling with k; the variant changes the energy where
+  <M> couples.
+
+**Shell test, result (results/shells_N0b.md, commit 0a4f49f).** Run 2026-10-16 07:26 … 12:04 UTC on the CPU of the
+instance, all exit codes 0. 12 states: the N0b F states (dx 0.75) and their block averages on dx 1.5 and dx 3, seeds
+941 … 944. Energies per box volume in units of K_d.
+- **Law: "1 / (2k + 1)²".** q = (E(6) − E(4)) / (E(8) − E(6)) is 2.616 … 2.621 in all 12 states. The law gives 2.62,
+  the power law k^−1.42 gives 2.32.
+- **Cause: "not the box mean".** The zero-mean variant gives the same energies as the state for all k (largest
+  relative difference 2.8·10⁻⁸). The largest |E(8) − E(4)| is 5.4·10⁻⁵ K_d. Thus the compensation of the outer surface
+  charges is correct, and the data reject the hypothesis of the box-mean coupling. The slow part is in the non-uniform
+  part of M. The test does not show which term causes it.
+- **4 shells: "not adequate"** (r4 = 5.75 % ≥ 5 %). E∞ is the fit c0 + c1 x + c2 x² with x = 1 / (2k + 1)² over
+  k = 2, 4, 6, 8. E(4) is too small by (E∞ − E(4)) / E∞:
+
+| state | s941 | s942 | s943 | s944 |
+|---|---|---|---|---|
+| F, dx 0.75 | +0.67 % | +5.20 % | +4.12 % | +5.75 % |
+| F→1.5 | +0.33 % | +2.59 % | +2.05 % | +2.86 % |
+| F→3 | +0.17 % | +1.27 % | +1.01 % | +1.41 % |
+
+- For one seed the absolute difference E∞ − E(4) agrees within 1 % on the three meshes (s941 8.7·10⁻⁶, s944
+  7.5·10⁻⁵ K_d). It is at most 4.6 % of |E_K| (E_K: anisotropy energy of the state; s944). With 8 shells at most 1.6 %
+  of E∞ remains.
+- The extrapolation from k = 2 and k = 4 alone, E(4) + 0.446 (E(4) − E(2)) with 0.446 = 25/56, agrees with E∞ within
+  0.01 percentage points (s944, dx 0.75: 5.74 % against 5.75 %).
+- Against E∞ the error of DemagFieldPBC on the F states is 4 … 15 %. This confirms the estimate above.
+- E∞ of the F states lies at 0.0012924 … 0.0013102 K_d (range / mean 1.4 %), E(4) at 0.0012322 … 0.0012945 (5.0 %).
+- Consequence: for the 12 tested states E(4) is too small by up to 5.75 %. The effect on the loss values of N0b is not
+  known.
+
+**Decision of Chris (2026-10-16): option 1′.** The options (costs are estimates, 0.405 $/h):
+- (1) the 4 F runs from init.pt with the extrapolated kernel in the cycles: about 7 h on 4 GPUs, about 2.8 $;
+- (2) stage 1 and 2 of N0b again with the extrapolated kernel: about 13 h, about 5.3 $ (the N0b runs used 48 GPU-hours,
+  41 of them for the 4 F runs);
+- (3) keep 4 shells and state the limit;
+- (4) 8 shells instead of the extrapolation.
+Chris noted that option 1 costs more than half of option 2. He chose option 1′: the same paired test on dx 1.5, about
+1/7 of the cost of option 1. Reason: T15 starts from the F state, and its estimated 4-shell error (from check 2,
+0.446 (E(4) − E(2)) / E∞) is like that of F: 0.05 / 2.8 / 1.9 / 3.1 % (s941 … s944). I15 is relaxed on its own; its
+error is 3 … 30 × smaller (0.6 / 1.0 / 0.9 / −0.1 %). Limit: the error on dx 0.75 is about 2 × that on dx 1.5, and the
+dynamics differ. Thus a small effect on dx 1.5 does not prove a small effect on dx 0.75. Plan after the result:
+"effect" in T15 → option 2; "no effect" in T15 → option 3, or option 2 only as a safeguard; "not determined" → Chris
+decides (for example more seeds, or option 1 on dx 0.75).
+
+**Patch (commit fe0b501; tests: magnum.np demag 19 passed, study 91 passed).**
+- magnumnp/field_terms/demag.py: DemagField(true_pbc=True, extrapolate=True). The kernel loop also adds the partial
+  sum N_i over the inner k_i = k // 2 shells. This needs no extra kernel evaluations. The result is
+  N_k + (N_k − N_i) x_k / (x_i − x_k) with x_j = 1 / (2j + 1)².
+- The option needs true_pbc and the same k ≥ 2 in all three directions (cube arrangement of the images). The kernel
+  cache has its own name. The energy is linear in the kernel; thus each state gets
+  E(k) + (E(k) − E(k_i)) x_k / (x_i − x_k). A unit test checks this identity and two domains with 2 and 4 shells.
+- run_loops.py has two new options. --strayfield newell_ext sets the extrapolated kernel as an INIT_KEY (for option 2).
+  --strayfield_cycles newell_ext sets it only in the drive cycles. It is not an INIT_KEY, so an --init_from state of
+  N0b can use it. It works only between the Newell forms.
+
+**Code check of the extrapolated kernel (reading fixed before the run).** check_mesh_energy.py shells_ext N0b <dx>
+computes E(4x), the energy with the extrapolated kernel and 4 shells, for the 12 states. Because the energy is linear
+in the kernel, the result is known before the run (at most 0.0095 % from E∞ by the table above). Thus this check
+tests only the code. Outcomes: "extrapolated kernel valid" if max |E(4x) − E∞| / |E∞| ≤ 0.1 % over the 12 states;
+"not valid" if above; "not determined" if a state is missing. The GPU runs start in all three cases.
+
+**Loss test on dx 1.5 (eval_kext.py, reading fixed before the runs; per arm by decision of Chris before any result,
+commit 6444184).**
+- The test runs T15 (from stage 2) and I15 (from stage 1; s941 with its stage 1b line), seeds 941 … 944, again from
+  their own relaxed state (--init_from) with --strayfield_cycles newell_ext. All other arguments are those of the run
+  that gave the current value. The test removes --init_transfer (conv_jobs.py --newell kext; runs <run>_kext).
+- Value per run: d = ln P(extrapolated kernel) − ln P(4 shells) over the steady tail (eval_conv.run_record). Per arm:
+  mean ± SE and 90 % CI from t(3), n 4 seeds.
+- Reading per arm:
+  - "no effect at dx 1.5" if the 90 % CI of the mean d lies inside ± 0.10;
+  - "effect" if the 90 % CI excludes 0 and |mean d| > 0.10;
+  - "not determined" in all other cases, or with fewer than 3 seeds.
+  - T15 decides. I15 has its own reading.
+- Limits:
+  - The new runs load init.pt; the old runs relaxed in the same process. In 7.102 this change left w_loop the same to
+    4 printed digits, but that check was exploratory (n 2, B0b, dx 0.75).
+  - N0b I15 s942 has no periodic loop (closure 1.2·10⁻³).
+  - I15 s942 … s944 run without --b_tol. A shift of b_peak by the new kernel enters d there. The report gives
+    b_peak / b_target of the old and the new runs.
+- Run: instance/chain_kext.sh in its own worktree (/root/magnum.np-kext). The code check started 12:50 UTC on the CPU.
+  The 8 runs start on GPUs 0 and 1 after check 1 ends, about 14:00 UTC (estimate from the cycle times at 13:04 UTC),
+  and take about 2 h (estimate). The integrator test ends about 14:45 UTC (estimate). Extra instance time after it:
+  about 1.3 h, about 0.5 $ (estimate).
+
+**Check 1, result (results/eps075_report.md, commit 05cbd58).** Runs N0b_F_s941_smp1024 and N0b_F_s942_smp1024 ended
+2026-10-16 13:14 UTC (7.0 h each, all exit codes 0). **Reading: "not sampling"; loss value: "w_loop unaffected".**
+
+| seed | ε, 256 samples | ε, 1024 samples | ln w_loop(1024) − ln w_loop(256) | class |
+|---|---|---|---|---|
+| 941 | +0.170 | +0.163 | −0.0001 | not sampling |
+| 942 | +0.091 | +0.088 | +0.0001 | not sampling |
+
+- The surplus S changes from 0.365 to 0.351 W/cm³ (s941) and from 0.324 to 0.311 W/cm³ (s942). P is the same to 4
+  digits (2.150 and 3.551 W/cm³). The start from init.pt thus does not change w_loop either.
+- Limit: n 2; the result applies to s941 and s942 only.
+
+**Integrator test, result (results/tol075_report.md, commit 3285add).** Runs N0b_F_s941_atol1e-07_rtol1e-06 and
+N0b_F_s942_atol1e-07_rtol1e-06 ended 2026-10-16 14:34 UTC (7.9 h, all exit codes 0; the abort rule did not act).
+**Reading: "integrator"; loss value: "w_loop unaffected".**
+
+| seed | ε, stage 2 run | ε, atol 1e-7 / rtol 1e-6 | ln w_loop(new) − ln w_loop(stage 2) | class |
+|---|---|---|---|---|
+| 941 | +0.170 | +0.028 | +0.0001 | integrator |
+| 942 | +0.091 | +0.011 | −0.0000 | integrator |
+
+- The surplus S falls from 0.365 to 0.060 W/cm³ (s941) and from 0.324 to 0.039 W/cm³ (s942). P is the same to 4 digits.
+- The tighter tolerance needs 20 % more steps (about 69 900 instead of 58 150 per cycle; mean step 0.477 ps instead of
+  0.573 ps) and 16 % more wall time per cycle (5 450 s instead of 4 690 s).
+- Read together with check 1: both tests start from the same init.pt, and check 1 keeps ε at 0.163 / 0.088. Thus the
+  start path does not cause the drop of ε.
+- Consequence for N0b F s941 and s942: the energy-balance error comes mainly from the RKF45 tolerance. It affects
+  w_dis, and thus the calm check of the steady rule, but not w_loop. In these two runs P is the same to 4 digits with
+  1024 samples and with the tighter tolerance. F s943, F s944 and the T15 runs are not tested. That the same holds for
+  the B0b error of 7.102 is an inference, not a test.
+- Limit: n 2; the result applies to s941 and s942 only.
+- A rest of ε remains: per tail cycle (cycles 2 / 3 / 4) 0.044 / 0.019 / 0.020 (s941) and 0.006 / 0.013 / 0.014
+  (s942). Cycle 2 of s941 still has a closure of 2.7·10⁻⁴ (a change of the stored energy), and s941 lies only 0.002
+  below the limit 0.03. Possible causes of the rest: a still too coarse tolerance, float32, the sampling (check 1:
+  −0.007 / −0.004) or the change of state in cycle 2. No test separates them.
+- Estimate, not a measurement: the mean step lies near the stability limit of the explicit integrator for the
+  cell-scale exchange mode,
+
+      Δt_max ≈ 3 / (γ H_k),   H_k = (2A / (μ0 M_s)) · 12 / Δx²,
+
+  that is 0.53 / 2.1 / 8.5 ps on dx 0.75 / 1.5 / 3 against the measured 0.573 / 2.15 / 7.2 ps (stage 2 runs; −16 …
+  +8 %). The measured step count grows × 3.3 (dx 3 → 1.5) and × 3.8 (dx 1.5 → 0.75).
+
+**Code check of the extrapolated kernel, result (results/shells_N0b.md).** Ended 13:13 UTC, exit codes 0. Largest
+|E(4x) − E∞| / |E∞| over the 12 states: 0.0095 %. **Reading: "extrapolated kernel valid".**
+
+**Loss test on dx 1.5: not run yet.**
+- First start (13:15 UTC): all 8 runs stopped at once with exit code 1 (TypeError: DemagField.__init__() got an
+  unexpected keyword argument 'extrapolate').
+- Cause: on the instance, magnumnp is an editable install of /root/magnum.np (commit dee4961). run_loops.py put only
+  its study folder on sys.path. Thus a run in the worktree /root/magnum.np-kext loaded the magnumnp of /root/magnum.np,
+  which has no patch. check_mesh_energy.py puts the root of its checkout on sys.path, so the code check used the
+  patch. The local tests set PYTHONPATH and did not show the fault.
+- Check of the earlier runs: check 1 and the N0b runs ran in /root/magnum.np itself. The integrator test ran in the
+  worktree at 4ec5ce4 and loaded the magnumnp of dee4961; between these two commits magnumnp/ has no change. All
+  results above thus used the recorded code.
+- Fix (go of Chris; commit 7f7349b; study tests 92 passed): run_loops.py puts the root of its own checkout first on
+  sys.path, and config.json records magnumnp_path. A test with a fake magnumnp on PYTHONPATH fails without the fix and
+  passes with it. chain_kext.sh now uses the 4 GPUs after check 1 and the integrator test.
+- Second start: not possible. The instance 53995473 has the status "offline" on vast.ai since about 14:50 UTC
+  (ssh: time-out, later "no route to host"); still offline at 22:01 UTC. No run was active at that time. The copy of
+  the new chain script to the instance failed, so the restart changed nothing on the instance. The relaxed states (init.pt) of the N0b runs are only on the
+  instance; all reports and the run folders without .pt are local. Credit: 23.00 $ at 09:49 UTC, 20.84 $ at 22:01 UTC.
+
+**NeuralMag (question of Chris 2026-10-16; independent review, not a test).** NeuralMag (Abert et al., npj Comput.
+Mater. 11, 193 (2025); code gitlab.com/neuralmag/neuralmag, commit e691c31) uses the same Newell kernel and image sum
+as magnum.np. Its true-PBC solver is the finite-difference scalar potential of Bruckner 2021 (checked in
+neuralmag/common/convolution_runtime.py). Thus it gives no independent stray field and no better surface. Possible
+levers for the cost: implicit and IMEX integrators and the polynomial extrapolation of the demag field in time
+(Lepadatu, IEEE Trans. Magn. 58 (2022)) in its JAX backend. Risks: its nodal and cell modes have softer cell-scale
+modes, and its PBC code is from 2026-04.
+
+**Loss test on dx 1.5, result (results/kext15_report.md, commit 7ecd351).**
+- The instance was online again at 2026-10-16 22:16 UTC after a restart (uptime 9 min at 22:25 UTC). The init.pt files
+  were intact. The onstart script had started the old chain_kext.sh at commit fe0b501, and its runs stopped again at
+  once with the same TypeError. I ended that chain and its queue by their PIDs. I moved the failed run folders (logs
+  only) to *_kext_fail1 and started the chain at commit 7f7349b at 22:26 UTC.
+- All 8 runs ended with exit code 0 (0.46 … 0.55 h each): the T15 runs at 22:55 … 22:59 UTC, the I15 runs at
+  23:26 … 23:29 UTC. Each run loaded its own init.pt, printed "[cycles] strayfield newell_ext", and recorded
+  magnumnp_path /root/magnum.np-kext/magnumnp.
+- d = ln P(extrapolated kernel) − ln P(4 shells) per seed (s941 … s944):
+  - T15: +0.230 / +0.009 / +0.015 / −0.063; mean +0.048 ± 0.063 (SE, n 4; 90 % CI −0.101 … +0.197).
+    **Reading T15 (decisive): "not determined".**
+  - I15: +0.008 / +0.018 / −0.109 / +0.004; mean −0.020 ± 0.030 (SE, n 4; 90 % CI −0.090 … +0.050).
+    **Reading I15: "no effect at dx 1.5".** Limit: in I15 s942 and s943 (no --b_tol) the first drive correction used
+    the b of the disturbed cycle 0. Their b_peak / b_target is 0.968 and 0.975 (old runs 1.001 and 0.998). Against the
+    old runs this shifts ln P by about −0.07 and −0.05 (estimate with β ≈ 2).
+- Facts on the measuring method:
+  - The new runs start from a state relaxed with the 4-shell kernel. In cycles 0 and 1 they show large transients
+    (closure up to 0.149, |ε| up to 360). The old T15 runs had |ε| ≤ 0.12 in cycle 0; the old I15 runs s941 and s942
+    (no change of kernel, the cycles directly after the virgin relaxation) had transients of the same size.
+  - T15 s941: tail P 1.752 against 1.391 W/cm³ (+26 %).
+  - Observation (n 4, not a test): in the order of the estimated 4-shell error of the T15 states (s941 0.05 %, s943
+    1.9 %, s942 2.8 %, s944 3.1 %), d falls: +0.230, +0.015, +0.009, −0.063.
+- μ_r = b_peak / h (b = B / J_s, h = H / M_s) with the extrapolated kernel against 4 shells, same relaxed state:
+  T15 +0.33 ± 0.15 %, I15 −0.01 ± 0.11 % (SE, n 4). The I15 runs s942 and s943 compare drives with an h 3.6 % and
+  2.0 % lower.
+- Interpretation (n 4, not a test): the large d of T15 s941 can come from a change to another metastable state that
+  the transient of the kernel change caused. The test cannot separate the kernel effect from this disturbance.
+- Scatter over the seeds, 9 mT, 4 seeds per arm, B0b and N0b: SD of ln μ_r 0.004 … 0.013, SD of ln P 0.07 … 1.13. The
+  seed also sets the cube axes and the offsets of the grains, so this scatter includes the realisation; it is not a
+  measure of the state dependence alone.
+- Mesh steps of μ_r in the T arm (ratio − 1, mean ± SE over the seeds, n 4): N0b −2.8 ± 0.2 % (dx 3 → 1.5) and
+  −1.1 ± 0.3 % (dx 1.5 → 0.75); B0b −4.9 ± 0.4 % and −2.9 ± 0.4 %.
+- Check of an earlier result (7.105 data, recomputed 2026-10-17). The alias sum truncates the Fourier sum over the
+  aliases at |G_a| ≤ Gm. An interpolation c0 + c1 / Gm + c2 / Gm² through Gm = 4, 8, 16 (3 points, 3 parameters)
+  gives c0 within 0.002 % of the exact cube and uniform energies, and −0.028 % from 0.5 K_d for the checkerboard
+  (the exact value of a cell checkerboard, PLAN 4.12). Newell extrapolated from (2, 4) deviates from c0 by +0.019 %
+  (B0b I3 s941) and +0.016 % (B0b T3 s941), thus they agree within about 0.03 %; Newell with 4 shells by +0.13 % and
+  +0.04 %. This replaces the statement of 7.105 "within 0.3 %" (0.26 %, linear extrapolation in 1 / Gm).
+- Consequence: the error of the N0b loss values from the 4 shells stays open.
+
+**Decision of Chris (2026-10-17).** The goal is the validation of the final stray-field setting (shells,
+extrapolation) against an independent reference, and then its mesh convergence: PLAN 4.12 (approved by Chris
+2026-10-17; Chris delegated the decision after V1 to the plan readings: continue with V3 only if a candidate is
+"valid" and the reference is calibrated).
+
+**Open decisions for Chris.** The re-scope after "not converging" (PLAN 4.10); a NeuralMag pilot (proposed
+2026-10-16).
+
+### 7.109 PLAN 4.12 V1: k = 1 … 8 not valid; the kernel extrapolated from (2, 4) agrees within 0.1 %, reading "not determined"; stop (2026-10-17)
+
+**Run.** Chris decided on 2026-10-17 to run V1 on the instance (PLAN 4.12 had the local computer); the instance ran
+anyway. instance/chain_v1.sh at commit c38a398 in the worktree /root/magnum.np-v1, 2026-10-17 01:18 … 01:53 UTC, all
+exit codes 0. The alias reference ran on the CPU (the Gm 32 kernel on 48³ cells took 1 450 s), the Newell candidates on
+GPUs 0 … 2. Report: results/v1_N0b.md (commit 732b5ba). Energies per box volume in units of K_d.
+
+**Calibration: "reference calibrated".** E_ref is the interpolation c0 + c1 / Gm + c2 / Gm² through Gm = 8, 16, 32.
+u is its relative difference to the linear extrapolation 2 E(32) − E(16).
+
+| case | E_ref / exact − 1 | u |
+|---|---|---|
+| aligned cube f = 1/8, m along (111) (exact 7/192) | −0.0002 % | 0.0039 % |
+| checkerboard (exact 1/2) | −0.0042 % (field: 0.0042 % RMS) | 0.040 % |
+| B0b geometry, uniform m along (111) (exact φ_vox (1 − φ_vox) / 3) | −0.0003 % | 0.0038 % |
+
+Code checks: the largest trace error of the alias kernels is 9.2·10⁻¹⁵; the energy from the Fourier form and
+−½ μ0 ⟨M · H⟩ / K_d differ by at most 5.6·10⁻¹⁷.
+
+**Candidates (12 N0b states on dx 3: F→3, I3, T3, seeds 941 … 944).**
+
+| candidate | max dE | max (dE + 2u) | max dH | max (dH + 2u_H) | reading |
+|---|---|---|---|---|---|
+| k = 1 | −14.91 % | 15.00 % | 5.30 % | 5.38 % | not valid |
+| k = 2 | −5.25 % | 5.34 % | 1.87 % | 1.94 % | not valid |
+| k = 4 | −1.62 % | 1.71 % | 0.58 % | 0.65 % | not valid |
+| k = 8 | −0.45 % | 0.54 % | 0.16 % | 0.24 % | not valid |
+| extrapolated from (1, 2) | +0.19 % | 0.28 % | 0.067 % | 0.14 % | not valid |
+| extrapolated from (2, 4) | +0.0063 % | 0.097 % | 0.0039 % | 0.0791 % | not determined |
+
+- Predictions of PLAN 4.12: confirmed for k = 4 (about 1.4 %, measured 1.62 %) and k = 8 (about 0.4 %, measured
+  0.45 %); for extrapolated from (1, 2) (0.14 … 0.23 %, measured 0.19 %) the value is larger than 2u. For extrapolated
+  from (2, 4) (≤ 0.01 %) the value 0.0063 % agrees, but it is smaller than u, so the test cannot confirm it. The
+  negative controls k = 1, 2, 4 are "not valid".
+- Extrapolated from (2, 4): dE is +0.0005 … +0.0063 % on the 12 states, dH at most 0.0039 %. u is 0.042 … 0.046 %, so
+  2u alone exceeds the energy threshold 0.025 %. The test thus shows agreement only within 0.1 % (max (|dE| + 2u)
+  0.097 %). By the rule the reading is "not determined". The field part passes (max (dH + 2 u_H) 0.0791 % against
+  0.25 %).
+- **Final setting: none. By the rule of PLAN 4.12 and the delegation of Chris, V3 does not start.**
+- Fact on the measuring method: on the three calibration cases the real error of E_ref is smaller than u: 9.4 ×
+  (checkerboard) and about 15 × (cube, uniform B0b). These are three synthetic cases. For the 12 states the real error
+  is not known.
+- With 4 shells, I3 s941 has dE = +0.50 % (E(4) above the reference), the other 11 states −0.08 … −1.62 %. This agrees
+  with the negative amplitude of I3 s941 in check 2 (7.108).
+
+**Cause of "not determined".** PLAN 4.12 set the energy threshold on dx 3 to 0.025 % (0.1 % on dx 0.75) and required
+|dE| + 2u below it. At Gm 32, u is about 0.045 % for these states. PLAN 4.12 names this risk. The 7.105 data at
+Gm = 4, 8, 16 permitted an estimate of u before the run, but nobody made it.
+
+**Open decision for Chris.** Options (estimates):
+1. A more precise reference. This changes the Gm set of PLAN 4.12, but not its thresholds. First a cheap check on the
+   CPU: the 16³ checkerboard (the same u and the same ratio of the Gm steps as the states) at Gm 64 and 128. If u falls
+   as the fit model predicts (u ≈ c2 / (2 Gm²), about 16 × from Gm 32 to 128; estimate), the 12 states follow at Gm 32,
+   64, 128 with u = relative difference to 2 E(128) − E(64). The CPU time grows as (2 Gm + 1)³ (Gm 128 about 62 × the
+   1 450 s of Gm 32), thus a port of alias_kernel to torch on a GPU. With only 4 × smaller u, I3 s944 would give
+   0.029 % > 0.025 %, and the reading would stay "not determined". Cost: about 1 … 2 h of work, minutes of GPU time;
+   the instance runs anyway.
+2. Chris selects the kernel extrapolated from (2, 4) as the final setting with the present data. This does not follow
+   the rule of PLAN 4.12; for the 12 states the real error is not known.
+3. Measure the energy and field ratios between dx 3 and dx 0.75 and revise the thresholds. This also does not follow
+   the rule.
+4. Stop here: the final setting stays open, V3 does not start, and the 4-shell error of the N0b loss values stays open.
+
+**V1 with the finer reference (decision of Chris 2026-10-17: option 1).**
+- Checkerboard check first (rule fixed before the run in check_demag_alias.py, commit b063483: "finer reference works"
+  if u with Gm = 32, 64, 128 is at least 8 × smaller than with Gm = 8, 16, 32 and E_ref deviates from 1/2 by at most
+  0.005 %). Result: u 0.0028 % against 0.040 % (ratio 14.0; prediction about 16), E_ref −0.00008 % from 1/2.
+  **Reading: "finer reference works".**
+- The 12 states and the calibration with Gm = 32, 64, 128; the alias kernels on GPU 0 (alias_kernel_torch; the Gm 128
+  kernel on 48³ cells took 894 s); 2026-10-17 06:11 … 06:33 UTC, exit codes 0. Report: results/v1_N0b_32_64_128.md
+  (commit c464ce4; the column labels of its calibration table read E(8), E(16), E(32), but the values are for Gm 32,
+  64, 128; the code fix came after the run). The Newell candidates are the same files as before.
+- Calibration: cube, checkerboard and uniform B0b within 0.0001 % of the exact values (u ≤ 0.003 %). The largest trace
+  error of the alias kernels is 1.9·10⁻¹³. **"Reference calibrated".**
+
+| candidate | max dE | max (dE + 2u) | max dH | max (dH + 2u_H) | reading |
+|---|---|---|---|---|---|
+| k = 1 | −14.92 % | 14.92 % | 5.30 % | 5.31 % | not valid |
+| k = 2 | −5.25 % | 5.26 % | 1.87 % | 1.87 % | not valid |
+| k = 4 | −1.62 % | 1.63 % | 0.58 % | 0.58 % | not valid |
+| k = 8 | −0.45 % | 0.46 % | 0.16 % | 0.17 % | not valid |
+| extrapolated from (1, 2) | +0.19 % | 0.19 % | 0.066 % | 0.071 % | not valid |
+| extrapolated from (2, 4) | +0.0031 % | 0.0093 % | 0.0019 % | 0.0071 % | **valid** |
+
+- **Final setting: DemagField(true_pbc=True, extrapolate=True) with 4 image shells** (run_loops.py --strayfield
+  newell_ext --strayfield_shells 4).
+- The finer reference moved E_ref by +0.0030 … +0.0032 % on all 12 states; thus the largest dE of the extrapolated
+  kernel falls from +0.0063 % to +0.0031 %. The prediction of PLAN 4.12 (≤ 0.01 %) is confirmed.
+- Code path at dx 0.75 (check_demag_alias.py v1_u075, commit c14ff30; rule fixed before the run): B0b geometry on 192³
+  cells, uniform m along (111), final setting: E / exact − 1 = +0.00000 %. **"Valid at dx 0.75".** V1 is complete.
+
+**Decision of Chris (2026-10-17): V3g replaces V3 (PLAN 4.12).**
+- Question of Chris before V3: will the final solver make the loss converge? My expectation (an estimate): no. N0b
+  already used the Newell solver and gave "not converging" (ln P(T15) − ln P(F) = −1.19 ± 0.38, SE, n 4). The kernel
+  change moved ln P on dx 1.5 by +0.048 ± 0.063 (T15, SE, n 4, 90 % CI −0.10 … +0.20, "not determined", s941
+  +0.230) and −0.020 ± 0.030 (I15); F was not tested; the tolerance change left w_loop the same (n 2).
+- Proposal of Chris: change only dx and keep the voxel geometry. V3g locks the voxel geometry of dx 3 on all meshes:
+  on dx 1.5 and 0.75 each coarse cell splits into 2³ or 4³ fine cells. In all earlier series the voxel geometry of the
+  spheres changed with dx; V3g separates the discretisation of m from this change of the model.
+- Locked (run_loops.py --geom_dx_lex 3.0, commit 8831bcb): the particle index of each cell, the cube axes, φ_vox
+  (0.6476 on all three meshes; without the lock 0.6499 on dx 0.75), M_s of the void (10⁻⁸ M_s, A 0) and the virgin
+  start state (blocks of 6 l_ex). The T transfer uses the same locked geometry. Not locked: the relaxation path and
+  the time step. Single precision as in production.
+- Readings: eval_v3.py --prefix N1g (fixed before the runs): for the T arm "converged at dx 1.5", "converging", "not
+  converging" or "not determined"; the I arm and μ_r as information.
+- If P converges with the locked geometry, the numerics converge on a fixed voxel geometry. The non-convergence of
+  B0b / N0b then comes from the change of the voxel geometry between meshes, as far as the kernel and tolerance
+  changes are small (an estimate, see above). A free control: N1g_I3 against N0b_I3 (the same geometry on dx 3;
+  they differ only in the kernel and the tolerance).
+- If P does not converge, the cause is in the numerics or in the state selection at 9 mT, not in the change of the
+  voxel geometry between meshes.
+- Limit: V3g shows the convergence for a sphere built of 3 l_ex cubes with 90° edges, not for the smooth sphere.
+- Run: instance/chain_n1g.sh, jobs/locked_n1g.txt (20 jobs, prefix N1g: F first, then I3, I15, T15, T3), report
+  runs/v3g_n1g_report.md. Study tests 96 passed. Cost (estimates): 14 … 16 h on 4 GPUs, 5.7 … 6.5 $; worst case about
+  23 h, about 9.5 $.
+- Smoke test before the start (instance, d/l_ex 24, φ 0.3 so that the dx 3 voxels do not touch, one cycle): F on
+  dx 0.75 with the geometry of dx 3 relaxed (1 500 iterations) and ran its cycle; T15 on dx 1.5 took the transfer from
+  it without a cell of another particle or a zero vector; φ_vox was 0.296875 on both meshes; exit codes 0.
+- Start 2026-10-17 07:40 UTC (/root/n1g_commit 8831bcb, own worktree /root/magnum.np-n1g): the 4 F runs on the
+  4 GPUs; config.json records geom_dx_lex 3.0 and magnumnp_path /root/magnum.np-n1g/magnumnp.
+
+### 7.110 V3g: with a locked voxel geometry the loss converges; cost benchmark on dx 3; corner test started and stopped; audit of the setup; decisions of Chris (2026-10-17)
+
+**V3g result (results/v3g_n1g_report.md, eval_v3.py --prefix N1g; rules fixed before the runs, PLAN 4.12).**
+- 20 runs, all with a calm tail of ≥ 2 cycles. Base microstructure (L_eff 12 l_ex, r_p 0, φ 0.65, α 0.1), d/l_ex 96,
+  9 mT, seeds 941 … 944, voxel geometry of dx 3 on all meshes, final stray-field setting, tight cycle tolerance.
+- P (W/cm³) per arm, geometric mean over the 4 seeds, and the SD of ln P over the seeds: F (dx 0.75) 1.42, SD 0.17;
+  T15 1.41, SD 0.16; T3 1.19, SD 0.22; I15 1.30, SD 0.23; I3 1.11, SD 0.18.
+- T arm (decisive): Δ(1.5 − 0.75) = −0.008 ± 0.011 (SE, n 4, 90 % CI −0.033 … +0.018). **Reading: "converged at
+  dx 1.5".**
+- Δ(3 − 1.5) = −0.168 ± 0.059 (SE, n 4, 90 % CI −0.307 … −0.029). Thus at this point dx 3 gives a P about 15 % lower
+  than dx 1.5 (factor 0.85). This is one point (d/l_ex 96, 9 mT); it is not a rule for the design range.
+- I arm (information): Δ(1.5 − 0.75) = −0.092 ± 0.086; reading "not determined". The independent relaxations select
+  different states (SD of the paired difference 0.17 against 0.02 in the T arm).
+- μ_r converges too: ln μ_r(T15) − ln μ_r(F) = −0.0020 ± 0.0002, ln μ_r(T3) − ln μ_r(T15) = −0.0198 ± 0.0031 (SE, n 4).
+- ε of the F tails: +0.025 / +0.031 / +0.024 / +0.045. The cause of this rest on dx 0.75 is not known.
+
+**Free control and the place of the old non-convergence** (N1g against N0b, same seed, ln P; mean ± SE, n 4, 90 % CI
+with t(3)). N0b used 4 shells without the extrapolation, atol 1e-6 in the relaxation and in the cycles
+(jobs/newell_b0_s*.txt), and the voxel geometry of its own mesh. N1g used the tight tolerance in the cycles.
+
+| arm | N1g − N0b | what changes |
+|---|---|---|
+| I3 | −0.023 ± 0.055 (−0.152 … +0.107) | kernel and cycle tolerance only (the same dx 3 geometry) |
+| T15 | +0.026 ± 0.041 (−0.070 … +0.122) | kernel, cycle tolerance, and dx 3 geometry against dx 1.5 geometry |
+| F | −1.152 ± 0.410 (−2.118 … −0.186) | kernel, cycle tolerance, and dx 3 geometry against dx 0.75 geometry |
+
+- On dx 3 the kernel and the cycle tolerance do not move P detectably (I3).
+- The large change is in F: N0b F, with the finer staircase of the dx 0.75 voxel geometry, had a P higher by a factor
+  of about 3. This points to the change of the voxel geometry to dx 0.75 as the cause of the non-convergence of
+  B0b / N0b (7.107, 7.108). It is an inference: the kernel effect on dx 0.75 was not tested (7.109), and the I3
+  control is on dx 3 only. On a fixed voxel geometry the numerics converge (V3g).
+- Consequence: the loss at 9 mT depends strongly on the shape of the particle surface. The staircase of the voxels is
+  part of the model, not only a discretisation error. This is a model question for Chris.
+- Size and roughness question: at a fixed dx 3 l_ex the step of the staircase relative to the particle diameter
+  changes with the size (dx / d = 0.010 at d/l_ex 300, 0.014 at d/l_ex 212). This can bias the effect of the particle
+  size in the main study. Open; Chris decides after the corner test (PLAN 4.13).
+
+**Cost benchmark on dx 3 (results/tolbench_report.md, eval_tolbench.py).** Corners K1_0 (d/l_ex 212) and K2_0
+(d/l_ex 300), 9 mT, 3 cycles, final stray-field setting, from the same relaxed state. Variants: a5 (atol 1e-5),
+a6 (atol 1e-6), tight (atol 1e-7, rtol 1e-6).
+
+| | K1_0 | K2_0 |
+|---|---|---|
+| steps per cycle, tight against a5 | +14 % | +13 % |
+| steps per cycle, tight against the old run (DemagFieldPBC, atol 1e-5) | 5272 against 5381 (−2 %) | 5453 against 5376 (+1 %) |
+| wall per cycle, tight against a5 | +7 % | −13 % |
+| P, all 3 variants | 2.705 W/cm³ | 4.496 W/cm³ |
+| ε of cycle 2, a5 → tight | +0.035 → +0.006 | +0.003 → +0.001 |
+| wall per step, final setting against DemagFieldPBC (old run) | +42 % | +42 % |
+
+- The wall time per cycle changes with the load on the node; the number of steps is the reliable measure.
+- Decision of Chris (2026-10-17, "Feiner"): the tight cycle tolerance in the production setup.
+
+**Corner test: started and stopped.**
+- Decision of Chris (2026-10-17): first the corners, then the decision on a new main study.
+- Start 19:40 UTC (commit 21c863e, jobs/corners_nx.txt, chain_corners_nx.sh): the 12 corner runs with the final
+  stray-field setting and the tight cycle tolerance, without snapshots and without post-processing.
+- Requirement of Chris (20:00 UTC): the corner runs must give the data for all evaluations and must be usable without a
+  change as runs of a new main study. The started setup did not meet this. I stopped the 4 running jobs at 20:00 UTC by
+  their PIDs (about 20 min on 4 GPUs, about 0.15 $). The folders K1_0_nx, K1_1_nx, K1_2_nx and K2_0_nx stay on the
+  instance; no result of them is used.
+
+**Audit of the setup (context-free agent, 2026-10-17; scan of the old main study, read only).**
+- Calm rule. Stricter thresholds on ε change β only a little and remove many cycles (4 081 cycles; mean change of β
+  ± SE): ε ≤ 0.05: 22 % of the cycles removed, −0.004 ± 0.004; ε ≤ 0.02: 49 %, +0.003 ± 0.007. Thus |ε| ≤ 0.20 stays.
+- Cause of ε: the tight tolerance lowers ε mainly at 9 mT. At 20 … 150 mT the scatter of ε does not come from the
+  integrator; its cause is not known.
+- Loop closure as a rule: closure ≤ 10⁻³ removes 41 % of the cycles (β +0.010 ± 0.005), ≤ 10⁻⁴ 77 % (β
+  −0.046 ± 0.023). The closure fails as a rule: period-2 orbits have a large closure but are calm; a slow drift has a
+  small closure but is not calm; a jump shows only with a net change of M. The closure is reported only.
+- A gap of ε: in about 10 % of the cycles of the calm tails w changes by more than 8 % from cycle to cycle, with a
+  small ε. Thus two flags (PLAN 4.13 S9).
+- Relaxation: the 116 relaxations of the old main study at α 0.1 all converged. The relative stop threshold (10⁻⁶ |E|
+  per chunk) was near the rounding error of the fp32 sum of the energy:
+  - in 14 of the 116 runs the energy rose in one of the 2 last chunks;
+  - in 29 of the 116 runs the energy change was exactly 0 in one of the 2 last chunks (my recount, relax_small.py).
+    Thus in these runs the rounding, not the physics, stopped the relaxation.
+  A residual drift is possible. The discarded cycles 0 and 1 absorb most of it: the cost-benchmark runs TB_K1_0 and
+  TB_K2_0 relaxed with this threshold and had ε of +0.006 and +0.001 in cycle 2 (n 2, 9 mT).
+- The α 0.01 runs: 63 % of their cycles fail the calm rule (energy oscillates over the end of the cycle).
+- The stopped corner setup differed from N1g (relaxation atol, b_tol, number of cycles) and had no snapshots, no
+  post-processing and no online stop. Thus one setup for the corners and a new main study is necessary (PLAN 4.13).
+- More information per run at small cost: energy terms per cycle, harmonics per cell (--acc_harm 7), a state after
+  each stage (--keep_stage_ckpt), snapshots as in the old main study.
+
+**Decisions of Chris (2026-10-17).**
+- The α 0.01 arm is dropped.
+- The state files (.pt) of the finished studies with DemagFieldPBC are deleted on the instance without a download:
+  522 files (old mesh studies MK3, M300, M212; frequency, corner, cond, R300, B300 and other runs). Before the
+  deletion no run was active. Kept on the instance: 145 files of N0b, B0b, N1g and TB, 3.3 GB. Free disk: 32 GB (before
+  13 GB). All results, summaries and logs stay local and on the instance.
+- The energy of each field term is summed in fp64 (all field terms of magnumnp and the drive; commit 6c1e539; test
+  tests/unit/energy_sum_test.py; unit suite 146 passed, 1 failed: the known TypeError of rkky_test::test_intergrain_exchange;
+  study tests 99 passed). The simulation stays in fp32. The relaxation test now resolves energy changes
+  below the rounding error of the fp32 sum. The stop threshold of the relaxation is decision D1 of PLAN 4.13.
+- Snapshots as in the old main study, with the measure of the domain walls (domains_batch.py).
+- Next: PLAN 4.13 (one production setup for the corner test and a new main study), for the approval of Chris.
+
+### 7.111 PLAN 4.13: code of the production setup, smoke tests, start of the corner test (2026-10-17 … 18)
+
+**Decisions of Chris and one change of the plan** (all times UTC).
+- 2026-10-17, about 21:50: PLAN 4.13 approved with D1 (b) (absolute stop threshold 3·10⁻¹⁰ K_d V per chunk), D2 (a)
+  (relaxation atol 1e-6), D3 (c) (arm (b) only if the corner test does not give "β robust") and a credit top-up.
+- 2026-10-17, about 22:05, before the night: "Die GPUs dürfen über Nacht nicht leer bleiben" and "Leere GPUs sind
+  Geldverschwendung" (the GPUs must not stay empty overnight; empty GPUs waste money).
+- Change of PLAN 4.13 part 5 that I made after this remark: the corner test (step 3) started before the result of
+  the smoke test (step 2). The smoke check ran beside it as an early warning (instance/cx_gate.sh; a failure goes to
+  runs/ALERT, the corner test goes on). Chris has not confirmed this change of the order explicitly.
+
+**Code** (feature/newell-pbc, commit e5998f5; cx_gate.sh b78c030, 4532be0, 7b2e6e0): patches "energy terms" (S5), "snapshot
+cleanup" (S6) and "stop threshold" (S7, `--relax_tol_E_abs`, an INIT_KEY); run_queue.expected_bytes (S11);
+conv_jobs.py `--newell corners` (full setup, d/l_ex 212 and 300 alternate) and `--newell precision`; eval_corners_nx.py
+(label "β robust to the setup change", _mc2 partners, flags, energy-terms check; criteria unchanged); eval_precision.py;
+analyze_design.design_pattern (the `_nx` names); chain_corners_nx.sh. Study tests 105 passed, 3 skipped (exit code 0).
+
+**Local smoke run** (CPU, d/l_ex 24, φ 0.3, 16³ cells, 64 samples per cycle, 9 mT): exit code 0. The relaxation
+stopped by the absolute threshold; the online stop extended the stage to 6 cycles; only the snapshots of the last
+2 cycles were left; acc_00 with the harmonics, ckpt_00 and the energy terms were written.
+
+**Smoke test on the instance** (settings of K1_0_nx, 9 mT only, `--cycles_per_amp 4 --min_calm 3
+--max_cycles_per_amp 8`, GPU 0, about 21:59 … 22:33 UTC; runs/SMOKE_nx_K1): all 7 checks PASS (DONE, relaxation
+converged, the stage longer than the minimum, snapshots only of the last 2 cycles, acc_00 with 7 harmonics, ckpt_00,
+energy terms per cycle and at the stage end); post-processing without an error.
+- Relaxation: 8 000 iterations, 653 s (stray field newell_ext, atol 1e-6, absolute threshold with the fp64 sum). For
+  information only, n 1 each, other settings: the old run K1_0 10 500 iterations (DemagFieldPBC, atol 1e-5, relative
+  threshold with the fp32 sum); TB_K1_0_a5 7 500 iterations (newell_ext, atol 1e-5, relative threshold with the fp32
+  sum). The difference is not an estimate of the effect of D1 or D2.
+- From cycle 1 on, the smoke run shared GPU 0 with K1_0_nx (wall time per cycle 172 … 198 s against 107 s in cycle 0).
+
+Energy-terms check of the smoke run (S5). d = ε + ΔE_int / w_loop is the residual of the energy balance:
+
+| cycle | w_loop (per K_d) | ε | −ΔE_int / w_loop | d |
+|---|---|---|---|---|
+| 0 | 1.07·10⁻⁷ | −0.154 | −0.152 | −0.001 |
+| 1 | 1.06·10⁻⁷ | −0.092 | −0.104 | +0.012 |
+| 2 | 0.95·10⁻⁷ | +0.006 | +0.020 | −0.014 |
+| 3 | 0.95·10⁻⁷ | +0.015 | +0.013 | +0.001 |
+| 4 | 0.96·10⁻⁷ | +0.012 | +0.009 | +0.003 |
+
+- In cycle 0 the state changes; ε and −ΔE_int / w_loop differ by 0.0014.
+- In the calm tail (cycles 2 … 4) the SD of d is 0.009 (n 3); this is the measured precision of the check at this
+  point (PLAN 4.13 part 5, step 2; the estimate was about 0.015). The means agree: ε +0.011 and −ΔE_int / w_loop
+  +0.014. In one cycle the check cannot separate ε (about 0.01) from its own error (cycle 2: |d| 0.014 > ε 0.006).
+  3 cycles of one run: information only.
+
+**Start of the corner test:** 2026-10-17 22:07, chain_corners_nx.sh at e5998f5 on the 4 GPUs (first K1_0_nx,
+K2_0_nx, K3_0_nx, K4_0_nx); then the precision test and the two reports. The chain is in /root/onstart.sh. Before the
+start the 4 folders of the stopped start (7.110) were renamed to `<name>_stopped`.
+
+### 7.112 Corner test with the setup of PLAN 4.13: β "not determined"; the solver causes the difference at K1, 150 mT; fp32 sufficient; Bloch points (2026-10-18)
+
+All times UTC. Run data local in runs/ (without state files), md5 in runs/md5_nx_20261018.txt. dx 3 l_ex is 10.0 nm;
+V is the box volume (K_d V ≈ 1.0·10⁻¹² J for the K3 box). _mc2: the reruns of PLAN 4.5 with the online calm rule.
+
+**Corner test (PLAN 4.13 part 5, step 3; runs/corners_nx_report.md, eval_corners_nx.py, rules fixed before the
+runs).**
+- 12 runs K1_0_nx … K4_2_nx, 2026-10-17 22:07 … 2026-10-18 11:09, all exit code 0, no gate retry (8 000 … 48 000
+  relaxation iterations). Cost 41.0 V100-h (relaxation 7.16 h, cycles 33.86 h; plan 36 … 52, old runs 30.9).
+- Relaxation new against old (n 12, geometric mean, range): iterations × 1.14 (0.43 … 3.31), wall time × 2.15
+  (0.75 … 5.3).
+- Online stop: no stage needed an extension by the calm rule; 6 of 84 stages had an 8th cycle from the second drive
+  correction.
+- Energy balance of the calm-tail cycles: median |ε| 0.0007 … 0.0098 per amplitude; residual of the energy-terms check
+  (S5) median |d| 0.0006 … 0.0031, maximum 0.018.
+- Flags (S9): flag ε in 15, flag w in 9 of 84 stages.
+
+| corner | β old (mean ± SE, n 3) | β new | Δβ (new − old) |
+|---|---|---|---|
+| K1 | 2.454 ± 0.067 | 2.214 ± 0.095 | −0.240 ± 0.101 |
+| K2 | 2.211 ± 0.069 | 2.258 ± 0.083 | +0.047 ± 0.086 |
+| K3 | 2.379 ± 0.049 | 2.050 ± 0.161 | −0.328 ± 0.193 |
+| K4 | 1.860 ± 0.067 | 2.069 ± 0.080 | +0.208 ± 0.030 |
+
+- Mean Δβ = −0.078 ± 0.082 (SE, n 12; 90 % CI −0.226 … +0.070). **Reading: "not determined".** Without the flagged
+  stages −0.041 ± 0.127 (n 7: the runs that keep at least 6 of 7 amplitudes after the flagged stages are removed).
+- Corner differences β(Ki) − β(K1), old / new: K2 −0.243 / +0.044; K3 −0.076 / −0.164; K4 −0.594 / −0.146.
+- Factor P_new / P_old per amplitude (geometric mean, n 12, 90 % CI): 9 mT 0.84 (0.70 … 1.02); 20 mT 0.76
+  (0.58 … 1.00); 35 mT 0.85 (0.59 … 1.25); 50 mT 0.85 (0.60 … 1.21); 70 mT 0.67 (0.49 … 0.91); 100 mT 0.69
+  (0.53 … 0.89); 150 mT 0.69 (0.56 … 0.85). The factor depends on the corner: at 150 mT K1 0.56, K2 0.71, K3 0.48,
+  K4 1.19 (mean of 3 seeds).
+- SD of ln P over the seeds (pooled, 8 degrees of freedom), old / new: 9 mT 0.25 / 0.27; 20 mT 0.28 / 0.43; 35 mT
+  0.21 / 0.58; 50 mT 0.22 / 0.55; 70 mT 0.22 / 0.33; 100 mT 0.18 / 0.24; 150 mT 0.07 / 0.21. One-sided F test (new
+  larger) p 0.005, 0.009 and 0.002 at 35, 50 and 150 mT. At 35 … 50 mT mainly K3 (K3_1, see below); the cause of the
+  larger SD at 150 mT is not known.
+- Field evaluations of the snapshots (mean of the seeds): wall measure A_w and l_C change by at most 9 %; switched
+  volume the same or up to 20 % smaller; the fundamental share R1 changes without a pattern (for example K1 50 mT
+  0.56 → 0.87, K4 35 mT 0.27 → 0.69). The old partners K1_0, K4_0, K4_1 (_mc2) have no snapshots (n 2 or 1 there).
+- Plots: results/figures_corners_nx/ (plot_corners_nx.py; not in git, made again by the script).
+
+**Solver test at 150 mT (decision Chris; runs/solvertest_report.md, eval_solvertest.py, rules fixed before the
+runs).** From the state of K1_0_nx, K1_1_nx and K1_2_nx after the 100 mT stage, the 150 mT stage once with DemagFieldPBC and once with the
+final setting (2026-10-18 08:56 … 10:03).
+- ln w(DemagFieldPBC) − ln w(Newell) = +0.548 / +0.563 / +0.609 (s 0, 1, 2); mean +0.573 ± 0.018 (SE, n 3; 90 % CI
+  +0.520 … +0.626). **Reading: "solver effect".** It equals the old − new difference of the corner test at K1,
+  150 mT (+0.57, n 3).
+- ε of both arms 0.005 … 0.019. The Newell restart from the state file reproduces the corner run (difference 0.0000).
+- Thus at K1 and 150 mT the old solver gives a loss 1.77 times higher from the same state.
+
+**Precision test (PLAN 4.13 part 5, step 4; runs/precision_nx_report.md, eval_precision.py).** fp64 against fp32 in
+the 9 mT stage from the same init.pt, K1_0 … K4_0. Δ_p = ln w(fp64) − ln w(fp32) = −0.0000 / +0.0000 / +0.0001 /
+−0.0000; mean +0.0000 ± 0.0000 (SE, n 4). **Reading: "fp32 sufficient".** ε of fp64 and fp32 differ by at most
+0.0002. Condition 2 of PLAN 4.13 holds. The time per cycle of fp64 is × 1.6 (K1_0, K3_0); the values × 3.1 and × 3.6
+at K2_0 and K4_0 are distorted (shared GPUs).
+
+**Bloch points.**
+- K3_1_nx: the loss at 20 … 50 mT was 3 … 6 times higher than the mean of the other K3 seeds (3.1, 6.0, 5.4 at 20, 35,
+  50 mT). Facts (analyze_defect.py; state
+  files of the stages, sample files):
+  - Particle 1 holds a pair of Bloch points from the relaxed virgin state on: topological charge −1 and +1 on closed
+    surfaces of half-edge 2, 3, 4 cells inside the particle, 83 nm (Q −1) and 100 nm (Q +1) below the surface in the
+    virgin state (exact cube charges; particle radius 35 cells, 350 nm).
+  - The virgin state has an energy 2.7·10⁻⁴ K_d V (2.7·10⁻¹⁶ J) above the other K3 seeds (different microstructures,
+    a rough comparison). This is of the order of the exchange energy of a Bloch-point pair: a hedgehog field in a
+    sphere of radius R has the exchange energy 8πAR, thus 2 × 8πAR ≈ 1·10⁻¹⁶ J for R ≈ 200 nm (an estimate).
+  - During the cycles at 20 … 50 mT the largest neighbour angle reaches 175°; at the end of the stages (H = 0) it is
+    below 120°. The loop energy that the applied field puts into particles 1 and 3 is 5 … 10 times that of a normal
+    particle (particle 3 can follow particle 1 by the stray field; the place of the dissipation is not measured).
+  - At 70 mT, cycle 2: ε = +39.2 and −ΔE_int / w_loop = +39.5; the released energy equals the excess of the virgin
+    state. After it the pair is gone and the loss is normal.
+- Census of all 24 corner runs (census_bloch.py with the exact charge of each elementary cube of 2 × 2 × 2 cells;
+  Bloch points in the outer cell layer are not counted). Start states: old 40 Bloch points in 5 of 12 runs, new 29
+  in 9 of 12 runs. K2 has them in all runs (old 7 … 15, new 5 … 9). After 150 mT: old 10, new 2. In the new runs the
+  number per particle only falls from stage to stage, by the annihilation of pairs or the exit of single Bloch points
+  through the surface, with one exception: K2_1_nx, particle 0, a Bloch point (Q +1, 5.5 cells below the surface)
+  enters during the 100 mT stage and leaves before the end of 150 mT. Bloch points that form and vanish within a cycle
+  are not visible in the stage-end states.
+- Stages with a Bloch point at their start deviate more from the corner mean (median |Δ ln w| 0.20, share above 0.3:
+  32 %, n 44) than stages without (0.15, 15 %, n 40). 18 of the 44 stages with a Bloch point are K2 stages, 3 of
+  the 40 without; thus the corner is mixed in, and this is a hint only.
+- Interpretation: the core of a Bloch point is a singularity of the continuum model; no dx resolves it. Its energy is
+  finite and converges. Its pinning on the mesh is about A·dx per cell (≈ 1·10⁻¹⁹ J at 10 nm, an estimate); on the
+  atomic lattice it is about 35 times smaller. The extra loss of K3_1 at 35 mT (≈ 6.7·10⁻¹⁸ J per cycle) is about 70
+  such barriers per cycle. Thus the loss of Bloch points in the model is an effect of the mesh and probably too large.
+- K2 (L_eff 12, r_p 3) has neighbour angles of 164 … 180° in all runs, old and new. The local wall width
+  1/√(Q_eff(1 + r_p)) is 6 l_ex, 2 cells (an estimate from the formula of the code): this corner is probably not
+  resolved at dx 3.
+
+**Decisions of Chris and runs started.**
+- Solver scan (option (a)): one seed per corner, each of the 7 stages again with DemagFieldPBC from the same state as
+  the corner run (27 runs, jobs/solverscan.txt, eval_solverscan.py, reading fixed before the runs), started 12:00.
+- Online count of the Bloch points in run_loops (exact cube charges on the GPU at each sample, per relaxation chunk,
+  at each stage end; commit 5b540cb) and a test of an AC demagnetization after the virgin relaxation (4 runs with
+  Bloch points × start amplitude 150 mT, 2 × 150 mT, saturation; jobs/predemag.txt, eval_predemag.py, reading fixed
+  before the runs: "clean" if no Bloch point after the second relaxation, remanence below 0.01 M_s and no Bloch point
+  in the 9 mT stage, in all 4 runs), started 13:39. Cost of the test 1.6 … 2.5 $ (estimate).
+- Operation: from 08:35 to 08:56 two GPUs were idle (the precision queue waited for the last corner runs); then the
+  solver test and precision jobs K1_0 and K3_0 ran ahead on the free GPUs (the chain skipped them as DONE).
+
+### 7.113 Solver scan: with DemagFieldPBC from the new states, β and the levers of the old study appear again (1 seed per corner); further evaluations of the corner test (2026-10-18)
+
+All times UTC. md5 in runs/md5_nx_20261018.txt. A lever is the difference of β between two corners (β(Ki) − β(K1));
+w_loop is the loop loss per cycle divided by K_d (reduced).
+
+**Solver scan (decision Chris; runs/solverscan_report.md, eval_solverscan.py, rules fixed before the runs).** One
+seed per corner (K1_0_nx … K4_0_nx): each of the 7 stages again with DemagFieldPBC (FD) in the cycles, from the same
+state as the corner run (stage 0: its init.pt; stage k: its state after stage k − 1); the Newell value is the corner
+run itself. 27 runs (K1_0_nx at 150 mT is the solver-test run K1_0_nx_150fd), 12:00 … 17:44, all exit code 0.
+
+Δ_k = ln w_FD − ln w_Newell per stage:
+
+| corner run | 9 mT | 20 mT | 35 mT | 50 mT | 70 mT | 100 mT | 150 mT | Δβ_solver = β_FD − β_Newell | β old − β new (corner test, the same seed) |
+|---|---|---|---|---|---|---|---|---|---|
+| K1_0_nx | +0.092 | −0.196 | +0.444 | +0.740 | +0.997 | +0.654 | +0.548 | +0.296 | +0.216 |
+| K2_0_nx | +0.514 | +0.646 | −0.200 | −0.315 | −0.440 | −0.201 | +0.199 | −0.258 | −0.192 |
+| K3_0_nx | +0.390 | +0.329 | +0.052 | −0.031 | +0.143 | +0.503 | +0.513 | +0.036 | +0.065 |
+| K4_0_nx | +0.150 | −0.130 | +0.099 | +0.018 | −0.187 | −0.257 | −0.221 | −0.129 | −0.245 |
+
+- Mean Δβ_solver = −0.014 ± 0.119 (SE, n 4; 90 % CI −0.295 … +0.267). **Reading: "not determined".**
+- Information, seed 0 of each corner: β with FD from the new states minus β of the old run (old setup, own virgin
+  state): K1 +0.080, K2 −0.066, K3 −0.029, K4 +0.116; β with Newell minus β old: −0.217, +0.191, −0.065, +0.245.
+  Thus with FD from the new states β is within 0.12 of the old β at all 4 corners.
+- Levers, seed 0, old / Newell / FD: K2 − K1 −0.235 / +0.173 / −0.380; K3 − K1 +0.051 / +0.202 / −0.058; K4 − K1
+  −0.552 / −0.091 / −0.516. The FD pattern is near the old pattern (largest difference 0.15), the Newell pattern is
+  not (differences up to 0.46). An inference (1 seed per corner): the levers of the old main study come mainly from
+  the error of DemagFieldPBC.
+- Mean Δ_k over the corners (± SE, n 4): 9 mT +0.287 ± 0.100 (FD about × 1.33);
+  20 … 100 mT +0.10 … +0.18 with SE 0.13 … 0.31; 150 mT +0.260 ± 0.178. The sign of Δ_k changes with the amplitude
+  and the corner.
+
+**Further evaluations of the corner test, old against new** (runs/corners_nx_fields.md, eval_corners_fields.py,
+descriptive). Paired difference new − old over the 12 runs (mean ± SE):
+- Fundamental share R1 of the dissipation (9, 20, 35, 50, 70, 100, 150 mT): −0.015 ± 0.077; +0.056 ± 0.096;
+  +0.167 ± 0.086; +0.083 ± 0.061; +0.138 ± 0.053; +0.080 ± 0.034; +0.044 ± 0.019.
+- Share of the loss in the outer shell r ≥ 0.8 of the particles (49 % of the volume): −0.001 ± 0.046; −0.013 ±
+  0.035; −0.085 ± 0.051; −0.051 ± 0.025; −0.087 ± 0.024; −0.088 ± 0.017; −0.064 ± 0.015.
+- Share of the loss in the hottest 10 % of the cells: −0.004 ± 0.024; −0.014 ± 0.020; −0.032 ± 0.027; −0.039 ±
+  0.020; −0.057 ± 0.017; −0.029 ± 0.014; −0.028 ± 0.008.
+- Share of the dissipation in jumps (5 sigma above a Fourier series up to harmonic 8): 0 … 0.07 old and new; the
+  paired differences are below 0.02.
+- Exponent of the fundamental channel β_f = β + d ln R1 / d ln B, old / new: K1 2.08 / 2.02; K2 2.06 / 1.97; K3
+  2.02 / 1.89; K4 1.80 / 1.76 (means over 3 seeds); β old / new: 2.45 / 2.21; 2.21 / 2.26; 2.38 / 2.05; 1.86 / 2.07.
+- Interpretation (an inference): at 35 … 150 mT the old setup (solver, tolerances, relaxation, start state) put more
+  loss into the outer shell of the particles,
+  where the voxel staircase is, and more loss outside the fundamental. This agrees with the error of DemagFieldPBC at
+  the staircase surfaces (7.105). β_f changes less than β (at most 0.13 against up to 0.33); thus the β shifts come
+  mainly from the share outside the fundamental. Of the changes of the setup, the solver is the likely cause (the
+  solver scan above); the fields of the solver-scan runs were not evaluated (no snapshots, no accumulators).
+
+**AC demagnetization test, first runs (jobs/predemag.txt; no reading before all 12 runs).** K3_1_nx_pd150 (AC
+demagnetization from the drive of its 150 mT stage): the Bloch-point pair survives the demagnetization and the second
+relaxation (Q +1 and −1; remanence |M| 0.002 M_s), and it stays during the 9 mT stage (2 Bloch points at all
+samples). Nevertheless the 9 mT loss is now w_loop 6.58·10⁻⁸ (K3_0_nx 6.52·10⁻⁸, the corner run K3_1_nx
+1.35·10⁻⁷). Earlier: PROTOKOLL 7.5 found that the AC demagnetization does not remove the large-angle structures that
+the 10 nm mesh holds (about 21 neighbour-cell pairs above 60°).
+
+**Start "each particle uniform" (way 2; decision Chris).** `--init_mode particle` (commit 2f0072f): each particle
+starts uniform along its own random direction instead of random m on 6 l_ex blocks. Earlier tests of the start state
+(7.4 … 7.6): random blocks (A), AC demagnetization (B), one saturating cycle (C); this start was not tested before.
+Test: K2_0, K2_1, K4_1, K3_1, virgin relaxation and the 9 mT stage (jobs/initmode.txt, eval_initmode.py, reading
+fixed before the runs: "clean" if no Bloch point after the relaxation and in the 9 mT stage in all 4 runs). Cost
+0.3 … 0.6 $ (estimate).
+
+**Operation: one job per GPU (Chris).** Two queues on the same GPUs make each job slower without a gain in total
+throughput, and they distort the measured times (the fp64 times of K2_0 and K4_0 in 7.112). run_queue
+`--exclusive_gpu` (commit 6e8ab08) starts a job only on a GPU without another compute process; the queue of way 2
+uses it and waits for free GPUs. From 13:39 to 17:44 two queues shared the GPUs (solver scan and AC demagnetization
+test); since 17:44 one job per GPU.
+
+### 7.114 Bloch points in the start state: AC demagnetization and the uniform start are not clean; option C is clean on its 4 test runs and started; protocol S in test (2026-10-18 … 19)
+
+All times UTC. Terms as in 7.112 (corner run, w, V, K_d). Bloch point (BP): a cube of 2 × 2 × 2 cells inside one
+particle with the topological charge ±1. run_loops counts the BPs online with the exact cube charge (commit 5b540cb).
+The count leaves out the outer cell layer of each particle. Prepared state: the state at the start of the 9 mT stage,
+after the full preparation. Pass: one AC demagnetization (a decaying sinusoidal field) and the relaxation after it.
+Clean (reading of 7.112, fixed before the runs): no BP in the prepared state, a remanence |M| / M_s (box average)
+below 0.01, and no BP at any sample of the 9 mT stage. Rules of Chris (2026-10-18 evening): a method works if all 4
+test runs are clean; a test can cost up to 2 $ without a question; the 12 corner runs with a working method are the
+first 12 runs of a new main study (setup of PLAN 4.13 plus the new preparation). Reports: results/predemag_report.md
+(eval_predemag.py), results/initmode_report.md (eval_initmode.py); md5 of the run files in runs/md5_bloch_tests_20261019.txt.
+
+**Test runs.** The tests use the 4 corner runs with the most BPs: K2_0_nx, K2_1_nx, K4_1_nx and K3_1_nx.
+- AC demagnetization (jobs/predemag.txt). The start is the relaxed virgin state of the corner run. The field is
+  sinusoidal along the drive direction, at the drive frequency (30 MHz), with α 0.1. After each half cycle the
+  amplitude falls by the factor 0.8. The last amplitude is about 0.34 mT. Then the relaxation runs again (relaxation
+  2), and the 9 mT stage follows. There are 3 start amplitudes:
+  - "AC from 150 mT": the field amplitude of the 150 mT stage of the corner run;
+  - "AC from 300 mT": twice this field amplitude (the peak induction of the first half cycle is about 300 mT, box
+    average);
+  - "AC from saturation": the field 1 − φ in units of M_s.
+- Uniform start (way 2, jobs/initmode.txt): each particle is uniform along its own random direction. The relaxation
+  and the 9 mT stage follow.
+
+16 runs, 13:39 … 22:22, all exit code 0, 36.9 GPU-h in all. The AC test cost 30.6 GPU-h (about 3.1 $). This is
+above its estimate of 1.6 … 2.5 $ (the test started before the 2 $ rule). The uniform start cost 6.3 GPU-h (about
+0.6 $, estimate 0.3 … 0.6 $). Part of the time is lost to shared GPUs: two queues shared the GPUs from 13:39 to
+17:44. K2_0_nx_pdsat and K2_0_nx_ip shared GPU 2 from about 17:55 to 21:10, because the AC queue did not check for a
+free GPU.
+
+BPs in the prepared state:
+
+| run | random start, relaxed (corner run) | AC from 150 mT | AC from 300 mT | AC from saturation | uniform start |
+|---|---|---|---|---|---|
+| K2_0 | 9 (+4 / −5) | 1 | 0 | 2 | 8 |
+| K2_1 | 5 (+2 / −3) | 1 | 0 | 1 | 3 |
+| K4_1 | 2 (+1 / −1) | 0 | 0 | 0 | 4 |
+| K3_1 | 2 (+1 / −1) | 2 | 2 | 0 | 8 |
+
+- **Readings: all four variants are "not clean".** The remanence of all AC runs is 0.0003 … 0.0058.
+- 9 mT stage: in the 12 AC runs and in K3_1 with the uniform start, the BP count stays the same at each sample. In
+  the other 3 runs with the uniform start it changes: K2_0 8 or 7, K2_1 3 or 4, K4_1 4 or 3 (number of samples with
+  each value in bloch_00_amp00.csv). The counts do not show whether a BP forms or vanishes, or whether one BP moves
+  into and out of the outer cell layer that the count leaves out.
+- Largest BP count during a pass: from 150 mT 2 … 10, from 300 mT 2 … 13, from saturation 44 … 150.
+- The prepared state changes the 9 mT loss. The ratio P / P(corner run) of the 16 runs is 0.41 … 3.0 (n 1 per
+  cell; no effect claim per variant).
+
+**The first saturation peak removes the BPs of the random start** (bloch_predemag.csv of K2_1 and K3_1, AC from
+saturation; 128 samples per half cycle). On the rise of the first half cycle the count first increases: K2_1 from 7
+at sample 0 to 91 at sample 12, K3_1 from 2 to 26. Then it falls to 0: K2_1 from sample 15 to 121, K3_1 from sample
+15 to 124. At the peak (sample 63) the box-average magnetization is 99.5 % (K2_1) and 98.9 % (K3_1) of the saturation
+value φ M_s. When the field falls, new BPs form (K2_1: up to 49 at the end of half cycle 0, up to 117 at sample 9 of
+half cycle 1).
+
+**The uniform start forms BPs during the relaxation.** By its construction the start has no BP. After 500 relaxation
+iterations: K2_0 16, K2_1 20, K4_1 11, K3_1 15. After the relaxation: 8, 3, 4, 8 (table). The relaxed energy of K3_1
+is higher than with the random start: 1.61·10⁻³ against 0.72·10⁻³ K_d V. Decision of Chris: the uniform start is
+dropped.
+
+**Two sources of BPs (an inference from these runs).**
+1. BPs from the random start. The pair of K3_1 is in the relaxed virgin state. It survives the passes from 150 mT and
+   from 300 mT. During these passes the count is at most 2, thus no new BP forms. The pass from saturation removes it.
+2. BPs that form during the domain formation and during each reversal. Example K2_1, AC from saturation. The peak
+   induction b of a half cycle is the field amplitude plus the peak box magnetization, in units of J_s 1.5 T.
+
+   | half cycle | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 … 24 | 25 … 33 |
+   |---|---|---|---|---|---|---|---|---|---|---|
+   | b (mT) | 203 | 162 | 130 | 104 | 83 | 66 | 53 | 42 | 34 … 17 | 14 … 2.5 |
+   | BPs at the end | 2 | 0 | 2 | 0 | 1 | 0 | 0 | 1 | 1 | 1 |
+   | BPs min … max | 1 … 4 | 0 … 2 | 1 … 3 | 0 … 2 | 0 … 1 | 0 … 1 | 0 … 1 | 0 … 1 | 0 … 1 | 1 |
+
+   The count changes between 0 and 1 down to half cycle 24 (b about 17 mT). It stays at 1 from half cycle 25 (b about
+   14 mT). At K2, 2 of 6 passes ended clean: from 150 mT 0 of 2, from 300 mT 2 of 2, from saturation 0 of 2. K2_0 and
+   K2_1 are two microstructures. These 6 passes cannot separate chance from an effect of the start amplitude.
+
+**K2: the walls are resolved; the structures on the l_ex scale are not.** The model has two uniaxial anisotropies:
+the cube anisotropy K_W (cubes of edge L_eff with random axes) and the particle anisotropy K_p (one axis per particle).
+From run_loops:
+
+  K_W = K_d / L_eff²  (L_eff in units of l_ex),   K_p = r_p K_W
+
+The wall width parameter is
+
+  δ = √(A / K)
+
+The narrowest wall of the model is where the cube axis and the particle axis are parallel. There the anisotropy is
+K_W + K_p. The full width of a Bloch wall is π δ.
+
+| corner | L_eff | r_p | K_W | K_p | δ for K_W + K_p | π δ |
+|---|---|---|---|---|---|---|
+| K1 | 30 l_ex | 1.5 | 0.99 kJ/m³ | 1.49 kJ/m³ | 63 nm (6.3 cells) | 199 nm (19.9 cells) |
+| K2 | 12 l_ex | 3.0 | 6.22 kJ/m³ | 18.65 kJ/m³ | 20 nm (2.0 cells) | 63 nm (6.3 cells) |
+| K3, K4 | 18 l_ex | 1.5 | 2.76 kJ/m³ | 4.14 kJ/m³ | 38 nm (3.8 cells) | 119 nm (11.9 cells) |
+
+(J_s 1.5 T, A 10 pJ/m: l_ex 3.34 nm, K_d 895 kJ/m³, dx 10.0 nm.)
+- 7.112 gave the same δ for K2 (6 l_ex, 2 cells) and read it as "probably not resolved". This reading is withdrawn.
+  K2 is exactly at the limit of section 4 (δ at least 2 cells; run_loops warns below it). In the wall centre the
+  magnetization turns by at most 0.5 rad (29°) per cell. The full wall has 6.3 cells.
+- The grid pinning of a wall is about exp(−π² δ / dx) (an estimate from the formula of section 4). With δ for K_W +
+  K_p it is 2.5·10⁻⁹ at K2. Section 4 gives ≈ 10⁻¹⁷ with δ for K_W only.
+- Not resolved at all corners: the structures on the l_ex scale (Bloch lines, vortex cores, BPs). Their width is of
+  the order of √(A / K_d), which is l_ex = 3.3 nm (Hubert and Schäfer, Magnetic Domains). Section 1 accepts this. The
+  neighbour angles of 164 … 180° in the K2 runs (7.112) belong to these structures, not to the walls (an inference).
+- K2 has more neighbour pairs with a large angle in its relaxed virgin state (census_bloch_nx_v2.json): above 60°
+  128 … 178 against 16 … 50 at K1, K3, K4; above 90° 21 … 36 against 0 … 7. A part of these pairs belongs to the BP
+  cores. From K1_2, K3_1 and K3_2 (n 3, pairs above 60°, against the BP-free runs of the same corner) an estimate is
+  12 … 23 pairs per BP. With it and the 16 … 18 pairs of the BP-free K1 and K3 runs, K2_1 (5 BPs, 163 pairs) has more
+  pairs than its BPs explain (76 … 133); K2_0 and K2_2 do not show this. Why K2 forms more BPs is not measured.
+
+**Cost of the passes** (V100. Corner run: mean of 3 seeds. Pass: one run per corner and variant, K2 from K2_1, on a GPU
+without a second job where not marked. The relaxation after the pass from its iterations and the iteration time of
+the corner run. AC from 150 mT is not in the table, because no method uses it.)
+
+| corner | corner run (relaxation + 7 stages) | AC from 300 mT + relaxation | AC from saturation + relaxation |
+|---|---|---|---|
+| K2 | 4.8 h | +1.2 … 2.0 h (an estimate; both K2 runs shared the GPU) | +2.4 h (+50 %) |
+| K3 | 1.9 h | +0.5 h (+27 %; partly shared, an upper value) | +0.9 h (+47 %) |
+| K4 | 5.1 h | +1.4 h (+28 %) | +2.2 h (+43 %) |
+
+**Earlier tests of the start state.** 7.4 and 7.5 (d/l_ex 96, L_eff 12) tested a random start with 17 decaying
+saturating cycles after it (protocol B): B was steady and nearly centred. 7.6 found the difference between the
+relaxed random start (A) and B inside the realisation scatter (dx 1.5, one pair; σ(ln w) 0.41 at 9 mT and 0.57 at
+50 mT): A and B were equivalent. BPs were not counted then. A start without a random element was not tested before.
+
+**Decisions of Chris (2026-10-18 evening).**
+- Option C for the 12 corner runs (names <run>_ad, jobs/corners_ad300.txt): the random start, the relaxation, AC from
+  300 mT, the relaxation. A prepared state with a BP gets a new random start of the same microstructure, at most 3
+  attempts (`--bloch_free_tries 3`, commit 4f558a7). The BPs are counted at each sample.
+- K2_0_ad, K2_1_ad and K4_1_ad start from the prepared state of their clean test run <run>_nx_pd300 (init.pt, the same
+  seed and INIT_KEYS; `--init_from`, conv_jobs.ad_continue_lines). The 9 mT stage runs again, with snapshots and
+  accumulators. Their config has `--bloch_free_tries 0` like the test run, because no new start was necessary.
+- K3_1_ad starts from the random start. The other 8 corner runs start when K3_1_ad has a clean prepared state
+  (instance/gate_c8.sh); else they do not start.
+- Test of protocol S (a proposal of Chris), jobs/protocol_s.txt, eval_protocol_s.py, the same reading "clean", fixed
+  before the runs. Sequence: a uniform start along the drive direction without a relaxation; AC from saturation and
+  the relaxation; AC from 300 mT and the relaxation; if a BP remains, one more pass from 300 mT. 4 runs K2_0, K2_1,
+  K4_1, K3_1 up to the end of the 9 mT stage (names <run>_nx_ps). Cost 1.5 … 1.7 $ (an estimate). Protocol S has no
+  random element: its seed scatter comes from the microstructure only.
+
+**Operation and first results of option C.**
+- The box dispatcher (instance/dispatcher.sh: run_queue --spool --exclusive_gpu, one job per GPU) has run since 22:08.
+  K2_0_ad started at 22:11 (GPU 1) and K2_1_ad at 22:24 (GPU 3), both at commit 4f558a7.
+- K3_1_ad has run in its own queue since 21:35 (GPU 0). Attempt 0: 2 BPs (the pair again). Attempt 1: 0 BPs (22:53).
+  **Thus option C is clean on its 4 test runs** (K2_0, K2_1, K4_1 from the AC-300 test, K3_1 after one new start).
+  The gate put the 8 other corner runs into the queue at 22:53 (priority 30).
+- K4_1_ad waits for disk space. The dispatcher keeps at least 3 GB free and reserves the expected size of each running
+  job; two K2 runs with snapshots reserve 15.9 GB, K4_1_ad needs 8.6 GB. The waiting job holds its GPU worker. To use
+  GPU 2, K3_1_nx_ps runs there in its own queue since 22:55 (no snapshots, about 2 h).
+- The other protocol S runs are in the dispatcher with priority 10, before the 8 corner runs.
+- Code of protocol S (commit 143535f): `--init_mode saturated`; `--predemag_h` with several values, one pass per
+  value; with `--init_mode saturated`, an attempt after the first one of `--bloch_free_tries` is one more pass from
+  the last value. Local smoke test with forced BPs: the extra pass ran and the run ended clean. Two errors of the patch
+  were found by the smoke test and fixed before the commit: the drive direction was not passed to the uniform start (m
+  was NaN), and the sample loop overwrote the pass index.
+
+### 7.115 Protocol S: 3 of 4 test runs clean, thus "not clean"; option C is the preparation of the main study; first corner runs with option C; queue patch (2026-10-19)
+
+All times UTC. Terms as in 7.114 (BP, prepared state, pass, clean). Option C: the random start, the relaxation, AC
+from 300 mT and the relaxation; if a BP remains, a new random start of the same microstructure (an attempt), at most 3
+attempts. AC-300 test: the test run <run>_nx_pd300 of 7.114. Report: results/protocol_s_report.md
+(eval_protocol_s.py, reading fixed before the runs). md5 of the run files: runs/md5_bloch_tests_20261019b.txt.
+
+**Test of protocol S** (7.114; jobs/protocol_s.txt, commit 143535f). The start is uniform along the drive direction,
+without a relaxation. Pass 0 starts at saturation, pass 1 at 300 mT. If a BP remains, one more pass from 300 mT
+follows (pass 2). Then the 9 mT stage runs.
+
+| run | BPs after pass 0 / 1 / 2 | largest count during pass 0 / 1 / 2 | BPs in the 9 mT stage | remanence M/M_s | GPU-h |
+|---|---|---|---|---|---|
+| K2_0 | 1 / 1 / 1 | 628 / 12 / 12 | 1 at each sample | 0.0018 | 4.72 |
+| K2_1 | 0 / 0 / – | 677 / 11 / – | 0 | 0.0013 | 3.70 |
+| K4_1 | 0 / 0 / – | 1362 / 1 / – | 0 | 0.0003 | 3.70 |
+| K3_1 | 0 / 0 / – | 200 / 1 / – | 0 | 0.0021 | 1.40 |
+
+- **Reading: "not clean".** A method works only if all 4 runs are clean (7.114). K2_0 fails two criteria: 1 BP after
+  the last relaxation, and 1 BP at each of the 1799 samples of the 9 mT stage. Its remanence passes (limit 0.01).
+- In K2_0 the BP after pass 0, pass 1 and pass 2 is in the same cube (charge +1, particle index 1). The two passes
+  from 300 mT did not move it.
+- Comparison with option C, first attempt (n 1 per run): AC from 300 mT after the relaxed random start was clean in
+  K2_0, K2_1 and K4_1, and not clean in K3_1 (the BP pair of the random start, 7.114). Protocol S was clean in K2_1,
+  K4_1 and K3_1, and not clean in K2_0. Thus both are clean in 3 of 4 runs; the test shows no difference between the
+  two methods.
+- Time per pass: from saturation 0.71 … 2.01 h, from 300 mT 0.34 … 0.94 h. The test cost 13.5 GPU-h, about 1.4 $
+  (0.405 $/h for 4 GPUs). The estimate before the test was 1.5 … 1.7 $.
+- 9 mT loss (n 1 per run; no effect claim): ratio P / P(AC-300 test) 0.40 … 2.3, ratio P / P(corner run <run>_nx)
+  0.42 … 2.5.
+
+**Decisions of Chris (2026-10-19, about 05:10).**
+1. Option C is the preparation of the main study. Protocol S is not used.
+2. BPs that occur during the cycles at K2 are accepted. The evaluation marks each stage with a BP at a sample (online
+   count, bloch_<i>_<stage>.csv).
+3. Patch of run_queue (the queue program of the box): a job that waits for disk space goes back into the queue, and
+   its GPU takes the next job that fits. Commit b325736; new test test_run_queue_disk_wait_takes_a_smaller_job; the
+   study test suite passed (118 passed, 3 skipped, exit code 0).
+
+**First corner runs with option C** (names <run>_ad; box state at 06:15, from the box logs; the run folders of
+K4_1_ad, K1_0_ad, K3_0_ad and K4_0_ad are not downloaded yet).
+- Prepared states: 0 BPs in the 5 runs that are prepared (K3_1_ad, K2_0_ad, K2_1_ad, K4_1_ad, K1_0_ad).
+- K3_1_ad: attempt 0 had 2 BPs (the BP pair of K3_1 again), attempt 1 had 0. K1_0_ad: 0 BPs in attempt 0.
+- K2_0_ad, K2_1_ad and K4_1_ad start from the clean prepared state of their AC-300 test.
+
+BPs during the 7 stages of the 3 finished runs. The stage names give the peak induction b. Each cell gives the largest
+count and the share of the samples with at least one BP.
+
+| run | 9 … 50 mT | 70 mT | 100 mT | 150 mT | at the end of the 150 mT stage |
+|---|---|---|---|---|---|
+| K3_1_ad | 0 | 0 | 0 | 0 | 0 |
+| K2_0_ad | 0 | 0 | 1 (31 %) | 2 (40 %) | 0 |
+| K2_1_ad | 0 | 1 (12 %) | 1 (30 %) | 2 (86 %) | 1 |
+
+- At K2, BPs occur in the cycles also after a clean prepared state. The first stage with a BP is 70 mT in K2_1 and
+  100 mT in K2_0. Thus the onset is between 50 and 70 mT in K2_1, and between 70 and 100 mT in K2_0 (n 2
+  microstructures; no general rule).
+- The count does not show whether a BP forms in the particle or crosses the outer cell layer that the count leaves
+  out (7.114). Thus "forms" is an inference.
+- K3_1_ad has no BP at any sample.
+
+**Operation.**
+- With the old queue code a job that waited for disk space kept its GPU. GPU 2 was idle from 22:22 to 22:55 and from
+  00:20 to 02:08 (start of K4_1_ad on GPU 2), 2.4 h in all, about 0.24 $ of box time.
+- The patch went into service at 05:15 … 05:16. I stopped the old queue process by its PID. Its 4 jobs did not stop.
+  K2_1_nx_ps ended at 05:49 and K4_1_nx_ps at 06:06; K4_1_ad and K1_0_ad continue. The new queue does not log the end
+  of these 4 jobs. Their DONE file is the record.
+- The old job files are in spool/archive_20261019/. The new queue (commit b325736) holds only the 7 corner runs that
+  had not started. It started K3_0_ad at 05:52 and K4_0_ad at 06:08.
+- Code commit of each run (config.json): K3_1_ad, K2_0_ad and K2_1_ad 4f558a7; K4_1_ad and K1_0_ad 143535f; K3_0_ad
+  and later runs b325736.
+- Changes between 4f558a7 and 143535f, from the diff: predemag() takes the pass amplitude and index, and
+  predemag_all() runs all passes; summary.json has the list predemag_passes; bloch_tries has the field kind;
+  --predemag_h takes several values. With one value of --predemag_h and the random start, the sequence of option C is
+  the same. The unit tests and two smoke runs passed (7.114).
+- Credit at 05:05: 23.72 $.
+
+### 7.116 Smoothing of Bloch points: test on the relaxed virgin states stopped, test after one AC pass in the queue; corner runs first (2026-10-19)
+
+All times UTC. Terms as in 7.112 (V, K_d), 7.114 and 7.115 (BP, prepared state, pass, clean, option C, attempt). New
+terms: smoothing = the method of run_loops --bloch_smooth N (below); cut = the change of m in the tubes; step = one cut
+and the relaxation after it.
+
+**Why.** Option C gives a new random start if the prepared state keeps a BP. After 3 attempts a run with a BP is
+marked (7.115). Smoothing is to be the last stage of option C in the main study, for a run that keeps a BP after its 3
+attempts (decision of Chris, about 09:55). The corner runs have not needed it so far: 10 of 12 have a clean prepared
+state (K1_2_ad is in its preparation, K3_2_ad waits).
+
+**Method** (commit eba2dfd; unit test test_bloch_smooth_cut). Each BP gets a tube of radius r cells from its cube to
+the nearest surface cell of its particle. The charge of a BP can leave the particle only at its surface. The cut gives
+all cells of the tube one direction of m: the mean of the cells just behind the BP, on the side away from the surface.
+Then the relaxation runs. If a BP remains, the next step uses r + 1 cell. N 3 gives at most 3 steps, with r 2, 3 and 4
+cells. In option C, smoothing starts only if the relaxation before it converged. Two variants failed on synthetic
+fields before the runs and are not used: a harmonic smoothing of the tube (the BP formed again at its old cube) and one
+tube between the two points of a pair (the charges moved to the wall of the tube). The help text of --bloch_smooth
+still named the pair tube; commit 9bed80d corrects the text (no change of the code).
+
+**Test on the relaxed virgin states** (jobs/smooth_test.txt, conv_jobs.smooth_lines, eval_smooth.py main).
+- Each run loads the relaxed virgin state of a corner run with BPs (<run>_nx/init.pt, no AC pass), smooths with N 3
+  and runs the 9 mT stage. 9 runs were planned. No cost estimate was recorded before the runs. Start 10:35.
+- Reading: "works" if at least 3 runs are clean. This rule is not the rule of 7.114 (all test runs clean). It was part
+  of the plan that Chris approved at about 09:55.
+- Clean in this test and in the test below: no BP after the last relaxation, no BP at any sample of the 9 mT stage,
+  and a converged relaxation. The remanence criterion of 7.114 is not part of these tests.
+- Data from the box logs, summary.json and bloch_00_amp00.csv. The run folders are not downloaded yet.
+
+| run | BPs in the loaded state | BPs after the cut, step 0 / 1 / 2 | BPs after the relaxation, step 0 / 1 / 2 | 9 mT stage: largest count (samples with a BP) | GPU-h |
+|---|---|---|---|---|---|
+| K1_2_nx_sm | 1 | 1 / 1 / – | 1 / 0 / – | 0 (0 of 1799) | 0.45 |
+| K2_0_nx_sm | 9 | 11 / 8 / 8 | 4 / 4 / 6 | 6 (1799 of 1799) | 1.42 |
+| K2_1_nx_sm | 5 | 6 / 6 / 2 | 5 / 2 / 1 | runs at 14:07 | – |
+
+- Clean: 1 of 3 runs (K1_2_nx_sm).
+- In K1_2_nx_sm the cut of step 0 (tube length 20.9 cells) moved the BP by about 2 cells only. Step 1 removed it.
+  E / (K_d V): loaded 1.7475·10⁻³, after step 1 1.7320·10⁻³ (n 1).
+- In 5 of 8 steps (n 2 runs: K2_0, K2_1) the count after the cut is larger than before it (K2_0: 9 → 11, 4 → 8,
+  4 → 8). Thus the cut can make new BPs. Where they form is not known: summary.json has the positions before the cut
+  and after the relaxation, not after the cut.
+- **Decision of Chris (about 13:45): this test stops** after the 3 runs that had started. The 6 other runs (K2_2,
+  K3_1, K3_2, K4_0, K4_1, K4_2) do not run. Reason: in option C, smoothing acts after the AC pass. After the AC pass
+  of attempt 0 the option C runs had 2 BPs (K3_1_ad, a pair), 1 BP (K4_0_ad, K2_2_ad) or 0 BPs (K1_0_ad, K1_1_ad,
+  K3_0_ad, K4_2_ad), not up to 9 BPs as in the relaxed virgin state. The stopped test has no reading (3 of 9 runs).
+
+**Test of smoothing after one AC pass** (decision of Chris, option 1 of 2; conv_jobs.smooth_ad_lines,
+jobs/smooth_ad_test.txt, commit d78308b; names <run>_sm). Option 2, not chosen: load saved states after the AC pass
+and smooth them. It is faster, but it is not the sequence of the main study, and not all of these states are saved.
+- Runs: the 3 option C runs whose attempt 0 (the random start, the relaxation, AC from 300 mT, the relaxation) kept
+  BPs: K3_1_ad (2, a pair; 7.115), K4_0_ad (1) and K2_2_ad (1) (box logs, stdout.log "[bloch] attempt 0").
+- Each test run uses the option C line of its run with one attempt (--bloch_free_tries 1) and --bloch_smooth 3. It
+  runs only the 9 mT stage, without snapshots, accumulators and stage checkpoints (--keep_stage_ckpt). Sequence: the
+  random start, the relaxation, the AC pass, the relaxation; if the state then has a BP, smoothing; then the 9 mT
+  stage.
+- All other arguments are equal to the line of the option C run (checked argument by argument against
+  jobs/corners_ad300.txt; the seed, the seed of the random start and the AC amplitude are the same). Thus we expect
+  the state of attempt 0 with its BP again. Evidence (n 1): attempt 0 of K3_1_ad repeated the random start of K3_1_nx,
+  and after the AC pass it had the BP pair again, as K3_1_nx_pd300 (which loaded K3_1_nx/init.pt).
+- Reading (fixed before the runs; eval_smooth.py main_ad). A run is "tested" if its state after the AC pass has a BP.
+  Clean as above. Then:
+  - "works": all tested runs clean;
+  - "does not work": at least one tested run not clean;
+  - "not determined": no run tested;
+  - "open": a run has no DONE file. Example: a relaxation does not converge, run_loops ends with exit code 3, and the
+    queue repeats the run once with a larger iteration limit (7.33).
+  The report gives the number of tested runs. "Works" can rest on fewer than 3 runs.
+- Consequence: after the result Chris decides if smoothing becomes the last stage of option C in the main study. If
+  K1_2_ad or K3_2_ad keeps a BP in attempt 0, a decision of Chris is necessary to add it to the test.
+- Cost (estimate from the option C runs; the relaxation after the AC pass is not timed separately): virgin relaxation
+  0.19 … 0.34 h at d/l_ex 212 and 1.32 h at d/l_ex 300 (K4_2_ad); AC pass 0.33 … 0.38 h and 0.95 h; smoothing and the
+  9 mT stage 0.45 … 1.42 h (first test). Thus about 1 … 2 GPU-h for K3_1 and 3 … 4 GPU-h each for K4_0 and K2_2,
+  about 7 … 10 GPU-h in all, 0.7 … 1.0 $ (0.10 $ per GPU-h). The estimate given to Chris before his decision was
+  about 5 GPU-h (0.5 $). It was low, because it did not count the virgin relaxation and the AC pass at d/l_ex 300.
+- Tests: test_protocol_s checks the new lines. The study suite in a new laptop venv: 115 passed, 3 skipped, 3 failed
+  (statsmodels missing). After the install of requirements-analysis.txt the 3 tests passed (exit code 0).
+
+**Corner runs of option C** (state 14:07, box logs and bloch_<i>_<stage>.csv; data not downloaded except K2_0_ad,
+K2_1_ad and K3_1_ad).
+- Finished: K1_0, K1_1, K2_0, K2_1, K3_0, K3_1, K4_1 and K4_2 (_ad), 8 of 12. K4_2_ad ended at 13:38:47.
+- Running: K2_2_ad (150 mT stage), K4_0_ad (100 mT stage), K1_2_ad (since 13:41, preparation). In the queue: K3_2_ad.
+- BPs in the cycles: K1_0_ad, K1_1_ad, K3_0_ad, K4_1_ad and K4_2_ad have 0 BPs at all samples of all 7 stages.
+  K4_0_ad has 0 BPs in the stages 9 … 70 mT. K2_2_ad has 0 BPs in the stages 9 … 100 mT and up to 1 BP in the 150 mT
+  stage (83 of 514 samples so far). Thus all 3 K2 runs have BPs in the cycles at large B (K2_0_ad and K2_1_ad: 7.115).
+- Code commit (config.json): K1_0_ad and K4_1_ad 143535f; K1_1_ad, K3_0_ad, K4_2_ad, K2_2_ad and K4_0_ad b325736;
+  K1_2_ad eba2dfd. The dispatcher worktree is at eba2dfd since 10:14, thus K3_2_ad will also run at eba2dfd. From the
+  diff b325736 → eba2dfd: with --bloch_smooth 0 the sequence of option C is the same. eba2dfd adds the option,
+  smoothing in option C and smoothing after --init_from.
+
+**Operation.**
+- Decision of Chris (about 13:30): the corner runs start before the smoothing test.
+- The running queue loads each job file once and keeps the order in memory. A further job file with a smaller priority
+  number (an earlier start) would leave the old entries of K1_2_ad and K3_2_ad in the queue. They would start a second
+  time in the same run folder, because run_loops has no lock on a run folder. Thus I changed the order with 2 restarts
+  of the dispatcher, the same way as in 7.115:
+  1. stop the queue process, then the dispatcher and the post-processing, by PID; the running jobs continue;
+  2. check that the lock of the dispatcher is free;
+  3. move the old job files to spool/archive_20261019/;
+  4. start the dispatcher again; submit only jobs that had not started (checked: no run folder of these names).
+- Restart 1 (13:37 … 13:39): 10_c8d.jobs (K1_2_ad, K3_2_ad) and 20_smoothb.jobs (the 6 tests that had not started)
+  replaced 30_c8c.jobs and 20_smooth.jobs. K1_2_ad started on GPU 2 at 13:41.
+- Restart 2 (13:56 … 13:57): 10_c8e.jobs (K3_2_ad) and 20_smoothad.jobs (K3_1_ad_sm, K4_0_ad_sm, K2_2_ad_sm) replaced
+  10_c8d.jobs and 20_smoothb.jobs.
+- The code of the dispatcher stays eba2dfd. run_loops.py is the same in d78308b. Only the job file came from d78308b
+  (md5 on the box equal to the local file).
+- No queue supervises K4_0_ad, K2_2_ad, K2_1_nx_sm and K1_2_ad: no retry and no timeout. The new queue does not log
+  their end; their DONE file is the record.
+- The disk guard of the new queue does not count the bytes still to come of these 4 runs: 10.2 GB at 14:07
+  (run_queue.expected_bytes minus the bytes in the folder; K4_0_ad 4.0 GB, K2_2_ad 3.4 GB, K1_2_ad 2.9 GB). Free
+  disk at 14:07: 16 GB. K3_2_ad needs about 2.9 GB (estimate: as K1_2_ad, the same d/l_ex). The post-processing
+  deletes the snapshots of a finished run after its analysis.
+- Before restart 1, the permission check of this session blocked the stop command three times. The command did not
+  run; the box state at 13:34 was unchanged.
+- Credit at 13:26: 20.33 $ (23.72 $ at 05:05, thus about 0.41 $/h).
+- Report and md5: after the download, runs/smooth_report.md (eval_smooth.py) and an md5 manifest of the run files.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
