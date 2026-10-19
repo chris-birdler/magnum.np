@@ -589,3 +589,49 @@ in the layer relative to the voxel model):
 - Recommendation and decision: (b) and (a) together. The dynamic arms with P and L at p = 3 run anyway (D1). A
   static prototype of (a) is built and tested tonight with the same states and readings; if it converges, the
   dynamic arms are repeated with it.
+
+### 3.7 D3 (a): with the first moment of the cut cells in the far field both forms are sufficient from p = 2 on (2026-10-20, night mandate)
+
+**Method** (commit 95002a4; unit tests 10 passed). centroid_offsets: d_i = offset of the centroid of the body
+sub-cells of cell i from the cell centre (in cells). Far field with the moment of each cut cell at its centroid, to
+first order:
+
+    h_i = Σ_j v_j [K(r_ij) + ((d_i − d_j) · D) K(r_ij)] m_j
+
+with D the central difference of the same periodic kernel (factor i sin ω in Fourier space; no new kernel, the image
+sum and the compensation unchanged). The window term subtracts the same coarse coupling, so for a window over the
+whole box the correction stays exact (unit test, open boundaries, maximum deviation below 10⁻¹⁰). The operator stays
+symmetric with the weight v (unit test).
+
+**Window series without the centroid term** (K2_0, p = 4 … 6, fine reference unchanged): energy error 1.60 / 1.31 /
+1.11 · 10⁻⁴ K_d, e_E 0.34 / 0.28 / 0.24, e_h 0.052 / 0.043 / 0.036 (K2_1 the same within 0.003 · 10⁻⁴; the law
+1/(p + 0.6) predicts 1.08 · 10⁻⁴ at p = 6). Thus a larger window alone
+does not help.
+
+**Stage A with the centroid term (q = 2)** (files results/static_A_*_q2_c.json; report results/static_A.md):
+
+| geometry | form | p | e_E | \|ΔE\| / \|E_K\| | e_h (layer) |
+|---|---|---|---|---|---|
+| K2 (2 states, equal within 0.005) | P | 1 / 2 / 3 | 0.193 / 0.049 / 0.018 | 0.009 / 0.002 / 0.001 | 0.047 / 0.011 / 0.004 |
+| K2 | L | 1 / 2 / 3 | 0.189 / 0.045 / 0.014 | 0.009 / 0.002 / 0.001 | 0.080 / 0.062 / 0.061 |
+| K4_1 | P | 1 / 2 / 3 | 0.196 / 0.050 / 0.019 | 0.045 / 0.012 / 0.004 | 0.046 / 0.010 / 0.004 |
+| K4_1 | L | 1 / 2 / 3 | 0.194 / 0.048 / 0.016 | 0.044 / 0.011 / 0.004 | 0.076 / 0.058 / 0.056 |
+
+- R2: both forms "sufficient" from p = 2 on, in all three states (R3 not yet computed).
+- The error now falls by a factor of about 4 from p = 1 to 2 and about 2.6 from p = 2 to 3 (before: 0.63 and 0.73).
+  This agrees with the cause given in 3.6 (misplaced moments in the far field).
+- The pairwise form reproduces the field in the layer within 0.4 % of the voxel error at p = 3; the cell-local form
+  stays at about 6 % (its own approximation, m_j replaced by m_i). At the new cells the field error of P3 is 0.0011
+  (volume fraction alone: 0.12).
+- Volume fraction plus centroid term without the near-field correction: E − E_ref = −0.28 S (K4_1). Thus the window
+  term is still necessary.
+
+**D4 — dynamic arms (decision under the night mandate).**
+- Options: (a) let the running arms without the centroid term (D3P, D3L, D3P4, D3L4) finish; (b) stop them and run
+  the arms with the centroid term instead; (c) both.
+- (a) tests a variant that the static test has shown to be not converged; (c) needs about twice the GPU time and the
+  references D15 / D15g would not finish tonight.
+- Recommendation and decision: (b). The centroid term goes into the field term of magnum.np and into run_loops
+  (--staircase_centroid). New arms: D3Pc and D3Lc (q = 2, p = 3), then D3Pc4 and D3Lc4 (q = 4, p = 3; the target is
+  the voxel geometry of dx 0.75, information). D3f (volume fraction alone) stays as a control. The three arms without
+  the centroid term that already ran or run are information (n = 1 each).
