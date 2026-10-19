@@ -648,3 +648,28 @@ does not help.
 - Engineering change before (commit 41df994): the couplings L_ij are computed directly in blocks of source cells
   instead of with a table of occupancy patterns, which would need tens of GB for q = 4 (64 sub-cells); unit tests 13
   passed (the full-window exactness also for q = 4).
+
+**Queue order (operation, 2026-10-20 about 01:20 local).** The corrected arms need about 3 times longer than the voxel
+arms (relaxation 570 … 1 620 s against 180 s; cycle about 190 s against 53 s, with shared GPU). To have the
+references of D1 by the morning, the queue was restarted: the three running corrected arms (D3Pc_s941, D3Lc_s941,
+D3Pc_s942) go on; a new dispatcher (spool5, 3 slots) runs D15 and D15g first, then the other D3c arms, D3f and D3c4.
+GPU load before: 83 % with 3 jobs.
+
+### 3.8 Stage A with q = 4 (centroid term, one image shell): the same result; the staircase effect grows with q (2026-10-20, night mandate)
+
+**Run** (commit 41df994, files results/static_A_*_q4_k1_c.json). Fine meshes 608³ (K2) and 624³ (K4), one image shell
+(D5). R0 passed: K2 144 896 modified and 72 032 new cells, φ_f 0.62001; K4 142 208 and 69 600, φ_f 0.55003. R1
+passed (largest deviation from φ (1 − φ)/3: 1.2·10⁻⁵).
+
+| geometry | S (K_d) | S / \|E_K\| | E_frac − E_ref | P3: e_E / e_h | L3: e_E / e_h | P2: e_E / e_h | L2: e_E / e_h |
+|---|---|---|---|---|---|---|---|
+| K2_0 (K2_1 within 0.001) | 7.96e-4 | 0.076 | +3.8e-5 | 0.014 / 0.004 | 0.011 / 0.057 | 0.039 / 0.011 | 0.036 / 0.059 |
+| K4_1 | 7.10e-4 | 0.385 | +3.1e-5 | 0.015 / 0.004 | 0.013 / 0.055 | 0.040 / 0.011 | 0.039 / 0.057 |
+
+- R2: both forms "sufficient" from p = 2 on, as with q = 2. The accuracy of the correction does not depend on q
+  (from 2 to 4).
+- The staircase effect against the finer target surface is larger: S(q = 4) / S(q = 2) = 1.69 (K2) and 1.69 (K4).
+  If S approaches the smooth sphere as 1/q (an assumption; two points only), the limit is about 1.1·10⁻³ K_d for K2
+  (0.11 |E_K|) and 1.0·10⁻³ K_d for K4 (0.54 |E_K|) (estimates).
+- The volume fraction alone changes its sign of error between q = 2 (−0.45 S) and q = 4 (+0.05 S of the larger S);
+  its field error in the layer stays about 0.3 of that of the voxel model (P3: 0.004).
