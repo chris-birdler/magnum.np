@@ -54,7 +54,9 @@ def load_run(run):
         mm = re.search(r"\[relax2\].*E/K_d\s+(-?[0-9.eE+-]+)", line)
         if mm:
             rec = float(mm.group(1))
-    st = torch.load(STATES / "states_pd300" / run / "init.pt", map_location="cpu", weights_only=False)
+    f = STATES / run / "init.pt"                     # prepared state in the run folder, else in states_pd300
+    f = f if f.exists() else STATES / "states_pd300" / run / "init.pt"
+    st = torch.load(f, map_location="cpu", weights_only=False)
     return cfg, rec, st["m"].to(torch.float64)
 
 
