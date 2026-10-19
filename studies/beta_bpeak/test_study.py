@@ -2445,6 +2445,11 @@ def test_protocol_s(tmp_path):
                     "init_from", "init_wait_h", "keep_stage_ckpt", "b_list", "n_amp", "cycles_per_amp",
                     "max_cycles_per_amp", "snap_phases", "snap_cycles", "snap_mT"}:
                 assert get_arg(tok, key) == get_arg(ref, key), (r, k, key)
+    k3 = dict(CJ.k3hist_lines(src, runs))               # Chris 2026-10-19: K3 history test, no snapshots
+    assert sorted(k3) == sorted("%s_%s_h16" % (r, k) for r in CJ.K3H_RUNS for k in ("ad", "nx"))
+    assert all(get_arg(shlex.split(a), "snap_phases") is None and get_arg(shlex.split(a), "cycles_per_amp") == ["16"]
+               for a in k3.values())
+    assert get_arg(shlex.split(k3["K3_1_ad_h16"]), "init_from") == ["K3_1_ad/init.pt"]
     sa = CJ.smooth_ad_lines(src, runs)                  # Chris 2026-10-19: one AC pass, then the cut
     assert [n for n, _ in sa] == [n + "_sm" for n in CJ.SA_RUNS]
     for n, line in sa:

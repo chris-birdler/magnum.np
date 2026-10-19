@@ -498,17 +498,31 @@ K4H_CYCLES = 16
 
 
 def k4hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
-    """K4 history test (Chris 2026-10-19; PROTOKOLL 7.119: at K4 the loss of option C at 9 ... 50 mT is about 2 x the
-    loss of the relaxed random start, and in the 9 mT stage it rises over the first 2 ... 3 cycles). For each K4
-    microstructure the 9 mT stage with K4H_CYCLES cycles from both prepared states: <run>_ad_h16 from the option C
+    """K4 history test (Chris 2026-10-19), see hist_lines; with snapshots."""
+    return hist_lines(K4H_RUNS, True, src, runs_dir)
+
+
+K3H_RUNS = ("K3_0", "K3_1", "K3_2")
+
+
+def k3hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """K3 history test (Chris 2026-10-19, option A): as the K4 test (hist_lines) for K3, without snapshots (at K3 the
+    loss of option C at 9 ... 50 mT is 0.4 ... 0.6 times the loss of nx, with a large SE; PROTOKOLL 7.119)."""
+    return hist_lines(K3H_RUNS, False, src, runs_dir)
+
+
+def hist_lines(runs, snapshots, src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """History test of a corner (Chris 2026-10-19; first for K4, PROTOKOLL 7.119: at K4 the loss of option C at
+    9 ... 50 mT is about 2 x the loss of the relaxed random start, and in the 9 mT stage it rises over the first 2 ... 3
+    cycles). For each microstructure of runs the 9 mT stage with K4H_CYCLES cycles from both prepared states: <run>_ad_h16 from the option C
     state (<run>_ad/init.pt; K4_1: its AC-300 test state, as the run), <run>_nx_h16 from the relaxed random start of the
-    corner test (<run>_nx/init.pt). m snapshots at 2 phases (H max, H min) in every cycle (--snap_cycles K4H_CYCLES; 4
-    phases would need 25 GB of disk); accumulators as
+    corner test (<run>_nx/init.pt). With snapshots: m at 2 phases (H max, H min) in every cycle (--snap_cycles
+    K4H_CYCLES; 4 phases would need 25 GB of disk for K4); without: no snapshots. Accumulators as
     the runs; all other settings as the runs."""
     ad = dict(ad300_lines(src, runs_dir))
     nx = dict(corner_newell_lines(src))
     out = []
-    for r in K4H_RUNS:
+    for r in runs:
         for kind, line in (("ad", ad[r + "_ad"]), ("nx", nx[r + NX_SUFFIX])):
             t = shlex.split(line)
             t = set_arg(t, "keep_stage_ckpt", None)
@@ -517,8 +531,12 @@ def k4hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
                 t = set_arg(t, "init_from", ["%s_%s/init.pt" % (r, kind)])
             t = set_arg(t, "init_wait_h", ["0.0"])
             t = set_arg(set_arg(t, "cycles_per_amp", [str(K4H_CYCLES)]), "max_cycles_per_amp", [str(K4H_CYCLES)])
-            t = set_arg(set_arg(t, "snap_phases", ["2"]), "snap_cycles", [str(K4H_CYCLES)])
-            t = set_arg(t, "snap_mT", ["9.0"])
+            if snapshots:
+                t = set_arg(set_arg(t, "snap_phases", ["2"]), "snap_cycles", [str(K4H_CYCLES)])
+                t = set_arg(t, "snap_mT", ["9.0"])
+            else:
+                for k in ("snap_phases", "snap_cycles", "snap_mT"):
+                    t = set_arg(t, k, None)
             out.append(("%s_%s_h16" % (r, kind), " ".join(t)))
     return out
 
@@ -555,7 +573,7 @@ if __name__ == "__main__":
                 satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
                 ad_rest_lines() if st == "adrest" else
                 smooth_lines() if st == "smooth" else smooth_ad_lines() if st == "smoothad" else
-                k4hist_lines() if st == "k4hist" else
+                k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
