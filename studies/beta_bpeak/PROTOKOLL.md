@@ -7201,6 +7201,50 @@ run).** Means over the particle cells; x = drive direction; values in units of M
 - Thus the state after AC from 300 mT has the same net response but about 1.3 … 1.7 times more local out-of-phase
   motion of m inside the particles, mostly across the field. Why is open (7.125).
 
+### 7.127 History tests complete: K4 "two stable states" (3 of 3), K3 "two stable states" (2 of 3, two-sided reading); static saturation test started (2026-10-19, night)
+
+All times UTC. Terms as in 7.123, 7.125 and 7.126. Decisions taken while Chris was away are in
+results/night_decisions_20261019.md (rule of Chris: options with a recommendation, the recommendation is used, he
+reviews them in the morning).
+
+**K4_2 (done 21:38).** nx_h16: w_e 1.53·10⁻⁷, w_l 1.51·10⁻⁷, ln (w_l / w_e) −0.012, stable; ad_h16: 3.67·10⁻⁷ →
+3.68·10⁻⁷, +0.003, stable; w_l(ad) / w_l(nx) = 2.44 → "two stable states". **K4 overall: "two stable states" in 3
+of 3.** Snapshots (eval_hist_snapshots.py, cycles 3 … 16): rotation ad / nx × 1.77 (square 3.12), perp × 1.87,
+against / with 1.03 (ad) and 1.02 (nx). Over the 3 K4 microstructures the square of the rotation ratio is 1.71 / 2.89
+/ 3.12 against the loss factor 2.02 / 3.02 / 2.44 (n 3).
+
+**K3 history test (option A of Chris; 6 runs, no snapshots, done 22:02).**
+
+| microstructure | nx_h16: w_e → w_l | ad_h16: w_e → w_l | w_l(ad) / w_l(nx) | BPs in the nx start (7.112) | reading (two-sided) |
+|---|---|---|---|---|---|
+| K3_0 | 6.52·10⁻⁸ → 6.52·10⁻⁸ | 6.90·10⁻⁸ → 6.90·10⁻⁸ | 1.06 | 0 | not determined |
+| K3_1 | 1.35·10⁻⁷ → 1.35·10⁻⁷ | 5.45·10⁻⁸ → 5.46·10⁻⁸ | 0.40 | 2 | two stable states |
+| K3_2 | 8.72·10⁻⁸ → 8.71·10⁻⁸ | 5.44·10⁻⁸ → 5.44·10⁻⁸ | 0.62 | 1 | two stable states |
+
+- All 6 runs are stable: |ln (w_l / w_e)| ≤ 0.001. The reruns from the ad state repeat the first 7 cycles of the
+  option C run exactly (|Δ ln w_loop| < 0.0001).
+- Reading: the rule of 7.123 is one-sided (option C higher by more than × 1.5). At K3 option C is lower. Read
+  literally, all 3 K3 microstructures are "not determined". Read two-sided (|ln ratio| > ln 1.5, decision of the
+  night, results/night_decisions_20261019.md), K3_1 and K3_2 are "two stable states" and K3_0 is "not determined";
+  overall "two stable states" (2 of 3).
+- Information (n 3, hint only): at K3 the nx state has the higher loss where it has BPs (K3_1: 2, K3_2: 1); without
+  BPs (K3_0) both states are equal within 6 %. The ad state of K3_1 comes from attempt 1 (a new random start).
+
+**Static saturation test started (7.126 follow-up; code ebcea74, jobs/satstatic.txt).** For K4_1 and K2_0, two starts
+× two saturation fields: start A uniform along the drive, start B the state after AC from 300 mT (<run>_pd300/init.pt);
+h_sat = 1 − φ and 2 M_s. Each pass: the field up to h_sat (a smooth quarter-sine ramp, except the first pass of start
+A), held and relaxed, the decaying AC field from its peak (× 0.8 per half cycle), the relaxation at H = 0; if a BP
+remains, the next pass (at most 3); then the 9 mT stage. The static relaxation is part of the convergence gate (exit
+code 3 if it does not converge). All other settings as the production lines (18 arguments checked). Local smoke
+tests of both start paths passed (small test geometry, d/l_ex 48, φ 0.45: both starts ended at the same energy
+0.0118786 K_d V). Study suite 121 passed, 3 skipped (exit code 0). Submitted 22:01 (night decision 1); 3 runs started
+at once. Cost about 3 … 4 $ (estimate).
+
+Reading (fixed before the results): question 1 (does the saturation erase the history): start A against start B at
+the same h_sat — "erased" if the 9 mT loss agrees within 10 % (|Δ ln w_l| < 0.10) and both have the same number of
+BPs after the first pass; question 2 (does the field matter): 1 − φ against 2 M_s at the same start — "does not
+matter" with the same limits. Per question and corner one reading; the overall reading needs both corners.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
