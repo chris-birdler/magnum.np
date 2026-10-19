@@ -6673,67 +6673,76 @@ sequence of attempt 0: the relaxed random start of <run>_nx, AC from 300 mT, the
 - Tool: prof_terms.py, commit e7e2358. Runs: K4_2_ad (d/l_ex 300) and K1_0_ad (d/l_ex 212), each from its prepared
   state, 3 cycles at 9 mT. Output: runs/PROF_<run>; log: /root/prof_<run>.log.
 
-### 7.119 Corner evaluation with three arms: old main study, new solver with Bloch points (nx), new solver without Bloch points (ad); β in 9 … 50 mT (2026-10-19)
+### 7.119 Corner evaluation with three arms: old main study, new solver with a random start (nx), new solver with option C (ad); β in 9 … 50 mT (2026-10-19)
 
-All times UTC. Terms as in 7.112 (V, K_d, P) and 7.114 … 7.118 (BP, option C). Chris approved the method before the
-evaluation. Tools: eval_corners_ad.py and plot_corners_ad.py (commit 8378060). Report: results/corners_ad_report.md;
-numbers: results/corners_ad_data.json; figures: results/figures_corners_ad/ (not in git; the script makes them again).
-Run data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
+All times UTC. Terms as in 7.112, 7.113 and 7.114 … 7.118: BP, prepared state, attempt, option C; a lever is the
+difference of β between two corners, β(Ki) − β(K1); w_loop is the loop loss per cycle divided by K_d; R1, the outer
+shell r ≥ 0.8, the hottest 10 % of the cells and the jumps are the field evaluations of 7.113 (eval_corners_fields.py).
+Per cycle, ε = w_dis / w_loop − 1, and d = ε + ΔE_int / w_loop is the numerical error of the energy balance (S5).
+A stage has the S9 flag ε if the mean |ε| of its calm tail is above 0.02, and the flag w if the SD of ln w_loop in
+its calm tail is above 0.05. Chris approved the method before the evaluation. Tools: eval_corners_ad.py and
+plot_corners_ad.py (commits 8378060, 78e5b15). Report: results/corners_ad_report.md; numbers:
+results/corners_ad_data.json; figures: results/figures_corners_ad/ (not in git; the script makes them again). Run
+data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
 
 **Method.**
 - Three arms, paired per microstructure (n 12: 4 corners × 3 microstructures):
   - old: the corner runs of the old main study (DemagFieldPBC, atol 1e-5; the _mc2 rerun for K1_0, K4_0 and K4_1);
-  - nx: setup of PLAN 4.13, relaxed random start, with BPs (7.112);
-  - ad: setup of PLAN 4.13, option C, no BP in the prepared state (7.118).
+  - nx: setup of PLAN 4.13, relaxed random start; 9 of 12 runs have BPs (7.112);
+  - ad: setup of PLAN 4.13, option C; no BP in the prepared state and in the stages 9 … 50 mT (7.118).
 - nx against ad: the code of the cycles is the same, except the BP count at each sample (diff of run_loops.py from
-  e5998f5 to eba2dfd; magnumnp unchanged). Thus ad − nx measures the effect of the start state. The ad start of K2_0,
-  K2_1 and K4_1 is the nx relaxed start plus AC. The other 9 ad runs relaxed the same random start again (the same BP
-  count as nx, 7.118).
+  e5998f5 to eba2dfd; magnumnp unchanged). Thus ad − nx measures the effect of the start state. The prepared state of
+  ad comes from:
+  - the nx relaxed start plus AC: K2_0, K2_1 and K4_1;
+  - attempt 0, the same random start as nx, relaxed again: 6 runs;
+  - attempt 1 or 2, a new random start of the same microstructure: K2_2, K3_1 and K4_0.
 - β per run is the slope of ln w over ln B at the nominal amplitudes (main-fit definition, steady-tail rule with at
   least 2 calm cycles). There are 3 windows:
   - 9 … 150 mT: 7 amplitudes, at least 6 with a value in both runs (as 7.112);
-  - 9 … 50 mT: all 4 amplitudes;
-  - 70 … 150 mT: all 3 amplitudes, information only.
-- In the window 9 … 50 mT a fit has 4 points, thus 2 degrees of freedom. The uncertainty is the scatter over the
-  microstructures: mean ± SE, n 3 per corner and n 12 paired.
+  - 9 … 50 mT: all 4 amplitudes; 2 degrees of freedom per fit;
+  - 70 … 150 mT: all 3 amplitudes; 1 degree of freedom per fit; information only.
+- The uncertainty is the scatter over the microstructures: mean ± SE, n 3 per corner and n 12 paired.
 - Reading for Δβ(ad − old) and Δβ(ad − nx) in the windows 9 … 150 and 9 … 50 mT (rule of 7.112, fixed before the
   evaluation):
   - "robust": the 90 % CI of the mean Δβ lies inside ± 0.10, and no corner has |mean Δβ| > 0.20;
   - "shifted": the 90 % CI excludes 0, and |mean Δβ| > 0.10;
   - "not determined": all other cases, or fewer than 9 pairs.
 - Check of the tools: eval_corners_nx.py and eval_corners_fields.py with the new arm parameter give the reports of
-  7.112 bit for bit. The old and nx values of the new report agree with 7.112.
+  7.112 with no difference. The old and nx values of the new report agree with 7.112.
 
-**Readings.**
+**Readings.** The last column gives the number of the 12 runs whose removal changes the reading.
 
-| comparison | window | mean Δβ ± SE (n 12; 90 % CI) | per corner (n 3) | reading |
-|---|---|---|---|---|
-| ad − old | 9 … 150 mT | −0.108 ± 0.032 (−0.165 … −0.051) | K1 −0.165, K2 −0.009, K3 −0.136, K4 −0.121 | shifted |
-| ad − old | 9 … 50 mT | −0.126 ± 0.061 (−0.236 … −0.016) | K1 −0.379, K2 −0.035, K3 −0.064, K4 −0.027 | shifted |
-| ad − nx | 9 … 150 mT | −0.030 ± 0.071 (−0.157 … +0.097) | K1 +0.074, K2 −0.056, K3 +0.193, K4 −0.329 | not determined |
-| ad − nx | 9 … 50 mT | −0.143 ± 0.078 (−0.283 … −0.002) | K1 +0.089, K2 −0.268, K3 −0.253, K4 −0.139 | shifted |
+| comparison | window | mean Δβ ± SE (n 12; 90 % CI) | per corner (n 3) | reading | leave one out |
+|---|---|---|---|---|---|
+| ad − old | 9 … 150 mT | −0.108 ± 0.032 (−0.165 … −0.051) | K1 −0.165 ± 0.016, K2 −0.009 ± 0.066, K3 −0.136 ± 0.074, K4 −0.121 ± 0.072 | shifted | 3 of 12 |
+| ad − old | 9 … 50 mT | −0.126 ± 0.061 (−0.236 … −0.016) | K1 −0.379 ± 0.081, K2 −0.035 ± 0.064, K3 −0.064 ± 0.060, K4 −0.027 ± 0.157 | shifted | 4 of 12 |
+| ad − nx | 9 … 150 mT | −0.030 ± 0.071 (−0.157 … +0.097) | K1 +0.074 ± 0.097, K2 −0.056 ± 0.026, K3 +0.193 ± 0.132, K4 −0.329 ± 0.084 | not determined | 0 of 12 |
+| ad − nx | 9 … 50 mT | −0.143 ± 0.078 (−0.283 … −0.002) | K1 +0.089 ± 0.055, K2 −0.268 ± 0.058, K3 −0.253 ± 0.289, K4 −0.139 ± 0.060 | shifted | 8 of 12 |
 
-- ad − old, 9 … 50 mT: the shift comes from K1 (−0.379 ± 0.081, n 3). The other 3 corners lie within ± 0.07. The
-  old K1 runs have no BP at the start (census, 7.112). 7.112 and 7.113 found that the solver causes the K1 difference
-  at 150 mT. The K1 shift here agrees with that, but this evaluation cannot separate the solver from the start
-  state for the old arm.
-- ad − nx, 9 … 50 mT: the largest values are at K2 (−0.268 ± 0.058) and K3 (−0.253 ± 0.289). Runs of nx with a BP in
-  the stages 9 … 50 mT (census at the start or the end of a stage): K1 1 of 3, K2 3 of 3, K3 2 of 3, K4 3 of 3. Hint
-  only (n 3 per corner): K2 and K3 have many BPs and a large Δβ; K4 has BPs in all 3 runs but a smaller Δβ (−0.139 ±
-  0.060).
+- The 3 readings "shifted" lie at the edge of the rule: |mean Δβ| 0.108 against the limit 0.10, and the upper ends of
+  the 90 % CI −0.016 and −0.002. The reading of ad − nx in 9 … 50 mT changes to "not determined" when 1 of 8 of the 12
+  runs is removed; thus it is weak.
+- ad − old, 9 … 50 mT: the shift comes from K1 (−0.379 ± 0.081, n 3). The other 3 corners lie within ± 0.07. The old
+  K1 runs have no BP at the start (census, 7.112). In the solver scan of 7.113, DemagFieldPBC from the same states as
+  K1_0_nx raised ln w by +0.444 at 35 mT and +0.740 at 50 mT (n 1). The K1 shift agrees with a solver effect, but this
+  evaluation cannot separate the solver from the start state for the old arm.
+- ad − nx, 9 … 50 mT, per run: K1 +0.105 / +0.176 / −0.014, K2 −0.350 / −0.297 / −0.156, K3 −0.354 / −0.696 /
+  +0.291, K4 −0.048 / −0.252 / −0.118 (microstructures 0 / 1 / 2). BPs in the nx start: K1 0 / 0 / 1, K2 9 / 5 / 5,
+  K3 0 / 2 / 1, K4 2 / 2 / 2. The run values show no link with the BP count: K3_0 has no BP and Δβ −0.354; K3_2 has
+  a BP and Δβ +0.291. The largest |Δβ| (K3_1, −0.696) is a run whose ad state comes from attempt 1, a new random start.
 
 **β per corner (mean ± SE, n 3).**
 
 | corner | 9 … 50 mT: old | nx | ad | 9 … 150 mT: old | nx | ad | 70 … 150 mT: old | nx | ad |
 |---|---|---|---|---|---|---|---|---|---|
 | K1 | 2.40 ± 0.05 | 1.93 ± 0.03 | 2.02 ± 0.03 | 2.45 ± 0.07 | 2.21 ± 0.10 | 2.29 ± 0.08 | 2.38 ± 0.10 | 2.82 ± 0.03 | 2.86 ± 0.20 |
-| K2 | 2.14 ± 0.10 | 2.37 ± 0.04 | 2.11 ± 0.04 | 2.21 ± 0.07 | 2.26 ± 0.08 | 2.20 ± 0.06 | 2.37 ± 0.28 | 2.14 ± 0.11 | 2.41 ± 0.11 |
-| K3 | 2.15 ± 0.06 | 2.34 ± 0.30 | 2.09 ± 0.03 | 2.38 ± 0.05 | 2.05 ± 0.16 | 2.24 ± 0.03 | 2.44 ± 0.20 | 2.48 ± 0.22 | 2.48 ± 0.12 |
-| K4 | 1.89 ± 0.11 | 2.00 ± 0.03 | 1.86 ± 0.04 | 1.86 ± 0.07 | 2.07 ± 0.08 | 1.74 ± 0.01 | 1.99 ± 0.04 | 1.93 ± 0.06 | 1.46 ± 0.08 |
+| K2 | 2.14 ± 0.10 | 2.37 ± 0.04 | 2.11 ± 0.04 | 2.21 ± 0.07 | 2.26 ± 0.08 | 2.20 ± 0.06 | 2.37 ± 0.27 | 2.14 ± 0.11 | 2.41 ± 0.11 |
+| K3 | 2.15 ± 0.06 | 2.34 ± 0.30 | 2.09 ± 0.03 | 2.38 ± 0.05 | 2.05 ± 0.16 | 2.24 ± 0.03 | 2.43 ± 0.20 | 2.48 ± 0.22 | 2.48 ± 0.12 |
+| K4 | 1.89 ± 0.11 | 2.00 ± 0.02 | 1.86 ± 0.04 | 1.86 ± 0.07 | 2.07 ± 0.08 | 1.74 ± 0.005 | 1.99 ± 0.04 | 1.93 ± 0.06 | 1.46 ± 0.08 |
 
-- 9 … 50 mT, ad: β 1.86 … 2.11 at the 4 corners, SE 0.03 … 0.04. The SE of nx is the same size except at K3 (0.30);
-  the SE of old is 0.05 … 0.11.
-- The 70 … 150 mT window includes the K2 stages with BPs in ad (7.118).
+- 9 … 50 mT, ad: β is 1.86 … 2.11 at the 4 corners, with an SE of 0.03 … 0.04. The SE of nx has the same size,
+  except at K3 (0.30). The SE of old is 0.05 … 0.11.
+- The 70 … 150 mT window includes the K2 stages of ad with BPs (7.118).
 
 **Levers β(Ki) − β(K1) (SE from the two corner SE).**
 
@@ -6741,169 +6750,46 @@ Run data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
 |---|---|---|---|---|---|---|
 | K2 − K1 | −0.26 ± 0.11 | +0.44 ± 0.05 | +0.09 ± 0.05 | −0.24 ± 0.10 | +0.04 ± 0.13 | −0.09 ± 0.10 |
 | K3 − K1 | −0.25 ± 0.08 | +0.41 ± 0.30 | +0.07 ± 0.05 | −0.08 ± 0.08 | −0.16 ± 0.19 | −0.05 ± 0.08 |
-| K4 − K1 | −0.51 ± 0.13 | +0.07 ± 0.04 | −0.16 ± 0.06 | −0.59 ± 0.09 | −0.15 ± 0.12 | −0.55 ± 0.08 |
+| K4 − K1 | −0.51 ± 0.12 | +0.07 ± 0.04 | −0.16 ± 0.05 | −0.59 ± 0.09 | −0.15 ± 0.12 | −0.55 ± 0.08 |
 
-- 9 … 50 mT: the levers of ad are small (|lever| ≤ 0.16). The old main study had −0.25 … −0.51 there.
+- 9 … 50 mT: the levers of ad are small (|lever| at most 0.16). The old main study had −0.25 … −0.51 there.
 - 9 … 150 mT: the K4 lever of ad (−0.55 ± 0.08) is close to the old value (−0.59 ± 0.09); nx had −0.15 ± 0.12. In ad
   this lever comes from 70 … 150 mT (K4 − K1 −1.40 ± 0.21 there; old −0.38 ± 0.11).
 
 **Loss density P.**
 - Factor on P, ad / old (exp of the mean paired Δ ln P, n 12): × 0.95 at 9 mT, × 0.75 … 0.77 at 20 … 50 mT, × 0.67 …
-  0.70 at 70 … 150 mT. The SE of Δ ln P is 0.13 … 0.19.
-- Factor on P, ad / nx: × 0.89 … 1.13 at all amplitudes; each mean Δ ln P lies within 1 SE of 0 (SE 0.06 … 0.23).
-- Per corner the start state changes P at 9 … 50 mT strongly (ad / nx, geometric corner means, n 3): K4 × 1.9 … 2.4,
-  K3 × 0.42 … 0.64, K2 × 0.65 … 1.02, K1 × 0.92 … 1.15. Thus the mean factor near 1 hides changes in both directions.
-- At K4 the ad runs have 9 of their 21 stages with the S9 flag ε (|ε| up to 0.10 in K4_0 at 35 and 50 mT). The
-  energy-terms check gives a small d for these stages. Thus ε is a change of the internal energy over the cycle: the
-  state still changes from cycle to cycle. The K4 loss level of ad at 9 … 50 mT can contain this transient
-  (inference).
+  0.70 at 70 … 150 mT. The SE of Δ ln P is 0.12 … 0.19.
+- Factor on P, ad / nx: × 0.89 … 1.13 at all amplitudes; each mean Δ ln P lies within 1 SE of 0 (SE 0.06 … 0.22).
+- Per corner, ad / nx at 9 … 50 mT (n 3; SE of Δ ln P in brackets): K4 × 1.86 … 2.43 (0.04 … 0.18); K3 × 0.42 … 0.64
+  (0.28 … 0.61, thus uncertain); K2 × 0.65 … 1.02 (0.02 … 0.17); K1 × 0.92 … 1.15 (0.02 … 0.08). K4, ad / old at
+  9 … 50 mT: × 1.67 … 1.82 (0.02 … 0.29). Thus the mean factor near 1 hides a clear increase at K4.
+- At K4 the ad runs have the S9 flag ε in 9 of 21 stages: the mean |ε| of the calm tail is up to 0.10 (K4_0 at 35 and
+  50 mT), and a single cycle has up to 0.125 (K4_0, 50 mT, cycle 5). 4 of the 9 flagged stages are in 9 … 50 mT (K4_0
+  at 35 and 50 mT, K4_2 at 9 and 35 mT). The energy-terms check gives a small d for these stages. Thus ε is a change
+  of the internal energy over the cycle: the state still changes from cycle to cycle. The K4 loss level of ad at
+  9 … 50 mT can contain this transient (inference, not tested).
 
 **Fields (descriptive; paired mean ± SE, n 12).**
-- Fundamental share R1 of the dissipation: ad − old +0.17 … +0.24 at 20 … 50 mT and +0.05 … +0.15 at 70 … 150 mT;
-  ad − nx +0.07 … +0.12 at 20 … 50 mT and +0.01 … +0.03 at 70 … 150 mT.
+- Fundamental share R1 of the dissipation: ad − old +0.17 … +0.24 at 20 … 50 mT and +0.05 … +0.15 at 70 … 150 mT.
+  ad − nx: +0.117 ± 0.045 at 20 mT, +0.073 ± 0.048 at 35 mT, +0.086 ± 0.051 at 50 mT, and +0.01 … +0.03 at 70 …
+  150 mT.
 - Share of the loss in the outer shell r ≥ 0.8: ad − old −0.06 … −0.10 at 35 … 150 mT; ad − nx within ± 0.02.
 - Share of the loss in the hottest 10 % of the cells: ad − old −0.03 … −0.06 at 20 … 150 mT; ad − nx within ± 0.02.
-- Share of the dissipation in jumps: at most 0.07 in all arms.
-- β_f (exponent of the fundamental channel, 9 … 150 mT): K4 ad 1.49 (old 1.80, nx 1.76); the other corners 1.89 …
-  2.08 in all arms.
+- Share of the dissipation in jumps: corner means at most 0.07 in all arms; single runs up to 0.144 (old, K4_0), 0.132
+  (nx, K3_1) and 0.069 (ad, K1_2).
+- β_f (exponent of the fundamental channel, 9 … 150 mT; mean ± SE, n 3): K4 ad 1.49 ± 0.03, old 1.80 ± 0.14, nx 1.76 ±
+  0.07; the other corners 1.89 … 2.08 in all arms.
 
-**Quality of the ad runs.** S9 flags: ε 16 and w 4 of 84 stages (nx: 15 and 9). Energy-terms check on the calm-tail
-cycles: median |d| at most 0.0035, largest |d| 0.0245 (9 mT). Relaxation iterations of the last attempt: 8 000 …
-48 000.
+**Quality of the ad runs.**
+- S9 flags: ε 16 and w 4 of 84 stages (nx: 15 and 9). Mean Δβ(ad − old, 9 … 150 mT) without the flagged stages:
+  −0.074 ± 0.052 (SE, n 6).
+- Energy-terms check on the calm-tail cycles: median |d| at most 0.0035, largest |d| 0.0245 (9 mT).
+- Relaxation iterations of the random start (last attempt): 8 000 … 48 000; of the relaxation after AC: 1 500 …
+  11 500.
 
-**Limits.** n 3 microstructures per corner and 4 corners only. dx 3 l_ex for all arms. The fit in 9 … 50 mT has 2
-degrees of freedom per run. The census of the old and nx arms counts only the start and the end of a stage.
-
-### 7.120 Second literature search: volume-preserving boundary cells (V2), and corrections that keep the Newell solver with full PBC (2026-10-19, questions of Chris)
-
-**Questions of Chris.** (1) A targeted search for the variant V2 (below), because the idea is obvious. (2) A new
-survey of the variants for our goal that stay compatible with the Newell solver with full periodic boundary
-conditions (PBC). Rule of Chris for this work: only the Newell solver with full PBC, never DemagFieldPBC, also not as
-a reference.
-
-**Terms.**
-- Newell solver with full PBC: DemagField(true_pbc=True), the FFT convolution (FFT: fast Fourier transform) of M with
-  the Newell tensor of cubic cells, with image shells and the compensation of the outer surface charges (7.105).
-- m: unit vector of the magnetisation; M_s: saturation magnetisation; Δx: cell edge; f: volume fraction (7.117).
-  Staircase, partial cell, submesh, near-field correction: as in 7.117. Window: the neighbour cells, up to p cells
-  away, for which the near-field correction is applied.
-- V1 (Donahue & McMichael 2007): a partial cell is the part of its cube inside the body, with the moment
-  f·M_s·Δx³. Cells with a centre outside the body but with f > 0 become magnetic. The near field comes from a fine
-  submesh, that is, from a fine staircase (7.117, limit 2). García-Cervera et al. 2003 use the exact cut shapes
-  instead (2D only).
-- V2 (idea of Chris): each voxel cell keeps its volume Δx³ and its moment M_s·Δx³. Only the shape of the boundary
-  cells changes, with the volume kept, so that all cells together fill the smooth sphere with exactly the voxel
-  volume. The near field comes from these deformed cells. The FFT far field does not change.
-
-**Physics of V2 (own reasoning, 2026-10-19).**
-- One magnetisation field M(r) serves all energy terms.
-- Each deformed cell is a closed body. Thus each cell is charge-neutral.
-- If m is equal in two neighbour cells, their common border carries no charge. Thus the surface charge is M·n on the
-  smooth surface.
-- The stray-field energy of the deformed cells is the exact energy of this M(r). Thus it is symmetric and not
-  negative.
-- Two conditions limit this in the computation. (a) Outside the window the coupling of the cubes is used. If the
-  centroid of a deformed cell is not at the centre of its cube, this gives an error at quadrupole order outside the
-  window. (b) With a cut window the energy is exact only up to the cut, and the sign of the energy is not guaranteed
-  by construction. The static test must measure both, and the correction matrix must be symmetric.
-- V2 leaves the exchange on the cube neighbours. The first-order exchange error at the surface stays (helix test of
-  7.104, −10 % on 3 l_ex, a code test on another geometry, see 7.117).
-- Why the simple form of the idea is not used: put a charge with the true normal on the free face of a full cube and
-  keep the other faces. The cell then has a net charge. It is zero only if the new charge face has the same vector
-  area as the free cube faces, that is, only if the normal does not change. The particle as a whole stays neutral, but
-  each cell has a monopole when m varies.
-
-**Method.** Two literature searches in parallel on 2026-10-19 (web, arXiv, citation lists from OpenAlex and in part
-from Semantic Scholar, which stopped at its rate limit). The notes give each query, each hit with its citation and
-link, and whether the full text or only the abstract was read: studies/staircase_correction/lit/
-LIT_v2_volume_preserving.md and LIT_newell_pbc_variants.md (branch feature/staircase-correction, commit 7158436). After
-the searches, three sources were checked again on arXiv for title, authors and date (Ai, Duan & Lomakin 2024;
-Durhuus, Insinga & Bjørk 2026; Adams & Michels 2026).
-
-**Result 1: V2 was not found.**
-- Fields searched: micromagnetics; the discrete dipole approximation (DDA: light scattering on a cubic lattice of
-  dipoles, with FFT); conformal FDTD and cut-cell methods; magnetic and gravity forward modelling with rectangular
-  prisms (geophysics; prism formulas equivalent to Newell); particle-mesh methods (P3M, precorrected FFT); partitions
-  of a body into cells of prescribed volume. No source keeps the cell volume and the cell moment and changes only the
-  shape of the boundary cells.
-- Closest relatives:
-  - Donahue & McMichael 2007 (full text): their eq. 2 averages the fine tensor over the sub-cells that belong to a
-    coarse cell. The search infers that the same formula gives V2 with a transport assignment of the sub-cells and the
-    volume Δx³. This inference must be checked in the code.
-  - Precorrected FFT (Phillips & White 1994, full text) and the adaptive integral method: the same algebra (exact near
-    field minus the grid near field).
-  - Lebecki, Donahue & Gutowski 2008 (full text): the correction of Donahue together with a periodic kernel (1D PBC).
-    The only finite-difference micromagnetic precedent found for a surface correction under PBC.
-  - Partition with prescribed volumes: its existence and its link to the least-squares transport are known
-    (Aurenhammer et al. 1992/1998, abstract; Lévy 2015, full text). The search found no use for the cells of a field
-    kernel.
-  - Sen, Wang, Breitzman & Dayal 2024 and 2026 (abstracts only): in the continuum limit of a lattice of charge-neutral
-    cells, a surface charge appears that depends on the partial cells at the boundary. That this supports V2 at fixed
-    moments is an inference of the search.
-- No source compares cells with constant volume against cells with a volume fraction. The sources compare the volume
-  fraction alone with the volume fraction plus a near-field correction. In Donahue & McMichael the near-field term
-  gives the effect (7.117). García-Cervera et al. 2003 claim large errors of the volume weighting in the abstract, but
-  show no curve with the volume weighting alone. Riahi et al. 2013 (full text) find that a volume-weighted mask on
-  5 nm cells gives about the same coupling energies of curved magnets as the staircase on 2 nm cells. Thus the volume
-  fraction helps for energies of the far field.
-- Risks of V2 (inferences of the search and own): the partition must stay in a shell at the surface, else inner cells
-  deform a little and the window must include them; the exact coupling of the deformed cells needs new code (own
-  plan: sums of sub-cell Newell tensors).
-
-**Result 2: variants that keep the Newell solver with full PBC.**
-
-| family | what it corrects | evidence | fits Newell with full PBC | main risk for us |
-|---|---|---|---|---|
-| F1 pairwise near-field correction (V1, V2) | near field of the stray field | Donahue & McMichael 2007 and talks (2D films); DDA weighted discretisation (Piller 1997, abstract; Yurkin et al. 2006, full text; 3D spheres in optics) | yes, as a sparse local term | memory of the pair matrix (0.1 … 2 GB, estimate of the search); the matrix must be symmetric |
-| F1 in the cell-local form (Boris, one tensor per cell) | near field, only for m uniform over the window | Donahue talk 2006, thin spheroid: RMS field error 118 % with the staircase, 29 % with cell-local corrections only | yes | DDA: the weighted discretisation keeps a first-order term with a smaller constant (Yurkin et al. 2006). That this holds for the cell-local form in micromagnetics is an inference. |
-| F2 refined grids with FFT (precorrected FFT, NUFFT, adaptive refinement) | geometry of the sources | Ai, Duan & Lomakin 2024 (finite elements, FEM, periodic kernel); Exl & Schrefl 2014 | precorrected FFT yes; adaptive refinement only with large changes | a second solver, weeks of work (estimate of the search) |
-| F3 charge correction (smooth minus staircase surface charge) | near field | no source in finite-difference micromagnetics | yes; the search infers that it is F1 in another basis | needs M on the true surface: extrapolation over one cell |
-| F4 / F8 cell weights and composite voxels (DDA, FFT homogenisation) | effective properties of boundary cells | DDA: integral quantities up to 24 times (Piller 1997) and 60 times (Zhu et al. 2023) more accurate, abstracts only; composite voxels: about 10 times smaller error (Lendvai & Schneider 2024, conference paper on thermal conductivity, one sphere of 17 % volume, contrast 10) | yes | rules for linear media; for LLG they reduce to volume fractions plus a cell-local term of the Donahue type (inference of the search); 7.29 tested the volume fraction alone |
-| F6 exchange at the true surface | exchange | García-Cervera 2003, Parker 2000 (7.117); no new source | yes, local | second part of a full correction |
-| F7 averaging over grid offsets or rotations; Richardson extrapolation at a locked geometry | the random part of the shape error | no source in DDA or micromagnetics; Yurkin et al. 2006 show that the shape error is quasi-random in the cell size | yes, no solver change | the systematic part stays: the staircase area is 1.5 times the sphere area for each Δx (own calculation of the search; 7.29 measured 1.50); at a locked geometry the extrapolation converges to the staircase body |
-
-- Under PBC the near-field correction uses the free-space kernel with the minimum-image distance (the window wraps
-  across the box edge). Precedents: Lebecki et al. 2008 (finite differences, 1D PBC) and Ai, Duan & Lomakin 2024
-  (FEM; section 3.2 read by the search: a free-space near correction together with a periodic FFT kernel). That this
-  also holds with the Newell kernel is an inference.
-- Durhuus, Insinga & Bjørk 2026 (abstract and start of the text read): for sufficiently large samples under 3D PBC,
-  only the mean magnetisation carries the effect of the outer sample shape. This agrees with the compensation term of
-  DemagField(true_pbc=True) (7.105).
-- Holt et al. (7.117) is now published: IEEE Trans. Magn. 2025, doi 10.1109/TMAG.2025.3604525.
-
-**Gaps.**
-- No source tests a staircase correction on hysteresis or loss of spheres. The validations are field errors,
-  energies, FMR frequencies and scattering cross-sections.
-- All effect sizes of the sources (Donahue & McMichael, García-Cervera et al., Riahi et al.) come from single
-  deterministic simulations without error bars.
-- No finite-difference micromagnetic work combines a staircase correction with the FFT and full 3D PBC.
-- Full text not read: Zhu, Liu & Yurkin 2023; Kabel et al. 2015; Piller 1997; Piller & Martin 1998; Tandon et al.
-  2004; Wei 2009; Wang 2011; the geophysics and FDTD papers. The citation lists are from OpenAlex and in part from
-  Semantic Scholar. Six citers of Donahue & McMichael that only Semantic Scholar lists are not read.
-- Meng et al. 2025, J. Magn. Magn. Mater. 173350 (powder cores, 1 … 20 kHz, cites Donahue & McMichael): abstract not
-  found. It has the same application as this study; a check by hand is proposed.
-
-**Consequence for the strategy (proposal; decision of Chris open).**
-- The pairwise near-field correction, not the cell-local tensor (Donahue: 29 % field error remains with cell-local
-  corrections only; DDA: a first-order rest; transfer to our case is an inference).
-- V2 as the main variant. It changes only the stray-field near field and leaves the cells, moments, exchange,
-  anisotropy and Zeeman terms as they are. V1 only as a check of the computation in the static test.
-
-**Sources** (full citations and read status in the two notes files).
-- Ai, Duan & Lomakin 2024: https://arxiv.org/abs/2409.13958
-- Durhuus, Insinga & Bjørk 2026: https://arxiv.org/abs/2604.08777
-- Lebecki, Donahue & Gutowski 2008: doi 10.1088/0022-3727/41/17/175005
-- Phillips & White 1994: https://cecs.uci.edu/~papers/compendium94-03/papers/1994/iccad94/pdffiles/04c_2.pdf;
-  journal version 1997: doi 10.1109/43.662670
-- Aurenhammer, Hoffmann & Aronov: doi 10.1145/142675.142747 (1992), doi 10.1007/PL00009187 (1998); Lévy 2015:
-  doi 10.1051/m2an/2015055
-- Sen, Wang, Breitzman & Dayal: doi 10.1016/j.jmps.2024.105743 (2024), doi 10.1137/25M1747907 (2026)
-- Yurkin, Maltsev & Hoekstra 2006 (I): doi 10.1364/JOSAA.23.002578, arXiv 0704.0033
-- Piller 1997: doi 10.1364/OL.22.001674; Zhu, Liu & Yurkin 2023: doi 10.1364/OE.509479
-- Lendvai & Schneider 2024: https://scipedia.com/wd/images/b/b0/Draft_Sanchez_Pinedo_909610227pap_645.pdf
-- Exl & Schrefl 2014: doi 10.1016/j.jcp.2014.04.013
-- Riahi et al. 2013: doi 10.1088/0953-8984/25/29/296001
-- Holt et al. 2025: doi 10.1109/TMAG.2025.3604525
+**Limits.** n 3 microstructures per corner and 4 corners only. dx 3 l_ex in all arms. The nx census counts the start
+and the end of each stage. The old census counts only the start state and the end state of a run; the _mc2 reruns
+start from the same virgin state (the same relaxation iterations and E / K_d), thus the start census applies to them.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
