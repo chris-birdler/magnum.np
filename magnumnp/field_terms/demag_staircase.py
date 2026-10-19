@@ -38,7 +38,7 @@ from magnumnp.common import constants
 from magnumnp.field_terms.field_terms import LinearFieldTerm
 from magnumnp.field_terms.demag import demag_f, demag_g
 
-__all__ = ["DemagStaircaseCorrection", "NearCorrection", "staircase_cells"]
+__all__ = ["DemagStaircaseCorrection", "NearCorrection", "staircase_cells", "centroid_offsets", "centroid_field"]
 
 NEWELL_P = 20          # Newell radius of DemagField (in cell diagonals), the same on both meshes
 SYM = ((0, 1, 2), (1, 3, 4), (2, 4, 5))   # 3x3 index -> component of (xx, xy, xz, yy, yz, zz)
@@ -84,15 +84,60 @@ def staircase_cells(ids_fine, q):
     return n, pid, occ
 
 
+def centroid_offsets(occ, q):
+    """Offset of the centroid of the body sub-cells of each cell from its centre, in cells: [N, N, N, 3] (0 where a
+    cell has no body sub-cell)."""
+    occ_t = torch.as_tensor(occ).to(torch.float64)
+    aloc = torch.stack(torch.meshgrid(*(torch.arange(q, dtype=torch.float64),) * 3, indexing="ij"), -1).reshape(-1, 3)
+    pos = (aloc + 0.5) / q - 0.5                                     # sub-cell centres relative to the cell centre
+    n = occ_t.sum(-1, keepdim=True)
+    return (occ_t @ pos) / n.clamp(min=1.0)
+
+
+def centroid_field(Nhat, v, d, m, shape=None):
+    """First-moment part of the far field of the cut cells, with the rfft kernel Nhat of DemagField (list of lists
+    [3][3]; shape: its FFT shape, (N, N, N) with PBC, (2N, 2N, 2N) for open boundaries):
+        h_i = d_i . (D K * (v m))_i - sum_k (D_k K * (v d_k m))_i,
+    D_k K = central difference of the kernel along k (i sin w_k in Fourier space). Arrays [N, N, N(, 3)]."""
+    N = v.shape[0]
+    s = tuple(shape) if shape is not None else (N, N, N)
+    dev = Nhat[0][0].device
+    w = [2 * np.pi * torch.fft.fftfreq(s[0], dtype=torch.float64, device=dev),
+         2 * np.pi * torch.fft.fftfreq(s[1], dtype=torch.float64, device=dev),
+         2 * np.pi * torch.fft.rfftfreq(s[2], dtype=torch.float64, device=dev)]
+    S = [torch.sin(w[0]).reshape(-1, 1, 1), torch.sin(w[1]).reshape(1, -1, 1), torch.sin(w[2]).reshape(1, 1, -1)]
+    vm = (v[..., None] * m)
+
+    def conv(src):
+        """K * src in Fourier space: list of the 3 field components (complex)."""
+        f = [torch.fft.rfftn(src[..., a], s=s, dim=(0, 1, 2)) for a in range(3)]
+        return [sum(Nhat[b][a] * f[a] for a in range(3)) for b in range(3)]
+
+    def back(x):
+        return torch.fft.irfftn(x, s=s, dim=(0, 1, 2))[:N, :N, :N]
+
+    hv = conv(vm)
+    h = torch.zeros_like(m)
+    for k in range(3):
+        h += d[..., k:k + 1] * torch.stack([back(1j * S[k] * hv[b]) for b in range(3)], -1)
+        hk = conv(vm * d[..., k:k + 1])
+        h -= torch.stack([back(1j * S[k] * hk[b]) for b in range(3)], -1)
+    return h
+
+
 class NearCorrection:
     """The correction terms of the pairwise and the cell-local form for the V1 cells (n, occ) of a box of N^3 cells.
 
     periodic=True: the window wraps across the box edge (minimum image under PBC). periodic=False: offsets that leave
-    the box are dropped (open boundaries; used by the unit tests)."""
+    the box are dropped (open boundaries; used by the unit tests).
 
-    def __init__(self, n, occ, q, p, periodic=True, batch=2048):
+    centroid=True: the far field also carries the first moment of the cut cells (each moment at the centroid d_i of
+    the body part of its cell; centroid_field). The window then removes the coarse coupling
+    v_j [K^c(r) + ((d_i - d_j) . D) K^c(r)] with the central difference D of the coarse kernel."""
+
+    def __init__(self, n, occ, q, p, periodic=True, batch=2048, centroid=False):
         self.N = N = n.shape[0]
-        self.q, self.p, self.periodic = q, p, periodic
+        self.q, self.p, self.periodic, self.centroid = q, p, periodic, centroid
         nq = q ** 3
         self.n = torch.as_tensor(n, dtype=torch.float64).reshape(-1)
         self.v = self.n / nq
@@ -104,8 +149,14 @@ class NearCorrection:
         r = torch.arange(-p, p + 1)
         D = torch.stack(torch.meshgrid(r, r, r, indexing="ij"), dim=-1).reshape(-1, 3)
         self.offsets = D                                             # [n_off, 3]
-        Kc = kernel_table(p)                                         # coarse kernel for |offset| <= p
-        self.Kc = Kc[D[:, 0] + p, D[:, 1] + p, D[:, 2] + p]          # [n_off, 6]
+        Kc = kernel_table(p + 1)                                     # coarse kernel for |offset| <= p + 1
+        i0, i1, i2 = D[:, 0] + p + 1, D[:, 1] + p + 1, D[:, 2] + p + 1
+        self.Kc = Kc[i0, i1, i2]                                     # [n_off, 6]
+        # central differences of the coarse kernel along x, y, z: [n_off, 3, 6]
+        self.DKc = torch.stack([(Kc[i0 + 1, i1, i2] - Kc[i0 - 1, i1, i2]) / 2,
+                                (Kc[i0, i1 + 1, i2] - Kc[i0, i1 - 1, i2]) / 2,
+                                (Kc[i0, i1, i2 + 1] - Kc[i0, i1, i2 - 1]) / 2], dim=1)
+        self.d = centroid_offsets(occ, q).reshape(-1, 3) if centroid else torch.zeros(N ** 3, 3, dtype=torch.float64)
         Rf = (p + 1) * q - 1                                         # largest fine offset between cells in the window
         Kf = kernel_table(Rf)
         aloc = torch.stack(torch.meshgrid(*(torch.arange(q),) * 3, indexing="ij"), dim=-1).reshape(-1, 3)  # [q^3, 3]
@@ -149,9 +200,15 @@ class NearCorrection:
         """Coefficients of offset o: CA (source = modified cell j, target t) and CB (target = modified cell i,
         source t; only for unmodified magnetic sources)."""
         vJ = self.v[self.J]
-        CA = self.B[:, o] - vJ[:, None] * self.Kc[o][None, :]
+        dJ = self.d[self.J]
+        # coarse coupling of the far-field model for target t, source J (offset r = o):
+        #     K(r) + ((d_t - d_J) . D) K(r)
+        KA = self.Kc[o][None, :] + torch.einsum("bk,kc->bc", self.d[t] - dJ, self.DKc[o])
+        CA = self.B[:, o] - vJ[:, None] * KA
         CA = torch.where((ok & self.mag[t])[:, None], CA, torch.zeros_like(CA))
-        CB = self.B[:, o] / vJ[:, None] - self.Kc[o][None, :]
+        # target J, full source t (d_t = 0), offset -o: K(-r) + (d_J . D) K(-r) = K(r) - (d_J . D) K(r)
+        KB = self.Kc[o][None, :] - torch.einsum("bk,kc->bc", dJ, self.DKc[o])
+        CB = self.B[:, o] / vJ[:, None] - KB
         CB = torch.where((ok & self.full[t])[:, None], CB, torch.zeros_like(CB))
         return CA, CB
 

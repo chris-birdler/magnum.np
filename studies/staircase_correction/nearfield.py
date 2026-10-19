@@ -17,7 +17,8 @@ import numpy as np
 import torch
 
 from magnumnp.field_terms.demag_staircase import (NEWELL_P, SYM, kernel_table, sym_matvec, blocks,  # noqa: F401
-                                                  NearCorrection, staircase_cells as v1_cells)
+                                                  NearCorrection, staircase_cells as v1_cells,
+                                                  centroid_offsets, centroid_field)
 
 
 class FFTField:
@@ -35,6 +36,7 @@ class FFTField:
         self.N = N
         self.state = State(Mesh((N, N, N), (1e-9, 1e-9, 1e-9), pbc=pbc))
         self.term = term
+        self.fft_shape = (2 * N,) * 3 if setting == "open" else (N, N, N)
 
     def h(self, ms, m):
         """ms [N, N, N] (moment weight per cell), m [N, N, N, 3] -> h [N, N, N, 3] (double)."""

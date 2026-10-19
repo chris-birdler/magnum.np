@@ -16,7 +16,7 @@ from magnumnp import set_precision  # noqa: E402
 set_precision("double")
 
 from geometry import fcc_box  # noqa: E402
-from nearfield import NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean  # noqa: E402
+from nearfield import NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean, centroid_offsets, centroid_field  # noqa: E402
 
 
 def one_sphere(N, q, r, centre):
@@ -123,3 +123,41 @@ def test_field_term_equals_correction(form):
     E = float(term.E(state))
     E_ref = -0.5 * 4e-7 * np.pi * float((state.material["Ms"] * m * ref).sum()) * 8e-27
     assert abs(E - E_ref) <= 1e-9 * abs(E_ref)
+
+
+def test_centroid_full_window_open_boundaries_equals_fine_reference():
+    """With the first-moment far field (centroid) and a window over the whole box the correction is still exact."""
+    N, q = 8, 2
+    ids = one_sphere(N, q, 2.9, (4.0, 4.3, 3.8))
+    n, pid, occ = v1_cells(ids, q)
+    nc = NearCorrection(n, occ, q, p=N - 1, periodic=False, centroid=True)
+    m = random_m((N, N, N), 7)
+    m = torch.where(torch.as_tensor(n > 0)[..., None], m, torch.zeros_like(m))
+    co = FFTField(N, "open")
+    v = nc.v.reshape(N, N, N)
+    h0 = co.h(v, m)
+    hc = centroid_field(co.term._N, v, centroid_offsets(occ, q), m, shape=co.fft_shape)
+    h_c = h0 + hc + nc.h_pair(m)
+    body = ids >= 0
+    h_ref = coarse_mean(FFTField(q * N, "open").h(body.astype(float), fine_owner_m(m, q)), body, q)
+    mag = torch.as_tensor(n > 0)
+    assert float((h_c - h_ref)[mag].abs().max()) < 1e-10
+
+
+def test_centroid_operator_is_symmetric():
+    N, q = 16, 2
+    ids = fcc_box(q * N, 6.0, 0.5)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    nc = NearCorrection(n, occ, q, p=2, periodic=True, centroid=True)
+    co = FFTField(N, ("newell", 1))
+    v = nc.v.reshape(N, N, N)
+    d = centroid_offsets(occ, q)
+    m1, m2 = random_m((N, N, N), 8), random_m((N, N, N), 9)
+    co.h(v, m1)                                                    # sets up the kernel
+
+    def h(m):
+        return co.h(v, m) + centroid_field(co.term._N, v, d, m) + nc.h_pair(m)
+
+    a = float((v[..., None] * m1 * h(m2)).sum())
+    b = float((v[..., None] * m2 * h(m1)).sum())
+    assert abs(a - b) <= 1e-11 * (abs(a) + abs(b))

@@ -30,7 +30,8 @@ import run_loops as RL  # noqa: E402
 from anisotropy_model import box_edge, particle_axes  # noqa: E402
 from units import units  # noqa: E402
 from geometry import fcc_box  # noqa: E402
-from nearfield import NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean  # noqa: E402
+from nearfield import (NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean,  # noqa: E402
+                       centroid_offsets, centroid_field)
 
 STATES = pathlib.Path(os.environ.get("STAIRCASE_STATES",
                                      "/home/christoph/Documents/code/magnum.np-beta_bpeak/studies/beta_bpeak/runs"))
@@ -143,6 +144,8 @@ def main():
     ap.add_argument("--shells", type=int, default=None,
                     help="image shells of a plain Newell kernel (no extrapolation) on both meshes for the static "
                          "comparison; default: the production setting of the runs (newell_ext)")
+    ap.add_argument("--centroid", action="store_true",
+                    help="D3 (a): far field with the first moment of the cut cells (moment at the centroid)")
     a = ap.parse_args()
     out = pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -180,7 +183,9 @@ def main():
                             + E.get("aniso_particle", 0.0), "norm_dev": norm_dev, "bloch": bp, "check_ok": ok}
         log(run, "step 2: E_total %.10f record %s |m|-1 %.1e BP %s -> %s" % (Etot, rec, norm_dev, bp, ok))
     geo_key = "d%.0f_phi%.2f" % (cfg0["d_lex"], cfg0["phi"])
-    fname = "static_A_%s_q%d%s.json" % (geo_key, q, "" if a.shells is None else "_k%d" % a.shells)
+    fname = "static_A_%s_q%d%s%s.json" % (geo_key, q, "" if a.shells is None else "_k%d" % a.shells,
+                                           "_c" if a.centroid else "")
+    res["centroid"] = a.centroid
     res["geometry"] = {"N": N, "d_lex": d_lex, "dx_lex": dx_lex, "a_lex": a_lex, "key": geo_key}
 
     # step 3: fine body and V1 cells (R0)
@@ -240,14 +245,20 @@ def main():
         else:
             log(run, "not used: a state check failed")
     stat = {}
+    dcen = centroid_offsets(occ, q) if a.centroid else None
     for name, m in fields.items():
         mv = v1_m(m)
         mvox = torch.where(torch.as_tensor(vox)[..., None], m, torch.zeros_like(m))
         h_vox = coarse.h(vox.astype(np.float64), mvox)
         h_frac = coarse.h(v, mv)
         E_ref, h_ref = reference(mv)
-        stat[name] = {"mv": mv, "h_vox": h_vox, "h_frac": h_frac, "h_ref": h_ref}
+        h_cen = (centroid_field(coarse.term._N, torch.as_tensor(v), dcen, mv, shape=coarse.fft_shape)
+                 if a.centroid else torch.zeros_like(mv))
+        stat[name] = {"mv": mv, "h_vox": h_vox, "h_frac": h_frac + h_cen, "h_ref": h_ref}
         d = {"E_ref": E_ref, "E_vox": energy_coarse(vox, mvox, h_vox), "E_frac": energy_coarse(v, mv, h_frac)}
+        if a.centroid:
+            d["E_fc"] = energy_coarse(v, mv, h_frac + h_cen)
+            d["rms_layer_fc"] = float((h_frac + h_cen - h_ref)[lay_t].pow(2).sum(-1).mean().sqrt())
         d["S"] = d["E_vox"] - d["E_ref"]
         dv = (h_vox - h_ref)[lay_t]
         d["rms_layer_vox"] = float(dv.pow(2).sum(-1).mean().sqrt())
@@ -269,7 +280,7 @@ def main():
     # corrected models, window by window
     for p in a.p:
         t = time.time()
-        nc = NearCorrection(n, occ, q, p, periodic=True)
+        nc = NearCorrection(n, occ, q, p, periodic=True, centroid=a.centroid)
         tb = time.time() - t
         res["times_s"]["build_p%d" % p] = tb
         log("p", p, "modified cells", len(nc.J), "build %.0f s" % tb, "rss %.1f GB" % rss_gb())
