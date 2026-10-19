@@ -145,18 +145,25 @@ def main(root=None, json_out=None):
     # --- paired comparisons and readings ------------------------------------------------------------------------------
     data["paired"] = {}
     L += ["", "## Paired Δβ and readings (rule fixed before the evaluation)", "",
-          "| comparison | window | mean Δβ (SE, n; 90 % CI) | per corner (n 3) | reading |", "|---|---|---|---|---|"]
+          "The column 'leave one out' gives the number of the 12 runs whose removal changes the reading. The window "
+          "70 … 150 mT has 3 points per fit (1 degree of freedom).", "",
+          "| comparison | window | mean Δβ (SE, n; 90 % CI) | per corner (n 3) | reading | leave one out |",
+          "|---|---|---|---|---|---|"]
     for a, b in (("ad", "old"), ("ad", "nx"), ("nx", "old")):
         for w in WINDOWS:
             db = {n: (lambda p: p[1] - p[0])(window_beta([W[n][b], W[n][a]], w)) for n in RUNS}
             by_c = {c: [db[n] for n in RUNS if corner_of(n) == c] for c in CJ.CORNERS_NX}
             key, s = EN.reading(list(db.values()), by_c)
             rd = KEY[key] if w != "high" and (a, b) != ("nx", "old") else "(information)"
+            loo = sum(EN.reading([db[m] for m in RUNS if m != n0],
+                                 {c: [db[m] for m in RUNS if m != n0 and corner_of(m) == c] for c in CJ.CORNERS_NX})[0]
+                      != key for n0 in RUNS)
             data["paired"]["%s-%s_%s" % (a, b, w)] = {"runs": db, "stat": list(s) if s else None}
-            L.append("| %s − %s | %s | %s | %s | %s |" % (
+            L.append("| %s − %s | %s | %s | %s | %s | %s |" % (
                 a, b, WIN_LABEL[w],
                 "%+.3f ± %.3f (n %d; %+.3f … %+.3f)" % (s[0], s[1], s[4], s[2], s[3]) if s else "–",
-                "; ".join("%s %s" % (c, fstat(EN.stat(v))) for c, v in by_c.items()), rd))
+                "; ".join("%s %s" % (c, fstat(EN.stat(v))) for c, v in by_c.items()), rd,
+                "%d of 12" % loo if rd != "(information)" else "–"))
 
     # --- loss density P and factors -------------------------------------------------------------------------------------
     L += ["", "## Loss density P (W/cm³; geometric mean over the 3 microstructures of a corner)", "",
@@ -175,6 +182,15 @@ def main(root=None, json_out=None):
             cells.append("%g mT × %.3f (Δ ln P %+.3f ± %.3f, n %d)" % (amp, math.exp(s[0]), s[0], s[1], s[4]) if s
                          else "%g mT –" % amp)
         L += ["", "Factor on P, %s / %s (exp of the mean paired Δ ln P): " % (a, b) + "; ".join(cells) + "."]
+    L += ["", "Factor on P per corner (exp of the mean paired Δ ln P over the 3 microstructures; SE of Δ ln P, n 3):", "",
+          "| corner | factor | " + " | ".join("%g mT" % b for b in AMPS) + " |", "|---|---|" + "---|" * len(AMPS)]
+    for c in CJ.CORNERS_NX:
+        for a, b in (("ad", "old"), ("ad", "nx")):
+            cells = []
+            for k in range(len(AMPS)):
+                s = EN.stat([W[n][a][k] - W[n][b][k] for n in RUNS if corner_of(n) == c])
+                cells.append("× %.2f (%.2f)" % (math.exp(s[0]), s[1]) if s else "–")
+            L.append("| %s | %s / %s | %s |" % (c, a, b, " | ".join(cells)))
 
     # --- Bloch points -----------------------------------------------------------------------------------------------------
     L += ["", "## Stages with a Bloch point", "",
@@ -208,11 +224,12 @@ def main(root=None, json_out=None):
             L += ["", "Paired %s − %s (mean ± SE, n 12): " % (a, b) + "; ".join(
                 "%g mT %+.3f ± %.3f" % (amp, x, e) for amp, x, e in zip(AMPS, m, se)) + "."]
     L += ["", "## Exponents over 9 … 150 mT: β and the exponent of the fundamental channel β_f = β + d ln R1 / d ln B",
-          "", "| corner | β old / nx / ad | β_f old / nx / ad |", "|---|---|---|"]
+          "", "| corner | β old / nx / ad | β_f old / nx / ad (mean ± SE, n 3) |", "|---|---|---|"]
     for c in CJ.CORNERS_NX:
         rr = [D[n] for n in RUNS if corner_of(n) == c]
+        bf = [EN.stat([r[a]["beta_f"] for r in rr]) for a in ARMS]
         L.append("| %s | %s | %s |" % (c, " / ".join("%.2f" % np.nanmean([r[a]["beta"] for r in rr]) for a in ARMS),
-                                       " / ".join("%.2f" % np.nanmean([r[a]["beta_f"] for r in rr]) for a in ARMS)))
+                                       " / ".join("%.2f ± %.2f" % (x[0], x[1]) if x else "–" for x in bf)))
 
     # --- quality of the ad runs -----------------------------------------------------------------------------------------
     L += [x.replace("## Information (PLAN 4.13)", "## Quality of the ad runs (PLAN 4.13 S5, S9; Δβ here: ad − old, "
