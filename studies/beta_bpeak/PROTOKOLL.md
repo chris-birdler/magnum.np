@@ -6774,7 +6774,8 @@ data: md5 in runs/md5_nx_20261018.txt and runs/md5_corners_ad_20261019.txt.
   11 of the 16 ε-flagged stages of ad and in 11 of the 15 of nx, also at K1, K2 and K3.
 - The higher K4 loss of ad at 9 … 50 mT is a steady level. The drive field and μ_r (about 5) are the same as in nx.
   In the 9 mT stage of each K4 ad run, cycle 0 has a w_loop near the nx level; w_loop then rises over 2 … 3 cycles
-  (ε −0.40, −0.13 … −0.28, the internal energy rises) and stays constant after that (K4_1 and K4_2 within 1 %). Why
+  (ε −0.40, −0.13 … −0.28, the internal energy rises) and stays constant after that (K4_1 and K4_2 within 1 %). (7.125: this early rise comes mostly from the drive
+  correction; the effect is the final level.) Why
   the prepared state of option C changes into a state with a higher loss at K4 is not known.
 
 **Fields (descriptive; paired mean ± SE, n 12).**
