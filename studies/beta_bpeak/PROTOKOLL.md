@@ -7074,6 +7074,38 @@ Information: the first 8 cycles of <run>_ad_h16 against the 9 mT stage of <run>_
 cycle); the snapshots per cycle (wall measure and switched volume of domains.py, on the CPU of the box) to locate the
 change in the first cycles.
 
+### 7.124 Smoothing of Bloch points: final result "does not work"; decision of Chris: smoothing is rejected (2026-10-19)
+
+All times UTC. Terms as in 7.116 and 7.118 (smoothing, cut, step, tested, clean). Report: results/smooth_report.md
+(eval_smooth.py, commit 78e5b15). Run data local; md5 of the 6 test runs in runs/md5_smooth_20261019.txt.
+
+**Test after one AC pass, all 3 runs done.**
+
+| run | BPs after the AC pass (attempt 0 of the option C run) | BPs after the cut / after the relaxation, step 0, 1, 2 | 9 mT stage | E / (K_d V) after the AC pass → end |
+|---|---|---|---|---|
+| K3_1_ad_sm | 2 (2) | 2 / 2, 3 / 2, 1 / 2 | 2 BPs at all samples | 7.15846·10⁻⁴ → 7.16045·10⁻⁴ |
+| K4_0_ad_sm | 1 (1) | 3 / 1, 1 / 1, 1 / 1 | 1 BP at all samples | −3.52049·10⁻⁴ → −3.51839·10⁻⁴ |
+| K2_2_ad_sm | 1 (1) | 1 / 1, 1 / 1, 2 / 1 | 1 BP at all samples | −7.49104·10⁻³ → −7.49103·10⁻³ |
+
+- **Reading (rule of 7.116, fixed before the runs): "does not work".** 3 of 3 runs are tested; 0 are clean. A
+  single BP (K4_0, K2_2) also stays.
+- Attempt 0 gave the same BP count as attempt 0 of the option C run in all 3 runs (n 3).
+- Positions: in K2_2 the BP is after each relaxation in the same cube or in the next cube (75, 13, 90 and 74, 14,
+  90). In K4_0 the BP is about 45 cells from the particle surface (tube length 44 … 47 cells) and moves by 1 … 8 cells
+  per step. The energy after the last relaxation is equal to the energy after the AC pass (K2_2: within 1·10⁻⁸) or a
+  little higher (K3_1, K4_0). Thus the relaxation returns to the same state with the BP.
+- Interpretation (inference, not tested): a BP inside the particle is the end of a larger structure, for example a
+  vortex line that ends in the volume. The cut changes m only in a tube of 2 … 4 cells radius; the structure around
+  it stays, and the relaxation forms the BP again near its old place.
+- Information: the 9 mT loss of the test runs with a BP against the clean option C run of the same microstructure:
+  ln w difference +0.375 (K3_1), −0.373 (K4_0), +0.085 (K2_2) (n 1 each).
+- With the stopped test on the relaxed virgin states (7.116: 1 of 3 clean) the smoothing removed a BP in 1 of 6 runs
+  (K1_2_nx_sm, a single BP 20 cells below the surface).
+
+**Decision of Chris (2026-10-19, about 19:45): smoothing is rejected.** Option C (a new random start, at most 3
+attempts) stays the preparation; it gave a clean prepared state in all 12 corner runs (7.118). The option
+--bloch_smooth stays in run_loops.py with the default 0 (off); no job uses it.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
