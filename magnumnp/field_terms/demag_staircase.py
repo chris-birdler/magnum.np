@@ -163,24 +163,20 @@ class NearCorrection:
         Kf = kernel_table(Rf)
         aloc = torch.stack(torch.meshgrid(*(torch.arange(q),) * 3, indexing="ij"), dim=-1).reshape(-1, 3)  # [q^3, 3]
         occ_t = torch.as_tensor(occ.reshape(-1, nq))
-        # unique occupancy patterns of the modified source cells
-        pats, pat_idx = torch.unique(occ_t[self.J], dim=0, return_inverse=True)
-        # S[pattern, offset, a, 6] = sum_{b in pattern} K^f(q * offset + a - b)
-        S = torch.zeros(len(pats), len(D), nq, 6, dtype=torch.float64)
         base = q * D[:, None, None, :] + aloc[None, :, None, :] - aloc[None, None, :, :] + Rf   # [n_off, a, b, 3]
-        Kab = Kf[base[..., 0], base[..., 1], base[..., 2]]           # [n_off, a, b, 6]
-        for k in range(len(pats)):
-            S[k] = Kab[:, :, pats[k], :].sum(dim=2)
+        Kab = Kf[base[..., 0], base[..., 1], base[..., 2]]           # [n_off, a, b, 6]: K^f(q offset + a - b)
         # B[j, offset, 6] = L_{t, j}, target t = j + offset (zero if the target is not magnetic, or if the offset
-        # leaves the box in the open case)
+        # leaves the box in the open case); computed directly in blocks of source cells (bounded memory for any q)
         M = len(self.J)
         self.B = torch.zeros(M, len(D), 6, dtype=torch.float64)
         occ_f = occ_t.to(torch.float64)
+        batch = max(1, min(batch, int(2e8) // (len(D) * nq * 6 * 8)))
         for s in range(0, M, batch):
             sl = slice(s, min(s + batch, M))
+            S = torch.einsum("jb,dabc->jdac", occ_f[self.J[sl]], Kab)  # sum over the body sub-cells b of the source
             t, ok = self._targets(self.jxyz[sl])                     # [b, n_off]
             o_t = occ_f[t]                                           # [b, n_off, q^3]
-            L = torch.einsum("bda,bdac->bdc", o_t, S[pat_idx[sl]])
+            L = torch.einsum("bda,bdac->bdc", o_t, S)
             nt = self.n[t]
             L = torch.where((ok & (nt > 0))[..., None], L / nt.clamp(min=1.0)[..., None], torch.zeros_like(L))
             self.B[sl] = L

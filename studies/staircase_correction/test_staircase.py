@@ -125,9 +125,10 @@ def test_field_term_equals_correction(form):
     assert abs(E - E_ref) <= 1e-9 * abs(E_ref)
 
 
-def test_centroid_full_window_open_boundaries_equals_fine_reference():
+@pytest.mark.parametrize("q", [2, 4])
+def test_centroid_full_window_open_boundaries_equals_fine_reference(q):
     """With the first-moment far field (centroid) and a window over the whole box the correction is still exact."""
-    N, q = 8, 2
+    N = 8
     ids = one_sphere(N, q, 2.9, (4.0, 4.3, 3.8))
     n, pid, occ = v1_cells(ids, q)
     nc = NearCorrection(n, occ, q, p=N - 1, periodic=False, centroid=True)
