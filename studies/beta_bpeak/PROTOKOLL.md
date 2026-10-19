@@ -7161,6 +7161,46 @@ moves in a half cycle (mean of the two half cycles).
 - Open: why the walls of the AC-300 state at K4 move farther. The K4 history test (7.123) has snapshots in every cycle
   of the 9 mT stage; they can show where the walls move farther.
 
+### 7.126 K4 history test, K4_0 and K4_1: two stable states; the loss follows the out-of-phase motion inside the particles (2026-10-19)
+
+All times UTC. Terms as in 7.123 and 7.125. Correction of 7.123: the 2 snapshot phases are 180° and 360° of the drive
+H0 sin(ωt), thus the two zero crossings of H (falling and rising), not H max and H min. At H = 0 the difference
+d = m(360°) − m(180°) is the out-of-phase part of the response, thus the lossy part.
+
+**Reading of 7.123** (K4_0 and K4_1 done 20:1x; K4_2 runs; run folders local without snapshots and state files).
+
+| microstructure | run | w_e (cycles 3 … 6) | w_l (cycles 12 … 15) | ln (w_l / w_e) | stable |
+|---|---|---|---|---|---|
+| K4_0 | nx_h16 | 1.73·10⁻⁷ | 1.72·10⁻⁷ | −0.008 | yes |
+| K4_0 | ad_h16 | 3.32·10⁻⁷ | 3.47·10⁻⁷ | +0.045 | yes |
+| K4_1 | nx_h16 | 1.73·10⁻⁷ | 1.73·10⁻⁷ | −0.003 | yes |
+| K4_1 | ad_h16 | 5.26·10⁻⁷ | 5.22·10⁻⁷ | −0.007 | yes |
+
+- K4_0: w_l(ad) / w_l(nx) = 2.02; K4_1: 3.02. Both are above 1.5 with both runs stable: **"two stable states"** for
+  K4_0 and K4_1. The overall reading needs at least 2 of 3 microstructures; thus it is **"two stable states"** now,
+  whatever K4_2 gives.
+- Repeatability: the first 8 cycles of <run>_ad_h16 agree with the 9 mT stage of <run>_ad to |Δ ln w_loop| < 0.0001
+  (same start state, n 2). The runs are deterministic.
+
+**What moves (eval_hist_snapshots.py, commit e4a6ea1; on the CPU of the instance; cycles 3 … 16, n 14 cycles per
+run).** Means over the particle cells; x = drive direction; values in units of M_s.
+
+| run | net d_x | with | against | against / with | perp (across x) | rotation |
+|---|---|---|---|---|---|---|
+| K4_0_nx_h16 | −0.0001 | 0.0046 | 0.0047 | 1.02 | 0.0141 | 0.0057 |
+| K4_0_ad_h16 | −0.0002 | 0.0057 | 0.0059 | 1.03 | 0.0186 | 0.0075 |
+| K4_1_nx_h16 | −0.0001 | 0.0041 | 0.0041 | 1.02 | 0.0140 | 0.0055 |
+| K4_1_ad_h16 | −0.0003 | 0.0067 | 0.0069 | 1.04 | 0.0239 | 0.0094 |
+
+- In both states the local out-of-phase motion along x cancels almost fully (against / with 1.02 … 1.04), and most of
+  the local motion is across the drive direction (perp about 3 times with + against). All 4 particles have the same
+  sign of the net change: the particles do not work against each other; the cancellation is inside the particles.
+- ad / nx: rotation × 1.31 (K4_0) and × 1.70 (K4_1); perp the same; net × 1.9 and × 3.3. The square of the rotation
+  ratio is 1.71 and 2.89; the loss factor is 2.02 and 3.02 (n 2). For a dissipation that grows with the square of
+  the local rate of change of m, this agrees in size (inference).
+- Thus the state after AC from 300 mT has the same net response but about 1.3 … 1.7 times more local out-of-phase
+  motion of m inside the particles, mostly across the field. Why is open (7.125).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
