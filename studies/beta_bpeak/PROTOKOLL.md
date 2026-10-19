@@ -6987,6 +6987,10 @@ https://math.nist.gov/~MDonahue/pubs/jaggies_20070117.pdf, text extracted with p
   cell-local tensor needs 6 numbers per cell. The pair matrix needs up to about 2 GB (estimate of the search, 7.120).
   The same derivation holds for V2 with the volume Δx³ instead of v_i.
 
+**Further records.** From 2026-10-19 the staircase correction has its own record (decision of Chris):
+studies/staircase_correction/PROTOKOLL.md on the branch feature/staircase-correction. 7.117, 7.120 and 7.121 are
+copied there as 3.1, 3.2 and 3.3.
+
 ### 7.122 Time share of the stray field in the drive cycles; decision of Chris: no time extrapolation of the stray field (2026-10-19)
 
 All times UTC. f = time share of the stray-field evaluation inside the RKF45 stages, as a share of the wall time of
