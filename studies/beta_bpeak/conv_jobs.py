@@ -455,7 +455,8 @@ def satstart_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
 SM_RUNS = ("K1_2_nx", "K2_0_nx", "K2_1_nx", "K2_2_nx", "K3_1_nx", "K3_2_nx", "K4_0_nx", "K4_1_nx", "K4_2_nx")
 # the corner runs whose relaxed virgin state (init.pt) has Bloch points (census_bloch_nx_v2.json, PROTOKOLL 7.112)
 SA_RUNS = ("K3_1_ad", "K4_0_ad", "K2_2_ad")
-# the option C runs whose first attempt (AC from 300 mT and the relaxation) kept a Bloch point (PROTOKOLL 7.115)
+# the option C runs whose first attempt (AC from 300 mT and the relaxation) kept a Bloch point (K3_1_ad: PROTOKOLL
+# 7.115; K4_0_ad, K2_2_ad: stdout.log "[bloch] attempt 0" on the box; PROTOKOLL 7.116)
 
 
 def smooth_lines(src="jobs/sobol_corners.txt"):

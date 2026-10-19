@@ -162,7 +162,7 @@ def parse_args(argv=None):
     g.add_argument("--bloch_smooth", type=int, default=0,
                    help="virgin_asc converge (Chris 2026-10-19): if the prepared state still has a Bloch point after "
                         "--bloch_free_tries, at most this many cuts (run_loops.smooth_bloch_t: a tube from the Bloch "
-                        "point to the particle surface, or between a +1 / -1 pair, gets one direction; tube radius "
+                        "point to the particle surface gets one direction; tube radius "
                         "2, 3, ... cells), each with the relaxation after it. With --init_from a state without it: "
                         "applied after loading")
     g.add_argument("--init_block", type=float, default=0.0,
