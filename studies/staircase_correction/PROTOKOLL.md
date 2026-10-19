@@ -56,6 +56,11 @@ with full PBC.
 - 2026-10-19: V2 dropped (3.4). Main variant: the original method of Donahue & McMichael (V1: cut cells with volume
   fraction, near-field correction from a submesh); the static test computes both forms (pairwise and cell-local).
   Stage A of PLAN.md approved.
+- 2026-10-19, night mandate: go as far as possible in the plan overnight; test everything that can be tested; for
+  each finding give the options and then go on with the own recommendation, and record it here ("decision under the
+  night mandate"). Rented machine: a cheap instance with CPU and GPU (about 0.2 … 0.3 $/h; an A100 offer at 0.59 $/h
+  was destroyed unused on the order of Chris). Go for the end: when all is done and evaluated and the method is
+  clear, download what is needed (md5) and destroy the instance.
 - 2026-10-19: own record for the staircase correction (this file). The sections 7.117, 7.120 and 7.121 of the study
   record are copied here as 3.1, 3.2 and 3.3, with the references to each other changed to the new numbers.
 

@@ -175,13 +175,14 @@ class FFTField:
     """Stray field h = H / M_s of DemagField on one mesh, with the kernel set up once.
     setting: "open" (no PBC), or ("newell", k) / ("newell_ext", k) with k image shells and true_pbc (PROTOKOLL 7.105)."""
 
-    def __init__(self, N, setting, p=NEWELL_P):
+    def __init__(self, N, setting, p=NEWELL_P, cache_dir=None):
         from magnumnp import Mesh, State, DemagField
         if setting == "open":
-            pbc, term = (0, 0, 0), DemagField(p=p)
+            pbc, term = (0, 0, 0), DemagField(p=p, cache_dir=cache_dir)
         else:
             kind, k = setting
-            pbc, term = (k, k, k), DemagField(p=p, true_pbc=True, extrapolate=(kind == "newell_ext"))
+            pbc, term = (k, k, k), DemagField(p=p, true_pbc=True, extrapolate=(kind == "newell_ext"),
+                                              cache_dir=cache_dir)
         self.N = N
         self.state = State(Mesh((N, N, N), (1e-9, 1e-9, 1e-9), pbc=pbc))
         self.term = term
