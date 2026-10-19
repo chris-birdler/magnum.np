@@ -103,9 +103,10 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "predemag_h": None, "predemag_q": 0.8,                # 2026-10-18, Bloch points (Chris)
             "init_mode": "block",                                 # 2026-10-18, Bloch points, way 2 (Chris)
             "bloch_free_tries": 0,                                # 2026-10-18, Bloch points (Chris)
-            "bloch_smooth": 0}                                    # 2026-10-19, Bloch points (Chris)
+            "bloch_smooth": 0,                                    # 2026-10-19, Bloch points (Chris)
+            "sat_static": False}                                  # 2026-10-19, static saturation (Chris)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
-RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer",
+RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer", "prep_only", "sat_check",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
 # (deterministic, audit 3, item 5); run_queue raises it after a gate failure (exit code 3)
@@ -115,7 +116,7 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
-             "bloch_free_tries", "bloch_smooth"]
+             "bloch_free_tries", "bloch_smooth", "sat_static"]
 
 
 def parse_args(argv=None):
@@ -179,6 +180,15 @@ def parse_args(argv=None):
                         "acdemag_asc: saturating cycle with a decaying amplitude (AC demagnetization), "
                         "ascending amplitudes")
     g.add_argument("--h_sat", type=float, default=None, help="saturating amplitude H/Ms (default 1-phi)")
+    g.add_argument("--sat_static", action="store_true",
+                   help="Chris 2026-10-19: an AC pass from saturation (--predemag_h 0) first relaxes m in the static "
+                        "field --h_sat along the drive (records the alignment of the particle cells) and then starts "
+                        "the decaying AC field at its peak (first quarter cycle from the peak to 0)")
+    g.add_argument("--sat_check", action="store_true",
+                   help="with --sat_static: stop right after the first static saturation (sat_check.json: alignment, "
+                        "relaxation, Bloch points; DONE) - to choose --h_sat")
+    g.add_argument("--prep_only", action="store_true",
+                   help="stop after the preparation (init.pt, summary.json, DONE); no drive stages")
     g.add_argument("--n_sat", type=int, default=1)
     g.add_argument("--demag_q", type=float, default=0.8, help="acdemag: amplitude factor per half cycle")
     g.add_argument("--demag_f_factor", type=float, default=1.0,
@@ -916,6 +926,7 @@ def main(argv=None):
     ids_t = torch.tensor(ids.astype(np.int64) + 1, device=dev).reshape(-1)
     counts = torch.bincount(ids_t, minlength=5).double()[1:]
     e_t = torch.tensor(e_d, dtype=torch.float64, device=dev)
+    mag_dev = torch.tensor(mag, device=dev)
     p_coef = args.alpha * constants.gamma * constants.mu_0 / (1.0 + args.alpha**2)
     ids_n = torch.tensor(ids.astype(np.int64), device=dev)
     pair_masks = [(ids_n >= 0) & (ids_n == torch.roll(ids_n, 1, dims=ax)) for ax in range(3)]
@@ -989,7 +1000,16 @@ def main(argv=None):
             E_prev = E
         return hist, it, converged
 
-    def predemag(h=None, k=0):
+    @torch.no_grad()
+    def alignment():
+        """Alignment of the particle cells with the drive direction (--sat_static): shares of the cells with an angle
+        above 1, 5, 15 and 45 degrees, the mean and the largest angle, and the mean cos."""
+        c = (state.m.double() * e_t).sum(-1)[mag_dev].clamp(-1.0, 1.0)
+        a = torch.rad2deg(torch.arccos(c))
+        return {"share_gt_%ddeg" % g: float((a > g).double().mean()) for g in (1, 5, 15, 45)} | {
+            "mean_deg": float(a.mean()), "max_deg": float(a.max()), "mean_cos": float(c.mean())}
+
+    def predemag(h=None, k=0, ramp=None):
         """AC demagnetization pass k from the amplitude h (default --predemag_h; 0: saturation) after the virgin
         relaxation (Chris 2026-10-18), then the relaxation again. Returns the record of the pass; writes
         bloch_predemag.csv (pass 0) or bloch_predemag_<k>.csv (Bloch points at each sample)."""
@@ -1000,12 +1020,48 @@ def main(argv=None):
         dt_d = 1.0 / freq / args.samples
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.t0, drive.freq, drive.H_amp = 0.0, freq, h0 * Ms
+        static = None
+        if args.sat_static and h == 0:
+            # Chris 2026-10-19: true saturation first: relax m in the static field h0 along the drive, then start the
+            # decaying AC field at its peak (H = h0 sin(2 pi f (t - t0)) with t0 = -T/4: the first half cycle is the
+            # quarter from the peak to 0; the amplitude then falls at each zero crossing as before). The field rises
+            # as a smooth quarter sine from 0 to h0 (LLG with the run alpha), except in the first pass from the
+            # uniform start, where m already points along the field (Chris 2026-10-19: no ramp needed there)
+            if ramp is None:
+                ramp = not (args.init_mode == "saturated" and k == 0 and not args.init_from)
+            ramp_rec = None
+            if ramp:
+                nb_r = 0
+                for j in range(args.samples // 4):
+                    llg.step(state, dt_d)
+                    nb = bloch()
+                    nb_r = max(nb_r, nb[0] + nb[1])
+                ramp_rec = {"steps": args.samples // 4, "n_bloch_max": nb_r, "n_bloch_end": list(bloch())}
+                print("[sat_static] pass %d: ramp 0 -> h %.4g in a quarter period, Bloch points max %d" % (
+                    k, h0, nb_r), flush=True)
+            drive.hold = 1.0
+            t_s = time.time()
+            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k)
+            al = alignment()
+            static = {"relax_iterations": it_s, "relax_converged": conv_s, "wall_s": time.time() - t_s,
+                      "E_over_Kd": hist_s[-1]["E_over_Kd"] if hist_s else None, "alignment": al,
+                      "n_bloch": list(bloch()), "ramp": ramp_rec}
+            print("[sat_static] pass %d: h %.4g, converged=%s after %d iterations; alignment %s" % (
+                k, h0, conv_s, it_s, " ".join("%s %.3g" % kv for kv in al.items())), flush=True)
+            if args.sat_check:
+                write_atomic(out / "sat_check.json", json.dumps(dict(static, h0=h0), indent=1))
+                write_atomic(out / "DONE", "ok\n")
+                print("[sat_check] stop after the static saturation", flush=True)
+                sys.exit(0)
+            drive.hold = None
+            drive.t0 = -0.25 / freq
+            state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         t_w, halves = time.time(), []
         with open(out / ("bloch_predemag.csv" if k == 0 else "bloch_predemag_%d.csv" % k), "w") as fb:
             fb.write("# half_cycle,sample,h,M_par_over_Ms,n_bloch_pos,n_bloch_neg\n")
             for hh in range(n_half):
                 mx, nbmax = 0.0, 0
-                for j in range(args.samples // 2):
+                for j in range(args.samples // 4 if (static is not None and hh == 0) else args.samples // 2):
                     llg.step(state, dt_d)
                     with torch.no_grad():
                         mp = float(torch.dot((Ms_t * state.m).double().mean(dim=(0, 1, 2)), e_t)) / Ms
@@ -1020,7 +1076,12 @@ def main(argv=None):
         drive.H_amp = 0.0
         rec = {"pass": k, "h0": h0, "q": args.predemag_q, "h_end": h_end, "n_half": n_half, "halves": halves,
                "wall_s": time.time() - t_w}
+        if static is not None:
+            rec["static"] = static
+            drive.t0 = 0.0
         hist, it, conv = relax_converge("relax2" if k == 0 else "relax2_pass%d" % k)
+        if static is not None:
+            conv = bool(conv and static["relax_converged"])   # Chris 2026-10-19: the static relaxation must converge too
         Mpar0, Mv0, _, _, cmin0, n60_0 = diagnostics()
         npos, nneg, pts = bloch(positions=True)
         rec.update({"relax_history": hist, "relax_iterations": it, "relax_converged": conv,
@@ -1134,11 +1195,16 @@ def main(argv=None):
         late_predemag = bool(args.predemag_h is not None and "init" in c
                              and c["config"].get("predemag_h", NEW_KEYS["predemag_h"]) is None)
         late_smooth = bool(args.bloch_smooth > 0 and "init" in c and not c["config"].get("bloch_smooth", 0))
+        # Chris 2026-10-19: the prepared state of another run (for example after AC from 300 mT) as the start of the
+        # static saturation passes of this run
+        late_sat = bool(args.sat_static and "init" in c and not c["config"].get("sat_static", False))
         if "init" in c:
             diff = [k for k in INIT_KEYS if c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)
                     and not (k == "relax_maxiter" and c["init"].get("relax_converged"))
                     and not (late_predemag and k in ("predemag_h", "predemag_q"))
-                    and not (late_smooth and k == "bloch_smooth")]
+                    and not (late_smooth and k == "bloch_smooth")
+                    and not (late_sat and k in ("predemag_h", "predemag_q", "sat_static", "bloch_free_tries",
+                                                "init_mode"))]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
                     "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
@@ -1157,7 +1223,21 @@ def main(argv=None):
             # Chris 2026-10-19: the cuts of --bloch_smooth on the state of another run
             summary["init"]["bloch_loaded"] = list(bloch())
             summary["init"]["bloch_free"] = bool(bloch_smooth_steps() == 0)
-        if late_predemag or late_smooth:
+        if late_sat:
+            summary["init"]["bloch_loaded"] = list(bloch())
+            passes = []
+            for kk in range(max(1, args.bloch_free_tries)):
+                rec = predemag(0.0, kk, ramp=True)
+                passes.append(rec)
+                print("[sat_static] pass %d after the relaxation: %d Bloch points" % (kk, len(rec["bloch_points"])),
+                      flush=True)
+                if not rec["bloch_points"] or not rec["relax_converged"]:
+                    break
+            summary["init"]["predemag_passes"] = passes
+            summary["init"]["predemag"] = passes[-1]
+            summary["init"]["relax_converged"] = bool(all(r["relax_converged"] for r in passes))
+            summary["init"]["bloch_free"] = bool(not passes[-1]["bloch_points"])
+        if late_predemag or late_smooth or late_sat:
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
     else:
@@ -1284,6 +1364,11 @@ def main(argv=None):
         print("ERROR: the virgin relaxation did not converge (%s). Raise --relax_maxiter and start "
               "again with --no_resume." % out, flush=True)
         sys.exit(3)
+    if args.prep_only:
+        write_atomic(summ_file, json.dumps(summary, indent=1))
+        write_atomic(out / "DONE", "ok\n")
+        print("[prep_only] stop after the preparation", flush=True)
+        return
 
     # --- protocol ----------------------------------------------------------
     kw_cyc = cycle_tolerances(args)

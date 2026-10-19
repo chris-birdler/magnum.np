@@ -1248,8 +1248,11 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
             # the AC demagnetization after loading (Chris 2026-10-18): only if the source has none, as run_loops
             late = t.get("predemag_h") is not None and s.get("predemag_h") is None
             late_s = t.get("bloch_smooth", 0) > 0 and not s.get("bloch_smooth", 0)   # the cut after loading
+            late_sat = bool(t.get("sat_static")) and not s.get("sat_static")   # saturation passes after loading
             diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)
-                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")]
+                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")
+                    and not (late_sat and k in ("predemag_h", "predemag_q", "sat_static", "bloch_free_tries",
+                                                "init_mode"))]
             assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
             n += 1
     assert n >= 190
@@ -2391,7 +2394,7 @@ def test_protocol_s(tmp_path):
         RL.virgin_m0(6, 18.0, 3.0, 6.0, 5, "saturated")
     rl = pathlib.Path(RL.__file__).read_text()          # both calls of the saturated start pass the drive direction
     assert rl.count("args.init_mode, ids,") == 2 and rl.count("direction=e_d))") == 2
-    body = rl[rl.index("    def predemag(h=None, k=0):"):rl.index("    def predemag_all(")]
+    body = rl[rl.index("    def predemag(h=None, k=0, ramp=None):"):rl.index("    def predemag_all(")]
     assert "for k in" not in body and "k = " not in body      # the pass index k stays the pass index
     with pytest.raises(SystemExit):
         RL.main(["--out", str(tmp_path / "x"), "--d_lex", "96", "--init_mode", "saturated"])
@@ -2557,3 +2560,35 @@ def test_eval_hist_snapshots_cycle_measures():
     e = np.zeros((n, n, n, 3)); e[..., 1] = 1.0
     r = EH.cycle_measures(st(a), st(e), ex)
     assert np.isclose(r["net"], 1.0) and np.isclose(r["perp"], 1.0) and np.isclose(r["rot"], 0.5)
+
+
+def test_sat_static_options_and_jobs():
+    """Static saturation (Chris 2026-10-19): --sat_static is an INIT_KEY (old configs False), --sat_check and --prep_only
+    are run controls; satcheck_lines gives 3 field levels per PD_RUNS run with the uniform start and the stop after the
+    saturation; satstatic_lines gives the uniform start with up to 3 passes (_su) and the random start with 1 (_sr)."""
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    assert "sat_static" in RL.INIT_KEYS and RL.NEW_KEYS["sat_static"] is False
+    assert {"sat_check", "prep_only"} <= RL.RUN_CONTROL
+    a = RL.parse_args(["--out", "x", "--d_lex", "96", "--sat_static", "--sat_check", "--prep_only"])
+    assert a.sat_static and a.sat_check and a.prep_only
+    assert not RL.parse_args(["--out", "x", "--d_lex", "96"]).sat_static
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    sc = dict(CJ.satcheck_lines(src))
+    assert len(sc) == 3 * len(CJ.PD_RUNS)
+    for n, line in sc.items():
+        tok = shlex.split(line)
+        assert get_arg(tok, "init_mode") == ["saturated"] and get_arg(tok, "predemag_h") == ["0"]
+        assert "--sat_static" in tok and "--sat_check" in tok and get_arg(tok, "b_list") == ["0.006"]
+    assert get_arg(shlex.split(sc["K2_0_nx_sc200"]), "h_sat") == ["2"] and get_arg(shlex.split(sc["K2_0_nx_scd"]), "h_sat") is None
+    ss = dict(CJ.satstatic_lines(src=src))
+    assert sorted(ss) == sorted("%s_%s%s" % (n, k, h) for n in CJ.SAT_TEST_RUNS for k in ("sa", "sb") for h in ("d", "200"))
+    sa, sb = shlex.split(ss["K4_1_nx_sa200"]), shlex.split(ss["K4_1_nx_sbd"])
+    assert get_arg(sa, "init_mode") == ["saturated"] and get_arg(sa, "bloch_free_tries") == ["3"]
+    assert get_arg(sb, "init_from") == ["K4_1_nx_pd300/init.pt"] and get_arg(sb, "bloch_free_tries") == ["3"]
+    assert get_arg(sa, "h_sat") == ["2"] and get_arg(sb, "h_sat") is None and "--sat_static" in sa and "--sat_static" in sb
+    rl = pathlib.Path(RL.__file__).read_text()          # ramp rule and the passes after loading
+    assert 'ramp = not (args.init_mode == "saturated" and k == 0 and not args.init_from)' in rl
+    assert "rec = predemag(0.0, kk, ramp=True)" in rl
