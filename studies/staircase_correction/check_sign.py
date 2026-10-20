@@ -65,7 +65,7 @@ def main():
     for p in a.p:
         nc = NearCorrection(n, occ, q, p, periodic=True, centroid=a.centroid)
         for form in a.forms:
-            corr = nc.h_pair if form == "P" else nc.h_local
+            corr = {"P": nc.h_pair, "L": nc.h_local, "N": torch.zeros_like}[form]   # N: no window term (reference)
             count = [0]
 
             def mv(x):
