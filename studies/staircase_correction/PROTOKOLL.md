@@ -41,9 +41,10 @@ References: a number "7.x" is a section of the record of the β(B_peak) study, `
   error in the surface layer 0.2 … 0.4 % (P) and about 6 % (L) of that of the voxel model. The staircase effect S of
   the stray-field energy: 0.05 … 0.08 |E_K| (K2), 0.23 … 0.39 |E_K| (K4), 1.0 … 2.0 |E_K| (d/l_ex 96), larger against
   the finer target (q = 4) than against q = 2 (factor 1.7 … 1.8).
-- **Dynamic test (3.14).** Design A (own preparation per arm) is complete but has no power (SE of d 0.65 against the
-  bound 0.15). Design B (transferred start) decides; seeds 943 and 944 of T3Pc still run.
-- **Open.** The dynamic validation against dx 1.5 (design B, running on box 2); the use in the main study
+- **Dynamic test (3.14, 3.15).** Design A (own preparation per arm) has no power (SE of d 0.65 against the bound
+  0.15). Design B (transferred start, n 4): d = +0.07 ± 0.13 (SE), reading "not determined" (2 SE above 0.15); 3 of 4
+  seeds agree within 0.18 in ln P, seed 944 deviates by +0.42 without a change of state.
+- **Open.** Next step of the dynamic validation (decision of Chris); the use in the main study
   (decision of Chris). Target for now: the staircase of dx 1.5 (q = 2; decision of Chris 2026-10-20).
 - **Status.** Night work 2026-10-19/20 under the night mandate (decisions D1 … D8 in 3.5 … 3.10). Since 2026-10-20
   morning all decisions go through Chris again (3.11).
@@ -945,10 +946,57 @@ the evaluation for D3Lc_s943 is wrong, the run was cancelled). D3P: seed 941 onl
 - Resolution of m at the dx 3 geometry, ln P(D15g) − ln P(D3): +0.18 ± 0.09 (SE, n 4). The correction does not act
   on this part (the resolution of m stays at dx 3).
 
-**Design B, state at 08:10 UTC** (information, n 2 for T3Pc; seeds 943 and 944 of T3Pc run on box 2, end about
+**Design B, state at about 08:00 UTC** (information, n 2 for T3Pc; seeds 943 and 944 of T3Pc run on box 2, end about
 09:45 … 10:00 UTC): Δ_g = ln P(D15) − ln P(T15g) = +0.32 ± 0.11 (SE, n 4); resolution of m, ln P(T15g) − ln P(T3) =
 +0.08 ± 0.02 (n 4); Δ_c = ln P(T3Pc) − ln P(T3) = +0.42 ± 0.11 (n 2); d = −0.07 ± 0.11 (n 2; per seed +0.05, −0.19).
 No reading before n 4. The T arms start from the prepared states of D15 (no Bloch points); the label "settled ?" of the
 evaluation only says that the T runs have no preparation of their own. The transferred start removes most of the
 scatter: SD of ln P 0.22 (T3) and 0.26 (T15g) against 0.16 … 1.40 in design A, and T3 agrees with D3 within about 0.01 in
 ln P for seeds 941, 942 and 944.
+
+### 3.15 Dynamic test, design B complete (n 4): reading "not determined"; the large value of seed 944 is not a change of state (2026-10-20)
+
+**Data** (results/dynamic_B.md and .json; eval_dynamic.py --design B; T arms and T15g on box 2, T3 and D15 on box 1).
+Loss density P at 9 mT, d/l_ex 96, φ 0.55. All T arms start from the prepared state of D15 of the same seed (no Bloch
+points). All runs have at least 2 calm cycles; cycles 5 … 7 of T3Pc_s944 give the same loop energy within 10⁻³.
+
+| arm | P (W/cm³), seeds 941 / 942 / 943 / 944 | SD of ln P |
+|---|---|---|
+| T3 (dx 3, voxel model) | 1.03 / 0.794 / 0.605 / 0.776 | 0.22 |
+| T3Pc (dx 3, pairwise correction with centroid term, q 2, p 3) | 1.75 / 1.07 / 0.611 / 1.56 | 0.47 |
+| D15 (dx 1.5, voxel model of dx 1.5; reference) | 1.88 / 1.39 / 0.623 / 1.16 | 0.47 |
+| T15g (dx 1.5, voxel geometry of dx 3 locked) | 1.16 / 0.857 / 0.615 / 0.874 | 0.26 |
+
+| quantity | per seed 941 / 942 / 943 / 944 | mean ± SE (n 4) |
+|---|---|---|
+| Δ_g = ln P(D15) − ln P(T15g) | +0.48 / +0.48 / +0.01 / +0.28 | +0.32 ± 0.11 |
+| Δ_c = ln P(T3Pc) − ln P(T3) | +0.53 / +0.30 / +0.01 / +0.70 | +0.38 ± 0.15 |
+| d = Δ_c − Δ_g | +0.05 / −0.18 / −0.00 / +0.42 | +0.07 ± 0.13 |
+| resolution of m, ln P(T15g) − ln P(T3) | | +0.08 ± 0.02 |
+
+- **Reading (criterion K2, 3.14): "not determined".** The mean of d is small (+0.07), but 2 SE (0.25) is above the
+  bound 0.15. The 95 % interval of the mean of d (t distribution, 3 degrees of freedom) is −0.33 … +0.47.
+- In 3 of 4 seeds the correction follows the geometry effect of the same seed within 0.18 in ln P, also where the
+  geometry effect is near zero (seed 943). Seed 944 gives most of the scatter: Δ_c +0.70 against Δ_g +0.28; P of
+  T3Pc_s944 (1.56 W/cm³) is above that of the reference D15_s944 (1.16 W/cm³).
+- Reading of the interim result with n 3 (K2 met, d −0.05 ± 0.07) is replaced by this result; n 4 was the agreed
+  sample.
+
+**Check of seed 944: did a T arm leave its start state?** (check_state_overlap.py on box 2; results/state_overlap_B.md;
+go of Chris 2026-10-20). Reference of each arm: the prepared state of D15, block averaged onto the mesh and geometry of
+the arm (the start of the arm). Overlap: mean of m · m_ref over the magnetic cells.
+- After the relaxation and at the end of the cycles: T3 0.987 … 0.988, T3Pc 0.9994 … 0.9997, T15g 0.978 … 0.979, for
+  all 4 seeds. Share of cells with m · m_ref < 0: at most 0.04 %. T3Pc against T3 at the end of the cycles: 0.988 for
+  all seeds. The mean m of each particle is below 0.01 (demagnetised states).
+- Result: the hypothesis "T3Pc_s944 went into another metastable state" is rejected. All T arms stay in their start
+  state; seed 944 is not different from the other seeds in this measure. The large Δ_c of seed 944 is a property of
+  the corrected model in the same state. The check does not show what happens inside a cycle: the loss comes from the
+  irreversible jumps during the cycle, and the state at the end of a cycle is the same in all arms.
+- T15g has the lowest overlap because 8736 of its 486144 cells (1.8 %) are outside the fine staircase and take a
+  replacement value at the start (3.11).
+- First run of the check: the script used the nominal diameter of the config (96 l_ex) instead of the diameter of
+  box_edge (92.2 l_ex); the contact check of the geometry stopped it. Corrected; the cell counts now agree with the
+  runs (60768, 65472, 486144).
+
+**Cost state** (09:05 UTC): credit 7.07 $. Box 2 (0.18 $/h) has no run since 09:02 UTC. The instance 53995473 (other
+session, 0.41 $/h) also uses the credit; at 0.59 $/h together the credit lasts about 12 h.
