@@ -41,9 +41,8 @@ References: a number "7.x" is a section of the record of the β(B_peak) study, `
   error in the surface layer 0.2 … 0.4 % (P) and about 6 % (L) of that of the voxel model. The staircase effect S of
   the stray-field energy: 0.05 … 0.08 |E_K| (K2), 0.23 … 0.39 |E_K| (K4), 1.0 … 2.0 |E_K| (d/l_ex 96), larger against
   the finer target (q = 4) than against q = 2 (factor 1.7 … 1.8).
-- **Open.** R3 (sign of the corrected energy; Lanczos running, 3.10); the dynamic test of the loss (D1, arms at
-  d/l_ex 96, φ 0.55, running on two boxes); the target of the correction (fine staircase or smooth sphere) and its
-  use in the main study are decisions of Chris.
+- **Open.** The dynamic validation against dx 1.5 (D1 and option B, running on two boxes); the use in the main study
+  (decision of Chris). Target for now: the staircase of dx 1.5 (q = 2; decision of Chris 2026-10-20).
 - **Status.** Night work 2026-10-19/20 under the night mandate (decisions D1 … D7 in 3.5 … 3.10).
 
 ## 1. Goal
@@ -73,7 +72,11 @@ with full PBC.
   night mandate"). Rented machine: a cheap instance with CPU and GPU (about 0.2 … 0.3 $/h; an A100 offer at 0.59 $/h
   was destroyed unused on the order of Chris). Go for the end: when all is done and evaluated and the method is
   clear, download what is needed (md5) and destroy the instance.
-- 2026-10-19: own record for the staircase correction (this file). The sections 7.117, 7.120 and 7.121 of the study
+- 2026-10-19: own record for the staircase correction (this file).
+- 2026-10-20 morning: option B of the dynamic test (transferred start, 3.11). Both boxes keep running until D15g and
+  T15g are done.
+- 2026-10-20 morning: target of the correction for now: the staircase of dx 1.5 (q = 2), because it can be validated
+  against dx 1.5 runs. The series in q towards the smooth sphere is not started. The sections 7.117, 7.120 and 7.121 of the study
   record are copied here as 3.1, 3.2 and 3.3, with the references to each other changed to the new numbers.
 
 **Earlier decisions that bind this work.**
