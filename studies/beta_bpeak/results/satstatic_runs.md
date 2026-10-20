@@ -49,7 +49,7 @@ K2_0 (h_sat 1 - φ = 0.38, 2 M_s):
   patch 4bb78f1 (static relaxation with the relative criterion, Chris "Ok" 04:3x) is committed and pushed; the switch
   of the dispatcher worktree on the box was blocked by the permission check. Stop of the retry and restart: needs the
   go of Chris.
-- 04:5x Chris: "Ok" to the patch (option 1: the static relaxation in the field uses the relative criterion relax_tol_E
+- 04:5x Chris: "Ok" to the patch 4bb78f1 (the static relaxation in the field uses the relative criterion relax_tol_E
   1e-6, 2 chunks in a row; the zero-field relaxations keep the absolute threshold 3e-10), then "Go" to stop the old
   retry and restart. 04:54 dispatcher worktree switched to 4bb78f1 (/root/disp_commit); 04:55 the retry (PID 109449,
   old code, in its setup) stopped with SIGTERM; the dispatcher put it back (exit code -15, attempt 1 of 1) and started

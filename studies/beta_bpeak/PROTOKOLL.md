@@ -7245,6 +7245,94 @@ the same h_sat — "erased" if the 9 mT loss agrees within 10 % (|Δ ln w_l| < 0
 BPs after the first pass; question 2 (does the field matter): 1 − φ against 2 M_s at the same start — "does not
 matter" with the same limits. Per question and corner one reading; the overall reading needs both corners.
 
+### 7.128 Stop threshold of the relaxations: noise floor, the relaxation in the static field, decision of Chris on a trend criterion (2026-10-20)
+
+All times UTC. Terms as in 7.111 (production setup, gate, dispatcher), 7.114, 7.119 (arms nx and ad), 7.125 and 7.127
+(static saturation test, start A and B, h_sat). K_d V: stray-field energy constant times the box volume; all energies
+here are in this unit. A chunk is 500 iterations of the converge relaxation (α 1, step 10 ps). Stop threshold: a chunk
+is quiet if E changes by at most 3·10⁻¹⁰ K_d V. The relaxation stops after 2 quiet chunks in a row, at the latest
+after 80 000 iterations; then the gate stops the run, and the dispatcher repeats it once with 200 000 iterations
+(PLAN 4.13 S7, D1 b). The criteria of the drive cycles (closure, dW_tol, calm_tol, b_tol, flags of S9) are relative.
+They are not part of this section.
+
+**Gate failure in the static saturation test (K2_0_nx_sad).**
+- The relaxation in the static field (h_sat 0.38 = 1 − φ) did not stop in 80 000 iterations. Only 6 % of its chunks
+  were quiet, and never 2 in a row. E stayed flat: standard deviation 1.8·10⁻⁹ over 160 chunks, slope
+  −8.6·10⁻¹² ± 3.1·10⁻¹² per chunk (SE). Torque rms 0.024 … 0.062 A/m. The median |ΔE| per chunk was 1.6·10⁻⁹.
+- The 9 static relaxations of the other 7 runs met the threshold after 1 500 … 41 000 iterations (stdout.log).
+- Cause (estimate): the noise of E per chunk is higher in the field. It is 1.6·10⁻⁹ here, against a median of
+  4.7·10⁻¹⁰ without a field (see below), thus about 3 times higher. The mechanism is not measured.
+- Decision of Chris (about 04:36, "Ok"): patch 4bb78f1. The relaxation in the static field uses the relative
+  threshold relax_tol_E 10⁻⁶, 2 chunks in a row. All relaxations without a field keep the absolute threshold. Study
+  suite: 121 passed, 3 skipped.
+- At |E| 0.42 the relative threshold is 4.2·10⁻⁷ per chunk, about 1 400 times the absolute one. In the 9 static
+  relaxations above, E after 1 000 iterations was within 1·10⁻⁹ of its end value (stdout.log). Thus the earlier stop
+  is expected to change the saturated state only at the level of the rounding. The rerun below checks this.
+- 04:50: the run failed at the gate, and the dispatcher started its retry with the old code. Chris "Go". 04:54: the
+  worktree of the dispatcher was switched to 4bb78f1. 04:55: the retry was stopped by its PID (it was in its setup).
+  The dispatcher started the run again on gpu 3. It is a fresh start with relax_maxiter 200 000 from the retry. This
+  value matters only if a relaxation without a field needs more than 80 000 iterations.
+- The other 7 runs of the test used ebcea74, thus the absolute threshold also in the field.
+- Decision of Chris (05:02, "Ok"): rerun K4_1_nx_sad_rep with the code 4bb78f1 (jobs/satstatic_rep.txt, commit
+  d19af35). Its static relaxation stops at another iteration. Question: does this small change select another end
+  state of the AC pass. Started 05:03 on gpu 1.
+
+**Noise floor of the relaxations without a field (eval_relax_noise.py, results/relax_noise_report.md; local, no
+GPU).**
+- Data: 28 relaxations (after the random start, and after the AC pass) of the corner runs (arms nx and ad), the
+  history runs and the static saturation test. dx 3 l_ex, 1.1 … 3.8·10⁶ cells. A history that occurs in several runs
+  counts once (the nx and ad runs of a microstructure share the relaxation of the random start when ad loads it).
+- Method: at α 1 without a field the dynamics only lowers E. Thus a rise of E from one chunk to the next is numerical
+  noise.
+- Median rise per relaxation (20 relaxations with at least 3 rises): 2.2·10⁻¹⁰ … 1.1·10⁻⁹, median 4.7·10⁻¹⁰. This is
+  1.6 times the stop threshold. The median rise is above the threshold in 17 of 20.
+- Share of quiet chunks from the first rise on: 0.13 … 0.67, median 0.29 (n 20). Thus the stop comes by chance once
+  the energy is flat.
+- Length of the relaxations: 1 500 … 48 000 iterations (random start: 8 000 … 48 000). The first rise comes after
+  0 … 77 chunks; after it the relaxation needs 5 … 23 more chunks, one relaxation 67 (K4_2, random start). Thus the
+  decay before the flat part sets most of the spread, not the chance of the stop.
+- Risk of the gate (estimate): assumptions are independent chunks, a quiet share of 0.13 (the lowest of 20) and the
+  flat part from the first rise of K4_2 (131 chunks up to 80 000 iterations). Then about 14 % of such relaxations reach
+  the gate; after the retry with 200 000 iterations about 0.2 %. None of the 28 relaxations without a field failed the
+  gate.
+- No link with the size or the energy in this range: correlation of the log median rise with the log number of cells
+  0.01, with log |E| 0.11. With Bloch points (BPs) at the end: n 4, median rise 6.9·10⁻¹⁰; without: n 11, 4.7·10⁻¹⁰
+  (hint only).
+- Effect on the measurement: not tested directly. In the calm tail of the 9 mT stage of the ad runs the median |ε| is
+  0.0007 (60 cycles; corners_ad_report.md). ε contains a drift of the state, but these cycles are 5 … 7 drive cycles
+  after the relaxation.
+- Not covered: dx 1.5 (8 times more cells).
+- The old main study used the relative threshold 10⁻⁶ |E| per chunk, not the absolute one. Reason for the change
+  (D1): with the fp64 sum of E the relative threshold is below 10⁻¹⁰ per chunk in 10 of 116 old runs (E near 0). Risk:
+  very long relaxations or gate failures at exactly these design points. In 29 of 116 old runs the fp32 sum had given
+  a change of exactly 0 in one of the 2 last chunks; there the rounding stopped the relaxation.
+
+**Options for the relaxations without a field.** Option 1: keep the absolute stop threshold. Option 2: raise the
+threshold to the noise (about 10⁻⁹); it allows about 3 times more drift. Option 3: a trend criterion. The relaxation
+stops at the first chunk where |slope| of a straight line through E over the last W chunks is at most the stop
+threshold per chunk.
+
+**Option 3, offline check on the same 28 histories.**
+- W 8: a stop within the recorded history in 19 of 28 relaxations, at 0.36 … 0.98 (median 0.76) of the iterations of
+  the real stop. W 6: 22 of 28, median 0.66. W 12: 13 of 28, median 0.80.
+- The other 9 of 28 (W 8), sorted by a rule. (a) The largest |ΔE| in the last 8 chunks is more than 100 times the
+  threshold: a fast decay is still in the window (2: K1_0 and K4_0_ad, random start). (b) Else, the |slope| over the
+  last 8 chunks at the real stop is above the threshold: 4 (K1_1_ad after the AC pass, K2_0, K2_2_ad, K4_1, random
+  start). Their slopes are −3.5·10⁻¹⁰ … −5.9·10⁻¹⁰ per chunk. Only K2_2_ad is clearly above the threshold
+  (3.6 SE); the others are 1.0 … 1.6 SE above it. (c) The history has only 3 … 6 chunks, too few for a window of 8
+  (3).
+- Rounding trend: the long flat history in the field (K2_0_nx_sad, see above) has a slope 35 times below the threshold.
+  With W 8, 82 % of its windows meet the threshold; the first stop would be after 10 chunks (5 000 iterations). Thus
+  the fp32 rounding gives no trend that blocks the stop.
+- Reading: a trend criterion is possible. It stops earlier in most relaxations. It stops later after a fast decay
+  (delay up to W chunks) and where the present criterion stops in a dip of the noise during a drift. Its risks: the
+  choice of W and of the threshold, and a flat window just before a jump (the present criterion has the same weakness).
+
+**Decision of Chris (about 05:25, before the offline check of option 3).** Option 1 stays for the relaxations without a
+field: no harm to the measurement found, and the corner test and the main study keep one code commit (PLAN 4.13 S12).
+Option 3 comes only together with a new code state (for example a new preparation after the saturation test, or a mesh
+test at dx 1.5). Then this offline check is made again first, and W and the threshold go to Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

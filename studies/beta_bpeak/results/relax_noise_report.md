@@ -41,3 +41,52 @@ Correlation of log rise median with log |E|: 0.11.
 Correlation of log rise median with log cells: 0.01.
 Correlation of log rise median with log iterations: -0.09.
 With BPs at the end: n 4, rise median 6.9e-10; without: n 11, rise median 4.7e-10.
+
+## Option 3: trend criterion (straight line over the last W chunks, |slope| <= threshold)
+
+Iterations at the stop: real (present criterion) and with the trend criterion; '>' = not within the recorded history (it ends at the real stop). Slope at the real stop: over the last 8 chunks, ± standard error.
+
+| run | relaxation | real stop | trend W 6 | trend W 8 | trend W 12 | slope at the real stop (W 8) |
+|---|---|---|---|---|---|---|
+| K1_0_ad | virgin | 8000 | > 8000 | > 8000 | > 8000 | -6.1e-07 ± 3.1e-07 |
+| K1_0_ad | relax2_p0 | 1500 | > 1500 | > 1500 | > 1500 | +nan ± nan |
+| K1_1_ad | virgin | 12000 | 11000 | 11500 | > 12000 | -1.0e-10 ± 5.1e-11 |
+| K1_1_ad | relax2_p0 | 4500 | > 4500 | > 4500 | > 4500 | -3.5e-10 ± 5.3e-11 |
+| K1_2_ad | virgin | 14000 | 11000 | 12000 | 13500 | +8.5e-12 ± 7.0e-11 |
+| K1_2_ad | relax2_p0 | 5000 | 3000 | 4000 | > 5000 | -8.0e-11 ± 8.2e-11 |
+| K2_0_ad | virgin | 32500 | 32500 | > 32500 | > 32500 | -5.7e-10 ± 1.7e-10 |
+| K2_0_nx_sa200 | relax2_p0 | 5000 | 3000 | 4000 | > 5000 | +1.1e-11 ± 9.3e-11 |
+| K2_1_ad | virgin | 33000 | 27500 | 28000 | 29500 | -1.2e-12 ± 4.6e-11 |
+| K2_2_ad | virgin | 25000 | > 25000 | > 25000 | > 25000 | -5.2e-10 ± 6.0e-11 |
+| K2_2_ad | relax2_p0 | 1500 | > 1500 | > 1500 | > 1500 | +nan ± nan |
+| K2_2_nx | virgin | 43000 | 41500 | 42000 | > 43000 | -1.6e-10 ± 6.4e-11 |
+| K3_0_ad | virgin | 22500 | 16000 | 17000 | 18500 | +2.3e-10 ± 6.6e-11 |
+| K3_0_ad | relax2_p0 | 7500 | 3500 | 4000 | 6000 | +8.2e-11 ± 7.0e-11 |
+| K3_1_ad | virgin | 19000 | 9000 | 10000 | 11500 | -7.6e-11 ± 6.8e-11 |
+| K3_1_nx | virgin | 14500 | 13000 | 14000 | > 14500 | -4.9e-11 ± 1.0e-10 |
+| K3_2_ad | virgin | 25500 | 18500 | 19500 | 21000 | +2.0e-10 ± 9.0e-11 |
+| K3_2_ad | relax2_p0 | 6000 | 3000 | 4000 | 6000 | +6.3e-11 ± 5.7e-11 |
+| K4_0_ad | virgin | 16500 | > 16500 | > 16500 | > 16500 | -1.3e-08 ± 5.5e-09 |
+| K4_0_ad | relax2_p0 | 11500 | 4000 | 4500 | 6000 | +3.9e-11 ± 5.2e-11 |
+| K4_0_nx | virgin | 19500 | 18000 | 18500 | > 19500 | +3.1e-12 ± 4.0e-11 |
+| K4_1_ad | virgin | 13000 | 13000 | > 13000 | > 13000 | -5.9e-10 ± 2.1e-10 |
+| K4_1_nx_sa200 | relax2_p0 | 9500 | 3500 | 4500 | 6000 | -6.7e-12 ± 5.4e-11 |
+| K4_1_nx_sad | relax2_p0 | 6500 | 3500 | 4500 | 6000 | +1.2e-10 ± 7.1e-11 |
+| K4_1_nx_sb200 | relax2_p0 | 7500 | 4000 | 4500 | 6000 | +8.4e-11 ± 8.3e-11 |
+| K4_1_nx_sbd | relax2_p0 | 3000 | 3000 | > 3000 | > 3000 | +nan ± nan |
+| K4_2_ad | virgin | 48000 | 16500 | 17500 | 19000 | -2.3e-10 ± 1.1e-10 |
+| K4_2_ad | relax2_p0 | 10000 | 3500 | 4500 | 6000 | +5.8e-11 ± 1.1e-10 |
+
+W 6: stops within the history in 22 of 28 relaxations; trend stop / real stop: median 0.66, min 0.34, max 1.00.
+
+W 8: stops within the history in 19 of 28 relaxations; trend stop / real stop: median 0.76, min 0.36, max 0.98.
+
+W 12: stops within the history in 13 of 28 relaxations; trend stop / real stop: median 0.80, min 0.40, max 1.00.
+Slope at the real stop (W 8): |slope| median 8.4e-11, max 6.1e-07; above the threshold in 6 of 25.
+
+## Long flat history: K2_0_nx_sad_relax_sat.txt (160 chunks)
+
+Whole file: slope -8.58e-12 ± 3.1e-12 per chunk; |dE| median 1.6e-09; SD of E 1.8e-09.
+W 6: 155 windows, |slope| median 2.3e-10, 90 % 4.8e-10, max 2.5e-09; share <= threshold 0.65; first stop at chunk 7.
+W 8: 153 windows, |slope| median 1.2e-10, 90 % 3.6e-10, max 1.3e-09; share <= threshold 0.82; first stop at chunk 9.
+W 12: 149 windows, |slope| median 7.8e-11, 90 % 1.8e-10, max 7.4e-10; share <= threshold 0.97; first stop at chunk 13.
