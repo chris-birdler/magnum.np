@@ -1072,15 +1072,22 @@ units of K_d V_box. Check: the sum of the terms gives the energy of the run reco
 | exchange | −53 … −47 | −109 … −103 | +55 … +57 |
 | cube anisotropy | −9 … −2 | −10 … −2 | −1 … +2 |
 
-- The mismatch of the stray field and of the exchange is the same in all 16 particle-seed pairs within ±2 %. The loss
-  errors of 3.16 change sign from particle to particle (d_k −0.63 … +0.58). Thus the energies of the start states do
-  not show the cause of the particle errors. Correlation of the mismatch with d_k over the 16 pairs: stray field
+- Sum of the three terms: δ_c −441 … −432 (mean −436), δ_g −357 … −349 (mean −352); the total geometry effect at
+  dx 3 is 24 % larger than at dx 1.5, the stray field alone 58 %, because the exchange mismatch partly cancels.
+- The mismatch of the stray field and of the exchange is the same in all 16 particle-seed pairs within ±2 %. This is
+  forced by the geometry: the four sphere centres sit on cell vertices, so the four particles have the same staircase
+  (checked: 15192 voxel cells at dx 3, 16368 V1 cells, 122184 cells at dx 1.5 for each particle). A term that is
+  wrong in one particle only cannot exist. The loss errors of 3.16 change sign from particle to particle (d_k
+  −0.63 … +0.58); they can only come from how the different magnetic state of each particle reacts to the same
+  staircase in the dynamics. Correlation of the mismatch with d_k over the 16 pairs: stray field
   +0.44, exchange +0.09, anisotropy −0.49 (the pairs are not independent; no test).
 - Meaning of the uniform mismatch: for the same coarse m the correction gives the stray field of the fine staircase
   (static test, 1 … 2 % of S, 3.9). The stray-field effect of the staircase is −1.52·10⁻³ K_d V_box (4 particles) at
   the resolution of m of dx 3 and −0.96·10⁻³ at dx 1.5. Interpretation (not tested): with the finer m the cells at
   the steps of the coarse staircase turn and lower its surface charges, so the coarse staircase costs less. The
-  effect of the geometry thus depends on the resolution of m.
+  effect of the geometry thus depends on the resolution of m. Support (information): for the same block-averaged m
+  before the relaxation (coarse pair only) δ_c of the stray field is −521 per particle; after the relaxation in each
+  model −380; at dx 1.5 −240. More freedom of m gives a smaller stray-field effect of the staircase.
 - Consequence for the dynamic test: d = Δ_c − Δ_g contains two parts that the four arms cannot separate: the error
   of the correction (the corrected model against the exact stray field of the fine staircase, both with the m of
   dx 3) and the interaction of geometry and resolution of m (the geometry effect at dx 3 against that at dx 1.5). The
