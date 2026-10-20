@@ -2610,3 +2610,15 @@ def test_relax_noise_stats():
     # dE from the first rise: +4e-10, -5e-10, +2e-10, -2.5e-10 -> quiet: 2e-10 and 2.5e-10 (<= threshold)
     assert abs(r["q_share"] - 0.5) < 1e-12
     assert RN.noise_stats([3.0, 2.0, 1.0], 3e-10)["n_rise"] == 0
+
+
+def test_relax_trend_criterion():
+    """Option 3 offline (Chris 2026-10-20): the slope of a straight line over the last W chunks; the first chunk with
+    |slope| <= threshold is the stop; an exact line gives its slope and a standard error of 0."""
+    import eval_relax_noise as RN
+    E = [10.0 - 1e-9 * k for k in range(10)] + [0.0] * 10
+    sl, se = RN.window_slopes(E[:10], 4)
+    assert np.allclose(sl, -1e-9, rtol=0, atol=1e-15) and np.allclose(se, 0.0, atol=1e-15)
+    E2 = [1e-9 * (20 - k) for k in range(20)] + [0.0] * 8
+    assert RN.trend_stop(E2, 6, 3e-10) is not None and RN.trend_stop(E2, 6, 3e-10) >= 20
+    assert RN.trend_stop([1e-9 * (20 - k) for k in range(20)], 6, 3e-10) is None
