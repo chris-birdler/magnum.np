@@ -7337,6 +7337,14 @@ test at dx 1.5). Then this offline check is made again first, and W and the thre
 (two-sided reading of the history test at K3). Decision 3 (no new runs without his go) is superseded by the
 approved rerun K4_1_nx_sad_rep. Log: results/night_decisions_20261019.md.
 
+**Precision (question of Chris, about 06:30).** Does the fp32 noise need fp64? Facts: the precision test of 7.112 (fp64
+against fp32 at 9 mT from the same start state, K1_0 … K4_0) gave |Δ ln w| at most 0.0001 and ε within 0.0002 (n 4);
+fp64 costs × 1.6 time per cycle on the V100. The fp32 noise shows in the stop of the relaxation (see above) and it can
+select the end state of the AC pass at the first large switching (7.127 test, inference, n 2 pairs). fp64 would make
+the rounding smaller, but other small changes (step, tolerance, order of the GPU sums) would still select the state.
+**Decision of Chris:** the simulation stays in fp32; the energies stay summed in fp64 (commit 6c1e539); the stop of
+the relaxations without a field stays option 1.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
