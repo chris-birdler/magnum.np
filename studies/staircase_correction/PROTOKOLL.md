@@ -1146,8 +1146,8 @@ complete one. Cost about 4 $ for box 2 (estimate); a top-up of the credit before
 means, the reading of D1/K2 for d, and a table of the paired effects with mean, SE, 95 % interval (t distribution)
 and the factor on P: N1 = ln P(T15g) − ln P(T3), N3 = ln P(T3Pc) − ln P(X3), Δ_g, Δ_c, m = ln P(D15) − ln P(X3) and
 total = ln P(T3Pc) − ln P(D15); --plot gives a figure of these effects. N2 comes from the static results (3.9, 3.18).
-- Reading of N1 and N3, **proposed, open for Chris**: "within ±0.15" if the 95 % interval of the mean lies inside
-  ±0.15, "outside ±0.15" if it lies outside, else "not determined". Reason: K2 needs |mean| at most 2 SE; for an
+- Reading of N1 and N3 (criterion K4, **decision of Chris 2026-10-20**): "within ±0.15" if the 95 % interval of the
+  mean lies inside ±0.15, "outside ±0.15" if it lies outside, else "not determined". Reason: K2 needs |mean| at most 2 SE; for an
   effect with a very small SE (N3 about 10⁻⁴) a tiny but real offset would then give "not determined".
 - State with the data of 941 … 944 (X3 n 2): N1 +0.083 ± 0.025 (SE, n 4), interval +0.005 … +0.160 (not determined
-  by the proposed reading, the upper end is above 0.15); N3 −0.0002 ± 0.0001 (n 2); total −0.014 ± 0.115 (n 4).
+  by K4, the upper end is above 0.15); N3 −0.0002 ± 0.0001 (n 2); total −0.014 ± 0.115 (n 4).

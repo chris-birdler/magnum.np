@@ -20,7 +20,7 @@ Design B (--design B, PROTOKOLL 3.11 … 3.19) also gives the proofs of Chris (2
     N1  ln P(T15g) − ln P(T3)    resolution of m at the fixed morphology of dx 3 (mesh dependence)
     N3  ln P(T3Pc) − ln P(X3)    the correction against the exact stray field of the fine staircase (same m)
     m   ln P(D15) − ln P(X3)     resolution of m on the fine staircase (not a property of the stray field)
-  proposed reading of N1 and N3 (open for Chris): "within ±0.15" if the 95 % interval of the mean (t distribution)
+  reading of N1 and N3 (decision of Chris 2026-10-20, K4): "within ±0.15" if the 95 % interval of the mean (t distribution)
   lies inside ±0.15; "outside ±0.15" if it lies outside; else "not determined".
 
     python eval_dynamic.py --runs /root/runs > results/dynamic_D.md
@@ -177,11 +177,11 @@ def proofs(lnP, plot=None):
             if ci is None or st["n"] < 3:
                 r = "not determined (n %d)" % st["n"]
             elif -0.15 <= ci[0] and ci[1] <= 0.15:
-                r = "within ±0.15 (proposed reading)"
+                r = "within ±0.15"
             elif ci[0] > 0.15 or ci[1] < -0.15:
-                r = "outside ±0.15 (proposed reading)"
+                r = "outside ±0.15"
             else:
-                r = "not determined (proposed reading)"
+                r = "not determined"
         else:
             r = "information"
         f4 = "%+.4f" if key == "N3" else "%+.3f"                 # N3 is about 10⁻⁴: more digits
