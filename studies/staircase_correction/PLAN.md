@@ -162,3 +162,40 @@ PLAN and the go of Chris.
 - The exchange is not corrected (first-order error at the surface, 3.2).
 - The Bloch-point detector of the runs does not test the outermost cell layer of a particle.
 - Lanczos gives the smallest eigenvalue only approximately; R3 is no proof that the operator is positive.
+
+## 8. Phase 4 (preparation): static reference of the smooth spheres with FE (approved by Chris 2026-10-20, night run)
+
+**Question.** The goal of 3.19 is the stray field of the coarse m (constant in each FD cell, as the FD mesh gives it)
+in the smooth spheres. FD gives this only as the limit q → ∞ of X3. An independent reference is FE with the smooth
+sphere surface. Before an acceptance criterion is set (decision of Chris), this phase measures what FE can resolve
+and at which cost.
+
+**Facts from the first local tests (PROTOKOLL 3.24).**
+- magnum.pi 3.13.3 (private clone, docker image magnum.pi.dev-3.13.3) solves the potential on a periodic box with the
+  mean field zero, the same convention as the production solver (reading R1).
+- The coarse m jumps on every inner cell face. FE resolves these charge sheets badly: the absolute FE energy of a real
+  state on the 10-nm mesh is 79 % (P1) or 17 % (P2) too low. Thus only differences of two bodies on the same mesh are
+  used (difference method):
+      E_s = E_vox(FD, exact) + [E_smooth(FE) − E_vox(FE)].
+- The method is checked on a pair with an exact FD value: the 5-nm staircase (X3 at q 2) against the voxel body.
+
+**Night run (local CPU, no cost; fe/run_night.sh).**
+1. States: the coarse m of 6 real states (T3Pc_s941 … s944, X3_s951, X3_s952; init.pt). The cells that touch a sphere
+   but have no m in the state take m of the nearest cell of the same particle.
+2. FD (magnum.np, Newell, full PBC): E_vox, X3 at q 2 and 4, T3Pc (pairwise, p 3, centroid term) at q 2 and 4.
+3. FE (P2 potential, M per tetrahedron as its L2 projection onto P1, sampled at sub-tetrahedra; cells at the sphere
+   surface with 8⁵ points): mesh 48³ cubes × 6 tetrahedra (conforms to the FD cells) for the 6 states: voxel body,
+   5-nm staircase (check ε), smooth spheres.
+4. FE with a continuous m (trilinear in the cell centres, unit length) in the smooth spheres: the second question
+   (does the whole model, roughness of m included, approach the continuum?). Information only.
+5. Mesh 64³ (not conforming) for 2 states: does E_s change with the mesh?
+6. fe/fe_eval.py writes results/fe_static.md: ε, X3(q) − E_s, T3Pc(q) − E_s, continuous m − E_s, all in units of
+   S = E_vox − E_X3,q2 of the state, and the cost of each FE run.
+
+**Not in this phase.** The field in each surface cell (the stricter test, as e_h of stage A); a mesh of 96³ (about
+30 GB RAM for P2, estimate; vast.ai containers cannot run apptainer or docker, so it needs a VM); an acceptance
+criterion.
+
+**Risks.** The difference method assumes that the FE error of the inner charge sheets is the same for both bodies;
+ε measures this only for the 5-nm staircase. The sampling of the smooth surface converges slowly (3.24: 64 → 512
+points changed E_s by 4 % of S; 4096 → 32768 by 0.35 %). The 64³ mesh may exceed the 12 GB limit of the container.
