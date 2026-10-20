@@ -1151,3 +1151,20 @@ total = ln P(T3Pc) − ln P(D15); --plot gives a figure of these effects. N2 com
   effect with a very small SE (N3 about 10⁻⁴) a tiny but real offset would then give "not determined".
 - State with the data of 941 … 944 (X3 n 2): N1 +0.083 ± 0.025 (SE, n 4), interval +0.005 … +0.160 (not determined
   by K4, the upper end is above 0.15); N3 −0.0002 ± 0.0001 (n 2); total −0.014 ± 0.115 (n 4).
+
+### 3.20 Box 3 for the seeds 951 and 952; code state of the runs (2026-10-20, order of Chris)
+
+- About 13:15 UTC, Chris: "miete eine weitere billige gpu". Box 3: vast.ai instance 56895734 (offer 47235644,
+  RTX 3090, 0.165 $/h, label staircase-box3), image pytorch/pytorch:2.7.1-cuda12.6-cudnn9-devel, code from a git
+  bundle of this branch at 50c36c9, packages with the versions of box 2 (numpy 2.2.6, scipy 1.17.1, statsmodels
+  0.15.0, torchdiffeq 0.2.5, xitorch 0.5.1, pyvista 0.49.1, setproctitle 1.3.8; torch 2.7.1+cu126).
+- Moved to box 3: the seeds 951 and 952 complete (D15, T3, T3Pc, T15g, X3; jobs/90_box3_D15.jobs,
+  jobs/91_box3_arms.jobs, the same job lines as on box 2). On box 2 the queue spool2 (D15 949 … 952, 2 slots) was
+  stopped (kill of its dispatcher only); its runs D15_s949 and D15_s950 go on (checked). The queued copies of the
+  T and X3 jobs of 951/952 on box 2 (spool, spool3) will wait for a prepared state that does not come there; they are
+  stopped by hand (note /root/runs/MOVED_s951_s952_to_box3.txt on box 2).
+- Code state (provenance): the runs on box 2 that started before 3.18 record git commit 82718f9. The X3 runs and the
+  runs that start after 3.18 on box 2 record "82718f9-dirty": the working tree of box 2 has the two files of 381669b
+  (magnumnp/field_terms/demag_staircase.py md5 65fd939f…, studies/beta_bpeak/run_loops.py md5 0413a3c5…), which add
+  only the option --staircase fine (study tests 118 passed, 3 skipped). Consequence: a run that started clean cannot
+  resume after a crash without --allow_new_commit. Box 3 records the clean commit 50c36c9.
