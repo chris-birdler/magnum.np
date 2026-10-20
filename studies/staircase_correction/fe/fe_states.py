@@ -73,6 +73,32 @@ def touching(N, dx, d, a):
     return out
 
 
+def fine_ids(N, q, d, dx):
+    """Particle index of the cells of the fine mesh (q N)^3 with edge dx/q (cell centre in a sphere, minimum image), as
+    geometry.fcc_box(q N, d, dx / q)["ids"] (sub = 0), but in slabs of x, so that q = 16 fits into the memory."""
+    Nf, dxf = q * N, dx / q
+    a = N * dx
+    x = (np.arange(Nf) + 0.5) * dxf
+    ids = -np.ones((Nf, Nf, Nf), dtype=np.int8)
+    R2 = (0.5 * d) ** 2
+    step = max(1, 2 ** 22 // (Nf * Nf))
+    for p, s in enumerate(FCC_SITES * a):
+        dyz = []
+        for ax in (1, 2):
+            t = x - s[ax]
+            dyz.append((t - a * np.round(t / a)) ** 2)
+        ryz = dyz[0][:, None] + dyz[1][None, :]
+        for i0 in range(0, Nf, step):
+            t = x[i0:i0 + step] - s[0]
+            rr = ((t - a * np.round(t / a)) ** 2)[:, None, None] + ryz[None]
+            inside = rr <= R2
+            sl = ids[i0:i0 + step]
+            if np.any(sl[inside] >= 0):
+                raise ValueError("fine cells of two spheres overlap")
+            sl[inside] = p
+    return ids
+
+
 def fill_nearest(m, have, touch):
     """m on the cells of touch that are not in have: m of the nearest cell of have of the same particle."""
     from scipy.spatial import cKDTree
@@ -95,8 +121,8 @@ def fill_nearest(m, have, touch):
 
 def energy(term, N, dx, Ms_cell, m):
     state = State(Mesh((N, N, N), (dx, dx, dx), pbc=(4, 4, 4)))
-    state.material = {"Ms": torch.tensor(Ms_cell[..., None], dtype=state.dtype)}
-    state.m = torch.tensor(m, dtype=state.dtype)
+    state.material = {"Ms": torch.tensor(Ms_cell[..., None], dtype=state.dtype, device=state.device)}
+    state.m = torch.tensor(m, dtype=state.dtype, device=state.device)
     return float(term.E(state))
 
 
@@ -105,6 +131,10 @@ def main():
     ap.add_argument("--run", required=True, help="run folder with init.pt and config.json (an X3 or T3Pc run)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--q", type=int, nargs="*", default=[2])
+    ap.add_argument("--x3_q", type=int, nargs="*", default=None,
+                    help="the q of --q for which X3 is computed (default: all; X3 needs an FFT on (q N)^3)")
+    ap.add_argument("--t3pc_q", type=int, nargs="*", default=None,
+                    help="the q of --q for which T3Pc is computed (default: all; the set-up grows about as q^6)")
     ap.add_argument("--cache", default=os.environ.get("STAIRCASE_KERNEL_CACHE"))
     ap.add_argument("--state", default="init.pt", help="init.pt (prepared state) or checkpoint.pt")
     a = ap.parse_args()
@@ -119,8 +149,7 @@ def main():
     m = torch.load(str(run / a.state), map_location="cpu", weights_only=False)["m"].double().numpy()
     assert m.shape == (N, N, N, 3)
     ids = fcc_box(N, d, dx)["ids"].astype(np.int64)
-    _, pid2, _ = staircase_cells(fcc_box(2 * N, d, dx / 2)["ids"], 2)
-    n2 = staircase_cells(fcc_box(2 * N, d, dx / 2)["ids"], 2)[0]
+    n2, pid2, _ = staircase_cells(fine_ids(N, 2, d, dx), 2)
     have = np.where(n2 > 0, pid2, -1)                       # the magnetic cells of a state at q = 2
     touch = touching(N, dx, d, a_box)
     assert np.all(touch[have >= 0] == have[have >= 0]) and np.all(touch[ids >= 0] == ids[ids >= 0])
@@ -159,22 +188,32 @@ def main():
         % (E["E_vox"], E["E_vox_100"], E["E_vox_111"], E["R1_target"], time.time() - t))
     for q in a.q:
         t = time.time()
-        occ = fcc_box(q * N, d, dx / q)["ids"] >= 0
+        ids_f = fine_ids(N, q, d, dx)
+        occ = ids_f >= 0
         nq = occ.reshape(N, q, N, q, N, q).sum(axis=(1, 3, 5))
         if np.any((nq > 0) & (touch < 0)):
             raise ValueError("a body sub-cell lies in a cell that does not touch a sphere")
-        np.save(out / ("occ_q%d.npy" % q), occ)          # body of the q-staircase, for the FE side
-        fine = DemagStaircaseFine(occ, q, Ms, true_pbc=True, extrapolate=True, cache_dir=a.cache)
-        E["E_X3_q%d" % q] = energy(fine, N, dx, Ms * nq / q ** 3, m_ext) / norm
         E["phi_q%d" % q] = float(occ.mean())
-        log("X3 q %d: E %.9f, φ %.6f (%.0f s)" % (q, E["E_X3_q%d" % q], E["phi_q%d" % q], time.time() - t))
+        if q in (a.x3_q if a.x3_q is not None else a.q):
+            if q <= 4:
+                np.save(out / ("occ_q%d.npy" % q), occ)      # body of the q-staircase, for the FE side
+            fine = DemagStaircaseFine(occ, q, Ms, true_pbc=True, extrapolate=True, cache_dir=a.cache)
+            E["E_X3_q%d" % q] = energy(fine, N, dx, Ms * nq / q ** 3, m_ext) / norm
+            del fine
+            log("X3 q %d: E %.9f, φ %.6f (%.0f s)" % (q, E["E_X3_q%d" % q], E["phi_q%d" % q], time.time() - t))
+        del occ
+        if q not in (a.t3pc_q if a.t3pc_q is not None else a.q):
+            continue
         # T3Pc: Newell with M_s v plus the pairwise near-field correction with the centroid term (p = 3)
         t = time.time()
-        n_s, pid_s, occ_s = staircase_cells(fcc_box(q * N, d, dx / q)["ids"], q)
+        n_s, pid_s, occ_s = staircase_cells(ids_f, q)
+        del ids_f
         corr = DemagStaircaseCorrection(n_s, occ_s, q, 3, Ms, form="pair", centroid=True, demag=demag)
         Mv = Ms * n_s / q ** 3
         E["E_T3Pc_q%d" % q] = (energy(demag, N, dx, Mv, m_ext) + energy(corr, N, dx, Mv, m_ext)) / norm
         log("T3Pc q %d: E %.9f (%.0f s)" % (q, E["E_T3Pc_q%d" % q], time.time() - t))
+    old = json.loads((out / "meta.json").read_text())["energies_KdVbox"] if (out / "meta.json").exists() else {}
+    E = {**old, **E}                                  # keep the values of earlier calls with other q
     meta = {"run": str(run), "state": a.state, "N": N, "dx": dx, "a": a_box, "d": d, "Ms": Ms, "Kd": Kd,
             "sites": (FCC_SITES * a_box).tolist(), "n_filled": int(n_new), "energies_KdVbox": E}
     (out / "meta.json").write_text(json.dumps(meta, indent=1))

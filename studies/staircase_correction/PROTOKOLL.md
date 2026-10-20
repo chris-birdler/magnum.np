@@ -1299,3 +1299,34 @@ CAP_SYS_ADMIN, no /dev/fuse; checked on box 2), so FE runs only locally or on a 
 **Cost (local laptop, 8 cores).** FD energy with the kernel in the cache: below 1 s. FE P1 48³ (0.66 M tetrahedra):
 3 s solve, 1.5 GB. FE P2 48³: 34 s solve, 4.5 GB; sampling 1 min (512 points per cell), 3.5 min or 20 min (4096 or
 32768 points at the surface). P2 on 64³: about 10 GB (estimate); 96³: about 30 GB (estimate), not local.
+
+### 3.25 FE stopped; the series in q with FD: the 5-nm staircase is far from the smooth spheres (2026-10-20/21, night)
+
+**FE night run (48³, P2, DG1 sources with nodes at the vertices), stopped after 2 complete states.** Check of the
+difference method on the staircases with exact FD values, in units of S: ε_q2 = −0.403 / −0.406, ε_q4 = −0.115 /
+−0.117 (T3Pc_s941 / s942). Body without a surface (the whole box magnetic): FE −6.1 % / −7.1 % of the exact FD energy.
+The value ε = −2.5 % of 3.24 came from the mean source per tetrahedron, which is not exact for P2; it agreed by
+chance and is no check. Cause of the failure: FE with elements of the size of the FD cells cannot resolve the field of
+the stepped m (charge sheets on all cell faces, edges); in the difference method the error does not cancel, because
+the surface of the 10-nm staircase lies on element faces and the surfaces of the finer staircases and of the smooth
+spheres cut the elements. Partial results: results/fe_static.md. **Decision of Chris:** FE rests (scripts kept); for
+the question "does the correction give the field of the given m in the smooth spheres" the series in q with FD is the
+reference. FE stays an option for a continuous m (the second question: the whole model against the continuum).
+
+**FD, exact for each q, 6 states (T3Pc_s941 … s944, X3_s951, X3_s952).** S(q 2) = E_vox − E_X3,q2 = 2.140 … 2.152·10⁻³
+K_d V_box; S(q 4) / S(q 2) = 1.520 … 1.523; T3Pc − X3 = +0.80 … +0.81 % of S(q 2) at q 2 and +1.15 … +1.16 % at q 4.
+The staircase effect is nearly the same in the 6 states.
+
+**T3Pc at q 8, state X3_s951** (staircase effect E_vox − E_T3Pc in units of S(q 2)): q 2: 0.99; q 4: 1.51; q 8: 1.76.
+The increments are 0.52 and 0.25: they halve with each doubling of q, as for convergence of first order in 1/q
+(an assumption from 3 points). With this assumption the smooth spheres lie at about 2.0 S(q 2), that is an energy of
+about 0.3·10⁻³ K_d V_box against 2.52·10⁻³ at q 2 (estimate). If this holds, the production with q 2 covers only about
+half of the way from the 10-nm staircase to the smooth spheres, q 4 about three quarters, q 8 about 88 %. The
+correction itself stays exact against X3 (N3); the remaining difference comes from the 5-nm staircase.
+
+**Cost of T3Pc at q 8:** set-up 20 min, peak RAM 10.8 GB (local, 8 cores). The coupling step holds a table of
+343 × q³ × q³ × 6 values (4.3 GB at q 8, about 280 GB at q 16): q 16 is not possible with the current code (a
+convolution form of the same sum would remove this table; a patch, not built).
+
+**Decision of Chris:** box 2 runs on after its GPU runs: X3 at q 8 (exact field of the 1.25-nm staircase, fine FFT
+384³ on the GPU) and T3Pc at q 8 for further states; then download, md5 and destroy.
