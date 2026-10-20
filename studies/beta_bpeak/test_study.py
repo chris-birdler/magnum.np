@@ -2622,3 +2622,28 @@ def test_relax_trend_criterion():
     E2 = [1e-9 * (20 - k) for k in range(20)] + [0.0] * 8
     assert RN.trend_stop(E2, 6, 3e-10) is not None and RN.trend_stop(E2, 6, 3e-10) >= 20
     assert RN.trend_stop([1e-9 * (20 - k) for k in range(20)], 6, 3e-10) is None
+
+
+def test_crep_lines():
+    """Option C repeated with new random starts (Chris 2026-10-20): the 9 mT base of the static saturation test, the
+    option C field of K4_1_ad, 3 attempts, a new --init_seed per line; nothing else changes."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg
+    here = pathlib.Path(__file__).resolve().parent
+    src, ad_src = str(here / "jobs" / "sobol_corners.txt"), str(here / "jobs" / "corners_ad300.txt")
+    cr = dict(CJ.crep_lines(src=src, ad_src=ad_src))
+    assert sorted(cr) == ["K4_1_cr%d" % s for s in CJ.CREP_SEEDS]
+    base = shlex.split(dict(CJ.satstatic_lines(src=src))["K4_1_nx_sad"])
+    ad = shlex.split(dict(CJ.job_lines(ad_src))["K4_1_ad"])
+    for s in CJ.CREP_SEEDS:
+        t = shlex.split(cr["K4_1_cr%d" % s])
+        assert get_arg(t, "init_seed") == [str(s)] and get_arg(t, "bloch_free_tries") == ["3"]
+        assert get_arg(t, "predemag_h") == get_arg(ad, "predemag_h") == ["0.0400875"]
+        assert get_arg(t, "seed") == get_arg(ad, "seed") and get_arg(t, "b_list") == ["0.006"]
+        assert get_arg(t, "init_from") is None and get_arg(t, "snap_phases") is None and "--acc" not in t
+        assert "--sat_static" not in t and get_arg(t, "init_mode") is None
+        # all other arguments as the 9 mT base of the static saturation test
+        drop = {"init_seed", "bloch_free_tries", "predemag_h", "sat_static", "init_mode", "h_sat"}
+        key = lambda tok: {a[2:]: tuple(get_arg(tok, a[2:]) or []) for a in tok if a.startswith("--") and a[2:] not in drop}
+        assert key(t) == key(base)

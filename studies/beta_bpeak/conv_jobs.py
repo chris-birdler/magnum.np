@@ -552,6 +552,28 @@ def satstatic_lines(runs=SAT_TEST_RUNS, levels=SAT_TEST_H, src="jobs/sobol_corne
     return out
 
 
+CREP_RUNS = ("K4_1",)
+CREP_SEEDS = (9001, 9002, 9003, 9004)
+
+
+def crep_lines(runs=CREP_RUNS, seeds=CREP_SEEDS, src="jobs/sobol_corners.txt", ad_src="jobs/corners_ad300.txt"):
+    """Option C repeated with new random starts (Chris 2026-10-20, PROTOKOLL 7.130): the same microstructure (--seed),
+    a new random start (--init_seed s), the relaxation, AC from the field of the option C run <run>_ad (its
+    --predemag_h in ad_src), the relaxation, at most 3 attempts (--bloch_free_tries 3); only the 9 mT stage, no
+    snapshots and no accumulators (as the static saturation test). Names <run>_cr<s>. Question: can option C at the
+    same microstructure also give a low 9 mT loss?"""
+    corners = dict(corner_newell_lines(src))
+    ad = dict(job_lines(ad_src))
+    out = []
+    for r in runs:
+        h = get_arg(shlex.split(ad[r + "_ad"]), "predemag_h")
+        for sd in seeds:
+            t = _sat_base(r + NX_SUFFIX, corners)
+            t = set_arg(set_arg(t, "predemag_h", h), "bloch_free_tries", [str(START_TRIES)])
+            out.append(("%s_cr%d" % (r, sd), " ".join(set_arg(t, "init_seed", [str(sd)]))))
+    return out
+
+
 K4H_RUNS = ("K4_0", "K4_1", "K4_2")
 K4H_CYCLES = 16
 
@@ -635,6 +657,7 @@ if __name__ == "__main__":
                 smooth_lines() if st == "smooth" else smooth_ad_lines() if st == "smoothad" else
                 k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
                 satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
+                crep_lines() if st == "crep" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
