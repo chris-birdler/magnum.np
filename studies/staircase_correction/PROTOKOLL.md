@@ -1000,3 +1000,14 @@ the arm (the start of the arm). Overlap: mean of m · m_ref over the magnetic ce
 
 **Cost state** (09:05 UTC): credit 7.07 $. Box 2 (0.18 $/h) has no run since 09:02 UTC. The instance 53995473 (other
 session, 0.41 $/h) also uses the credit; at 0.59 $/h together the credit lasts about 12 h.
+
+**Decision of Chris (2026-10-20, about 09:30 UTC): option 1 (analysis of seed 944, local) and option 2 (more seeds)
+together.** Options given: 1 the M(H) loops of the four arms of seed 944 (where in the cycle and in which particle the
+extra loss forms; local, no cost); 2 more seeds until 2 SE is at most 0.15 (with SD of d about 0.25 about 11 … 12
+seeds, thus 8 more; estimate); 3 stop with the reading "not determined". Recommendation was 1 first.
+- Started on box 2 (about 09:35 UTC): seeds 945 … 952, arms D15, T3, T3Pc, T15g (jobs/50_D15a, 50_D15b, 60_Ta,
+  70_Tb). The job lines are those of seeds 941 … 944 with only the seed changed, and --init_wait_h 24 instead of 8 (the
+  T arms wait longer for the prepared state of D15; no effect on the result). Queue: spool (4 slots) D15 945 … 948,
+  then the T arms; spool2 (2 slots) D15 949 … 952. Duration about 20 h, box cost about 3.6 $ (estimates).
+- Credit: at 0.59 $/h (box 2 and the instance 53995473 of another session) the credit of 7.07 $ lasts until about
+  21 h UTC. Chris was told that a top-up is necessary before then.
