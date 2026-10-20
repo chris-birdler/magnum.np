@@ -59,8 +59,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="/root/runs")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--design", choices=["A", "B"], default="A",
+                    help="A: arms with own preparation (D…); B: transferred start from D15 (T…, PROTOKOLL 3.11)")
     a = ap.parse_args()
     root = pathlib.Path(a.runs)
+    global ARMS, CORRECTED
+    if a.design == "B":
+        ARMS = [("T3", "dx 3, voxel model, start from D15"),
+                ("T3Pc", "dx 3, pairwise correction with centroid term, q 2, p 3, start from D15 (main arm)"),
+                ("D15", "dx 1.5, voxel model of dx 1.5 (the source of the transfer)"),
+                ("T15g", "dx 1.5, voxel geometry of dx 3 locked, start from D15")]
+        CORRECTED = ["T3Pc"]
+    base, fine, lock = ("T3", "D15", "T15g") if a.design == "B" else ("D3", "D15", "D15g")
     rec = {(arm, s): EC.run_record(root / ("%s_s%d" % (arm, s))) for arm, _ in ARMS for s in SEEDS}
     lnP = {k: r["lnP"] for k, r in rec.items()}
     print("# Dynamic arms at d/l_ex 96, φ 0.55, 9 mT (PROTOKOLL 3.5, D1 and D2)\n")
@@ -81,17 +91,17 @@ def main():
         return stats([lnP[(x, s)] - lnP[(y, s)] for s in SEEDS
                       if np.isfinite(lnP[(x, s)]) and np.isfinite(lnP[(y, s)])])
 
-    dg = paired("D15", "D15g")
-    dm = paired("D15g", "D3")
-    print("Geometry effect of the fine staircase at dx 1.5, Δ_g = ln P(D15) − ln P(D15g): %s" % fmt(dg))
-    print("Resolution of m at the dx 3 geometry, ln P(D15g) − ln P(D3): %s\n" % fmt(dm))
-    print("| corrected arm | Δ_c = ln P(arm) − ln P(D3) | d = Δ_c − Δ_g (per seed) | reading |")
+    dg = paired(fine, lock)
+    dm = paired(lock, base)
+    print("Design %s. Geometry effect of the fine staircase at dx 1.5, Δ_g = ln P(%s) − ln P(%s): %s" % (a.design, fine, lock, fmt(dg)))
+    print("Resolution of m at the dx 3 geometry, ln P(%s) − ln P(%s): %s\n" % (lock, base, fmt(dm)))
+    print("| corrected arm | Δ_c = ln P(arm) − ln P(%s) | d = Δ_c − Δ_g (per seed) | reading |" % base)
     print("|---|---|---|---|")
     out["delta_g"], out["delta_m"], out["arms"] = dg, dm, {}
     for arm in CORRECTED:
-        dc = paired(arm, "D3")
-        d = stats([(lnP[(arm, s)] - lnP[("D3", s)]) - (lnP[("D15", s)] - lnP[("D15g", s)]) for s in SEEDS
-                   if all(np.isfinite(lnP[(x, s)]) for x in (arm, "D3", "D15", "D15g"))])
+        dc = paired(arm, base)
+        d = stats([(lnP[(arm, s)] - lnP[(base, s)]) - (lnP[(fine, s)] - lnP[(lock, s)]) for s in SEEDS
+                   if all(np.isfinite(lnP[(x, s)]) for x in (arm, base, fine, lock))])
         if d["n"] < 3:
             r = "not determined (n %d)" % d["n"]
         elif abs(d["mean"]) <= 2 * d["se"] and abs(d["mean"]) <= 0.15:
@@ -100,7 +110,7 @@ def main():
             r = "not reproduced"
         else:
             r = "not determined"
-        if arm != "D3Pc":
+        if arm not in ("D3Pc", "T3Pc"):
             r += " (information)"
         print("| %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
