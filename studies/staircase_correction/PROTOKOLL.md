@@ -11,7 +11,7 @@ tell him.
 References: a number "7.x" is a section of the record of the β(B_peak) study, `studies/beta_bpeak/PROTOKOLL.md`
 (branch `study/beta-bpeak-pinning`). A number "3.x" is a section of this record.
 
-## 0. Current state (2026-10-19)
+## 0. Current state (2026-10-20)
 
 - **Terms.** l_ex: exchange length. d: particle diameter. Δx: cell edge. P: loss density in W/cm³; β: exponent of
   the loss curve over B_peak. SE: standard error; n: number of independent seeds. Staircase: the surface of a sphere
@@ -41,9 +41,12 @@ References: a number "7.x" is a section of the record of the β(B_peak) study, `
   error in the surface layer 0.2 … 0.4 % (P) and about 6 % (L) of that of the voxel model. The staircase effect S of
   the stray-field energy: 0.05 … 0.08 |E_K| (K2), 0.23 … 0.39 |E_K| (K4), 1.0 … 2.0 |E_K| (d/l_ex 96), larger against
   the finer target (q = 4) than against q = 2 (factor 1.7 … 1.8).
-- **Open.** The dynamic validation against dx 1.5 (D1 and option B, running on two boxes); the use in the main study
+- **Dynamic test (3.14).** Design A (own preparation per arm) is complete but has no power (SE of d 0.65 against the
+  bound 0.15). Design B (transferred start) decides; seeds 943 and 944 of T3Pc still run.
+- **Open.** The dynamic validation against dx 1.5 (design B, running on box 2); the use in the main study
   (decision of Chris). Target for now: the staircase of dx 1.5 (q = 2; decision of Chris 2026-10-20).
-- **Status.** Night work 2026-10-19/20 under the night mandate (decisions D1 … D7 in 3.5 … 3.10).
+- **Status.** Night work 2026-10-19/20 under the night mandate (decisions D1 … D8 in 3.5 … 3.10). Since 2026-10-20
+  morning all decisions go through Chris again (3.11).
 
 ## 1. Goal
 
@@ -896,3 +899,50 @@ sub-cells, q = 2 and 4), on K2, K4 and the dynamic test geometry (d/l_ex 96, φ 
 - Consequence (proposal): after the stray-field correction the exchange is not the dominant remaining error, but not
   negligible for small particles. A surface correction of the exchange (Neumann condition on the true surface after
   García-Cervera et al. 2003) is the next step if the dynamic validation shows a deviation.
+
+### 3.14 Dynamic test, design A complete: the reading criterion is met, but the test has no power; design B gives the decision (2026-10-20)
+
+**Data** (results/dynamic_A.md and .json; eval_dynamic.py --design A; box 1, D15g on box 2). Loss density P at
+9 mT, d/l_ex 96, φ 0.55, seeds 941 … 944. Each arm prepares its own state (option C, Newell solver with full PBC).
+All prepared states have no Bloch points. All 4 seeds are complete for D3, D3f, D3Pc, D15 and D15g.
+
+| arm | P (W/cm³), seeds 941 / 942 / 943 / 944 | SD of ln P |
+|---|---|---|
+| D3 (dx 3, voxel model) | 1.02 / 0.799 / 0.697 / 0.775 | 0.16 |
+| D3Pc (dx 3, pairwise correction with centroid term, q 2, p 3) | 1.27 / 0.594 / 3.03 / 0.585 | 0.78 |
+| D3f (dx 3, volume fraction alone, q 2) | 0.882 / 12.1 / 0.64 / 0.717 | 1.40 |
+| D15 (dx 1.5, voxel model of dx 1.5) | 1.88 / 1.39 / 0.623 / 1.16 | 0.47 |
+| D15g (dx 1.5, voxel geometry of dx 3 locked) | 1.08 / 0.871 / 1.10 / 0.875 | 0.13 |
+
+D3Lc: seeds 941 and 942 only (the other seeds cancelled by D8, CANCELLED_D3Lc.txt; the label "refused or crashed" of
+the evaluation for D3Lc_s943 is wrong, the run was cancelled). D3P: seed 941 only. Both are information.
+
+**Reading of D1** (fixed before the results, 3.5):
+
+| quantity | per seed 941 / 942 / 943 / 944 | mean ± SE (n 4) |
+|---|---|---|
+| Δ_g = ln P(D15) − ln P(D15g) | +0.55 / +0.47 / −0.57 / +0.28 | +0.18 ± 0.26 |
+| Δ_c = ln P(D3Pc) − ln P(D3) | +0.22 / −0.30 / +1.47 / −0.28 | +0.28 ± 0.42 |
+| d = Δ_c − Δ_g | −0.33 / −0.77 / +2.04 / −0.56 | +0.10 ± 0.65 |
+
+- Formal reading: "correction reproduces the geometry effect" (the mean of d is below 2 SE and below 0.15).
+- This reading has no value. The SE of d (0.65) is 4 times the bound 0.15. The 95 % interval of the mean of d
+  (t distribution, 3 degrees of freedom) is −1.99 … +2.17, so the test cannot tell a correct correction from a wrong
+  one. Design A does not decide; design B (3.11) is the test.
+- Cause of the scatter: the own preparation of each arm ends in different metastable states. Seed 943 shows it in
+  both directions: D3Pc_s943 has a loop energy w 4.4 times that of D3_s943 (1.13·10⁻⁷ against 2.59·10⁻⁸, in units
+  of the production log), and D15_s943 has a low P (0.62 W/cm³) against D15g_s943 (1.10 W/cm³). Without seed 943 the
+  values of d are all negative (−0.33 … −0.77); a seed is not left out after the result, so this is only a remark.
+- Gap of the criterion (finding): the criterion of D1 has no condition on the power of the test. A large SE makes the
+  first condition (mean at most 2 SE) easy to meet. Options for Chris in the chat of 2026-10-20; not changed without
+  his go.
+- Resolution of m at the dx 3 geometry, ln P(D15g) − ln P(D3): +0.18 ± 0.09 (SE, n 4). The correction does not act
+  on this part (the resolution of m stays at dx 3).
+
+**Design B, state at 08:10 UTC** (information, n 2 for T3Pc; seeds 943 and 944 of T3Pc run on box 2, end about
+09:45 … 10:00 UTC): Δ_g = ln P(D15) − ln P(T15g) = +0.32 ± 0.11 (SE, n 4); resolution of m, ln P(T15g) − ln P(T3) =
++0.08 ± 0.02 (n 4); Δ_c = ln P(T3Pc) − ln P(T3) = +0.42 ± 0.11 (n 2); d = −0.07 ± 0.11 (n 2; per seed +0.05, −0.19).
+No reading before n 4. The T arms start from the prepared states of D15 (no Bloch points); the label "settled ?" of the
+evaluation only says that the T runs have no preparation of their own. The transferred start removes most of the
+scatter: SD of ln P 0.22 (T3) and 0.26 (T15g) against 0.16 … 1.40 in design A, and T3 agrees with D3 within about 0.01 in
+ln P for seeds 941, 942 and 944.
