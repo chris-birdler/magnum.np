@@ -14,10 +14,10 @@
 Design A. Geometry effect of the fine staircase at dx 1.5, Δ_g = ln P(D15) − ln P(D15g): +0.183 ± 0.256 (SE, n 4)
 Resolution of m at the dx 3 geometry, ln P(D15g) − ln P(D3): +0.180 ± 0.092 (SE, n 4)
 
-| corrected arm | Δ_c = ln P(arm) − ln P(D3) | d = Δ_c − Δ_g (per seed) | reading |
-|---|---|---|---|
-| D3Pc | +0.278 ± 0.415 (SE, n 4) | +0.095 ± 0.654 (SE, n 4) | correction reproduces the geometry effect |
-| D3Pc4 | n 0 | n 0 | not determined (n 0) (information) |
-| D3Lc | -0.247 ± 0.072 (SE, n 2) | -0.757 ± 0.030 (SE, n 2) | not determined (n 2) (information) |
-| D3P | n 1 | n 1 | not determined (n 1) (information) |
-| D3f | +0.602 ± 0.705 (SE, n 4) | +0.418 ± 0.658 (SE, n 4) | not determined (information) |
+| corrected arm | Δ_c = ln P(arm) − ln P(D3) | d = Δ_c − Δ_g (per seed) | 95 % interval of mean d (t) | reading |
+|---|---|---|---|---|
+| D3Pc | +0.278 ± 0.415 (SE, n 4) | +0.095 ± 0.654 (SE, n 4) | -1.99 … +2.17 | not determined |
+| D3Pc4 | n 0 | n 0 | – | not determined (n 0) (information) |
+| D3Lc | -0.247 ± 0.072 (SE, n 2) | -0.757 ± 0.030 (SE, n 2) | -1.14 … -0.37 | not determined (n 2) (information) |
+| D3P | n 1 | n 1 | – | not determined (n 1) (information) |
+| D3f | +0.602 ± 0.705 (SE, n 4) | +0.418 ± 0.658 (SE, n 4) | -1.68 … +2.51 | not determined (information) |

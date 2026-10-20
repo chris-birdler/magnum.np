@@ -10,9 +10,11 @@ Reading of D1 (fixed before the results), paired by seed:
     Δ_c = ln P(corrected arm) − ln P(D3)        geometry effect of the correction at dx 3
     Δ_g = ln P(D15) − ln P(D15g)                 geometry effect of the fine staircase (q = 2) at dx 1.5
     d   = Δ_c − Δ_g                              per seed; mean ± SE
-  "correction reproduces the geometry effect"  |mean d| ≤ 2 SE and ≤ 0.15
+  "correction reproduces the geometry effect"  |mean d| ≤ 2 SE and ≤ 0.15, and 2 SE ≤ 0.15
   "not reproduced"                             |mean d| > 2 SE and > 0.15
   "not determined"                             else, or fewer than 3 seeds with all four values
+The condition 2 SE ≤ 0.15 (power of the test) was added by decision of Chris 2026-10-20 (PROTOKOLL 3.14), after
+design A met the first two conditions only because its SE was large.
 
     python eval_dynamic.py --runs /root/runs > results/dynamic_D.md
 """
@@ -23,6 +25,7 @@ import pathlib
 import sys
 
 import numpy as np
+from scipy.stats import t as t_dist
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "beta_bpeak"))
@@ -95,8 +98,8 @@ def main():
     dm = paired(lock, base)
     print("Design %s. Geometry effect of the fine staircase at dx 1.5, Δ_g = ln P(%s) − ln P(%s): %s" % (a.design, fine, lock, fmt(dg)))
     print("Resolution of m at the dx 3 geometry, ln P(%s) − ln P(%s): %s\n" % (lock, base, fmt(dm)))
-    print("| corrected arm | Δ_c = ln P(arm) − ln P(%s) | d = Δ_c − Δ_g (per seed) | reading |" % base)
-    print("|---|---|---|---|")
+    print("| corrected arm | Δ_c = ln P(arm) − ln P(%s) | d = Δ_c − Δ_g (per seed) | 95 %% interval of mean d (t) | reading |" % base)
+    print("|---|---|---|---|---|")
     out["delta_g"], out["delta_m"], out["arms"] = dg, dm, {}
     for arm in CORRECTED:
         dc = paired(arm, base)
@@ -104,7 +107,7 @@ def main():
                    if all(np.isfinite(lnP[(x, s)]) for x in (arm, base, fine, lock))])
         if d["n"] < 3:
             r = "not determined (n %d)" % d["n"]
-        elif abs(d["mean"]) <= 2 * d["se"] and abs(d["mean"]) <= 0.15:
+        elif abs(d["mean"]) <= 2 * d["se"] and abs(d["mean"]) <= 0.15 and 2 * d["se"] <= 0.15:
             r = "correction reproduces the geometry effect"
         elif abs(d["mean"]) > 2 * d["se"] and abs(d["mean"]) > 0.15:
             r = "not reproduced"
@@ -112,7 +115,12 @@ def main():
             r = "not determined"
         if arm not in ("D3Pc", "T3Pc"):
             r += " (information)"
-        print("| %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), r))
+        ci = "–"
+        if d["n"] >= 2 and np.isfinite(d["se"]):
+            h = t_dist.ppf(0.975, d["n"] - 1) * d["se"]
+            ci = "%+.2f … %+.2f" % (d["mean"] - h, d["mean"] + h)
+            d["ci95"] = [d["mean"] - h, d["mean"] + h]
+        print("| %s | %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), ci, r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=1))

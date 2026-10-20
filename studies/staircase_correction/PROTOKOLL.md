@@ -80,6 +80,8 @@ with full PBC.
   T15g are done.
 - 2026-10-20 morning: target of the correction for now: the staircase of dx 1.5 (q = 2), because it can be validated
   against dx 1.5 runs. The series in q towards the smooth sphere is not started.
+- 2026-10-20: reading of the dynamic test: "reproduces" needs also 2 SE at most 0.15 (option B, 3.14). Box 1 is
+  destroyed after the download of its data with md5 check.
 - 2026-10-20: the centroid term (first moment of the cut cells in the far field) is part of the method; the method is
   V1 cut cells with the pairwise window term and the centroid term (3.12). Focus on q = 2 as the proof of concept. The sections 7.117, 7.120 and 7.121 of the study
   record are copied here as 3.1, 3.2 and 3.3, with the references to each other changed to the new numbers.
@@ -934,8 +936,12 @@ the evaluation for D3Lc_s943 is wrong, the run was cancelled). D3P: seed 941 onl
   of the production log), and D15_s943 has a low P (0.62 W/cm³) against D15g_s943 (1.10 W/cm³). Without seed 943 the
   values of d are all negative (−0.33 … −0.77); a seed is not left out after the result, so this is only a remark.
 - Gap of the criterion (finding): the criterion of D1 has no condition on the power of the test. A large SE makes the
-  first condition (mean at most 2 SE) easy to meet. Options for Chris in the chat of 2026-10-20; not changed without
-  his go.
+  first condition (mean at most 2 SE) easy to meet. Options given: A keep the criterion; B add the condition
+  "2 SE at most 0.15" for the reading "reproduces", else "not determined"; C as B plus 4 more seeds (945 … 948, about
+  10 … 11 h, about 1.7 $ on box 2, estimate). **Decision of Chris (2026-10-20): B.** The decision on C comes after
+  the result of design B with n 4. Note: B was fixed after the interim result of design B with n 2 was known; the
+  added condition acts only on the SE, not on the mean. With B the reading of design A is "not determined".
+  eval_dynamic.py prints also the 95 % interval of the mean of d (t distribution).
 - Resolution of m at the dx 3 geometry, ln P(D15g) − ln P(D3): +0.18 ± 0.09 (SE, n 4). The correction does not act
   on this part (the resolution of m stays at dx 3).
 

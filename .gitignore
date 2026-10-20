@@ -5,3 +5,4 @@
 
 experiments/
 *.egg-info/
+studies/staircase_correction/remote_*/
