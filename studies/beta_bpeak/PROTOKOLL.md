@@ -7468,6 +7468,43 @@ about 08:00: "nicht stoppen"); all 4 GPUs are idle since 07:52.
   no state got BPs only during the 9 mT stage (BPs at the start of the stage = largest count during the stage in all
   states with BP data).
 
+### 7.130 Option C repeated at K4_1 with new random starts; the distribution test of PLAN 4.14 is dropped (2026-10-20; reading fixed before the results)
+
+All times UTC. Terms as in 7.129 and PLAN 4.14.
+
+**Discussion with Chris (about 10:30 … 11:30).**
+- The realisation scatter of the study already contains the scatter between prepared states: each seed gives a new
+  microstructure and its own random start (--init_seed defaults to --seed). The mean over the seeds is thus a valid
+  mean for the chosen preparation, and its standard error contains the state scatter. Earlier measure of this
+  scatter: σ(ln w) 0.41 per realisation at 9 mT (7.6, d/l_ex 96).
+- The 12 corner pairs (option C against the relaxed random start nx, the same microstructure; corners_ad_report.md)
+  give no shift of the mean over all corners: factor 1.13 at 9 mT (SE of Δ ln P 0.16, n 12), 0.89 … 1.04 at 20 … 150
+  mT. Option C is higher in 7 of 12 microstructures; K3 is lower in 2 of 3 (× 0.41, × 0.62).
+- At K4 option C is higher in 3 of 3 microstructures: × 2.43, 2.14, 2.12, 1.86, 1.42, 1.17, 0.99 at 9 … 150 mT (mean
+  over the 3 microstructures). The nx states of K4 have 2 BPs each; thus BPs can bias this comparison.
+- Rough estimate of the scatter between states of one microstructure from the 12 pairs (SD of the paired Δ ln P / √2):
+  about 0.39 at 9 mT and 0.15 at 150 mT (estimate; nx states with BPs included).
+- Decisions of Chris: the distribution test of PLAN 4.14 (8 + 8 draws at K4_1) is dropped. Question of Chris: can
+  option C, repeated with the same parameters, also give low values at K4_1? Test approved ("Go", about 11:20):
+  4 repeats.
+
+**Test.** K4_1_cr9001 … K4_1_cr9004 (conv_jobs.crep_lines, jobs/crep.txt, md5 0e84a158; code 0113bc7 on main): the
+same microstructure (--seed 2042), a new random start (--init_seed 9001 … 9004), the relaxation, AC from
+predemag_h 0.0400875 (as K4_1_ad), the relaxation, at most 3 attempts if a BP remains; only the 9 mT stage, no
+snapshots and accumulators; all other arguments as the 9 mT base of the static saturation test (test_crep_lines).
+Started 11:31 on gpu 0 … 3; about 3 … 3.5 h; about 1.4 $ (estimate, 0.405 $/h).
+
+**Reading (fixed before the results).** w_l as in 7.129; reference: the earlier option C state of K4_1, 5.24·10⁻⁷.
+- "Option C can also be low" if at least 1 of the 4 w_l is below 2.6·10⁻⁷ (half of the reference).
+- "Option C high at K4_1" if all 4 w_l are above 4.0·10⁻⁷ (above all 5 states of the static saturation test).
+- Else "not determined".
+- A repeat counts only with a prepared state free of BPs and a 9 mT stage that meets the rules; else it is reported
+  and left out.
+
+**Open (Chris, about 11:30).** If option C can also be low, the corner results with 3 seeds are dominated by the
+scatter between states, and a new corner study and main study with more seeds follow; the K4 test (saturation at
+K4_0 … K4_2, all amplitudes) is then not needed.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
