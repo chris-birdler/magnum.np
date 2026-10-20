@@ -1,8 +1,9 @@
 """
 R3 of PLAN.md: smallest and largest eigenvalue of the corrected stray-field operator x -> −v ⊙ h(x) on the magnetic
 V1 cells (h = FFT field of the moments v m plus the near-field correction). The operator is positive semi-definite
-in the exact case. Reading: "passed" if λ_min ≥ −10⁻⁴ λ_max; "not usable" if below; "not determined" if Lanczos
-(scipy eigsh, ARPACK) does not converge.
+in the exact case. Plain Lanczos with a fixed number of steps (D7): "not usable" if the smallest Ritz value (an
+upper bound of λ_min) is below −10⁻⁴ λ_max; "passed" if it is above and its residual is at most 10⁻⁴ λ_max; else
+"not determined".
 
     python check_sign.py --run K4_1_nx_pd300 --q 2 --p 1 2 3 --forms P L [--shells 1] --out results
 """
@@ -15,7 +16,6 @@ import time
 
 import numpy as np
 import torch
-from scipy.sparse.linalg import LinearOperator, eigsh, ArpackNoConvergence
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -39,7 +39,7 @@ def main():
     ap.add_argument("--p", type=int, nargs="+", default=[1, 2, 3])
     ap.add_argument("--forms", nargs="+", default=["P", "L"])
     ap.add_argument("--shells", type=int, default=None)
-    ap.add_argument("--maxiter", type=int, default=400)
+    ap.add_argument("--steps", type=int, default=300, help="Lanczos steps (field evaluations)")
     ap.add_argument("--centroid", action="store_true", help="far field with the first moment (PROTOKOLL 3.7)")
     ap.add_argument("--out", default=str(HERE / "results"))
     a = ap.parse_args()
@@ -78,21 +78,41 @@ def main():
                     h = h + centroid_field(coarse.term._N, vfull, dcen, m, shape=coarse.fft_shape)
                 return (-(vt * h.reshape(-1, 3)[mag])).reshape(-1).numpy()
 
-            op = LinearOperator((3 * nm, 3 * nm), matvec=mv, dtype=np.float64)
             t = time.time()
-            lmax = float(eigsh(op, k=1, which="LA", tol=1e-3, maxiter=a.maxiter, return_eigenvectors=False)[0])
-            try:
-                lmin = float(eigsh(op, k=1, which="SA", tol=1e-3, ncv=40, maxiter=a.maxiter,
-                                   return_eigenvectors=False)[0])
-                conv = True
-            except ArpackNoConvergence as e:
-                lmin = float(np.min(e.eigenvalues)) if len(e.eigenvalues) else float("nan")
-                conv = False
-            ratio = lmin / lmax
-            reading = ("not determined" if not conv else ("passed" if ratio >= -1e-4 else "not usable"))
             key = "%s_q%d_%s%d" % (geo_key, q, form, p)
-            res[key] = {"lmin": lmin, "lmax": lmax, "ratio": ratio, "converged": conv, "reading": reading,
-                        "matvecs": count[0], "time_s": time.time() - t, "setting": list(setting)}
+            # plain Lanczos (no reorthogonalisation) with a fixed number of steps: the extreme Ritz values of the
+            # tridiagonal matrix converge first; the smallest Ritz value is an upper bound of λ_min, its residual
+            # |β_m s_m| measures the convergence (D7, PROTOKOLL 3.10)
+            rng = np.random.default_rng(1)
+            x = rng.normal(size=3 * nm)
+            x /= np.linalg.norm(x)
+            x_old = np.zeros_like(x)
+            al, be = [], [0.0]
+            for k in range(a.steps):
+                w = mv(x) - be[-1] * x_old
+                al.append(float(w @ x))
+                w -= al[-1] * x
+                b_new = float(np.linalg.norm(w))
+                be.append(b_new)
+                x_old, x = x, w / b_new
+                if (k + 1) % 25 == 0:
+                    ev = np.linalg.eigvalsh(np.diag(al) + np.diag(be[1:-1], 1) + np.diag(be[1:-1], -1))
+                    log(key, "step", k + 1, "ritz min %.4e max %.4e" % (ev[0], ev[-1]))
+            T = np.diag(al) + np.diag(be[1:-1], 1) + np.diag(be[1:-1], -1)
+            ev, S = np.linalg.eigh(T)
+            lmin, lmax = float(ev[0]), float(ev[-1])
+            r_min, r_max = abs(be[-1] * S[-1, 0]), abs(be[-1] * S[-1, -1])
+            ratio = lmin / lmax
+            conv = r_min <= 1e-4 * lmax
+            if ratio < -1e-4:
+                reading = "not usable"                # an upper bound of λ_min below the limit is a proof
+            elif conv:
+                reading = "passed"
+            else:
+                reading = "not determined"
+            res[key] = {"lmin_ritz": lmin, "lmax_ritz": lmax, "ratio": ratio, "resid_min": r_min, "resid_max": r_max,
+                        "converged": bool(conv), "reading": reading, "matvecs": count[0], "time_s": time.time() - t,
+                        "setting": list(setting), "method": "Lanczos %d steps" % a.steps}
             log(key, res[key])
             fname.write_text(json.dumps(res, indent=1))
         del nc
