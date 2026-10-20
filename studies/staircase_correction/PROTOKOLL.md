@@ -1229,8 +1229,8 @@ field.
 
 **Finding 1, seed 951: D15 changed its state during the cycles.** Loop energy of D15_s951 per cycle: 0.066 J/m³
 (cycle 2), 0.13 (3), 0.17 (4), then 0.16 J/m³ constant. In the end state of particle 2, 207 cells (0.17 % of the
-particle) differ from the prepared state (m · m_ref < 0.9), all in the interior (r/R 0.57 … 0.75). No cell is
-reversed. After the change the shares of particles 1 and 2 are about 10 times larger (phase lag 10.6 and 11.5 mrad).
+particle) differ from the prepared state (m · m_ref < 0.9), all at the surface (r/R 0.83 … 1.00; corrected in 3.26:
+the first value "interior, r/R 0.57 … 0.75" came from a wrong particle centre). No cell is reversed. After the change the shares of particles 1 and 2 are about 10 times larger (phase lag 10.6 and 11.5 mrad).
 T3, T3Pc, T15g and X3 started from the same prepared state and stayed in it (overlap 0.997 … 1.000 per particle).
 Thus for seed 951 D15 measures a different state. This one event gives +1.70 in Δ_g and −1.71 in total.
 
@@ -1330,3 +1330,63 @@ convolution form of the same sum would remove this table; a patch, not built).
 
 **Decision of Chris:** box 2 runs on after its GPU runs: X3 at q 8 (exact field of the 1.25-nm staircase, fine FFT
 384³ on the GPU) and T3Pc at q 8 for further states; then download, md5 and destroy.
+
+### 3.26 Full set, n 12 (seeds 941 … 952): N3 within ±0.15, N1 not determined; local events at the surface; correction of 3.23 (2026-10-20, about 23:50 UTC)
+
+**Box 2.** All 32 runs done at 23:06 UTC, no failure. The waiting copies of the T and X3 jobs of 951 and 952 (6
+processes, folders with only config.json and stdout.log) and their 2 dispatchers were stopped by PID. Download of
+runs (without these 6 folders), spool, spool2, spool3, stageA, smoke and states: 429 files, 545 MB, md5 verified
+(local folder remote_20261021_box2/, not in git, manifest box2.md5). Where box 2 has copies of box-1 folders, the files
+are identical (checked file by file). Root order of the evaluation: box 3, box 1, box 2.
+The q series (3.25) goes on: because the production is done, the GPU part (X3 at q 8) started at 23:09 UTC beside
+the CPU part (T3Pc at q 8), so that the GPU does not stand idle (/root/qseries/run2.sh; run.sh was stopped by PID,
+its running T3Pc_s942 process goes on). Its results follow in a later section.
+
+**Results, n 12** (results/dynamic_B.md, dynamic_B.json, proofs_B.png; eval_dynamic.py --design B). Values in ln P,
+mean ± SE, 95 % interval of the mean (t distribution):
+- N3 = −0.0020 ± 0.0010 (n 12), −0.0043 … +0.0003: within ±0.15 (K4). The largest single value is −0.0085 (seed 952),
+  that is 0.85 % of P.
+- N1 = −0.113 ± 0.205 (n 12), −0.564 … +0.338: not determined (K4). At n 6 (3.23) it was within ±0.15. 11 seeds give
+  +0.015 … +0.260; seed 946 gives −2.357, because T3_s946 has 11.2 W/cm³, that is 13.7 times the geometric mean of the
+  other 11 T3 runs.
+- Δ_g = +0.604 ± 0.224 (n 12); Δ_c = +0.275 ± 0.282 (n 12); m = +0.214 ± 0.190 (n 12); total = −0.216 ± 0.190
+  (n 12), −0.634 … +0.202. D1 reading (d = Δ_c − Δ_g): −0.329 ± 0.289 (n 12), not determined.
+- Geometric means of P: T3 1.01, T3Pc 1.34, X3 1.34, T15g 0.906, D15 1.66 W/cm³.
+
+**Local events** (results/events_B.md and .json, check_events.py). An event is a run in which cells inside the
+particles change m during the cycles (m · m0 < 0.9 between the start and the end of the cycles). 13 of 60 runs have
+an event. All changed cells lie at the surface, r/R 0.83 … 1.02 (r/R above 1: cut cells of the q-2 staircase with
+their centre outside the sphere). Runs with an event, of 12 per arm: T3 3 (seeds 946, 949, 951), T3Pc 4 (944, 947,
+949, 950), X3 4 (the same seeds, particles and cell numbers ± 1 as T3Pc), D15 2 (949, 951), T15g 0.
+The loop energy W_loop per cycle shows 3 types (cycle 0 starts from rest; without an event it gives 0.45 … 0.57 of
+the last cycle):
+1. One change in cycle 0 or 1, then a calm tail with normal loss: T3 949 and 951, T3Pc and X3 944 and 947 (2 … 17
+   cells).
+2. High loss from the first cycle on, then constant: T3 946 (8 cells; W_loop 0.374 J/m³, the other T3 runs 0.020 …
+   0.041 J/m³), T3Pc and X3 949 and 950 (3 … 4 cells; 0.21 and 0.13 J/m³).
+3. Change over several cycles, then a calm tail with high loss: D15 949 (214 cells; W_loop 0.068 J/m³ in cycle 0,
+   0.68 J/m³ from cycle 3) and D15 951 (207 cells, cycles 3 and 4).
+In the 5 runs of types 2 and 3 the particle with the changed cells has the largest phase lag of the 4 particles
+(check_loops.py with the seeds 945 … 950 set in the call; 3.23 for D15_s951). check_loops.py cannot draw its figure
+for these seeds: negative particle shares give NaN on the log axis (finding; no fix without the go of Chris).
+In seed 946 only T3 has the event; T3Pc, X3, T15g and D15 of this seed have normal loss. In seeds 949 and 950, T3Pc
+and X3 have it, T3 and T15g do not. Each of these is 1 seed: no claim on a cause.
+N3 also holds for the events: in all 4 seeds with an event, T3Pc and X3 have the event in the same particle with the
+same number of cells (± 1), and P agrees within 0.85 %.
+
+**Information, not a reading (exclusion after the data):** the effects on the seed pairs without an event in either
+arm: N1 = +0.074 ± 0.014 (n 9), +0.040 … +0.107; N3 = −0.001 ± 0.001 (n 8); Δ_c = +0.271 ± 0.140 (n 6);
+Δ_g = +0.300 ± 0.088 (n 10); m = +0.029 ± 0.122 (n 7); total = −0.030 ± 0.121 (n 7), −0.326 … +0.265.
+Without only seed 946: N1 = +0.091 ± 0.021 (n 11), +0.045 … +0.137. Geometric means of P without the runs with an
+event: T3 0.782 (n 9), T3Pc 0.986 (n 8), X3 0.987 (n 8), T15g 0.906 (n 12), D15 1.163 W/cm³ (n 10).
+
+**Correction of 3.23 (error in the measuring method).** 3.23 gave r/R 0.57 … 0.75 ("all in the interior") for the 207
+changed cells of D15_s951. The script took the mean position of the cells of a particle as the sphere centre. For a
+particle that crosses the box edge this mean is not the centre. With the FCC site and the minimum image (check: the
+mean offset of the cells of each particle from its site is 0 nm, the largest r/R is 1.000) the cells lie at r/R
+0.83 … 1.00 (median 0.94), that is at the surface. 3.23 is corrected in place.
+
+**Reading.** N3 is shown at n 12, also for the runs with an event. N1 is not determined at n 12, because 1 event in
+1 run decides the mean: ln P at 9 mT has a heavy tail from local events in a few surface cells. The goal of 3.19
+("no additional pinning fields from the stray field") is a question about these events; the numbers per arm (0 … 4
+of 12) are too small for a claim. Open decision of Chris: how to read N1 (options in the message of 2026-10-21).
