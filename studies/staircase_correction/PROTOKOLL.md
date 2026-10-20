@@ -76,7 +76,9 @@ with full PBC.
 - 2026-10-20 morning: option B of the dynamic test (transferred start, 3.11). Both boxes keep running until D15g and
   T15g are done.
 - 2026-10-20 morning: target of the correction for now: the staircase of dx 1.5 (q = 2), because it can be validated
-  against dx 1.5 runs. The series in q towards the smooth sphere is not started. The sections 7.117, 7.120 and 7.121 of the study
+  against dx 1.5 runs. The series in q towards the smooth sphere is not started.
+- 2026-10-20: the centroid term (first moment of the cut cells in the far field) is part of the method; the method is
+  V1 cut cells with the pairwise window term and the centroid term (3.12). Focus on q = 2 as the proof of concept. The sections 7.117, 7.120 and 7.121 of the study
   record are copied here as 3.1, 3.2 and 3.3, with the references to each other changed to the new numbers.
 
 **Earlier decisions that bind this work.**
@@ -798,3 +800,56 @@ the smallest Ritz value (an upper bound of λ_min), r its residual; λ_Ritz,max 
   q for now. Options given: B smaller particles (d/l_ex 48, reference dx 0.75), C q = 4 at d/l_ex 96 (reference
   dx 0.75, 192³), D coarse mesh dx 6 with q = 4 against the existing dx 1.5 references; D would be the first step
   if higher q is wanted later.
+
+### 3.12 Why the method of Donahue alone is not sufficient, what the extension does, and the evidence; decision of Chris: the extension is part of the method (2026-10-20)
+
+**The method of Donahue in one picture.** The sphere is built from coarse cubes. A cube at the surface holds only a
+part of the material (a cut cell). Near pairs (up to p cells apart) use the exact coupling of the true shapes, from
+fine sub-cubes. Far pairs use the coarse coupling: the cut cell acts as a smaller magnet (moment v M_s Δx³, v the
+volume fraction) at the centre of its cube.
+
+**Why this is not sufficient here.** The material of a cut cell sits at one side of the cube; its centroid lies up to
+about 0.43 cells from the centre (one body sub-cell at q = 2; own calculation). For one far pair the error is very small (it falls as 1/r⁴ with the distance r, a
+misplaced dipole). But a sphere has very many cells in its interior, and each of them feels the misplaced surface
+magnets a little. The sum of these small errors then falls only as 1/R with the window radius R (inference, 3.6; the
+test with the extension agrees, 3.7). Measured (pairwise form P, K2_0, energy error in % of the staircase effect S,
+3.6 and 3.7):
+
+| p | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| method of Donahue (P) | 95 | 59 | 43 | 34 | 28 | 24 |
+| with the extension (P) | 19 | 5 | 2 | – | – | – |
+
+Without the extension the error follows 1/(p + 0.6); an error of at most 10 % would need p of about 14 (estimate from
+the law; a window of 29³, about 24 000 neighbours per surface cell, own calculation), which is not practical. A probable reason why Donahue & McMichael did not see this
+(inference): they tested only films one cell thick, which have almost no interior.
+
+**The extension.** In the far field each cut cell carries its moment at the true centroid of its body part, not at
+the centre of its cube (the first moment). Technically this is one additional term with the central difference of
+the same periodic kernel (factor i sin ω in Fourier space): no new kernel, the full PBC and the FFT stay; the window
+term subtracts the same far-field coupling (3.7).
+
+**Evidence that the extension is necessary.**
+- Without it the error falls only as 1/(p + 0.6) (p = 1 … 4 on 2 geometries, p = 5 and 6 on K2); the energy
+  criterion of R2 cannot be met with a practical window.
+- The cause was stated as a hypothesis before the test (3.6); the test with the extension then showed the expected
+  change: the error now falls by a factor of about 4 from p = 1 to 2 and about 2.7 from p = 2 to 3; before, each step
+  left 0.63 and 0.73 of the error.
+- The window term stays necessary as well: with the extension but without the window term the error is −28 % of S
+  (K4_1, q = 2).
+
+**Evidence that it is sufficient (static).**
+- R2 holds for the pairwise form from p = 2 on in all 7 states, on 3 geometries (K2: d/l_ex 300, φ 0.62; K4:
+  d/l_ex 300, φ 0.55; the dynamic test geometry: d/l_ex 96, φ 0.55), for q = 2 and q = 4 (3.7 … 3.9). At p = 3 the
+  energy error is 1 … 2 % of S and the field error in the surface layer 0.2 … 0.4 % of that of the voxel model.
+- Controls: with a window over the whole box the result is exact (deviation below 10⁻¹⁰, unit test), so the
+  extension does not change the exact limit; the operator stays symmetric (consistent energy); the pairwise form
+  has no negative Ritz value and the same smallest Ritz value as the positive semi-definite reference; by the strict
+  rule R3 stays "not determined" (3.10, D8). The cell-local form L is "not usable" (R3, negative mode).
+- Not yet shown: the sufficiency for the dynamics (does the loss follow the finer staircase?). This is the running
+  validation against dx 1.5 (D1 and option B). Only the stray field is corrected, not the exchange. The extension is
+  not in the literature found (3.1, 3.2); it is a construction of this work.
+
+**Decision of Chris (2026-10-20).** The centroid term (first moment of the cut cells in the far field) is part of the
+method. The method of this work is: V1 cut cells (Donahue & McMichael 2007) with the pairwise window term and the
+centroid term in the far field. The decision concerns the pairwise form; the cell-local form is not used.
