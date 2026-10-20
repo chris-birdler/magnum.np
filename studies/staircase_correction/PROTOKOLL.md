@@ -1054,3 +1054,36 @@ alone is too small as a cause: per particle, ln w_k(T15g) − ln w_k(T3) (same g
 - Consequence (for Chris): even if more seeds give a mean d near 0, one corrected run at dx 3 differs from its run at
   dx 1.5 by about ±0.25 in ln P (SD of d), because the particle errors do not cancel in a box of 4 particles. Whether
   "no bias in the mean, ±0.25 per realisation" is sufficient for the main study is a model question for Chris.
+
+### 3.17 Search for the cause, step 1: energy of each term and particle in the start states; the static mismatch is the same in all particles (2026-10-20, go of Chris)
+
+**Method** (energy_budget.py, local CPU, double precision; results/energy_budget_B.md and .json). Each start state
+(init.pt) of the four arms of design B, seeds 941 … 944, in the model of its own arm, built as run_loops builds it.
+Energy of each linear term in each particle: sum of −½ μ0 M_s,cell m · h V_cell over the cells of the particle, in
+units of K_d V_box. Check: the sum of the terms gives the energy of the run record within 1.5·10⁻⁶ (relative) for all
+16 states (for D15 the record after the AC preparation). Differences as in 3.16: δ_c = E(T3Pc) − E(T3),
+δ_g = E(D15) − E(T15g).
+
+**Result** (10⁻⁶ K_d V_box per particle; range over the 16 particle-seed pairs):
+
+| term | δ_c (correction at dx 3) | δ_g (fine staircase at dx 1.5) | δ_c − δ_g |
+|---|---|---|---|
+| stray field (with the correction term) | −384 … −377 | −245 … −237 | −142 … −138 |
+| exchange | −53 … −47 | −109 … −103 | +55 … +57 |
+| cube anisotropy | −9 … −2 | −10 … −2 | −1 … +2 |
+
+- The mismatch of the stray field and of the exchange is the same in all 16 particle-seed pairs within ±2 %. The loss
+  errors of 3.16 change sign from particle to particle (d_k −0.63 … +0.58). Thus the energies of the start states do
+  not show the cause of the particle errors. Correlation of the mismatch with d_k over the 16 pairs: stray field
+  +0.44, exchange +0.09, anisotropy −0.49 (the pairs are not independent; no test).
+- Meaning of the uniform mismatch: for the same coarse m the correction gives the stray field of the fine staircase
+  (static test, 1 … 2 % of S, 3.9). The stray-field effect of the staircase is −1.52·10⁻³ K_d V_box (4 particles) at
+  the resolution of m of dx 3 and −0.96·10⁻³ at dx 1.5. Interpretation (not tested): with the finer m the cells at
+  the steps of the coarse staircase turn and lower its surface charges, so the coarse staircase costs less. The
+  effect of the geometry thus depends on the resolution of m.
+- Consequence for the dynamic test: d = Δ_c − Δ_g contains two parts that the four arms cannot separate: the error
+  of the correction (the corrected model against the exact stray field of the fine staircase, both with the m of
+  dx 3) and the interaction of geometry and resolution of m (the geometry effect at dx 3 against that at dx 1.5). The
+  static accuracy of the correction suggests that the second part is the larger one; this is not shown.
+- A same-state comparison before the relaxation was tried and dropped: the transferred start of T15g has 8736 cells
+  (1.8 %) with the m of void cells of D15, which gives an exchange energy far from the relaxed one.
