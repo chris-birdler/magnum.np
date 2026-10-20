@@ -7455,6 +7455,19 @@ microstructure) and how many; how a new prepared state is made (a new random sta
 pass, or a small perturbation of the saturated state); the overall reading of question 2. The instance stays on (Chris,
 about 08:00: "nicht stoppen"); all 4 GPUs are idle since 07:52.
 
+**Decisions of Chris (about 10:15).**
+- Question 2, overall reading: "not determined", because the spread between prepared states (Δ ln w_l up to 0.62 with
+  a change at the level of the rounding) is as large as the measured differences.
+- The dispatcher runs from main before new code is added: feature/newell-pbc merged into main (39861a5; study suite
+  123 passed, 3 skipped); instance/dispatcher.sh fetches origin main (d01a3db); the dispatcher worktree on the
+  instance is at d01a3db (/root/disp_commit; the dispatcher process keeps its loaded run_queue.py, unchanged since
+  eba2dfd). New code goes to main (worktree magnum.np-main). The study branch is not merged yet (commit 9f66496 has
+  the trailer lines; the rewrite waits for a permission).
+- Distribution test at K4_1: go; PLAN 4.14 follows for the approval of the design and D1 … D3.
+- Plots of all prepared states (plot_satstatic.py, results/figures_satstatic/): color = BP status, x = preparation;
+  no state got BPs only during the 9 mT stage (BPs at the start of the stage = largest count during the stage in all
+  states with BP data).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
