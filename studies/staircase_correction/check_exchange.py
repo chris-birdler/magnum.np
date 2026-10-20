@@ -113,16 +113,19 @@ def main():
             gq = fcc_box(N, d_lex, dx, sub=q)
             models["V1_q%d" % q] = (gq["frac"].astype(float), gq["frac"].astype(float))
         res["helix"][g], res["vortex"][g] = {}, {}
-        for kname, kd in (("100", (1, 0, 0)), ("110", (1, 1, 0)), ("111", (1, 1, 1))):
-            for lam in (d_lex / 2, d_lex / 4):
-                kv = np.array(kd, float) / np.linalg.norm(kd) * 2 * np.pi / lam
+        # wave vectors commensurate with the periodic box (integer multiples of 2π / a), else the phase jumps at the
+        # box edge and the exchange across it (PBC) adds a spurious energy; |n| about 3 and 6 (λ about d/2 and d/4)
+        for kname, nvec in (("100", (3, 0, 0)), ("110", (2, 2, 0)), ("111", (2, 2, 2)),
+                            ("100b", (6, 0, 0)), ("110b", (4, 4, 0)), ("111b", (3, 3, 3))):
+                kv = np.array(nvec, float) * 2 * np.pi / a_lex
+                lam = 2 * np.pi / np.linalg.norm(kv)
                 m = helix(N, dx, kv)
                 Eref = stencil_density(kv, dx) * V_body
                 Econt = A0 * float(kv @ kv) * V_body
                 row = {"lambda_lex": lam, "stencil_vs_continuum": Eref / Econt - 1}
                 for mn, (f, fm) in models.items():
                     row[mn] = exchange_energy(N, dx, A0 * f, MS0 * fm, m) / Eref - 1
-                res["helix"][g]["%s_lam%.0f" % (kname, lam)] = row
+                res["helix"][g][kname] = row
                 print(g, kname, "lam %.1f" % lam, {k: round(v, 4) for k, v in row.items()}, flush=True)
         for rcf in (0.1, 0.3):
             rc = rcf * R
