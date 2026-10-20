@@ -7337,13 +7337,27 @@ test at dx 1.5). Then this offline check is made again first, and W and the thre
 (two-sided reading of the history test at K3). Decision 3 (no new runs without his go) is superseded by the
 approved rerun K4_1_nx_sad_rep. Log: results/night_decisions_20261019.md.
 
-**Precision (question of Chris, about 06:30).** Does the fp32 noise need fp64? Facts: the precision test of 7.112 (fp64
-against fp32 at 9 mT from the same start state, K1_0 … K4_0) gave |Δ ln w| at most 0.0001 and ε within 0.0002 (n 4);
-fp64 costs × 1.6 time per cycle on the V100. The fp32 noise shows in the stop of the relaxation (see above) and it can
-select the end state of the AC pass at the first large switching (7.127 test, inference, n 2 pairs). fp64 would make
-the rounding smaller, but other small changes (step, tolerance, order of the GPU sums) would still select the state.
-**Decision of Chris:** the simulation stays in fp32; the energies stay summed in fp64 (commit 6c1e539); the stop of
-the relaxations without a field stays option 1.
+**Precision (question of Chris, about 06:30): does the fp32 noise need fp64?**
+- Facts: the precision test of 7.112 (fp64 against fp32 at 9 mT from the same start state, K1_0 … K4_0) gave
+  |Δ ln w| at most 0.0001 and ε within 0.0002 (n 4). fp64 costs 1.6 times the time per cycle on the V100.
+- Where the fp32 noise shows: (1) in the stop of the relaxation (see above); (2) it can select the end state of the AC
+  pass at the first large switching (7.127 test; inference, n 2 pairs; the rerun K4_1_nx_sad_rep checks it).
+- Physical reason to accept (2): the real material has thermal noise. At room temperature this noise is much larger
+  than the fp32 rounding, and it also selects the state at each unstable point of the AC demagnetization. Thus a
+  state that a rounding difference selects is one possible state of the real material. The spread of these states is
+  part of the physics and goes into the realisation scatter (several preparations per microstructure), not into the
+  numerical error.
+- Numerical reason to keep fp32: fp64 makes the rounding smaller, but other small changes (time step, tolerance, order
+  of the sums on the GPU) still select the state. fp64 would make one run reproducible, not the result independent of
+  the selection.
+- What must not happen: cancellation errors, that is, the loss of digits when a small difference of two large numbers
+  is formed. This is why the quantities that are such differences are computed in fp64: the energy of each field term
+  is summed in fp64 (commit 6c1e539; before, the fp32 sum gave an energy change of exactly 0 in 29 of 116 old runs);
+  the time state.t is fp64 (fp32 time gives about 1 % error in the accumulated time step); the diagnostics (M, the
+  dissipation, the loop integral W_loop) are in fp64. The precision test and the energy balance (S5: median |d| 0.0035
+  at 9 mT) show no cancellation error.
+- **Decision of Chris:** the simulation stays in fp32; the energies and the diagnostics stay in fp64; the stop of the
+  relaxations without a field stays option 1.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
