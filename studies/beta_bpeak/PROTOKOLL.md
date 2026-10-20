@@ -7505,6 +7505,26 @@ Started 09:31 on gpu 0 … 3; about 3 … 3.5 h; about 1.4 $ (estimate, 0.405 $/
 scatter between states, and a new corner study and main study with more seeds follow; the K4 test (saturation at
 K4_0 … K4_2, all amplitudes) is then not needed.
 
+**Decision of Chris (about 10:05): the amplitudes stay in sequence on one prepared state; the budget goes into more
+seeds.** Question of Chris: should each amplitude start from its own new prepared state, so that the amplitudes also
+carry the scatter between states?
+- Times per run (K4 option C runs, one run per GPU): setup 0.2 h; relaxation of the random start 0.3 … 1.9 h (8 000 …
+  48 000 iterations); AC from 300 mT 1.0 … 1.1 h; relaxation after it 0.1 … 0.5 h. Preparation of option C without a
+  BP: 1.6 … 3.7 h, typically 2 … 2.5 h; each further attempt about 1.7 h. Preparation from the static saturation at
+  2 M_s: about 2.5 … 3 h; each further pass about 2.3 h. One amplitude stage (7 cycles): about 0.6 … 0.7 h. Thus one
+  preparation costs as much as 3 … 4 amplitude stages.
+- One full curve of 7 amplitudes: in sequence about 2.5 h + 7 × 0.65 h ≈ 7 h; with its own preparation for each
+  amplitude 7 × (2.5 + 0.65) h ≈ 22 h, about 3 times more (more with extra attempts).
+- Reasons for the decision:
+  - Budget: for the same GPU time the sequence gives about 3 times more independent curves (seeds), thus a smaller
+    standard error of the means and of β.
+  - Validity: each seed already has its own microstructure and its own random start; the scatter between states is
+    thus in the scatter between seeds. A preparation per amplitude does not make the mean more valid.
+  - β per run stays defined (one state per curve); with one preparation per amplitude β would come only from the
+    regression over all points.
+  - The sequence itself changed the loss little in the earlier check (7.6: 50 mT directly from the start state against
+    50 mT after 9 and 20 mT: −5 %; 1 pair, d/l_ex 96).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
