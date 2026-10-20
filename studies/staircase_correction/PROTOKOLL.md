@@ -791,3 +791,6 @@ the smallest Ritz value (an upper bound of λ_min), r its residual; λ_Ritz,max 
   correction at dx 3 (same cost per time step for any q). Proposal (open for Chris): after the validation, S(q) for
   q = 2, 4, 8 statically on the d/l_ex 96 geometry, then P(q) dynamically at dx 3 and an extrapolation to q → ∞.
   Limits: the exchange still sees the coarse staircase; the resolution of m stays at dx 3.
+- 2026-10-20 (decision of Chris): the q = 4 arms D3Pc4 are cancelled before their start. They have no dynamic
+  reference (dx 0.75 runs) and belong to the series in q, which is not started. The static result for q = 4 stays
+  (3.8, 3.9). Box 1 queue: spool8 (D3f_s944, then T3 and T3Pc).
