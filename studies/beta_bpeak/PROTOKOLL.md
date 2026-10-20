@@ -7651,6 +7651,55 @@ documented arm (7.119). PLAN 4.14 is dropped (7.130).
 stays on (Chris, about 13:00: "lass laufen"). PLAN 4.15 waits for a context-free review and for the decisions of
 Chris.
 
+### 7.133 PLAN 4.15, phase 1: decisions, code, deletions on the instance, start of the first step; the dispatcher started the K4 history jobs again (2026-10-20)
+
+All times UTC. Terms as in PLAN 4.15 and 7.132.
+
+**Decisions of Chris (PLAN 4.15).** D7 (b) at 13:36. D1 (c), D2 (a), D6 (b) and D8 (a) at 13:56: 4 seeds per corner
+first, then the evaluation; Chris decides on more seeds after it. D4 (c) at about 13:45, with a change: the state files
+of the nx and ad corner runs are deleted without a download (no evaluation needs them). D5 at about 14:10: a top-up of
+20 $ (credit 3.96 $ at about 14:08 and 28.80 $ at 14:17; the difference to 20 $ is not explained here). D3 stays open
+until after phase 1.
+
+**Code (commit 8640e55 on main).** h_sat in INIT_KEYS and in the exemption of a late static saturation; the check of a
+loaded state is the function init_key_diff; conv_jobs.sat_corner_lines and sat_seed; the name patterns of
+analyze_design and instance_postproc.PATTERN_SAT; dispatcher.sh reads the post-processing pattern from
+/root/postproc_pattern. Tests: test_h_sat_is_an_init_key, test_sat_corner_lines, test_postproc_pattern_sat. Study
+suite: 127 passed, 3 skipped, exit code 0. Job files: jobs/corners_sat_small.txt (K1, K3; md5 e0108708) and
+jobs/corners_sat_large.txt (K2, K4; md5 c2b3ceeb). Open: C4 (the evaluation). It does not change the runs; the run
+code of phase 1 is 8640e55 (S12).
+
+**Deletions on the instance (D4).**
+- The state files of the 24 nx and ad corner runs (init.pt, checkpoint.pt, 7 stage states): 213 files, 5.8 GB
+  (24 × 8 + 21: K2_0_ad, K2_1_ad and K4_1_ad have no own init.pt, they loaded a pd300 state). Their md5 list is local
+  (runs/md5_deleted_corner_states_20261020.txt). The 3 pd300 states stay.
+- The 6 folders of the K4 history test (7.123): first the 48 files other than the snapshots were downloaded and
+  md5-checked (runs/md5_h16_20261020.txt); then the folders were deleted (about 11 GB). The snapshots were evaluated on
+  the instance (7.126); the results are in git (results/k4hist_snap*.json, commit a00485c on the study branch;
+  before, they were only in a session folder).
+- Free disk on the instance: 17 GB before, 34 GB after.
+
+**Error: the dispatcher started the K4 history jobs again.** Their job file 20_k4hist.jobs was still in the spool.
+run_queue reads all spool files again at each start and takes a job as done only if runs/<name>/DONE exists; the file
+20_k4hist.jobs.done (2026-10-19) does not stop this. After the deletion of their folders, the dispatcher thus took the
+6 jobs as not done. After its restart at 8640e55
+(14:05) it started them before the corner jobs (priority 20 against 31). 5 of them failed at once, because their
+start states had been deleted. K4_1_ad_h16 ran for 0.23 h (its start state K4_1_nx_pd300/init.pt exists). The
+failures paused GPUs 0, 1 and 3 for 30 min.
+- Fix (go of Chris, about 14:20): spool/EXIT set; the duplicate run ended by SIGTERM to its PID; run_queue.py ended by
+  SIGTERM to its PID (no other job ran; with jobs in its queue it does not stop on spool/EXIT); then dispatcher.sh ended
+  (14:23:14, exit code 0), and instance_postproc ended on spool/EXIT; 20_k4hist.jobs and its .done file moved to
+  spool/archive_20261019/; the 6 new folders deleted (made after 14:07, no DONE, 73 MB in total); spool/EXIT removed
+  and the dispatcher started again (14:23:52).
+- Cost: about 0.14 $ (0.34 h of the instance from 14:05 to the start of the corner runs at 14:25).
+- Rule from now on: before a run folder on the instance is deleted, its job file leaves the spool.
+
+**Start of the first step (D1 c).** 14:26: K1_0_sat, K1_1_sat, K3_0_sat and K3_1_sat on GPUs 2, 3, 0 and 1. K1_2,
+K3_2, K1_3 and K3_3 wait in the spool. The large runs go into the spool after the check C5 of the first run. Until
+then the post-processing keeps the pattern of PLAN 4.13 (no /root/postproc_pattern), so it does not touch the "_sat"
+runs. The first small run is expected at about 17:00 (estimate: cycles 1.5 … 1.7 h measured in the ad runs,
+preparation about 1.1 h not measured at d/l_ex 212).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

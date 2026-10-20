@@ -1506,7 +1506,7 @@ can fail the gate (7.128); the gate retry runs as in production. If the instance
 runs. If the states of one arm group into a few classes (7.129), the SD describes them poorly; R2 uses ranks for this
 reason.
 
-### 4.15 Corner study and new main study with the static saturation preparation (2026-10-20; approved by Chris 13:56 UTC with D1 (c), D2 (a), D4 (c), D6 (b), D7 (b), D8 (a); D5 (top-up) open; D3 after phase 1)
+### 4.15 Corner study and new main study with the static saturation preparation (2026-10-20; approved by Chris 13:56 UTC with D1 (c), D2 (a), D4 (c), D6 (b), D7 (b), D8 (a); D5 top-up 20 $; D3 after phase 1)
 
 Basis: PROTOKOLL 7.129 … 7.132. Terms as in PLAN 4.0 and 4.13 and PROTOKOLL 7.132 (start A, pass, BP, prepared
 state). New terms:
@@ -1671,7 +1671,7 @@ the snapshots are downloaded and md5-checked first.
 
 D5 Credit top-up, before 20:00 UTC (O1). Need: phase 1 with D1 (c), first step, about 12 $; idle time until the start
 about 2 … 3 $; the staircase instance 0.182 $/h (about 4.4 $ per day). Phase 2 about 57 … 65 $ more. Amount: decision
-of Chris.
+of Chris. **Decision of Chris (about 14:10 UTC): top-up 20 $.**
 
 D6 Corner runs in the main fit. PLAN 4.0 has 12 corner runs (3 per corner) in the fits. Phase 1 can give up to 40.
 - (a) All corner runs in the fits. Pro: all data. Con: more weight on the 4 corners than in the design of PLAN 4.0;
