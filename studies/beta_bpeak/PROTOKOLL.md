@@ -7333,6 +7333,10 @@ field: no harm to the measurement found, and the corner test and the main study 
 Option 3 comes only together with a new code state (for example a new preparation after the saturation test, or a mesh
 test at dx 1.5). Then this offline check is made again first, and W and the threshold go to Chris.
 
+**Night decisions of 7.127 (06:12).** Chris confirmed decision 1 (dispatcher switched to ebcea74 while it ran) and decision 2
+(two-sided reading of the history test at K3). Decision 3 (no new runs without his go) is superseded by the
+approved rerun K4_1_nx_sad_rep. Log: results/night_decisions_20261019.md.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
