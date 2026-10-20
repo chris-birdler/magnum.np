@@ -1418,7 +1418,7 @@ Factors:
   before.
 - At most 3 runs of d/l_ex 300 fit on the disk at the same time (S11). A fourth waits, and its GPU is idle.
 
-### 4.14 Distribution of the prepared states at K4_1: spread of the 9 mT loss per preparation, and does option C lie higher (2026-10-20, draft after a context-free review; go of Chris for the test, the design and D1 … D3 wait for his approval)
+### 4.14 Distribution of the prepared states at K4_1: spread of the 9 mT loss per preparation, and does option C lie higher (2026-10-20; dropped by Chris, PROTOKOLL 7.130)
 
 Terms as in PROTOKOLL 7.114 … 7.129. BP: Bloch point. Prepared state: the state after the preparation, before the
 9 mT stage. nx: the relaxed random start without AC. Option C: random start, relaxation, AC demagnetization from
@@ -1505,6 +1505,214 @@ the power is thus uncertain. The power column uses 2.84 SE_Δ (a normal approxim
 can fail the gate (7.128); the gate retry runs as in production. If the instance stops, the dispatcher resumes the
 runs. If the states of one arm group into a few classes (7.129), the SD describes them poorly; R2 uses ranks for this
 reason.
+
+### 4.15 Corner study and new main study with the static saturation preparation (2026-10-20, draft for approval; D1 … D8 wait for the decisions of Chris)
+
+Basis: PROTOKOLL 7.129 … 7.132. Terms as in PLAN 4.0 and 4.13 and PROTOKOLL 7.132 (start A, pass, BP, prepared
+state). New terms:
+- Corner study (phase 1): the runs of this plan at the 4 corners K1 … K4 of PLAN 4.0. It is not the corner test of
+  PLAN 4.13 (that test compared the setups).
+- Seed set: one seed per corner, thus 4 runs (2 small: K1 and K3 at d/l_ex 212; 2 large: K2 and K4 at d/l_ex 300).
+- Pooled SD: the square root of a ratio: the summed squared deviations from the corner means, divided by the summed
+  degrees of freedom (n − 1 per corner).
+- V100-h: as PLAN 4.13. Cost: wall hours × 0.405 $/h of this instance (the GPUs are paid also when they wait). All
+  times and costs are estimates unless marked "measured".
+
+**Goal.**
+- Phase 1: β and P at the 4 corners with the preparation of 7.132 and n seeds per corner (D1). It also measures the
+  scatter of β and of ln P between the seeds per corner, and the BP rate and the time of the preparation at all 4
+  corners.
+- Phase 2, main study: the design of PLAN 4.0 (96 Sobol points, 8 centre runs) with the same setup. Its size is
+  decided after phase 1 (D3).
+- The runs of phase 1 are runs of the main study (as PLAN 4.13), if the 3 conditions below hold.
+
+**Conditions for the reuse of the phase 1 runs (PLAN 4.13, updated).**
+1. dx 3 l_ex and spheres of cubic voxels. Open: the staircase correction of the other work (own record
+   studies/staircase_correction/PROTOKOLL.md). If Chris adopts a correction before phase 2, the phase 1 runs are a
+   test only (D2).
+2. fp32: done ("fp32 sufficient", PROTOKOLL 7.112).
+3. One code commit for phase 1 and phase 2 (S12 of PLAN 4.13).
+
+**Setup.** PLAN 4.13 parts 2 and 3 (S1 … S12), with the changes below. The job order of S11 changes (see "Job order").
+- Preparation (7.132): `--init_mode saturated --predemag_h 0 --h_sat 2 --sat_static --bloch_free_tries 3`, the AC
+  factor `--predemag_q 0.8`; the static relaxation uses the relative stop threshold (4bb78f1), the relaxations without
+  a field use `--relax_tol_E_abs 3e-10` (D8). These are the arguments of satstatic_lines (start A), applied to the
+  full production line.
+- Run names: `K<c>_<k>_sat` (corner c, seed index k = 0 … n − 1); the main study later `S<nnn>_sat` and `C<j>_sat`.
+  The suffix `_as` is already used (AC from 1 − φ, 7.114).
+- Seeds: k = 0 … 2 use the seeds of the old corners (2011 … 2013, 2021 … 2023, 2031 … 2033, 2041 … 2043). Thus these
+  runs have the same microstructure as the old, nx and ad runs (paired information, 7.119). k = 3 … 8 continue the
+  old scheme (K1: 2014 … 2019, K2: 2024 … 2029, and so on). k ≥ 9: 3000 + 100 c + k. A test checks that no seed occurs
+  twice.
+- Rules (PLAN 4.3a stays, except its order item, see "Job order"; the gate retry with 200 000 iterations stays):
+  - A run whose prepared state has a BP after 3 passes: D7.
+  - Flag B: a stage with a BP at one sample or more (as decision 2 of 7.115). The corner means and the fits are
+    made with all stages and without the flagged stages; the report gives the change of β.
+
+**Code (one commit on main, tests first, no GPU).**
+- C1 run_loops.py: `h_sat` into INIT_KEYS (NEW_KEYS default None = 1 − φ), and into the exemption of a late static
+  saturation (`late_sat`: a run that loads a prepared state of another run and then makes the static saturation).
+  Today a run can load an init.pt that was prepared with another h_sat without an error. Tests: the load stops with
+  an error if h_sat differs; the load of a pd300 state for a `--sat_static` run still works.
+- C2 conv_jobs.py: `sat_corner_lines(n)`: the production corner lines of `corner_newell_lines` (jobs/sobol_corners.txt
+  plus the setup of PLAN 4.13: newell_ext, atol, relax_tol_E_abs, online stop, acc_harm, keep_stage_ckpt; all 7
+  amplitudes, snapshots, accumulators) plus the arguments of the preparation, the seeds and the names above; job
+  files per step of D1. The 9 mT test lines (`_sat_base`) are not used. Tests: each line differs from its
+  `corner_newell_lines` line only in the planned arguments (as test_crep_lines); no seed occurs twice.
+- C3 Name patterns: analyze_design (suffix `_sat`; k with 1 or 2 digits: `K\d_\d+`) and the pattern of
+  instance_postproc on the instance (add `sat`). Tests for the patterns.
+- C4 Evaluation: eval_corners_ad.py gets the arm `sat` (n seeds per corner): β over all amplitudes (9 … 150 mT), in
+  the windows of PLAN 4.0 (9-20-35, 35-50-70, 70-100-150 mT) and of 7.119 (9 … 50, 70 … 150 mT); ln P at 9 / 50 /
+  100 mT; per corner mean ± SE, sample SD, 95 % CI (t distribution); the pooled SD; passes and BP census; flags S9
+  and B; for k = 0 … 2 the paired differences against the ad, nx and old runs (information).
+- C5 Check of the first run (instead of a separate smoke test): `--sat_static` has run only with one stage and
+  without snapshots and accumulators (7.129). instance_postproc deletes the snapshots and acc files of a finished run
+  whose name fits its pattern. Thus it gets the `sat` pattern only after this check (O3). Pass if, after the first
+  run and before its post-processing: DONE is written; summary.json has the static record and the passes; only the
+  snapshots of the last 2 cycles exist; the acc files have the harmonics; 7 stage states exist; each cycle record has
+  the energy terms. Then `instance_postproc.py --once` with the name of this run as pattern ends without an error. If
+  the check fails: no new jobs (STOP_NEW_JOBS), the cause is reported to Chris, and the runs of this commit are a test
+  only (S12).
+
+**Job order (changes S11 and the order item of PLAN 4.0 and 4.3a).** All small runs (K1, K3) of the first step of D1
+go into the spool first; 4 of them start on the 4 GPUs. The lines of the large runs (K2, K4) go into the spool only
+after the check C5 passes; until then the GPUs run the other small runs. Then the order alternates large and small
+runs (S11). The dispatcher gives a GPU the next job that fits on the disk (7.115, decision
+3). At the end, GPUs wait when only large runs are left and the disk is full.
+
+**Operation of the instance.**
+- O1 Credit: 4.82 $ at 12:53 UTC. The two instances (this study 0.405 $/h, the staircase work 0.182 $/h) use it up at
+  about 21:00 UTC. An empty credit stops both instances; what happens to their data then is not checked. The top-up
+  (D5) is thus the first step, before 20:00 UTC, independent of the code. The idle time of this instance until the
+  start of phase 1 (code about 4 … 6 h, download about 1 h) costs about 2 … 3 $.
+- O2 Disk: 17 GB free on the instance. A large run needs up to about 8.6 GB until its post-processing, a small run
+  about 3 GB; the dispatcher keeps 3 GB free (S11). With 17 GB only 1 large run can run at a time. Files that can be
+  removed (after download and md5 check):
+  - the 6 folders of the K4 history test with 16 cycles (K4_0_ad_h16 … K4_2_nx_h16, 7.123): about 11.6 GB;
+  - the state files (init.pt, checkpoint.pt, the 7 stage states) of the finished nx and ad corner runs: about
+    7.4 GB. The 3 pd300 states that the staircase work uses are kept on the laptop
+    (studies/beta_bpeak/runs/states_pd300/).
+- O3 The dispatcher of main (d01a3db) fetches the new commit. instance_postproc starts again with the `sat` pattern
+  after the check C5.
+- O4 Each finished run keeps its state files on the instance (init.pt, checkpoint.pt, 7 stage states; about 0.3 GB,
+  from the 7.4 GB of 24 nx and ad runs): about 5 GB at n 4 and 12 GB at n 10 per corner. Late in phase 1 fewer large
+  runs then fit at the same time. Phase 2 needs its own disk plan (S4: about 24 GB of state files); part of D3.
+
+**Readings of phase 1 (fixed before the results).**
+- Per corner: β (all amplitudes and the windows of C4), ln P at 9 / 50 / 100 mT: mean ± SE, sample SD, 95 % CI (t
+  distribution with n − 1 degrees of freedom). Levers β(Ki) − β(K1) with the SE from the two corner SEs.
+- The pooled SD of β (all amplitudes and the windows): the input of D3.
+- BP rate: the share of the runs free of BPs after the first, second and third pass; the share of the stages with
+  flag B.
+- Target of the corner means (D1): the half-width of the 95 % CI of β over all amplitudes. If a corner misses the
+  target, I report the n that its SD needs; Chris decides on more seeds.
+- Information: the paired differences against the ad, nx and old runs (k = 0 … 2); the time of the preparation per
+  corner.
+
+**Cost per seed set (estimate).** K1 and K3 about 2.7 h each: cycles 1.5 … 1.7 h (measured, ad runs); preparation
+and setup about 1.1 h (measured 2.77 h at K4_1 and 2.96 h at K2_0, runs K4_1_nx_sa200 and K2_0_nx_sa200, × 0.38, the
+ratio of the cycle times of the small and large ad corners). K2 and K4 about 7.2 h each: cycles 3.75 … 4.71 h
+(measured, ad runs) plus preparation and setup 2.8 … 3.0 h (measured). Sum 19.8 V100-h, plus 10 % for extra passes:
+about 22 V100-h. A gate retry adds about 8 h to one run (4.14); it is not in the 10 %.
+
+**Decisions for Chris.**
+
+D1 Seeds per corner in phase 1, and the target. No β data exist for the saturation preparation (the tests of 7.129
+had the 9 mT stage only). Estimates of the SD of β over all amplitudes between the seeds of one corner (pooled over the
+4 corners, 8 degrees of freedom each, results/corners_ad_data.json; baseline: PLAN 4.0 update, PROTOKOLL 7.17, n 8):
+- 0.09 option C (ad). Possibly too low: at K4_1 the ad state was above all 4 new option C states (7.131), and the
+  K4_0 and K4_2 ad states were above their nx states (7.119).
+- 0.11 old main study; 0.15 baseline (random start, d/l_ex 300); 0.19 random start nx (with BPs).
+
+Half-width of the 95 % CI of a corner mean (t distribution) / SE of a lever, for these SDs; wall time and cost with
+the disk after D4 (c) (simulation of the job order above with the times above; with D4 (b) about 1.3 … 1.4 times
+longer, with D4 (a) about 2.3 … 2.8 times). The simulation does not count the state files of the finished runs (O4);
+thus the wall times are lower values, mostly for n 10:
+
+| n per corner | runs | SD 0.09 | SD 0.15 | SD 0.19 | V100-h | wall time | cost |
+|---|---|---|---|---|---|---|---|
+| 4 | 16 | 0.14 / 0.06 | 0.24 / 0.11 | 0.30 / 0.13 | about 87 | about 30 h | about 12 $ |
+| 6 | 24 | 0.09 / 0.05 | 0.16 / 0.09 | 0.20 / 0.11 | about 131 | about 38 h | about 15 $ |
+| 10 | 40 | 0.06 / 0.04 | 0.11 / 0.07 | 0.14 / 0.08 | about 218 | about 61 h | about 25 $ |
+
+| Option | What | Pro | Con |
+|---|---|---|---|
+| (a) | 6 seeds per corner, fixed | one step | a half-width of 0.10 only if the SD is about 0.09 |
+| (b) | 10 seeds per corner, fixed | a half-width of 0.10 up to an SD of about 0.14 | 25 $ before the SD is known |
+| (c) | 2 steps: 4 seeds per corner first (16 runs); then the n that the measured SD needs, with a new go | the pooled SD (12 degrees of freedom), the BP rate and the time at all 4 corners for about 12 $; the second step uses measured values | one more decision; the second step starts later |
+
+Recommendation (c), with the target: half-width of the 95 % CI of β over all amplitudes at most 0.10 per corner.
+
+D2 Start of phase 1 before the decision on the staircase correction.
+- (a) Start after the code and the top-up. The scatter, the BP rate and the time are measured in any case. If a
+  correction is adopted later, phase 2 runs the corners again (about 12 … 25 $ more).
+- (b) Wait for the decision on the staircase correction. The instance idles (0.405 $/h) or is released.
+- Recommendation (a).
+
+D3 Size of phase 2 (decided after phase 1). Rule (now): with the pooled SD s of phase 1, the expected SE of the range
+effect of a factor on β over all amplitudes at N = 96 is 0.06 × s / 0.15 (the scaling of PLAN 4.0, σ 0.15 of the
+baseline); for the window 9-20-35 mT it is 0.10 × s₁ / 0.27 (s₁ the pooled SD in this window). The scatter between
+states is largest at 9 mT (SD of ln P 0.47 at K4_1, 95 % range 0.27 … 1.77, 7.131); thus this window has the largest
+SE. Options after phase 1: N 96 as PLAN 4.0, or larger. Cost of N 96 + 8 centre runs: cycles about 300 V100-h (mean
+of the corner cycle times, 2.9 h per run) plus preparation and setup about 210 V100-h (2.0 h per run) plus 10 %: about
+560 V100-h, about 140 … 160 h on 4 GPUs (the upper value if the disk makes runs wait), about 57 … 65 $. This replaces
+the 260 … 380 V100-h of PLAN 4.13 (random start, without the saturation preparation).
+
+D4 Disk (O2): (a) no deletion; (b) the go to delete the 6 folders of the K4 history test after download and md5 check
+(11.6 GB); (c) as (b), plus the state files of the finished nx and ad corner runs (7.4 GB; downloaded and md5-checked
+first; they stay on the laptop, and a later test can upload them again). Download about 19 GB for (c). Recommendation
+(c): 3 large runs at the same time; the wall times of the D1 table assume (c).
+
+D5 Credit top-up, before 20:00 UTC (O1). Need: phase 1 with D1 (c), first step, about 12 $; idle time until the start
+about 2 … 3 $; the staircase instance 0.182 $/h (about 4.4 $ per day). Phase 2 about 57 … 65 $ more. Amount: decision
+of Chris.
+
+D6 Corner runs in the main fit. PLAN 4.0 has 12 corner runs (3 per corner) in the fits. Phase 1 can give up to 40.
+- (a) All corner runs in the fits. Pro: all data. Con: more weight on the 4 corners than in the design of PLAN 4.0;
+  the expected SE of PLAN 4.0 no longer applies.
+- (b) k = 0 … 2 per corner in the fits (as PLAN 4.0), the other corner runs only for the corner means; a fit with all
+  corner runs as a sensitivity check.
+- Recommendation (b).
+
+D7 A run whose prepared state has a BP after 3 passes.
+- (a) It runs its 7 stages; it has no value in the corner means and fits; the report gives it; a replacement seed
+  (the next k) goes into the queue, so the corner keeps n values. No code change.
+- (b) As (a), but without a replacement seed.
+- (c) The run stops after the preparation (saves 1.5 … 4.7 h per such run). Needs a code change.
+- Recommendation (a).
+
+D8 Stop threshold of the relaxations without a field. Rule of 7.128: with a new code state, the offline check of the
+trend criterion (option 3) is made again first, and Chris decides on W and the threshold. Check made (eval_relax_noise.py
+on the 15 relaxations without a field after an AC pass of 7.129 and 7.131): with W 8 the trend criterion stops within
+the recorded history in 11 of 15; these 11 save 500 … 9 000 iterations (median 2 000). The other 4 have only 2 000 …
+3 500 iterations; W 8 needs at least 4 000, thus they get 500 … 2 000 iterations longer. Over all 15 the median
+saving is about 1 000 iterations: about 2.5 min at K4 (measured 0.14 s per iteration, K4_1_cr9001), less than 1 % of
+a large run. The saturation preparation has no relaxation of a random start (there the saving was larger, 7.128).
+(a) Keep option 1 (absolute threshold 3·10⁻¹⁰ K_d V per chunk). (b) Option 3 with W 8. Recommendation (a): the saving
+is less than 1 % of the run time, and (a) needs no code change.
+
+**Order of the work.**
+1. Top-up (D5), before 20:00 UTC.
+2. Decisions D1 … D4, D6 … D8 of Chris.
+3. Download and md5 check (D4); deletion on the instance. Code C1 … C4 on main, tests, commit, push.
+4. Dispatcher on the new commit (O3). The small runs of the first step of D1 into the spool.
+5. Check C5 on the first run; instance_postproc with the `sat` pattern; then the large runs.
+6. Evaluation C4 with the readings above; report to Chris; decision on the second step of D1 and on D3.
+7. Phase 2 with its own go.
+
+**Risks.**
+- The static saturation was tested only at K4_1 and K2_0 and only with the 9 mT stage. At K1 (fewest cubes per
+  particle) and K3 (smallest gap) the BP rate is not known. Protocol S (uniform start, AC from saturation without the
+  static hold, 7.115) was clean at K3_1, but at K2_0 it kept 1 BP in the same cube through 3 passes.
+- Many runs with a BP after 3 passes make a corner mean uncertain or biased; D7 (a) keeps n but costs the extra runs.
+- Flag B: all 3 K2 ad runs had BPs in the stages from 70 mT (K2_1), 100 mT (K2_0) or 150 mT (K2_2) on (7.118). If
+  this happens again, the fits without the flagged stages keep only 1 of 3 K2 values at 100 mT and none at 150 mT.
+- The AC pass selects the state at the level of the rounding (7.129). A rerun of a seed thus gives another state;
+  only the distribution over the seeds is reproducible. The stage states (S4) keep the exact state of each stage.
+- The relaxation in the static field failed the gate once with the absolute threshold (K2_0_nx_sad, 7.128). With the
+  relative threshold (4bb78f1) it converged in 2 of 2 runs (K2_0_nx_sad, K4_1_nx_sad_rep; both at 1 − φ). It has not
+  run at 2 M_s with this commit, and not at K1 and K3.
+- Credit and disk (O1, O2). Without a top-up the instances stop at about 21:00 UTC.
 
 ## 5. Optional step 3: mesh control (separate go)
 

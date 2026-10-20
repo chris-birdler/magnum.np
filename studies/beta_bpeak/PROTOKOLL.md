@@ -7587,6 +7587,70 @@ if the SD of ln P of a corner is about 0.47 per seed, the standard error of a co
 about 0.47/√n (0.27 at n 3, 0.15 at n 10). The value 0.47 is a point estimate (95 % range 0.27 … 1.77) from 1
 microstructure at 1 corner. The instance stays on; all 4 GPUs are idle since 12:08.
 
+### 7.132 Decision of Chris: the new corner study and main study use the static saturation from the uniform start at 2 M_s; this replaces option C (2026-10-20)
+
+All times UTC. Terms as in 7.127, 7.129 and 7.131. BP: Bloch point. Start A: m uniform along the drive. Start B: the
+prepared state after AC from 300 mT (option C). Pass: as 7.129; the first pass is "pass 0" in the logs.
+
+**Decision (Chris, about 12:40).** The preparation of the new corner study and main study (PLAN 4.15) is:
+1. start A (`--init_mode saturated`);
+2. the static saturation at h_sat 2 (2 M_s): the field at once at h_sat, held, the relaxation in the static field
+   (relative stop threshold 10⁻⁶ per chunk, commit 4bb78f1);
+3. the decaying AC field from the peak (× 0.8 per half cycle), then the relaxation without a field (its stop
+   threshold is open: D8 of PLAN 4.15, by the rule of 7.128; the present code has the absolute threshold 3·10⁻¹⁰
+   K_d V per chunk);
+4. a new pass if a BP remains, at most 3 passes (as 7.129);
+5. one prepared state per seed; then the amplitudes 9 … 150 mT in sequence on this state (7.130).
+
+The scatter between prepared states is not averaged separately. It is part of the scatter between seeds, and the
+mean over many seeds (microstructures) is the result (7.130).
+
+This replaces option C as the preparation of the main study (7.115). Thus condition 3 of PLAN 4.13 (the same setup)
+fails for the 12 option C corner runs K1_0_ad … K4_2_ad: they are not runs of the new main study. They stay as a
+documented arm (7.119). PLAN 4.14 is dropped (7.130).
+
+**Basis (discussion with Chris, about 12:15 … 12:40).**
+- The data agree with the picture that the 9 mT loss of one microstructure is a distribution over the states that
+  the AC demagnetization selects (inference of 7.129 and 7.131; 2 and 1 microstructures). At K4_1 the scatter between states is of the same size for option C and for the static saturation (SD of
+  ln P 0.47 for both; the 5 saturation states are not independent draws). The difference of the mean ln P is +0.13
+  with an SE of 0.32 (7.131).
+- BPs: no difference between the two preparations can be read from the data. Static saturation: 7 of 9 runs were
+  free of BPs after the first pass (7.129). Option C: 12 of 16 attempts were free (7.118), and 4 of 4 first attempts
+  (7.131).
+- The 4 variants of the static saturation test (7.129). P at 9 mT, order K4_1, K2_0; mean ± sample SD over the runs
+  of a variant (2 microstructures mixed, thus the SD includes the difference between K4_1 and K2_0):
+
+| variant | runs | free after the first pass | free after the second pass | free after the third pass | P at 9 mT (W/cm³) | mean ± SD (W/cm³) |
+|---|---|---|---|---|---|---|
+| A, 1 − φ | 3 | 3 of 3 | 3 of 3 | 3 of 3 | 6.74; 3.62 (rerun of K4_1); 3.41 | 4.59 ± 1.86 |
+| B, 1 − φ | 2 | 1 of 2 | 2 of 2 | 2 of 2 | 3.52; 4.00 | 3.76 ± 0.34 |
+| A, 2 M_s | 2 | 2 of 2 | 2 of 2 | 2 of 2 | 6.05; 3.63 | 4.84 ± 1.71 |
+| B, 2 M_s | 2 | 1 of 2 | 2 of 2 | 2 of 2 | 10.78; 5.44 | 8.11 ± 3.78 |
+
+- Start A against start B: free after the first pass in 5 of 5 against 2 of 4 (exact two-sided Fisher test, p 0.17:
+  not significant). At 2 M_s the AC passes of A and B have the same M_par and the same BP counts up to half cycle 13
+  (K4_1 and K2_0, 7.129); then they separate. Thus the extra passes of start B are possibly a chance result of the
+  selection in the AC pass (n 2, both at K2_0).
+- Reasons for start A: it needs no earlier run (start B needs a full option C preparation, about 2 … 2.5 h per
+  seed), and the start is defined. Whether the saturation erases the start, the test of 7.129 could not show (the
+  rerun gave differences of the same size).
+- Reasons for 2 M_s instead of 1 − φ: 2 M_s is above 1 − φ at each corner (1 − φ is 0.31 … 0.45 for φ 0.55 … 0.69).
+  In the held field, the share of the particle cells more than 15° from the drive is 1.4 % (K4_1) and 3.9 % (K2_0) at
+  1 − φ, and 0 % at 2 M_s (alignment record in summary.json of the static saturation runs; measured at K4_1 and K2_0
+  only). The extra time is about 0.6 h per seed at d/l_ex 300 (one-pass runs with the 9 mT stage: 2.74 … 2.82 h at
+  1 − φ, 3.33 … 3.43 h at 2 M_s; dispatcher log and file times). During the AC pass more BPs occur at 2 M_s (at most 996 … 1294
+  against 94 … 151), but the share of runs free after the first pass is about the same (3 of 4 against 4 of 5).
+- Against option C: the AC field from 300 mT (h 0.019 … 0.040, by corner) does not saturate. A memory of the random
+  start pattern is not excluded (at K4_1 the comparison finds only a difference above × 1.9, 7.131).
+- Not known: the BP rate at K1 and K3 (no static saturation test there). Related evidence: protocol S (uniform
+  start, AC from saturation without the static hold, 7.115) was clean at K3_1; at K2_0 it kept 1 BP in the same cube
+  through 3 passes.
+
+**Status (about 13:00).** Credit 4.82 $ at 12:53. Two instances run (this study 0.405 $/h, the staircase work
+0.182 $/h): the credit is empty at about 21:00, and an empty credit stops the instances. The instance of this study
+stays on (Chris, about 13:00: "lass laufen"). PLAN 4.15 waits for a context-free review and for the decisions of
+Chris.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
