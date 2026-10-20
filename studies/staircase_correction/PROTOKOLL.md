@@ -1206,5 +1206,5 @@ is on it. While it is stopped, only its storage costs (about 0.05 $/h).
 **Change (Chris, 2026-10-20, about 16:15 UTC):** box 4 destroyed (go of Chris; no data on it). For the q = 4 check a
 new box is rented after the end of q = 2.
 **Decision (Chris, 2026-10-20, about 16:30 UTC):** the T arms of the seeds 949 and 950 stay on box 2 (no move to
-box 3: shorter end time, but no cost saving). Box 3 is destroyed after the end of its own runs, after download, md5
-and the go of Chris.
+box 3: shorter end time, but no cost saving). Proposal to Chris: destroy box 3 when its own runs are done, after
+download and md5, only with his go.
