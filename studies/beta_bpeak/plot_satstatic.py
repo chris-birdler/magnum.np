@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """
-Plots of the preparation tests at 9 mT (Chris 2026-10-20; PROTOKOLL 7.125 … 7.129). P = loss density in W/cm³
+Plots of the preparation tests at 9 mT (Chris 2026-10-20; PROTOKOLL 7.125 … 7.131). P = loss density in W/cm³
 (P = f K_d w, as eval_corners_ad.py); w_l = mean w_loop of the last 5 cycles of the 9 mT stage; the error bar is the SD
 of w_loop over these 5 cycles (cycle-to-cycle scatter of one state).
 BP status of a state (Chris 2026-10-20: BPs of the start state apart from BPs during the stage): "start" = BPs in the
 prepared state (at the start of the 9 mT stage); "stage" = no BP at the start, but BPs during the 9 mT stage; "none" =
 no BP at the start and at all samples of the stage. The BP counts of the nx states come from their 16-cycle reruns
 (<run>_h16, the same state); for K2_0_nx only the start count of PROTOKOLL 7.118 is known (the stage was not counted).
-  satstatic_states.png   P of each prepared state of K4_1 and K2_0. x: the preparation (one position per state, the
-                         groups below the axis); color: BP status; number next to a marker: BPs at the start (→ largest
+  satstatic_states.png   P of each prepared state of K4_1 and K2_0, with the option C repeats of K4_1 (7.130). x: the
+                         preparation (one position per state, the groups above the axes); color: BP status; number next to a marker: BPs at the start (→ largest
                          number during the stage if it differs); grey band = geometric mean × exp(± SD of ln P) over the
                          states with BP status "none" (the spread between states).
   history_pairs.png      K3 and K4 history test (7.126, 7.127): P of the nx state and of the option C state per
@@ -39,10 +39,13 @@ NX_START_BP = {"K2_0": 9}
 # (run suffix, label, group)
 PREP = [("_nx", "random start (cell blocks)", 0), ("_nx_ip", "random start (per particle)", 0),
         ("_nx_pd150", "AC from 150 mT", 1), ("_nx_pd300", "AC from 300 mT (option C)", 1),
-        ("_nx_pdsat", r"AC from $1-\varphi$", 1), ("_nx_ps", "protocol S", 2),
-        ("_nx_sad", r"A, $1-\varphi$", 3), ("_nx_sad_rep", r"A, $1-\varphi$, rerun", 3),
-        ("_nx_sbd", r"B, $1-\varphi$", 3), ("_nx_sa200", r"A, $2M_\mathrm{s}$", 3), ("_nx_sb200", r"B, $2M_\mathrm{s}$", 3)]
-GROUP = ["relaxed random\nstart, no AC", "AC from the relaxed\nrandom start", "prot.\nS", "static saturation\ntest"]
+        ("_nx_pdsat", r"AC from $1-\varphi$", 1),
+        ("_cr9001", "init seed 9001", 2), ("_cr9002", "init seed 9002", 2), ("_cr9003", "init seed 9003", 2),
+        ("_cr9004", "init seed 9004", 2), ("_nx_ps", "protocol S", 3),
+        ("_nx_sad", r"A, $1-\varphi$", 4), ("_nx_sad_rep", r"A, $1-\varphi$, rerun", 4),
+        ("_nx_sbd", r"B, $1-\varphi$", 4), ("_nx_sa200", r"A, $2M_\mathrm{s}$", 4), ("_nx_sb200", r"B, $2M_\mathrm{s}$", 4)]
+GROUP = ["relaxed random\nstart, no AC", "AC from the relaxed\nrandom start", "option C,\nnew random starts",
+         "prot.\nS", "static saturation\ntest"]
 STATUS = {"none": ("#2a78d6", "no BP"), "start": ("#eb6834", "BPs in the start state"),
           "stage": ("#eda100", "BPs only during the 9 mT stage")}
 
@@ -116,7 +119,9 @@ def p_of(w, F):
 
 
 def plot_states(runs, F, out):
-    fig, axes = plt.subplots(1, 2, figsize=(14, 7.6), sharey=True)
+    # panel width by the number of states (K4_1 has the option C repeats of 7.130)
+    n = [sum(stage9(runs / (ms + suf)) is not None for suf, _, _ in PREP) for ms in ("K4_1", "K2_0")]
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7.6), sharey=True, gridspec_kw={"width_ratios": n})
     seen = set()
     for ax, ms in zip(axes, ("K4_1", "K2_0")):
         x, free, ticks, labels, last_g, gx = 0.0, [], [], [], None, {}
