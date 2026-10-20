@@ -1506,7 +1506,7 @@ can fail the gate (7.128); the gate retry runs as in production. If the instance
 runs. If the states of one arm group into a few classes (7.129), the SD describes them poorly; R2 uses ranks for this
 reason.
 
-### 4.15 Corner study and new main study with the static saturation preparation (2026-10-20, draft for approval; D1 … D8 wait for the decisions of Chris)
+### 4.15 Corner study and new main study with the static saturation preparation (2026-10-20; approved by Chris 13:56 UTC with D1 (c), D2 (a), D4 (c), D6 (b), D7 (b), D8 (a); D5 (top-up) open; D3 after phase 1)
 
 Basis: PROTOKOLL 7.129 … 7.132. Terms as in PLAN 4.0 and 4.13 and PROTOKOLL 7.132 (start A, pass, BP, prepared
 state). New terms:
@@ -1642,12 +1642,14 @@ thus the wall times are lower values, mostly for n 10:
 | (c) | 2 steps: 4 seeds per corner first (16 runs); then the n that the measured SD needs, with a new go | the pooled SD (12 degrees of freedom), the BP rate and the time at all 4 corners for about 12 $; the second step uses measured values | one more decision; the second step starts later |
 
 Recommendation (c), with the target: half-width of the 95 % CI of β over all amplitudes at most 0.10 per corner.
+**Decision of Chris (13:56 UTC): (c), first step 4 seeds per corner, then the evaluation; Chris decides on more
+seeds after it.**
 
 D2 Start of phase 1 before the decision on the staircase correction.
 - (a) Start after the code and the top-up. The scatter, the BP rate and the time are measured in any case. If a
   correction is adopted later, phase 2 runs the corners again (about 12 … 25 $ more).
 - (b) Wait for the decision on the staircase correction. The instance idles (0.405 $/h) or is released.
-- Recommendation (a).
+- Recommendation (a). **Decision of Chris (13:56 UTC): (a).**
 
 D3 Size of phase 2 (decided after phase 1). Rule (now): with the pooled SD s of phase 1, the expected SE of the range
 effect of a factor on β over all amplitudes at N = 96 is 0.06 × s / 0.15 (the scaling of PLAN 4.0, σ 0.15 of the
@@ -1661,7 +1663,11 @@ the 260 … 380 V100-h of PLAN 4.13 (random start, without the saturation prepar
 D4 Disk (O2): (a) no deletion; (b) the go to delete the 6 folders of the K4 history test after download and md5 check
 (11.6 GB); (c) as (b), plus the state files of the finished nx and ad corner runs (7.4 GB; downloaded and md5-checked
 first; they stay on the laptop, and a later test can upload them again). Download about 19 GB for (c). Recommendation
-(c): 3 large runs at the same time; the wall times of the D1 table assume (c).
+(c): 3 large runs at the same time; the wall times of the D1 table assume (c). **Decision of Chris (about 13:45
+UTC): (c), but the state files of the nx and ad corner runs deleted without download** (no evaluation needs them;
+their md5 list: runs/md5_deleted_corner_states_20261020.txt). Done 13:5x: 5.8 GB of state files (not 7.4 GB; the
+7.4 GB counted state files of other folders too); the 3 pd300 states stay. The h16 folders: the files other than
+the snapshots are downloaded and md5-checked first.
 
 D5 Credit top-up, before 20:00 UTC (O1). Need: phase 1 with D1 (c), first step, about 12 $; idle time until the start
 about 2 … 3 $; the staircase instance 0.182 $/h (about 4.4 $ per day). Phase 2 about 57 … 65 $ more. Amount: decision
@@ -1672,7 +1678,7 @@ D6 Corner runs in the main fit. PLAN 4.0 has 12 corner runs (3 per corner) in th
   the expected SE of PLAN 4.0 no longer applies.
 - (b) k = 0 … 2 per corner in the fits (as PLAN 4.0), the other corner runs only for the corner means; a fit with all
   corner runs as a sensitivity check.
-- Recommendation (b).
+- Recommendation (b). **Decision of Chris (13:56 UTC): (b).**
 
 D7 A run whose prepared state has a BP after 3 passes.
 - (a) It runs its 7 stages; it has no value in the corner means and fits; the report gives it; a replacement seed
@@ -1689,7 +1695,7 @@ the recorded history in 11 of 15; these 11 save 500 … 9 000 iterations (median
 saving is about 1 000 iterations: about 2.5 min at K4 (measured 0.14 s per iteration, K4_1_cr9001), less than 1 % of
 a large run. The saturation preparation has no relaxation of a random start (there the saving was larger, 7.128).
 (a) Keep option 1 (absolute threshold 3·10⁻¹⁰ K_d V per chunk). (b) Option 3 with W 8. Recommendation (a): the saving
-is less than 1 % of the run time, and (a) needs no code change.
+is less than 1 % of the run time, and (a) needs no code change. **Decision of Chris (13:56 UTC): (a).**
 
 **Order of the work.**
 1. Top-up (D5), before 20:00 UTC.
