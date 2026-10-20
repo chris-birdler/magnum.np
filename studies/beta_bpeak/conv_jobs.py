@@ -493,6 +493,114 @@ def smooth_ad_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
     return out
 
 
+SAT_H_CHECK = (None, 1.0, 2.0)     # --h_sat for the field check; None = the default 1 - phi
+
+
+def _sat_base(n, corners):
+    """The corner line of n (PD_RUNS) for a 9 mT test: no snapshots, no accumulators, one stage."""
+    t = shlex.split(corners[n])
+    for k in ("snap_phases", "snap_cycles", "snap_mT", "acc", "acc_harm", "keep_stage_ckpt"):
+        t = set_arg(t, k, None)
+    return set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+
+
+def satcheck_lines(src="jobs/sobol_corners.txt"):
+    """Static saturation, field check (Chris 2026-10-19): for each run of PD_RUNS the uniform start along the drive
+    (--init_mode saturated), the static saturation at --h_sat (SAT_H_CHECK; None: 1 - phi) with --sat_static, and the
+    stop right after it (--sat_check: alignment of the particle cells). Names <run>_sc<h> (h in % of M_s; d: default)."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in PD_RUNS:
+        for h in SAT_H_CHECK:
+            t = _sat_base(n, corners)
+            t = set_arg(set_arg(t, "init_mode", ["saturated"]), "predemag_h", ["0"])
+            if h is not None:
+                t = set_arg(t, "h_sat", ["%g" % h])
+            t = set_arg(t, "bloch_free_tries", ["1"])
+            out.append(("%s_sc%s" % (n, "d" if h is None else "%d" % round(100 * h)), " ".join(t) + " --sat_static --sat_check"))
+    return out
+
+
+SAT_TEST_RUNS = ("K4_1_nx", "K2_0_nx")    # history strong (K4_1) and Bloch points (K2_0)
+SAT_TEST_H = (None, 2.0)                  # --h_sat: None = the default 1 - phi; 2 M_s
+
+
+def satstatic_lines(runs=SAT_TEST_RUNS, levels=SAT_TEST_H, src="jobs/sobol_corners.txt"):
+    """Static saturation test (Chris 2026-10-19): for each run and each --h_sat level (None: 1 - phi) two starts; each
+    pass: the field up to h_sat (a smooth quarter-sine ramp, except the first pass of start A), held there and relaxed
+    (--sat_static), the decaying AC field from its peak (factor --predemag_q per half cycle), the relaxation at H = 0;
+    if a Bloch point remains, the next pass (at most 3, --bloch_free_tries 3); then the 9 mT stage.
+      <run>_sa<h>  start A: uniform along the drive (--init_mode saturated); the first pass starts at h_sat at once
+      <run>_sb<h>  start B: the prepared state after AC from 300 mT (<run>_pd300/init.pt, 7.114)
+    Question 1 (does the saturation erase the history): sa against sb at the same level. Question 2 (does the level
+    matter): the two levels at the same start. h: d = default 1 - phi, else in % of M_s."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for n in runs:
+        for h in levels:
+            tag = "d" if h is None else "%d" % round(100 * h)
+            for kind in ("sa", "sb"):
+                t = _sat_base(n, corners)
+                t = set_arg(set_arg(t, "predemag_h", ["0"]), "bloch_free_tries", ["3"])
+                if h is not None:
+                    t = set_arg(t, "h_sat", ["%g" % h])
+                if kind == "sa":
+                    t = set_arg(t, "init_mode", ["saturated"])
+                else:
+                    t = set_arg(set_arg(t, "init_from", ["%s_pd300/init.pt" % n]), "init_wait_h", ["0.0"])
+                out.append(("%s_%s%s" % (n, kind, tag), " ".join(t) + " --sat_static"))
+    return out
+
+
+K4H_RUNS = ("K4_0", "K4_1", "K4_2")
+K4H_CYCLES = 16
+
+
+def k4hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """K4 history test (Chris 2026-10-19), see hist_lines; with snapshots."""
+    return hist_lines(K4H_RUNS, True, src, runs_dir)
+
+
+K3H_RUNS = ("K3_0", "K3_1", "K3_2")
+
+
+def k3hist_lines(src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """K3 history test (Chris 2026-10-19, option A): as the K4 test (hist_lines) for K3, without snapshots (at K3 the
+    loss of option C at 9 ... 50 mT is 0.4 ... 0.6 times the loss of nx, with a large SE; PROTOKOLL 7.119)."""
+    return hist_lines(K3H_RUNS, False, src, runs_dir)
+
+
+def hist_lines(runs, snapshots, src="jobs/sobol_corners.txt", runs_dir="runs"):
+    """History test of a corner (Chris 2026-10-19; first for K4, PROTOKOLL 7.119: at K4 the loss of option C at
+    9 ... 50 mT is about 2 x the loss of the relaxed random start, and in the 9 mT stage it rises over the first 2 ... 3
+    cycles). For each microstructure of runs the 9 mT stage with K4H_CYCLES cycles from both prepared states: <run>_ad_h16 from the option C
+    state (<run>_ad/init.pt; K4_1: its AC-300 test state, as the run), <run>_nx_h16 from the relaxed random start of the
+    corner test (<run>_nx/init.pt). With snapshots: m at 2 phases (180° and 360°: H = 0 falling and rising; drive
+    H0 sin(ωt)) in every cycle (--snap_cycles
+    K4H_CYCLES; 4 phases would need 25 GB of disk for K4); without: no snapshots. Accumulators as
+    the runs; all other settings as the runs."""
+    ad = dict(ad300_lines(src, runs_dir))
+    nx = dict(corner_newell_lines(src))
+    out = []
+    for r in runs:
+        for kind, line in (("ad", ad[r + "_ad"]), ("nx", nx[r + NX_SUFFIX])):
+            t = shlex.split(line)
+            t = set_arg(t, "keep_stage_ckpt", None)
+            t = set_arg(set_arg(t, "b_list", ["0.006"]), "n_amp", ["1"])
+            if kind == "nx" or get_arg(t, "init_from") is None:
+                t = set_arg(t, "init_from", ["%s_%s/init.pt" % (r, kind)])
+            t = set_arg(t, "init_wait_h", ["0.0"])
+            t = set_arg(set_arg(t, "cycles_per_amp", [str(K4H_CYCLES)]), "max_cycles_per_amp", [str(K4H_CYCLES)])
+            if snapshots:
+                t = set_arg(set_arg(t, "snap_phases", ["2"]), "snap_cycles", [str(K4H_CYCLES)])
+                t = set_arg(t, "snap_mT", ["9.0"])
+            else:
+                for k in ("snap_phases", "snap_cycles", "snap_mT"):
+                    t = set_arg(t, k, None)
+            out.append(("%s_%s_h16" % (r, kind), " ".join(t)))
+    return out
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -525,6 +633,8 @@ if __name__ == "__main__":
                 satstart_lines() if st == "ps" else ad_continue_lines() if st == "adcont" else
                 ad_rest_lines() if st == "adrest" else
                 smooth_lines() if st == "smooth" else smooth_ad_lines() if st == "smoothad" else
+                k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
+                satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

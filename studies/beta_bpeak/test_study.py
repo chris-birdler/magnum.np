@@ -1248,8 +1248,11 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
             # the AC demagnetization after loading (Chris 2026-10-18): only if the source has none, as run_loops
             late = t.get("predemag_h") is not None and s.get("predemag_h") is None
             late_s = t.get("bloch_smooth", 0) > 0 and not s.get("bloch_smooth", 0)   # the cut after loading
+            late_sat = bool(t.get("sat_static")) and not s.get("sat_static")   # saturation passes after loading
             diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)
-                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")]
+                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")
+                    and not (late_sat and k in ("predemag_h", "predemag_q", "sat_static", "bloch_free_tries",
+                                                "init_mode"))]
             assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
             n += 1
     assert n >= 190
@@ -2391,7 +2394,7 @@ def test_protocol_s(tmp_path):
         RL.virgin_m0(6, 18.0, 3.0, 6.0, 5, "saturated")
     rl = pathlib.Path(RL.__file__).read_text()          # both calls of the saturated start pass the drive direction
     assert rl.count("args.init_mode, ids,") == 2 and rl.count("direction=e_d))") == 2
-    body = rl[rl.index("    def predemag(h=None, k=0):"):rl.index("    def predemag_all(")]
+    body = rl[rl.index("    def predemag(h=None, k=0, ramp=None):"):rl.index("    def predemag_all(")]
     assert "for k in" not in body and "k = " not in body      # the pass index k stays the pass index
     with pytest.raises(SystemExit):
         RL.main(["--out", str(tmp_path / "x"), "--d_lex", "96", "--init_mode", "saturated"])
@@ -2431,6 +2434,25 @@ def test_protocol_s(tmp_path):
     full = dict(CJ.ad300_lines(src, runs))
     assert len(full) == 12 and all(full[n] == a for n, a in cont + CJ.ad_rest_lines(src, runs))
     assert full["K3_1_ad"] == ad["K3_1_ad"]
+    kh = dict(CJ.k4hist_lines(src, runs))               # Chris 2026-10-19: K4 history test
+    assert sorted(kh) == sorted("%s_%s_h16" % (r, k) for r in CJ.K4H_RUNS for k in ("ad", "nx"))
+    for r in CJ.K4H_RUNS:
+        for k in ("ad", "nx"):
+            tok = shlex.split(kh["%s_%s_h16" % (r, k)])
+            ref = shlex.split(full[r + "_ad"] if k == "ad" else corners[r + "_nx"])
+            want = "%s_nx_pd300/init.pt" % r if (k == "ad" and r == "K4_1") else "%s_%s/init.pt" % (r, k)
+            assert get_arg(tok, "init_from") == [want], (r, k)
+            assert get_arg(tok, "cycles_per_amp") == ["16"] and get_arg(tok, "snap_cycles") == ["16"]
+            assert get_arg(tok, "b_list") == ["0.006"] and get_arg(tok, "snap_mT") == ["9.0"]
+            for key in {t[2:] for t in tok + ref if t.startswith("--")} - {
+                    "init_from", "init_wait_h", "keep_stage_ckpt", "b_list", "n_amp", "cycles_per_amp",
+                    "max_cycles_per_amp", "snap_phases", "snap_cycles", "snap_mT"}:
+                assert get_arg(tok, key) == get_arg(ref, key), (r, k, key)
+    k3 = dict(CJ.k3hist_lines(src, runs))               # Chris 2026-10-19: K3 history test, no snapshots
+    assert sorted(k3) == sorted("%s_%s_h16" % (r, k) for r in CJ.K3H_RUNS for k in ("ad", "nx"))
+    assert all(get_arg(shlex.split(a), "snap_phases") is None and get_arg(shlex.split(a), "cycles_per_amp") == ["16"]
+               for a in k3.values())
+    assert get_arg(shlex.split(k3["K3_1_ad_h16"]), "init_from") == ["K3_1_ad/init.pt"]
     sa = CJ.smooth_ad_lines(src, runs)                  # Chris 2026-10-19: one AC pass, then the cut
     assert [n for n, _ in sa] == [n + "_sm" for n in CJ.SA_RUNS]
     for n, line in sa:
@@ -2495,3 +2517,108 @@ def test_bloch_smooth_cut():
                 "init_from", "init_wait_h", "bloch_smooth", "b_list", "n_amp", "snap_phases", "snap_cycles", "snap_mT",
                 "acc", "acc_harm", "keep_stage_ckpt"}:
             assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+
+
+def test_eval_corners_ad_window_beta():
+    """eval_corners_ad.window_beta (Chris 2026-10-19, three-arm corner evaluation): on synthetic ln w = c + β ln B it
+    returns β in each window; all arrays use the same amplitudes; a missing amplitude in the 9 … 50 mT window gives NaN
+    (all 4 needed), in the full window at most 1 may miss (at least 6 of 7)."""
+    import eval_corners_ad as EA
+    x = np.log(EA.AMPS)
+    a, b = -3.0 + 2.3 * x, 1.0 + 1.8 * x
+    for w in ("full", "low", "high"):
+        assert np.allclose(EA.window_beta([a, b], w), [2.3, 1.8])
+    c = b.copy()
+    c[1] = np.nan                                       # 20 mT missing in one run
+    assert np.all(np.isnan(EA.window_beta([a, c], "low")))
+    assert np.allclose(EA.window_beta([a, c], "full"), [2.3, 1.8])
+    d = c.copy()
+    d[5] = np.nan                                       # a second amplitude missing: 5 of 7
+    assert np.all(np.isnan(EA.window_beta([a, d], "full")))
+    assert np.allclose(EA.window_beta([a, d], "high")[0], np.nan, equal_nan=True)
+
+
+def test_eval_hist_snapshots_cycle_measures():
+    """eval_hist_snapshots.cycle_measures (Chris 2026-10-19): on synthetic states. All cells turn from −x to +x: net 2,
+    against 0, rot 1. Half the cells turn +x, the other half turn −x: net 0, cancel 1. A rotation of 90° from −x to
+    +y: net 1, perp 1, rot 0.5."""
+    import eval_hist_snapshots as EH
+    n = 4
+    ids = np.zeros((n, n, n), np.int8)
+    ids[:, :, :2] = 1
+    st = lambda m: {"m": m, "ids": ids, "mask": ids >= 0}
+    ex = np.array([1.0, 0.0, 0.0])
+    a = np.zeros((n, n, n, 3)); a[..., 0] = -1.0
+    b = -a
+    r = EH.cycle_measures(st(a), st(b), ex)
+    assert np.isclose(r["net"], 2.0) and np.isclose(r["against"], 0.0) and np.isclose(r["rot"], 1.0)
+    c = a.copy(); d = b.copy()
+    c[:, :, 2:, 0] = 1.0; d[:, :, 2:, 0] = -1.0          # particle 0 turns the other way
+    r = EH.cycle_measures(st(c), st(d), ex)
+    assert np.isclose(r["net"], 0.0) and np.isclose(r["cancel"], 1.0)
+    assert np.isclose(r["particles"][1], 2.0) and np.isclose(r["particles"][0], -2.0)
+    e = np.zeros((n, n, n, 3)); e[..., 1] = 1.0
+    r = EH.cycle_measures(st(a), st(e), ex)
+    assert np.isclose(r["net"], 1.0) and np.isclose(r["perp"], 1.0) and np.isclose(r["rot"], 0.5)
+
+
+def test_sat_static_options_and_jobs():
+    """Static saturation (Chris 2026-10-19): --sat_static is an INIT_KEY (old configs False), --sat_check and --prep_only
+    are run controls; satcheck_lines gives 3 field levels per PD_RUNS run with the uniform start and the stop after the
+    saturation; satstatic_lines gives the uniform start with up to 3 passes (_su) and the random start with 1 (_sr)."""
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg
+    assert "sat_static" in RL.INIT_KEYS and RL.NEW_KEYS["sat_static"] is False
+    assert {"sat_check", "prep_only"} <= RL.RUN_CONTROL
+    a = RL.parse_args(["--out", "x", "--d_lex", "96", "--sat_static", "--sat_check", "--prep_only"])
+    assert a.sat_static and a.sat_check and a.prep_only
+    assert not RL.parse_args(["--out", "x", "--d_lex", "96"]).sat_static
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    sc = dict(CJ.satcheck_lines(src))
+    assert len(sc) == 3 * len(CJ.PD_RUNS)
+    for n, line in sc.items():
+        tok = shlex.split(line)
+        assert get_arg(tok, "init_mode") == ["saturated"] and get_arg(tok, "predemag_h") == ["0"]
+        assert "--sat_static" in tok and "--sat_check" in tok and get_arg(tok, "b_list") == ["0.006"]
+    assert get_arg(shlex.split(sc["K2_0_nx_sc200"]), "h_sat") == ["2"] and get_arg(shlex.split(sc["K2_0_nx_scd"]), "h_sat") is None
+    ss = dict(CJ.satstatic_lines(src=src))
+    assert sorted(ss) == sorted("%s_%s%s" % (n, k, h) for n in CJ.SAT_TEST_RUNS for k in ("sa", "sb") for h in ("d", "200"))
+    sa, sb = shlex.split(ss["K4_1_nx_sa200"]), shlex.split(ss["K4_1_nx_sbd"])
+    assert get_arg(sa, "init_mode") == ["saturated"] and get_arg(sa, "bloch_free_tries") == ["3"]
+    assert get_arg(sb, "init_from") == ["K4_1_nx_pd300/init.pt"] and get_arg(sb, "bloch_free_tries") == ["3"]
+    assert get_arg(sa, "h_sat") == ["2"] and get_arg(sb, "h_sat") is None and "--sat_static" in sa and "--sat_static" in sb
+    rl = pathlib.Path(RL.__file__).read_text()          # ramp rule and the passes after loading
+    assert 'ramp = not (args.init_mode == "saturated" and k == 0 and not args.init_from)' in rl
+    assert "rec = predemag(0.0, kk, ramp=True)" in rl
+    # Chris 2026-10-20: the static relaxation uses the relative criterion (the absolute one is below the fp32 noise of E
+    # in the field); all other relaxations keep --relax_tol_E_abs
+    calls = [ln for ln in rl.splitlines() if "relax_converge(" in ln and "def relax_converge" not in ln]
+    assert [ln for ln in calls if "tol_abs" in ln] == [
+        '            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k, tol_abs=False)']
+    assert len(calls) == 4 and '"criterion": "relative %g" % args.relax_tol_E' in rl
+
+
+def test_relax_noise_stats():
+    """eval_relax_noise (Chris 2026-10-20): rises of E are the noise samples; the plateau starts at the first rise; the
+    quiet share counts |dE| <= threshold from there on."""
+    import eval_relax_noise as RN
+    E = [10.0, 5.0, 0.0, 4e-10, -1e-10, 1e-10, -1.5e-10]
+    r = RN.noise_stats(E, 3e-10)
+    assert r["n_rise"] == 2 and abs(r["rise_med"] - 3e-10) < 1e-20
+    # dE from the first rise: +4e-10, -5e-10, +2e-10, -2.5e-10 -> quiet: 2e-10 and 2.5e-10 (<= threshold)
+    assert abs(r["q_share"] - 0.5) < 1e-12
+    assert RN.noise_stats([3.0, 2.0, 1.0], 3e-10)["n_rise"] == 0
+
+
+def test_relax_trend_criterion():
+    """Option 3 offline (Chris 2026-10-20): the slope of a straight line over the last W chunks; the first chunk with
+    |slope| <= threshold is the stop; an exact line gives its slope and a standard error of 0."""
+    import eval_relax_noise as RN
+    E = [10.0 - 1e-9 * k for k in range(10)] + [0.0] * 10
+    sl, se = RN.window_slopes(E[:10], 4)
+    assert np.allclose(sl, -1e-9, rtol=0, atol=1e-15) and np.allclose(se, 0.0, atol=1e-15)
+    E2 = [1e-9 * (20 - k) for k in range(20)] + [0.0] * 8
+    assert RN.trend_stop(E2, 6, 3e-10) is not None and RN.trend_stop(E2, 6, 3e-10) >= 20
+    assert RN.trend_stop([1e-9 * (20 - k) for k in range(20)], 6, 3e-10) is None
