@@ -1366,8 +1366,9 @@ the last cycle):
    0.041 J/m³), T3Pc and X3 949 and 950 (3 … 4 cells; 0.21 and 0.13 J/m³).
 3. Change over several cycles, then a calm tail with high loss: D15 949 (214 cells; W_loop 0.068 J/m³ in cycle 0,
    0.68 J/m³ from cycle 3) and D15 951 (207 cells, cycles 3 and 4).
-In the 5 runs of types 2 and 3 the particle with the changed cells has the largest phase lag of the 4 particles
-(check_loops.py with the seeds 945 … 950 set in the call; 3.23 for D15_s951). check_loops.py cannot draw its figure
+In the 5 runs of types 2 and 3 with a loop analysis (T3 946, T3Pc 949 and 950, D15 949 and 951; check_loops.py has
+no X3 arm) the particle with the changed cells has the largest phase lag of the 4 particles (check_loops.py with the
+seeds 945 … 950 set in the call; 3.23 for D15_s951). check_loops.py cannot draw its figure
 for these seeds: negative particle shares give NaN on the log axis (finding; no fix without the go of Chris).
 In seed 946 only T3 has the event; T3Pc, X3, T15g and D15 of this seed have normal loss. In seeds 949 and 950, T3Pc
 and X3 have it, T3 and T15g do not. Each of these is 1 seed: no claim on a cause.
