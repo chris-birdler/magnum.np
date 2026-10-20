@@ -1177,3 +1177,25 @@ total = ln P(T3Pc) − ln P(D15); --plot gives a figure of these effects. N2 com
 - The high loss of T3Pc_s944 (3.15) is the same in X3. It comes from the fine staircase with the m of dx 3, not from
   the correction. m = ln P(D15) − ln P(X3): +0.074 / +0.257 / +0.019 / −0.302, mean +0.012 ± 0.116 (n 4).
 - Credit: Chris topped up (28.85 $ at 14:14 UTC).
+
+### 3.22 Decisions of Chris for the way to the smooth sphere; dynamic check at q = 4 (2026-10-20, about 14:40 UTC)
+
+**Question of Chris:** what do q = 4, 8, 16 cost? Answer: in production (T3Pc) the window term touches only the cut
+cells (8736 at q 2, 13760 at q 4, d/l_ex 96), its field per call took 1.6 s (q 2) and 1.7 s (q 4) on the CPU, and
+its set-up grows about as q³ (1.4 s, 12.6 s; estimate q 8 about 2 min, q 16 about 15 min). The proof against the
+exact field X3 needs an FFT on (48 q)³ in each step: 96³ (q 2, measured about 1 … 1.5 h per run on a shared GPU),
+192³ (q 4, estimate 6 … 10 h), 384³ (q 8, dynamically not practicable, statically once), 768³ (q 16, not practicable).
+Statically sufficient (answer to Chris): the dynamics uses the stray field only through its operator; at q 2 a static
+energy error of about 1 % of the staircase effect gave a dynamic error of at most 0.7 % in P (N3, 3.21). Condition:
+the static checks cover the operator (field per cell in the surface layer, several real states, the sign check R3).
+
+**Decisions of Chris:**
+1. Dynamic check at q = 4 with 4 seeds (941 … 944): X3 and T3Pc with q = 4 (X3q4, T3Pc4), start from the prepared
+   state of D15, budget 4 … 6 $ accepted. Box 4 (vast.ai 56907720, RTX 3090, 0.179 $/h); jobs/95_q4.jobs (the job
+   lines of X3 and T3Pc with only --staircase_q 4). Geometry check: the V1 cells of q 4 (67968) and q 8 (69024) have
+   no contacts between particles at the diameter of box_edge.
+2. Then q = 8 statically.
+3. Then the FE comparison, statically, with magnum.pi. The code is local (~/Documents/code/mgnumpi); Chris has it
+   from its author and helped with it; it is never published. Only our own scripts and aggregate results go into this
+   repository.
+For 2 and 3 a plan follows for the go of Chris.
