@@ -1168,3 +1168,12 @@ total = ln P(T3Pc) − ln P(D15); --plot gives a figure of these effects. N2 com
   (magnumnp/field_terms/demag_staircase.py md5 65fd939f…, studies/beta_bpeak/run_loops.py md5 0413a3c5…), which add
   only the option --staircase fine (study tests 118 passed, 3 skipped). Consequence: a run that started clean cannot
   resume after a crash without --allow_new_commit. Box 3 records the clean commit 50c36c9.
+
+### 3.21 N3 with the seeds 941 … 944: within ±0.15 (K4); interim, the full set follows (2026-10-20, 14:15 UTC)
+
+- X3 P (W/cm³) 1.75 / 1.08 / 0.611 / 1.57 against T3Pc 1.75 / 1.07 / 0.611 / 1.56. N3 = ln P(T3Pc) − ln P(X3):
+  −0.0001 / −0.0003 / −0.0001 / −0.0066, mean −0.0018 ± 0.0016 (SE, n 4), 95 % interval −0.0069 … +0.0033: reading
+  "within ±0.15" (K4). The largest difference (seed 944) is 0.7 % of P.
+- The high loss of T3Pc_s944 (3.15) is the same in X3. It comes from the fine staircase with the m of dx 3, not from
+  the correction. m = ln P(D15) − ln P(X3): +0.074 / +0.257 / +0.019 / −0.302, mean +0.012 ± 0.116 (n 4).
+- Credit: Chris topped up (28.85 $ at 14:14 UTC).
