@@ -853,3 +853,11 @@ term subtracts the same far-field coupling (3.7).
 **Decision of Chris (2026-10-20).** The centroid term (first moment of the cut cells in the far field) is part of the
 method. The method of this work is: V1 cut cells (Donahue & McMichael 2007) with the pairwise window term and the
 centroid term in the far field. The decision concerns the pairwise form; the cell-local form is not used.
+
+**Correction to 3.12 (2026-10-20, remark of Chris).** The sentence "Only the stray field is corrected, not the
+exchange" is not exact. With the fraction surface of V1 the surface cells (cut and new cells) carry A v (and M_s v,
+K v); the exchange between cells uses the harmonic mean of A (7.29: the exchange field of a partial cell is about as
+strong as inside; the model is energy-consistent). Thus the exchange of V1 is no longer that of the staircase model,
+but it is also not the exchange of a smooth surface (the coupling still runs over whole cube faces; there is no
+boundary condition on the true surface as in García-Cervera et al. or Parker et al.). Its error against the smooth
+sphere is not measured. Decision of Chris: a static exchange test (3.13).
