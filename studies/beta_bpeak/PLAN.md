@@ -1418,6 +1418,94 @@ Factors:
   before.
 - At most 3 runs of d/l_ex 300 fit on the disk at the same time (S11). A fourth waits, and its GPU is idle.
 
+### 4.14 Distribution of the prepared states at K4_1: spread of the 9 mT loss per preparation, and does option C lie higher (2026-10-20, draft after a context-free review; go of Chris for the test, the design and D1 … D3 wait for his approval)
+
+Terms as in PROTOKOLL 7.114 … 7.129. BP: Bloch point. Prepared state: the state after the preparation, before the
+9 mT stage. nx: the relaxed random start without AC. Option C: random start, relaxation, AC demagnetization from
+300 mT, relaxation (at most 3 attempts with a new random start if a BP remains). Start A: m uniform along the drive.
+Gate: the stop of a run whose relaxation did not converge (exit code 3; one retry with 200 000 iterations). INIT_KEY:
+an argument that changes the prepared state (it must agree when a run loads a state). Instance: the rented 4-GPU
+machine (4 × V100, 0.405 $/h).
+
+**Questions.** The static saturation test (7.129) shows that a change at the level of the rounding selects another
+prepared state of K4_1, with a 9 mT loss that differs up to × 3.
+- Q1: how large is the spread of ln P between prepared states of one microstructure, per preparation?
+- Q2: does option C give systematically higher losses than a preparation from the static saturation? Hint: option C
+  was higher than nx in 3 of 3 K4 microstructures (7.126) and gives the highest of all K4_1 states (7.129).
+
+**Design.** One microstructure: K4_1 (the largest spread in 7.129). Two arms. Each draw is a full preparation and the
+9 mT stage (as in 7.129: no snapshots, no accumulators, one stage). All other settings as the production line of K4_1
+(the 18 arguments checked in 7.127). The relaxations without a field keep the absolute stop threshold (option 1 of
+7.128); the relaxation in the static field uses the relative one (4bb78f1).
+- Arm S (saturation): start A, the static saturation at h_sat (D2), held and relaxed, a random change of m (D1), the AC
+  pass from the peak, the relaxation without a field; more passes if a BP remains (at most 3, as in 7.129). Draw k uses
+  the random stream of seed k.
+- Arm C (option C): the existing mechanism with --init_seed 9000 + k. --init_seed changes only the initial m (stream
+  [init_seed, ·]); the cube axes and offsets use [seed, 1000 + p] with --seed 2042, so the microstructure stays.
+- Existing states (draw 0, reported as information only, not in the readings): arm C: K4_1_nx_pd300 (= the K4_1_ad
+  state; the same sequence, older commits e5998f5 / 5b540cb). Arm S: K4_1_nx_sa200 (D2 a) or K4_1_nx_sad and
+  K4_1_nx_sad_rep (D2 b); sa200 and sad ran on ebcea74 with the absolute stop of the static relaxation. Draw 0 of arm
+  C is the state that raised Q2; it must not decide Q2.
+
+**What the random change does (estimate).** In the held field a small deviation of m decays with the time constant
+1 / (α γ μ0 H): about 19 ps at 2 M_s and 84 ps at 1 − φ (α 0.1). The first quarter cycle of the AC pass is 8.3 ns, and
+the selection of the state comes at half cycle 13 (2 M_s) or 6 (1 − φ) (7.129). Thus any amplitude ε falls to the fp32
+rounding level long before the selection. The random change only gives each draw its own rounding path, as the rerun
+of 7.129 did (Δ ln w_l −0.62 from a change of the stop of the static relaxation). Its amplitude has no physical
+meaning in this design. A physical model of the thermal noise (a stochastic field at 300 K during the AC pass) is a
+model change and not part of this test.
+
+**New code (main, one commit; tests first).** run_loops.py: `--sat_perturb ε` (rad; default 0 = off) and
+`--sat_perturb_seed s`; both INIT_KEYS and NEW_KEYS (old configs: 0 and None). After the static relaxation of each
+pass p: every particle cell gets m ← normalise(m + ε g⊥ / √2), g⊥ = the part of a standard Gaussian vector across m,
+random stream [s, 30 + p]; thus the rms angle is ε. The static record stores ε, s and the measured rms angle.
+conv_jobs.py: satdist_lines (names K4_1_dS<k> and K4_1_dC<k>); jobs/satdist.txt. Tests: the rms angle equals ε within
+5 % on 10⁴ cells; ε 0 changes nothing (bit-identical m); two seeds give different m; the job lines differ from the
+production line only in the planned arguments. Local smoke test on the small test geometry of 7.127 (one draw per arm),
+then the study suite. Per draw the evaluation records the half cycle where M_par and the BP count leave the path of
+the other draws of its arm.
+
+**Reading (fixed before the results; new draws only).**
+- R1 (spread): s = sample SD of ln P per arm, with the 95 % range from the χ² distribution. Use for the main study: the
+  standard error of a corner mean with n_m microstructures and m prepared states each is
+  sqrt((s_m² + s²/m) / n_m), with s_m the scatter between microstructures.
+- R2 (systematic): exact two-sided Wilcoxon rank-sum test of ln P, arm C against arm S, at the level 0.05. "C higher" or
+  "S higher" if the test rejects; else "no difference found". Also reported: Δ = mean ln P(C) − mean ln P(S) with
+  SE_Δ = sqrt(s_C²/n + s_S²/n).
+- R3 (BPs): per arm the share of draws free of BPs after the first pass / attempt, and the passes / attempts needed.
+- Not a claim of this test: other microstructures and corners (1 microstructure).
+
+**Cost (estimates).** One draw of arm S: 3.3 h at 2 M_s, 2.8 h at 1 − φ (7.129). One draw of arm C: about 2.7 h
+(K4_1_ad: random-start relaxation 0.5 h, AC 1.1 h, 9 mT 0.8 h, setup 0.2 h); the random-start relaxation takes
+0.3 … 1.9 h (8 000 … 48 000 iterations, 7.128), and each extra attempt adds about 1.7 h. The GPU-h below contain an
+allowance of about 10 % for extra attempts and passes. A gate retry would add about 8 h to one draw. The instance is
+paid per hour: 0.405 $/h.
+
+| D3 option | new draws per arm | GPU-h | time on 4 GPUs | cost | Δ ln P found with 80 % power (planning s 0.47) |
+|---|---|---|---|---|---|
+| (a) | 4 | about 26 | about 7 h | about 2.8 $ | 0.94 (× 2.6) |
+| (b) | 6 | about 39 | about 10 h | about 4.1 $ | 0.77 (× 2.2) |
+| (c) | 8 | about 52 | about 13.5 h | about 5.5 $ | 0.67 (× 1.95) |
+
+The planning value s 0.47 comes from 5 states of different preparations (4 degrees of freedom; 95 % range 0.28 … 1.35);
+the power is thus uncertain. The power column uses 2.84 SE_Δ (a normal approximation).
+
+**Decisions for Chris.**
+- D1 the random change of arm S. (a) One random change of size 10⁻³ rad after the static relaxation: a seed of the
+  rounding path (amplitude without meaning, see above); simple. (b) A random change at the start of each half cycle of
+  the AC pass: also decays within about 0.1 ns, thus the same effect as (a), more code. (c) A stochastic thermal field
+  at 300 K during the AC pass: physical, but a model change (temperature), new code, validation and more time.
+  Recommendation (a).
+- D2 h_sat of arm S. (a) 2 M_s: 0 cells above 15° in the held field (7.127); 3.3 h per draw. (b) 1 − φ: 1.4 % of the
+  cells above 15°; 2.8 h per draw. Recommendation (a), the full saturation.
+- D3 new draws per arm: table above. Recommendation (c), 8 + 8: it finds a factor 2 (the lower end of the option C
+  excess at K4, × 2 … 3) with 80 % power; (b) only at the planning value of s.
+
+**Risks.** The spread can depend on the microstructure (K2_0 × 1.6, K4_1 × 4; 7.129); the test gives K4_1 only. A draw
+can fail the gate (7.128); the gate retry runs as in production. If the instance stops, the dispatcher resumes the
+runs. If the states of one arm group into a few classes (7.129), the SD describes them poorly; R2 uses ranks for this
+reason.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
