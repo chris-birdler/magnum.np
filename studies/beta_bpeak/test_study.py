@@ -2681,6 +2681,53 @@ def test_sat_corner_lines():
         assert key(t) == key(prod["K%d_0_nx" % c])
 
 
+def test_eval_corners_sat_stats():
+    """eval_corners_sat (PLAN 4.15 C4): the 95 % CI of the t distribution, the pooled SD and the n of the D1 target."""
+    import math
+    import eval_corners_sat as ES
+    s = ES.cstat([1.0, 2.0, 3.0, float("nan")])
+    assert s[0] == 2.0 and abs(s[2] - 1.0) < 1e-12 and s[5] == 3
+    assert abs((s[4] - s[3]) / 2 - 4.302653 / math.sqrt(3)) < 1e-5
+    assert ES.cstat([1.0]) is None
+    sd, df = ES.pooled_sd([[1.0, 3.0], [10.0, 12.0, 14.0], [5.0]])
+    assert df == 3 and abs(sd - math.sqrt((2 + 8) / 3)) < 1e-12
+    assert ES.n_needed(0.15) == 12 and ES.n_needed(0.09) == 6 and ES.n_needed(0.19) == 17
+
+
+def test_eval_corners_sat_known_answer(tmp_path):
+    """eval_corners_sat on the option C corner runs under the names K<c>_<k>_sat (links): β per run equals β "full" of
+    the ad arm in results/corners_ad_data.json where all three arms have all 7 amplitudes, and Δβ against ad is 0.
+    Needs the local run folders (BETA_RUNS, default runs/)."""
+    import json
+    import os
+    import eval_corners_sat as ES
+    here = pathlib.Path(__file__).resolve().parent
+    src = pathlib.Path(os.environ.get("BETA_RUNS", str(here / "runs")))
+    data = next((p for p in (here / "results" / "corners_ad_data.json", src.parent / "results" / "corners_ad_data.json")
+                 if p.exists()), None)
+    if not (src / "K1_0_ad" / "summary.json").exists() or data is None:
+        pytest.skip("local run folders of the corner runs not present")
+    for d in src.iterdir():
+        if d.is_dir() and (d.name.split("_")[0] in ES.CORNERS) and len(d.name.split("_")) >= 2:
+            (tmp_path / d.name).symlink_to(d)
+    for c in ES.CORNERS:
+        for k in range(3):
+            (tmp_path / ("%s_%d_sat" % (c, k))).symlink_to(src / ("%s_%d_ad" % (c, k)))
+    out = tmp_path / "out.json"
+    ES.main(tmp_path, out)
+    r = json.loads(out.read_text())
+    ref = json.loads(data.read_text())["beta"]["full"]
+    assert len(r["valid"]) == 12 and not r["no_value"]
+    n_cmp = 0
+    for n, row in r["runs"].items():
+        base = n[:-4]
+        if all(np.isfinite(v) for v in ref[base].values()):
+            assert abs(row["beta_all"] - ref[base]["ad"]) < 1e-9, n
+            n_cmp += 1
+        assert abs(r["pairs"][n]["ad"][0]) < 1e-12
+    assert n_cmp >= 9
+
+
 def test_crep_lines():
     """Option C repeated with new random starts (Chris 2026-10-20): the 9 mT base of the static saturation test, the
     option C field of K4_1_ad, 3 attempts, a new --init_seed per line; nothing else changes."""
