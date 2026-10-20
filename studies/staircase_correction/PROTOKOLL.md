@@ -1241,3 +1241,21 @@ is different for fine m on its own 5-nm staircase and for coarse m with fraction
 staircase.
 
 Not checked yet: X3_s949 (6.3 W/cm³) and X3_s950 (3.9 W/cm³; D15_s950 2.4 W/cm³, other pattern of the particles).
+
+**Reading of the interim (agreed by Chris, 2026-10-20, about 18:50 UTC):**
+- N1 and N3 test the goal of 3.19: the stray field for the given roughness of m. Δ_g, m and total test a different
+  question: a finer model as a whole, in which also m at the surface becomes finer. The roughness of m is a separate
+  point (Chris, 3.19). The large deviations of Δ_g, m and total do not come from the stray field.
+- Total: the target is 0. The mean −0.19 ± 0.33 (n 6) cannot be distinguished from 0, but because of the scatter it
+  is also not shown to be near 0 (95 % interval −1.04 … +0.65).
+- Δ_g: there is no target 0. Δ_g is the effect of the finer staircase itself. Its size (+0.51, a factor of about 1.7
+  on P) shows that the step size of the surface has a strong effect on the loss.
+
+**Consequence for the goal:**
+- Shown (interim): the correction gives the exact field of the 5-nm staircase (N3), and at fixed morphology the mesh
+  dependence is about 9 % in P (N1).
+- Not shown yet: the 5-nm staircase is still a staircase. Δ_c = +0.40 ± 0.13 shows that the step size in the stray
+  field still has a strong effect. Whether the stray field acts as the field of a smooth sphere is shown only by the
+  series in q at the same m (T3Pc and X3 with q 4 against q 2, 3.22) and by the static FE comparison.
+- D15 changes the roughness of m at the same time. Thus D15 is not the correct reference for the goal; total and
+  Δ_g stay as information.
