@@ -44,7 +44,7 @@ PREP = [("_nx", "random start (cell blocks)", 0), ("_nx_ip", "random start (per 
         ("_nx_sbd", r"B, $1-\varphi$", 3), ("_nx_sa200", r"A, $2M_\mathrm{s}$", 3), ("_nx_sb200", r"B, $2M_\mathrm{s}$", 3)]
 GROUP = ["relaxed random\nstart, no AC", "AC from the relaxed\nrandom start", "prot.\nS", "static saturation\ntest"]
 STATUS = {"none": ("#2a78d6", "no BP"), "start": ("#eb6834", "BPs in the start state"),
-          "stage": ("#eda100", "BPs only during the 9 mT stage (none here)")}
+          "stage": ("#eda100", "BPs only during the 9 mT stage")}
 
 
 def stage9(run_dir):
@@ -117,6 +117,7 @@ def p_of(w, F):
 
 def plot_states(runs, F, out):
     fig, axes = plt.subplots(1, 2, figsize=(14, 7.6), sharey=True)
+    seen = set()
     for ax, ms in zip(axes, ("K4_1", "K2_0")):
         x, free, ticks, labels, last_g, gx = 0.0, [], [], [], None, {}
         for suf, lab, g in PREP:
@@ -129,6 +130,8 @@ def plot_states(runs, F, out):
             gx.setdefault(g, []).append(x)
             P, sd = p_of(w, F)
             st = status(start, peak)
+            seen.add(st)
+            ax.axvline(x, color="#e6e5e0", lw=0.8, zorder=0)
             marker(ax, x, P, sd, "none", STATUS[st][0], "o", 10)
             t = bp_text(start, peak)
             if t:
@@ -145,7 +148,7 @@ def plot_states(runs, F, out):
         ax.axhline(gm, color="#8a8984", lw=1, ls="--", zorder=1)
         for g, xs in gx.items():
             if g > 0:
-                ax.axvline(min(xs) - 0.85, color="#c9c8c2", lw=1, zorder=0)
+                ax.axvline(min(xs) - 0.85, color="#8a8984", lw=1.2, zorder=0)
             ax.text(np.mean(xs), 1.02, GROUP[g], transform=ax.get_xaxis_transform(), ha="center", va="bottom",
                     fontsize=10, color=INK, fontweight="bold")
         ax.set_xticks(ticks)
@@ -156,7 +159,8 @@ def plot_states(runs, F, out):
             ms, len(free), sdl, max(free) / min(free)), color=INK, fontsize=12, pad=34)
         ax.grid(axis="y", which="both", color="#e6e5e0", lw=0.6)
     axes[0].set_ylabel(r"$P$ at 9 mT (W/cm$^3$)")
-    h = [plt.Line2D([], [], ls="", marker="o", color=c, ms=10, label=lab) for c, lab in STATUS.values()]
+    # only the BP classes that occur (Chris 2026-10-20)
+    h = [plt.Line2D([], [], ls="", marker="o", color=c, ms=10, label=lab) for k, (c, lab) in STATUS.items() if k in seen]
     h += [matplotlib.patches.Patch(color="#c9c8c2", alpha=0.45, label="geometric mean × exp(± SD of ln P), states "
                                    "without BPs"),
           plt.Line2D([], [], ls="", label="number = BPs at the start (→ most during the stage); * stage not counted"),
@@ -170,6 +174,7 @@ def plot_states(runs, F, out):
 def plot_history(runs, F, out):
     fig, ax = plt.subplots(figsize=(9, 5.2))
     names = ["K3_0", "K3_1", "K3_2", "K4_0", "K4_1", "K4_2"]
+    seen = set()
     for k, ms in enumerate(names):
         vals = []
         for j, (suf, col, mk) in enumerate((("_nx_h16", PAL[0], "s"), ("_ad_h16", PAL[1], "^"))):
@@ -179,6 +184,7 @@ def plot_history(runs, F, out):
             w, start, peak = d
             P, sd = p_of(w, F)
             xx = k + (j - 0.5) * 0.25
+            seen.add(status(start, peak))
             marker(ax, xx, P, sd, status(start, peak), col, mk, 9)
             if start or peak:
                 ax.annotate("BPs " + bp_text(start, peak), (xx, P), xytext=(-9, -3), textcoords="offset points",
@@ -198,9 +204,10 @@ def plot_history(runs, F, out):
     h = [plt.Line2D([], [], ls="", marker="s", color=PAL[0], ms=9, mew=2, label="nx: relaxed random start"),
          plt.Line2D([], [], ls="", marker="^", color=PAL[1], ms=9, mew=2, label="option C: AC from 300 mT"),
          plt.Line2D([], [], ls="", marker="o", color=INK, mfc="white", ms=9, mew=2,
-                    label="open: BPs in the start state"),
-         plt.Line2D([], [], ls="", marker="o", color=INK, fillstyle="bottom", markerfacecoloralt="white", ms=9, mew=2,
-                    label="half filled: BPs only during the stage")]
+                    label="open: BPs in the start state")]
+    if "stage" in seen:
+        h.append(plt.Line2D([], [], ls="", marker="o", color=INK, fillstyle="bottom", markerfacecoloralt="white", ms=9,
+                            mew=2, label="half filled: BPs only during the stage"))
     ax.legend(handles=h, loc="upper left", fontsize=10)
     fig.tight_layout()
     fig.savefig(out / "history_pairs.png")
