@@ -2598,3 +2598,15 @@ def test_sat_static_options_and_jobs():
     assert [ln for ln in calls if "tol_abs" in ln] == [
         '            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k, tol_abs=False)']
     assert len(calls) == 4 and '"criterion": "relative %g" % args.relax_tol_E' in rl
+
+
+def test_relax_noise_stats():
+    """eval_relax_noise (Chris 2026-10-20): rises of E are the noise samples; the plateau starts at the first rise; the
+    quiet share counts |dE| <= threshold from there on."""
+    import eval_relax_noise as RN
+    E = [10.0, 5.0, 0.0, 4e-10, -1e-10, 1e-10, -1.5e-10]
+    r = RN.noise_stats(E, 3e-10)
+    assert r["n_rise"] == 2 and abs(r["rise_med"] - 3e-10) < 1e-20
+    # dE from the first rise: +4e-10, -5e-10, +2e-10, -2.5e-10 -> quiet: 2e-10 and 2.5e-10 (<= threshold)
+    assert abs(r["q_share"] - 0.5) < 1e-12
+    assert RN.noise_stats([3.0, 2.0, 1.0], 3e-10)["n_rise"] == 0
