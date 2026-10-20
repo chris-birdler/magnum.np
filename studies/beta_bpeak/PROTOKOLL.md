@@ -7525,6 +7525,68 @@ carry the scatter between states?
   - The sequence itself changed the loss little in the earlier check (7.6: 50 mT directly from the start state against
     50 mT after 9 and 20 mT: −5 %; 1 pair, d/l_ex 96).
 
+### 7.131 Option C repeats at K4_1: reading "option C can also be low" (2 of 4); the 4 new states spread as much as the 5 states of the static saturation test (2026-10-20)
+
+All times UTC. Terms as in 7.129 and 7.130. P: the loss density at 9 mT, P = w_l × 2.686·10⁷ W/cm³ (core volume).
+E_prep: E/(K_d V) of the prepared state. SD of ln P: the sample SD of ln P over states (equal to the SD of ln w; 7.6
+writes σ(ln w)). Reference: the earlier option C state of K4_1 (K4_1_ad, the same state as K4_1_nx_pd300). Its random
+start is the random start of the nx state of K4_1 (--init_seed = --seed); the 4 repeats have new random starts. The
+reference w_l is 5.253·10⁻⁷; 7.125, 7.129 and 7.130 cite 5.24·10⁻⁷ (a rounding error; the threshold 2.6·10⁻⁷ of 7.130
+does not change). Data: summary.json and stdout.log of the 4 runs (local copies in runs/, md5
+runs/md5_crep_20261020.txt, equal to the md5 on the instance).
+
+**Results (4 runs, code 0113bc7, started 09:31, done 11:55 … 12:08).**
+
+| run | iterations: random start / after AC | attempts | BPs after the random start | largest BP count during AC | BPs in the prepared state | E_prep | largest angle | w_l, 9 mT | P, 9 mT |
+|---|---|---|---|---|---|---|---|---|---|
+| K4_1_cr9001 | 13 500 / 13 500 | 1 | 1 | 1 | 0 | −3.495·10⁻⁴ | 82° | 3.50·10⁻⁷ | 9.4 W/cm³ |
+| K4_1_cr9002 | 31 000 / 3 000 | 1 | 3 | 3 | 0 | −3.573·10⁻⁴ | 87° | 3.61·10⁻⁷ | 9.7 W/cm³ |
+| K4_1_cr9003 | 25 000 / 4 500 | 1 | 2 | 3 | 0 | −3.745·10⁻⁴ | 88° | 1.41·10⁻⁷ | 3.8 W/cm³ |
+| K4_1_cr9004 | 31 500 / 4 500 | 1 | 3 | 3 | 0 | −3.456·10⁻⁴ | 79° | 1.80·10⁻⁷ | 4.8 W/cm³ |
+| reference K4_1_ad (not in the reading) | 13 000 / 7 500 | 1 | 2 | 2 | 0 | −3.677·10⁻⁴ | 93° | 5.25·10⁻⁷ | 14.1 W/cm³ |
+
+- Quality: all relaxations converged (absolute stop threshold, option 1 of 7.128). All 4 stages met the rules (steady,
+  closed, calm tail of 5 cycles); 0 BPs at all samples of the 9 mT stages. All 4 repeats count.
+- BPs: the AC pass removed the BPs of the random start (0 BPs at the end of each half cycle from half cycle 4 on).
+  4 of 4 prepared states are free of BPs in the first attempt.
+- Time: 2.39 … 2.60 h per run; the instance ran 2.6 h for the test (about 1.1 $, 0.405 $/h; estimate was 1.4 $).
+
+**Reading (rule of 7.130, fixed before the results): "option C can also be low".** 2 of 4 w_l are below 2.6·10⁻⁷
+(K4_1_cr9003 1.41·10⁻⁷, K4_1_cr9004 1.80·10⁻⁷); 0 of 4 are above 4.0·10⁻⁷.
+
+**Spread (descriptive; not part of the fixed reading).**
+- The 4 new option C states: P 3.8 … 9.7 W/cm³ (× 2.6); SD of ln P 0.47 (95 % range 0.27 … 1.77 from the χ²
+  distribution, 3 degrees of freedom); geometric mean 6.4 W/cm³. With the reference: 5 states, 3.8 … 14.1 W/cm³
+  (× 3.7), SD 0.54, geometric mean 7.5 W/cm³.
+- The 5 states of the static saturation test at K4_1 (7.129): P 3.5 … 10.8 W/cm³ (× 3.1), SD 0.47, geometric mean 5.6
+  W/cm³. These 5 states are not 5 independent draws of one preparation (2 starts, 2 fields, 1 rerun).
+- Difference of the mean ln P, 4 new option C states minus the 5 saturation states: +0.13, SE 0.32 (from the two
+  sample SDs; the SE treats the 5 saturation states as independent). No difference is found; the comparison can find
+  only a difference above about 2 SE (0.63, × 1.9). The ranges overlap.
+- E_prep and w_l show no common order (lowest E_prep: K4_1_cr9003, lowest w_l; second lowest: the reference, highest
+  w_l).
+- The nx state of K4_1 (2 BPs, 7.130: BPs can bias this comparison) has P 4.6 W/cm³. 2 of the 4 new option C states
+  are near it (3.8, 4.8 W/cm³), 2 are about twice as high (9.4, 9.7 W/cm³). Ratio option C / nx at K4_1: × 3.0 for
+  the reference alone, × 1.4 for the geometric mean of the 4 new states, × 1.6 for all 5 option C states (1 nx state;
+  SE of the ln ratio about 0.5 from the state scatter alone). Thus × 3.0 and × 1.4 do not differ significantly. K4_0
+  alone: × 1.95; K4_2 alone: × 2.43 (one option C state each).
+
+**Inference (n: 1 microstructure, 4 new states, 9 mT only).** The data agree with this picture: the high loss of the
+reference is not a fixed property of option C at this microstructure, but one state of a broad distribution (the
+reference is above all 4 new states). This is the picture of 7.129: the AC demagnetization selects one of many states,
+and the 9 mT loss of one microstructure is a distribution over these states. The test does not decide whether a
+smaller systematic shift of option C exists.
+- The SD of ln P between states at K4_1 (0.47) is of the same size as earlier estimates: 0.41 per realisation (7.6,
+  d/l_ex 96; microstructure and state scatter together) and about 0.39 from the 12 corner pairs (7.130; nx states with
+  BPs included). The data cannot separate the state scatter from the scatter between microstructures.
+- Not a claim of this test: other microstructures and corners, other amplitudes (7.130 estimates about 0.15 at
+  150 mT), the scatter of β.
+
+**Open for Chris:** the new corner study and main study (preparation, number of seeds per corner). For the planning:
+if the SD of ln P of a corner is about 0.47 per seed, the standard error of a corner mean at 9 mT from n seeds is
+about 0.47/√n (0.27 at n 3, 0.15 at n 10). The value 0.47 is a point estimate (95 % range 0.27 … 1.77) from 1
+microstructure at 1 corner. The instance stays on; all 4 GPUs are idle since 12:08.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
