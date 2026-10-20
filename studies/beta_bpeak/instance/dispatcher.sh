@@ -20,7 +20,7 @@ if [ ! -d $W ]; then
 fi
 cd $W || exit 1
 if [ "$(git rev-parse HEAD)" != "$C" ]; then
-    git -C /root/magnum.np fetch -q --depth 50 origin feature/newell-pbc && git checkout -q -f "$C" || {
+    git -C /root/magnum.np fetch -q --depth 50 origin main && git checkout -q -f "$C" || {
         echo "$(date '+%F %T') checkout of $C failed: stop"; exit 1; }
 fi
 mkdir -p $B/spool
