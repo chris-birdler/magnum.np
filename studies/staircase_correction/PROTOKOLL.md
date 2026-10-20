@@ -794,3 +794,7 @@ the smallest Ritz value (an upper bound of λ_min), r its residual; λ_Ritz,max 
 - 2026-10-20 (decision of Chris): the q = 4 arms D3Pc4 are cancelled before their start. They have no dynamic
   reference (dx 0.75 runs) and belong to the series in q, which is not started. The static result for q = 4 stays
   (3.8, 3.9). Box 1 queue: spool8 (D3f_s944, then T3 and T3Pc).
+- 2026-10-20 (decision of Chris): focus on q = 2 as the proof of concept (option A); no dynamic validation of higher
+  q for now. Options given: B smaller particles (d/l_ex 48, reference dx 0.75), C q = 4 at d/l_ex 96 (reference
+  dx 0.75, 192³), D coarse mesh dx 6 with q = 4 against the existing dx 1.5 references; D would be the first step
+  if higher q is wanted later.
