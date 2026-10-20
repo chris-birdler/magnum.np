@@ -29,7 +29,13 @@ def main():
     for r in runs:
         if r.get("degree") != 2:
             continue
-        fe[(r["data"], r["mesh"])][(r["body"], r["m"])] = r
+        key = (r["body"], r["m"])
+        old = fe[(r["data"], r["mesh"])].get(key)
+        if old is not None:
+            print("note: %s %s %s: run with levels %s/%s replaced by levels %s/%s" % (
+                r["data"], r["mesh"], key, old.get("levels"), old.get("levels_cut"), r.get("levels"),
+                r.get("levels_cut")))
+        fe[(r["data"], r["mesh"])][key] = r
     rows, out = [], {}
     for (data, mesh), d in sorted(fe.items()):
         meta = json.loads((BASE / data / "meta.json").read_text())       # data: relative to the study folder
@@ -39,8 +45,9 @@ def main():
         if ("vox", "state") in d:
             ev = d[("vox", "state")]["E_KdVbox"]
             rec["fe_vox_rel"] = ev / F["E_vox"] - 1                       # absolute FE error, for information
-            if ("q2", "state") in d:
-                rec["eps"] = ((d[("q2", "state")]["E_KdVbox"] - ev) - (F["E_X3_q2"] - F["E_vox"])) / S
+            for q in (2, 4):
+                if ("q%d" % q, "state") in d:
+                    rec["eps_q%d" % q] = ((d[("q%d" % q, "state")]["E_KdVbox"] - ev) - (F["E_X3_q%d" % q] - F["E_vox"])) / S
             if ("smooth", "state") in d:
                 Es = F["E_vox"] + d[("smooth", "state")]["E_KdVbox"] - ev
                 rec["E_s"] = Es
@@ -51,23 +58,39 @@ def main():
                         if key in F:
                             rec["%s_q%d_minus_smooth" % (k, q)] = (F[key] - Es) / S
             if ("smooth", "interp") in d:
+                # raw FE value without a difference correction (no exact FD value exists for the continuous m)
                 rec["fe_smooth_interp"] = d[("smooth", "interp")]["E_KdVbox"]
                 if "E_s" in rec:
-                    rec["interp_minus_smooth"] = (rec["fe_smooth_interp"] - rec["E_s"]) / S
+                    rec["interp_raw_minus_smooth"] = (rec["fe_smooth_interp"] - rec["E_s"]) / S
+        if ("vox", "100") in d and ("smooth", "100") in d:
+            # exact check of the difference method on the smooth body: uniform m, target φ (1 − φ) / 3 (φ = 0.55 of the
+            # smooth spheres), in units of S of the state
+            phi = 0.55
+            Es100 = F["E_vox_100"] + d[("smooth", "100")]["E_KdVbox"] - d[("vox", "100")]["E_KdVbox"]
+            rec["eps_smooth_uniform"] = (Es100 - phi * (1 - phi) / 3) / S
+            rec["fe_raw_smooth_uniform_err"] = (d[("smooth", "100")]["E_KdVbox"] - phi * (1 - phi) / 3) / S
+        if ("full", "state") in d:
+            rec["fe_full_rel"] = d[("full", "state")]["E_KdVbox"] / F["E_full"] - 1   # FE error without a surface
+            rec["fe_full_abs_S"] = (d[("full", "state")]["E_KdVbox"] - F["E_full"]) / S
         rec["cost"] = {"%s/%s" % k: {"cells": r["cells"], "t_total_s": round(r["t_total_s"]), "rss_GB": r["rss_GB"]}
                        for k, r in d.items()}
         out["%s %s" % (rec["state"], mesh)] = rec
         f = lambda key: ("%+.3f" % rec[key]) if key in rec else "–"  # noqa: E731
-        rows.append("| %s | %s | %.2e | %s | %s | %s | %s | %s | %s | %s |" % (
-            rec["state"], mesh, S, f("eps"), f("X3_q2_minus_smooth"), f("X3_q4_minus_smooth"),
-            f("T3Pc_q2_minus_smooth"), f("T3Pc_q4_minus_smooth"), f("interp_minus_smooth"), f("fe_vox_rel")))
+        rows.append("| %s | %s | %.2e | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            rec["state"], mesh, S, f("eps_q2"), f("eps_q4"), f("eps_smooth_uniform"), f("X3_q2_minus_smooth"),
+            f("X3_q4_minus_smooth"), f("T3Pc_q2_minus_smooth"), f("T3Pc_q4_minus_smooth"), f("interp_raw_minus_smooth"),
+            f("fe_raw_smooth_uniform_err")))
     md = ["# Static FE comparison: coarse m in the smooth spheres (PROTOKOLL 3.24)\n",
           "FE: magnum.pi 3.13.3, P2 potential, periodic box mesh of n^3 cubes with 6 tetrahedra each, mean field zero. "
           "FD: magnum.np, Newell with full PBC. Values in units of S = E_vox − E_X3,q2 of the state (column S, in "
           "K_d V_box). E_s: energy of the smooth spheres from the difference method.\n",
-          "| state | mesh | S (K_d V_box) | ε: FE check on the 5-nm staircase | X3 q2 − E_s | X3 q4 − E_s | T3Pc q2 − E_s "
-          "| T3Pc q4 − E_s | continuous m − E_s | FE error of E_vox (relative) |",
-          "|---|---|---|---|---|---|---|---|---|---|"] + rows
+          "Checks of the difference method: ε_q2, ε_q4 on the 5-nm and 2.5-nm staircases (exact FD values); ε_u on the "
+          "smooth spheres with uniform m (exact target φ (1 − φ) / 3). Continuous m: the raw FE value without a "
+          "correction; its FE error is not known; the raw FE error of the smooth spheres with uniform m is given "
+          "for scale.\n",
+          "| state | mesh | S (K_d V_box) | ε_q2 | ε_q4 | ε_u | X3 q2 − E_s | X3 q4 − E_s | T3Pc q2 − E_s "
+          "| T3Pc q4 − E_s | continuous m (raw) − E_s | raw FE error, smooth, uniform m |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|"] + rows
     md += ["", "Cost per FE run (cells, wall time in s, peak RAM in GB):", ""]
     for key, rec in out.items():
         md.append("- %s: %s" % (key, "; ".join("%s %d cells, %d s, %.1f GB" % (k, v["cells"], v["t_total_s"],

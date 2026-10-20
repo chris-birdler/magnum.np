@@ -1272,28 +1272,29 @@ section 8, local CPU. (4) Box 2 is destroyed after its runs, the download and th
 
 **Setup.** fe/fe_states.py (FD side, magnum.np), fe/fe_demag.py (FE side, magnum.pi, P2 or P1 potential on a periodic
 box mesh of n³ cubes with 6 tetrahedra each, mean field zero), fe/fe_eval.py. M per tetrahedron: mean (P1) or L2
-projection onto P1 (P2), from the centroids of sub-tetrahedra; this gives the exact load and energy for the given
-sources. Two changes against the magnum.pi defaults: the energy is assembled as ½ μ0 ∫ M · ∇u, because DemagField.E
+projection onto P1 (P2), from the centroids of sub-tetrahedra; this gives the exact load and energy up to the
+sampling of M (exact only where M is constant in a tetrahedron). Two changes against the magnum.pi defaults: the energy is assembled as ½ μ0 ∫ M · ∇u, because DemagField.E
 needs m in the P1 space; the box mesh is the periodic mesh of Firedrake, because glueplex.PeriodicMesh does not accept
 the facet orientations of fd.BoxMesh. apptainer cannot run on vast.ai containers (no user or mount namespaces, no
 CAP_SYS_ADMIN, no /dev/fuse; checked on box 2), so FE runs only locally or on a VM.
 
 **Results, state X3_s951 (energies in 10⁻³ K_d V_box; mesh 48³ = the FD cells).**
 - Uniform m, voxel body (target φ_vox (1 − φ_vox) / 3 = 82.517): FD 82.517 (deviation 1·10⁻⁸); FE P1 77.06 (−6.6 %),
-  P2 81.61 (−1.1 %).
-- Real state, voxel body: FD 4.6520 (exact for cubes); FE P1 0.993 (−79 %), P2 3.858 (−17 %). Cause: the coarse m
-  jumps on every inner cell face; the field of these charge sheets varies on scales far below 10 nm, and an element of
-  10 nm cannot resolve it. FD Newell integrates it exactly.
-- Difference method, check on the 5-nm staircase: FD E_X3,q2 − E_vox = −2.1487; FE P2 −2.1953 (ε = −2.2 % of S;
-  with M as the mean per tetrahedron −2.5 %); FE P1 −0.874 (ε = +59 % of S). Thus only P2 is usable.
-- Smooth spheres (P2): E_smooth(FE) with 64 / 512 points per tetrahedron 0.962 / 1.057; with 4096 / 32768 points in
-  the 108 432 tetrahedra at the surface 1.0886 / 1.0961. E_s = 4.6520 + 1.0961 − 3.8576 = 1.8905. Thus X3 at q 2 lies
-  0.613 above the smooth spheres (0.29 S), T3Pc at q 2 lies 0.017 above X3 at q 2 (0.008 S). One state; the night
-  run gives 6 states and q 4.
-- Continuous m (trilinear, unit length) in the smooth spheres, FE P2 (not checked by an exact value): 1.118, that is
-  0.36 S below E_s. The roughness of m therefore has an effect of the same order as the remaining staircase; a
-  reference with continuous m would mix both (Chris: the cleanest separation for the test of the correction is the
-  same m; the continuous m belongs to the second question, the whole model against the continuum).
+  P2 81.61 (−1.1 %, that is −0.91 absolute).
+- Real state, voxel body: FD 4.6520 (exact for cubes); FE P1 0.993 (−79 %), P2 3.858 (−17 %, that is −0.79 absolute).
+  The absolute FE error is of the same size with uniform m (only surface charges) and with the real state, so the
+  source of the error is not yet shown (the inner charge sheets of the coarse m, or the edges and corners of the
+  staircase surface). The night run adds a body without a surface (the whole box magnetic) to separate the two.
+- Difference method, check on the 5-nm staircase with M as the mean per tetrahedron: FD E_X3,q2 − E_vox = −2.1487;
+  FE P2 −2.2017 (ε = −2.5 % of S); FE P1 −0.874 (ε = +59 % of S). Thus only P2 is usable.
+- **Error found by the review (fixed before the night run):** the P2 runs with M as the L2 projection (DG1) set the
+  nodal values at the inner nodes of the default DG1 element of Firedrake, not at the vertices. All P2 values with
+  DG1 of this evening are invalid: the check ε = −2.2 %, the smooth spheres (E_s = 1.8905, X3 at q 2 0.29 S above
+  them) and the continuous m (1.118). fe_demag.py now uses the equispaced DG1 element (nodes at the vertices) and stops
+  if the nodes and the vertices differ. The night run recomputes these values.
+- T3Pc at q 2 lies 0.017 above X3 at q 2 (0.008 S; FD only, not affected).
+- The continuous m gives a raw FE value without a difference correction; its FE error is of the same size as the
+  differences in question. No statement on the size of the roughness effect of m follows from it.
 
 **Cost (local laptop, 8 cores).** FD energy with the kernel in the cache: below 1 s. FE P1 48³ (0.66 M tetrahedra):
 3 s solve, 1.5 GB. FE P2 48³: 34 s solve, 4.5 GB; sampling 1 min (512 points per cell), 3.5 min or 20 min (4096 or

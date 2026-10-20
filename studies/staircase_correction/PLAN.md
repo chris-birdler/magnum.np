@@ -187,8 +187,14 @@ and at which cost.
    surface with 8⁵ points): mesh 48³ cubes × 6 tetrahedra (conforms to the FD cells) for the 6 states: voxel body,
    5-nm staircase (check ε), smooth spheres.
 4. FE with a continuous m (trilinear in the cell centres, unit length) in the smooth spheres: the second question
-   (does the whole model, roughness of m included, approach the continuum?). Information only.
-5. Mesh 64³ (not conforming) for 2 states: does E_s change with the mesh?
+   (does the whole model, roughness of m included, approach the continuum?). Raw FE value without a correction,
+   information only; 2 states, meshes 48³ and 64³.
+5. Mesh 64³ (not conforming) for 2 states: does E_s change with the mesh? A sampling check (512 against 4096 points
+   per tetrahedron) for the voxel body on this mesh.
+5a. Checks added after the review (PROTOKOLL 3.24): ε also on the 2.5-nm staircase (X3 at q 4, exact FD value);
+   ε_u on the smooth spheres themselves with uniform m (exact target φ (1 − φ) / 3, a test of the method on the target
+   body; uniform m is not a test of the correction); a body without a surface (the whole box magnetic, m of the nearest
+   touching cell) to measure the FE error of the inner charge sheets alone.
 6. fe/fe_eval.py writes results/fe_static.md: ε, X3(q) − E_s, T3Pc(q) − E_s, continuous m − E_s, all in units of
    S = E_vox − E_X3,q2 of the state, and the cost of each FE run.
 

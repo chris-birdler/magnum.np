@@ -11,14 +11,16 @@ periodic box, mean field zero). Runs in the magnum.pi container:
                 of N); FILE.msh  gmsh mesh of the box (fe_mesh.py)
 --body   vox     the voxel body of the FD mesh (cell centre in a sphere): FD Newell is exact for it
          q<k>    the staircase of the sub-cells dx/k (X3 of the FD side is exact for it)
+         full    the whole box with the m of m_full.npy (no surface; FD exact: E_full)
          smooth  the smooth spheres
 --m      state   the coarse m of the state; interp: a continuous m from it; 100, 111: uniform m (target of the uniform case: φ (1 − φ) / 3 K_d V_box)
 
 For a P1 potential the gradient is constant in a tetrahedron, so the load and the energy need only the mean of
 M = M_s m over each tetrahedron (DG0). For P2 the gradient is linear, so the L2 projection of M onto P1 in each
-tetrahedron (DG1) gives the exact load and energy. Both come from the centroids of the 8^L sub-tetrahedra of L
-midpoint refinements (equal volumes; --levels L). The FE energy of the Galerkin solution is not larger than the exact
-energy.
+tetrahedron (DG1, nodes at the vertices) gives the exact load and energy. Both come from the centroids of the 8^L
+sub-tetrahedra of L midpoint refinements (equal volumes; --levels L), so they are exact only up to this sampling where
+M is not constant in a tetrahedron. The FE energy of the Galerkin solution is not larger than the exact energy for
+the sampled sources.
 """
 import argparse
 import json
@@ -66,7 +68,7 @@ class Source:
         self.ids = np.load(data / "ids.npy")
         self.mode = mode
         if mode in ("state", "interp"):
-            self.m = np.load(data / "m.npy")
+            self.m = np.load(data / ("m_full.npy" if body == "full" else "m.npy"))
         else:
             v = np.array([1.0, 0.0, 0.0] if mode == "100" else [1.0, 1.0, 1.0])
             self.m = np.broadcast_to(v / np.linalg.norm(v), (self.N,) * 3 + (3,))
@@ -93,7 +95,9 @@ class Source:
     def __call__(self, x):
         x = np.mod(x, self.a)
         c = np.minimum((x / self.dx).astype(np.int64), self.N - 1)
-        if self.body == "vox":
+        if self.body == "full":                       # the whole box, m from m_full.npy (no surface)
+            inside = np.ones(len(x), dtype=bool)
+        elif self.body == "vox":
             inside = self.ids[c[:, 0], c[:, 1], c[:, 2]] >= 0
         elif self.body.startswith("q"):                 # body of the q-staircase (each sub-cell takes m of its cell)
             k = int(self.body[1:])
@@ -170,7 +174,15 @@ def main():
     src = Source(data, a.body, a.m)
     mesh = make_mesh(a.mesh, src.a)
     V0 = fd.FunctionSpace(mesh, "DG", 0)
-    W0 = fd.VectorFunctionSpace(mesh, "DG", 0 if a.mfamily == "DG0" else 1)
+    if a.mfamily == "DG0":
+        W0 = fd.VectorFunctionSpace(mesh, "DG", 0)
+    else:
+        # nodes at the vertices (the default DG1 variant has inner nodes), checked against the coordinate field
+        W0 = fd.FunctionSpace(mesh, fd.VectorElement(fd.FiniteElement("DG", mesh.ufl_cell(), 1, variant="equispaced")))
+        xn = fd.Function(W0).interpolate(fd.SpatialCoordinate(mesh)).dat.data_ro[W0.cell_node_map().values]
+        err = np.abs(xn - cell_vertices(mesh)).max()
+        if err > 1e-9 * src.a:
+            raise RuntimeError("DG1 nodes are not the cell vertices in their order (max distance %.3g m)" % err)
     verts = cell_vertices(mesh)
     ncell = len(verts)
     log("mesh %s: %d cells, %d vertices (%.0f s)" % (a.mesh, ncell, mesh.num_vertices(), time.time() - t0))

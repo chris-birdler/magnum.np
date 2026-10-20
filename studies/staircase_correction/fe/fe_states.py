@@ -15,6 +15,7 @@ void), touch.npy (particle index of the touching cells, -1: void), occ_q<q>.npy 
 energies in units of K_d V_box):
     E_vox            voxel body (cell centre in a sphere), exact for full cubes up to the Newell PBC sum
     E_vox_100/111    the same body with uniform m; target φ_vox (1 − φ_vox) / 3 (reading R1)
+    E_full           the whole box magnetic, m of the nearest touching cell in the void (no surface; m_full.npy)
     E_X3_q<q>        exact field of the q-staircase for the coarse m (DemagStaircaseFine)
     E_T3Pc_q<q>      production model: Newell with M_s v plus the pairwise correction (p 3, centroid term)
 """
@@ -129,6 +130,17 @@ def main():
     np.save(out / "m.npy", m_ext)
     np.save(out / "ids.npy", ids)
     np.save(out / "touch.npy", touch)
+    # the same m on every cell of the box (each void cell takes m of the nearest touching cell): a body without a
+    # surface, so that only the charge sheets on the inner cell faces remain (check of the FE error source)
+    from scipy.spatial import cKDTree
+    xyz = np.stack(np.unravel_index(np.arange(N ** 3), (N,) * 3), -1).astype(np.float64)
+    tf = touch.reshape(-1)
+    src_c, dst_c = np.flatnonzero(tf >= 0), np.flatnonzero(tf < 0)
+    _, k = cKDTree(xyz[src_c], boxsize=N).query(xyz[dst_c], k=1)
+    m_full = m_ext.reshape(-1, 3).copy()
+    m_full[dst_c] = m_full[src_c[k]]
+    m_full = m_full.reshape(N, N, N, 3)
+    np.save(out / "m_full.npy", m_full)
 
     norm = Kd * a_box ** 3
     E = {}
@@ -140,6 +152,7 @@ def main():
         u = np.broadcast_to(np.array(v) / np.linalg.norm(v), (N, N, N, 3)).copy()
         E["E_vox_" + name] = energy(demag, N, dx, vox, u) / norm
     phi_vox = float((ids >= 0).mean())
+    E["E_full"] = energy(demag, N, dx, np.full((N, N, N), Ms), m_full) / norm
     E["phi_vox"] = phi_vox
     E["R1_target"] = phi_vox * (1 - phi_vox) / 3
     log("voxel: E %.9f, uniform (100) %.9f (111) %.9f, target %.9f (%.0f s)"
