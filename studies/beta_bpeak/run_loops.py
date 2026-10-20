@@ -1204,9 +1204,14 @@ def main(argv=None):
             if not src.exists():
                 sys.exit("ERROR: --init_transfer %s does not exist" % src)
             cf = torch.load(str(src), map_location="cpu")
-            if args.surface != "voxel":
-                sys.exit("ERROR: --init_transfer needs --surface voxel")
-            diff = [k for k in INIT_KEYS if k not in ("dx_lex", "relax_maxiter")
+            if args.surface != "voxel" and args.staircase == "none":
+                sys.exit("ERROR: --init_transfer needs --surface voxel (or the fraction surface of --staircase)")
+            # keys that may differ from the source: the mesh, and (staircase correction, PROTOKOLL 3.11) the surface
+            # model, the locked geometry and the preparation (the source state is already prepared)
+            free = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p",
+                    "staircase_centroid", "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries",
+                    "bloch_smooth", "init_mode")
+            diff = [k for k in INIT_KEYS if k not in free
                     and cf["config"].get(k, NEW_KEYS.get(k)) != config.get(k)]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
@@ -1217,7 +1222,8 @@ def main(argv=None):
             if not (is_multiple(a_lex, dxf) and is_multiple(args.dx_lex, dxf)):
                 sys.exit("ERROR: dx %g l_ex of %s is not a divisor of dx %g and of a %g l_ex" % (dxf, src, args.dx_lex, a_lex))
             Nf = int(round(a_lex / dxf))
-            rep_f = int(round(args.geom_dx_lex / dxf)) if args.geom_dx_lex else 1      # the same locked geometry
+            g_src = cf["config"].get("geom_dx_lex")                                   # geometry of the source
+            rep_f = int(round(g_src / dxf)) if g_src else 1
             ids_f = locked_geometry(Nf, d, dxf * lex, rep_f)["ids"]
             m_c, tstats = transfer_m(cf["m"].numpy(), ids_f, ids)
             state.m = T(m_c)

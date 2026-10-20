@@ -766,3 +766,25 @@ the smallest Ritz value (an upper bound of λ_min), r its residual; λ_Ritz,max 
   R3 as in (b)). L is "not usable" (R3).
 - Dynamic arms: the remaining arms with L (D3Lc_s943 started and stopped, D3Lc_s944, D3Lc4) are cancelled; D3Lc_s941
   and D3Lc_s942 (finished) stay as information. The queue (spool7) runs D3Pc_s944, D3f and D3Pc4.
+
+### 3.11 End of the night mandate; option B of the dynamic test (2026-10-20 morning, decisions of Chris)
+
+- About 06:40 local: Chris is back; all decisions go through him again. The night mandate (decisions D1 … D8) ends.
+- Question of Chris: how do we test that the correction works? Answer: statically against the exact fine reference
+  (3.6 … 3.10), dynamically by D1. Weakness of D1: each arm prepares its own state, so the scatter between the states
+  is large (SD of ln P 0.16 for D3, 0.54 for D3Pc with n 2). Options: A as is; B transferred start (the prepared state
+  of D15, block averaged, as the start of the coarse arms, as the T arm of V3g in 7.110); C more seeds. **Decision of
+  Chris: B** (A runs on as information).
+- B: arms T3 (dx 3, voxel), T3Pc (dx 3, pairwise correction with the centroid term, q 2, p 3) and T15g (dx 1.5, dx 3
+  geometry locked), seeds 941 … 944, each from the prepared state of D15_s<seed> (init.pt, Newell, option C, no Bloch
+  points), then the production relaxation and the 9 mT stage. The reference is D15 itself (same prepared state).
+  Reading as D1 with Δ_c = ln P(T3Pc) − ln P(T3) and Δ_g = ln P(D15) − ln P(T15g).
+- Code (run_loops --init_transfer): allowed with the fraction surface of --staircase; the keys of the surface model,
+  of the locked geometry and of the preparation may differ from the source; the geometry of the source comes from its
+  own config. Smoke run on box 2 (transfer from D15g_s941 to the corrected dx 3 model): transfer and relaxation start
+  without error. Study tests 118 passed, 3 skipped.
+- Question of Chris: is the reference the smooth sphere? No. With q = 2 the target and the reference are the fine
+  staircase of dx 1.5, which still has steps. This is a validation step. The smooth sphere is the limit q → ∞ of the
+  correction at dx 3 (same cost per time step for any q). Proposal (open for Chris): after the validation, S(q) for
+  q = 2, 4, 8 statically on the d/l_ex 96 geometry, then P(q) dynamically at dx 3 and an extrapolation to q → ∞.
+  Limits: the exchange still sees the coarse staircase; the resolution of m stays at dx 3.
