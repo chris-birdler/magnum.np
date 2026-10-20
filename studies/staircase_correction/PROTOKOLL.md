@@ -1199,3 +1199,7 @@ the static checks cover the operator (field per cell in the surface layer, sever
    from its author and helped with it; it is never published. Only our own scripts and aggregate results go into this
    repository.
 For 2 and 3 a plan follows for the go of Chris.
+
+**Change (Chris, 2026-10-20, about 15:00 UTC):** the dynamic check at q = 4 waits until all runs at q = 2 (3.19 …
+3.21, boxes 2 and 3) are done. Box 4 is stopped (vast.ai stop; it never ran: the image was still loading). No data
+is on it. While it is stopped, only its storage costs (about 0.05 $/h).
