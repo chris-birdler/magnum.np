@@ -990,8 +990,9 @@ the arm (the start of the arm). Overlap: mean of m · m_ref over the magnetic ce
   all seeds. The mean m of each particle is below 0.01 (demagnetised states).
 - Result: the hypothesis "T3Pc_s944 went into another metastable state" is rejected. All T arms stay in their start
   state; seed 944 is not different from the other seeds in this measure. The large Δ_c of seed 944 is a property of
-  the corrected model in the same state. The check does not show what happens inside a cycle: the loss comes from the
-  irreversible jumps during the cycle, and the state at the end of a cycle is the same in all arms.
+  the corrected model in the same state. The check does not show what happens inside a cycle; the state at the end of
+  a cycle is the same in all arms. (Corrected in 3.16: the first version of this item said that the loss comes from
+  irreversible jumps; at this drive there are no jumps.)
 - T15g has the lowest overlap because 8736 of its 486144 cells (1.8 %) are outside the fine staircase and take a
   replacement value at the start (3.11).
 - First run of the check: the script used the nominal diameter of the config (96 l_ex) instead of the diameter of
@@ -1011,3 +1012,37 @@ seeds, thus 8 more; estimate); 3 stop with the reading "not determined". Recomme
   then the T arms; spool2 (2 slots) D15 949 … 952. Duration about 20 h, box cost about 3.6 $ (estimates).
 - Credit: at 0.59 $/h (box 2 and the instance 53995473 of another session) the credit of 7.07 $ lasts until about
   21 h UTC. Chris was told that a top-up is necessary before then.
+
+### 3.16 Seed 944 and the other seeds, particle by particle: the loss is a small phase lag; the correction acts in the right particles, but its size per particle is wrong by up to ±0.6 in ln w (2026-10-20, option 1 of Chris)
+
+**Method** (check_loops.py, local; results/loops_B.md, .json, .png). Last cycle of each arm of design B, seeds
+941 … 944. From the samples (256 per cycle): the loop energy of each particle (∮ H dM_par,k; its share times the loop
+energy w of the box), and the fundamental of M_par,k(t) (amplitude, phase lag behind H, the rest).
+
+**What the loss is at this drive** (f 29.9 MHz, H0 1340 … 1396 A/m):
+- M_par,k(t) of each particle is a sinusoid: the rest without the fundamental is at most 0.6 % of the amplitude, in
+  all arms and seeds. There are no jumps in the cycle. The loss is the out-of-phase part of a linear response: the
+  phase lag of the fundamental is 0.3 … 3.6 mrad. The amplitudes of the four arms are the same (the arm with the
+  fraction surface shows 7 % less because its particle means count each cut cell fully; only the shares are used).
+- Thus a factor 1.5 in the loss of a particle is a change of its phase lag from, e.g., 2.6 to 3.6 mrad (seed 944,
+  particle 3: T3 1.22, T15g 1.49, D15 2.62, T3Pc 3.57 mrad).
+
+**Particle by particle** (Δ_c,k = ln w_k(T3Pc) − ln w_k(T3), Δ_g,k = ln w_k(D15) − ln w_k(T15g); table in loops_B.md):
+- Seed 944: the correction acts in the same particles and in the same direction as the fine staircase, but stronger:
+  particle 3 +1.13 against +0.60, particle 1 +0.68 against +0.28, particle 2 −0.70 against −0.46; particle 0 +0.43
+  against −0.07. In D15 and T3Pc particle 3 carries 53 … 54 % of the loss, in T3 and T15g 35 … 39 %.
+- Seed 941: the box values agree (d +0.05, 3.15) only because errors of opposite sign cancel: particle 0 +0.93
+  against +0.35, particle 1 +0.02 against +0.65.
+- Seed 942: the correction is a little too weak in all 4 particles (d_k −0.26 … −0.01). Seed 943: all effects small,
+  d_k within ±0.17.
+- The sign of Δ_c,k agrees with that of Δ_g,k in 13 of 16 particle-seed pairs; the 3 other pairs have |Δ_g,k| at most
+  0.14. Over the 16 pairs: correlation 0.68; RMS of d_k 0.33 against 0.41 without a correction. The pairs are not
+  independent (the particles of one box couple through the stray field), so these numbers are a description, not a
+  test.
+
+**Result.** Seed 944 is not an exception at the level of the particles: seed 941 has particle errors of the same size
+(±0.6), which cancel in the box value. The correction moves the loss into the right particles, but the size of the
+change in one particle can be wrong by a factor up to 1.8 (exp 0.6). This agrees with the SD of d of about 0.25 at
+box level (3.15) and supports the estimate of 8 more seeds for K2. Cause of the particle errors: open. The loss is a
+phase lag of a few mrad, so small changes of the local dynamics at the surface change it much; candidates (not
+checked): the exchange of the cut cells (3.13), the resolution of m at dx 3 inside the arms with dx 3.
