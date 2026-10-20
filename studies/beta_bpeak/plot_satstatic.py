@@ -176,6 +176,7 @@ def plot_history(runs, F, out):
     names = ["K3_0", "K3_1", "K3_2", "K4_0", "K4_1", "K4_2"]
     seen = set()
     for k, ms in enumerate(names):
+        ax.axvline(k, color="#e6e5e0", lw=0.8, zorder=0)
         vals = []
         for j, (suf, col, mk) in enumerate((("_nx_h16", PAL[0], "s"), ("_ad_h16", PAL[1], "^"))):
             d = stage9(runs / (ms + suf))
@@ -220,15 +221,18 @@ def plot_cycles(runs, F, out):
               ("_nx_sa200", r"A, $2M_\mathrm{s}$", 2, "^"), ("_nx_sb200", r"B, $2M_\mathrm{s}$", 3, "D"),
               ("_nx_sad_rep", r"A, $1-\varphi$, rerun", 4, "v")]
     for ax, ms in zip(axes, ("K4_1", "K2_0")):
+        nbp = 0
         for suf, lab, c, mk in runs_s:
             d = stage9(runs / (ms + suf))
             if d is None:
                 continue
+            nbp += (d[1] or 0) + (d[2] or 0)
             ax.plot(np.arange(len(d[0])), d[0] * F, marker=mk, color=PAL[c], lw=2, ms=7, label=lab)
         ax.set_yscale("log")
         logticks(ax)
         ax.set_xlabel("cycle of the 9 mT stage")
-        ax.set_title(ms, color=INK)
+        ax.set_title("%s\n%s" % (ms, "no BP at the start and during the stage in all runs" if nbp == 0
+                                  else "BPs in some runs"), color=INK, fontsize=12)
         ax.grid(axis="y", which="both", color="#e6e5e0", lw=0.6)
     axes[0].set_ylabel(r"$P$ per cycle (W/cm$^3$)")
     axes[0].legend(fontsize=10, loc="lower right")
