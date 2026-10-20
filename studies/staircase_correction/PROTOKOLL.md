@@ -1024,6 +1024,9 @@ energy w of the box), and the fundamental of M_par,k(t) (amplitude, phase lag be
   all arms and seeds. There are no jumps in the cycle. The loss is the out-of-phase part of a linear response: the
   phase lag of the fundamental is 0.3 … 3.6 mrad. The amplitudes of the four arms are the same (the arm with the
   fraction surface shows 7 % less because its particle means count each cut cell fully; only the shares are used).
+- Check of this reading: for a linear response the loss of particle k is (φ/4) π μ0 H0 A_k sin δ_k (A_k amplitude,
+  δ_k phase lag). For the 48 particle values of the voxel arms (T3, D15, T15g) this gives the measured w_k within
+  −0.3 … +0.9 % (ratio 1.0007 in the mean).
 - Thus a factor 1.5 in the loss of a particle is a change of its phase lag from, e.g., 2.6 to 3.6 mrad (seed 944,
   particle 3: T3 1.22, T15g 1.49, D15 2.62, T3Pc 3.57 mrad).
 
@@ -1044,5 +1047,10 @@ energy w of the box), and the fundamental of M_par,k(t) (amplitude, phase lag be
 (±0.6), which cancel in the box value. The correction moves the loss into the right particles, but the size of the
 change in one particle can be wrong by a factor up to 1.8 (exp 0.6). This agrees with the SD of d of about 0.25 at
 box level (3.15) and supports the estimate of 8 more seeds for K2. Cause of the particle errors: open. The loss is a
-phase lag of a few mrad, so small changes of the local dynamics at the surface change it much; candidates (not
-checked): the exchange of the cut cells (3.13), the resolution of m at dx 3 inside the arms with dx 3.
+phase lag of a few mrad, so small changes of the local dynamics at the surface change it much. The resolution of m
+alone is too small as a cause: per particle, ln w_k(T15g) − ln w_k(T3) (same geometry, dx 1.5 against dx 3) is
+−0.14 … +0.22 (RMS 0.11), against particle errors up to ±0.6. Candidate not checked: the exchange of the cut cells
+(3.13).
+- Consequence (for Chris): even if more seeds give a mean d near 0, one corrected run at dx 3 differs from its run at
+  dx 1.5 by about ±0.25 in ln P (SD of d), because the particle errors do not cancel in a box of 4 particles. Whether
+  "no bias in the mean, ±0.25 per realisation" is sufficient for the main study is a model question for Chris.
