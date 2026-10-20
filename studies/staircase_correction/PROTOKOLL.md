@@ -861,3 +861,38 @@ strong as inside; the model is energy-consistent). Thus the exchange of V1 is no
 but it is also not the exchange of a smooth surface (the coupling still runs over whole cube faces; there is no
 boundary condition on the true surface as in García-Cervera et al. or Parker et al.). Its error against the smooth
 sphere is not measured. Decision of Chris: a static exchange test (3.13).
+
+### 3.13 Static exchange test: V1 keeps a first-order surface error of the exchange, smaller than that of the voxel model (2026-10-20, decision of Chris)
+
+**Method** (check_exchange.py, box 1 CPU, double precision; file results/exchange_static.json). Exchange of magnum.np
+(harmonic mean of A between cells, PBC), voxel model (A, M_s on the voxel cells) against V1 (A v and M_s v from q³
+sub-cells, q = 2 and 4), on K2, K4 and the dynamic test geometry (d/l_ex 96, φ 0.55), dx 3.
+- Helix m = (cos k·r, sin k·r, 0), wave vectors commensurate with the box (n = (3,0,0), (2,2,0), (2,2,2), (6,0,0),
+  (4,4,0), (3,3,3) times 2π/a; wavelength about d/2 and d/4). Reference: the bulk density of the same stencil times
+  the volume of the smooth spheres; thus the stencil error of the bulk drops out and the surface error remains.
+  Control: a box without surfaces gives the reference within 3·10⁻¹⁴.
+- Vortex around an axis through each particle centre (core profile linear up to r_c = 0.1 R and 0.3 R), against the
+  continuum integral (information: stencil and surface error together).
+- A first run had wave vectors not commensurate with the box; the phase jump at the box edge gave spurious errors up
+  to +339 %. It is not used.
+
+**Result (helix; the error is the same for all 6 wave vectors of a geometry).**
+
+| geometry | voxel model | V1, q = 2 | V1, q = 4 |
+|---|---|---|---|
+| K2 (d/l_ex 300, φ 0.62) | −1.39 % | −1.06 % | −0.96 % |
+| K4 (d/l_ex 300, φ 0.55) | −1.43 % | −1.02 % | −0.97 % |
+| d/l_ex 96, φ 0.55 | −4.91 % | −3.01 % | −3.26 % |
+
+- For a helix each bond between two cells carries the same energy, so the test counts the missing share of bonds at
+  the surface: the first-order surface error of the exchange (it grows with Δx/d). The volume weighting of V1 lowers
+  it by about 30 … 40 % but does not remove it. The exchange of V1 is neither that of the staircase model nor that of
+  a smooth surface (remark of Chris, 3.12 correction).
+- Vortex (r_c 0.1 R): K2 −2.4 % (voxel and V1), K4 −2.2 … −2.4 %, d/l_ex 96 −8.3 % (voxel), −6.5 % (V1 q 2).
+- Size against the stray field (estimate): the exchange energies of the states are 1.4e-3 (K2), 3.8e-4 (K4) and 2.4e-3
+  K_d (d/l_ex 96); a surface error of 1 % (K2, K4) and 3 % (d/l_ex 96) is then about 1 … 5 % of the staircase effect S
+  of the stray field (estimate; the gradients of real states sit in walls and vortices, not evenly). This is the same
+  order as the rest of the stray-field error after the correction (1 … 2 % of S at p = 3).
+- Consequence (proposal): after the stray-field correction the exchange is not the dominant remaining error, but not
+  negligible for small particles. A surface correction of the exchange (Neumann condition on the true surface after
+  García-Cervera et al. 2003) is the next step if the dynamic validation shows a deviation.
