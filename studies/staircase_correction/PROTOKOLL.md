@@ -697,3 +697,13 @@ Files: results/stageB_static_A_d96_phi0.55_q2_c.json and _q4_c.json.
   staircase raises the stray-field energy by about one (q = 2) and two (q = 4) times the anisotropy energy of the
   state. S(q = 4) / S(q = 2) = 1.84. A strong effect of the correction on the loss is therefore possible in the
   dynamic arms.
+
+**D6 — second GPU box for the reference arm D15g (decision under the night mandate, 2026-10-20 about 02:20 local).**
+- Finding: with 6 jobs the GPU of box 1 is at 100 %; the corrected arms need more than 1.5 h for the AC pass alone,
+  and D15_s943 needed 56 min for the relaxation. The D1 reading needs D15 and D15g in all 4 seeds; on one GPU they
+  would not finish by the morning.
+- Options: (a) one GPU, accept a partial result ("not determined" with n < 3 is likely); (b) a second cheap box for
+  D15g; (c) drop D15g and take the resolution effect of m from V3g (7.110; other φ and protocol, not clean).
+- Recommendation and decision: (b). Offer 44133018 (RTX 3090, 0.163 $/h, US), instance 56811357, about 6 h ≈ 1 $
+  (estimate). The queue of box 1 was restarted without D15g (spool6: D15_s944, the other D3c arms, D3f, D3c4); the
+  running jobs go on. Credit before the rent: 14.82 $.
