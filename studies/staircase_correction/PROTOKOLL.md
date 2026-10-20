@@ -1203,3 +1203,5 @@ For 2 and 3 a plan follows for the go of Chris.
 **Change (Chris, 2026-10-20, about 15:55 UTC):** the dynamic check at q = 4 waits until all runs at q = 2 (3.19 …
 3.21, boxes 2 and 3) are done. Box 4 is stopped (vast.ai stop; it never ran: the image was still loading). No data
 is on it. While it is stopped, only its storage costs (about 0.05 $/h).
+**Change (Chris, 2026-10-20, about 16:15 UTC):** box 4 destroyed (go of Chris; no data on it). For the q = 4 check a
+new box is rented after the end of q = 2.
