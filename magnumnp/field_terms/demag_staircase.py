@@ -38,7 +38,8 @@ from magnumnp.common import constants
 from magnumnp.field_terms.field_terms import LinearFieldTerm
 from magnumnp.field_terms.demag import demag_f, demag_g
 
-__all__ = ["DemagStaircaseCorrection", "NearCorrection", "staircase_cells", "centroid_offsets", "centroid_field"]
+__all__ = ["DemagStaircaseCorrection", "DemagStaircaseFine", "NearCorrection", "staircase_cells", "centroid_offsets",
+           "centroid_field"]
 
 NEWELL_P = 20          # Newell radius of DemagField (in cell diagonals), the same on both meshes
 SYM = ((0, 1, 2), (1, 3, 4), (2, 4, 5))   # 3x3 index -> component of (xx, xy, xz, yy, yz, zz)
@@ -317,6 +318,51 @@ class DemagStaircaseCorrection(LinearFieldTerm):
                 dem._N = dem._init_N(state)
             h = h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=tuple(dem._shape(state)))
         return h
+
+    def E(self, state, domain = Ellipsis): # without torch.compile, as DemagField.E
+        E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
+        return E[domain].sum(dtype=torch.float64)
+
+
+class DemagStaircaseFine(LinearFieldTerm):
+    r"""
+    Reference model of the staircase correction (studies/staircase_correction PROTOKOLL 3.18): the exact stray field
+    of the fine staircase for the coarse magnetisation, without a window. Each body sub-cell takes m of its cell; the
+    field of a cell is the mean of the fine field over its body sub-cells. This is the gradient of the stray-field
+    energy of the fine body, so the term is variational. One FFT on the fine mesh (q^3 times the cells) per call.
+    Use it instead of DemagField, with the material "Ms" set to v M_s (v: volume fraction from the same sub-cells).
+
+    :param occ_fine: body of the fine mesh, bool array [q nx, q ny, q nz]
+    :param q: sub-cells per axis and cell
+    :param Ms: saturation magnetisation of the full material [A/m]
+    :param demag_kwargs: arguments of the DemagField of the fine mesh (e.g. true_pbc, extrapolate)
+    """
+    def __init__(self, occ_fine, q, Ms, **demag_kwargs):
+        from magnumnp.field_terms.demag import DemagField
+        self._occ, self._q, self._Ms = np.asarray(occ_fine, dtype=bool), int(q), float(Ms)
+        self._demag = DemagField(**demag_kwargs)
+        self._fine = None
+
+    def _setup(self, state):
+        from magnumnp.common.mesh import Mesh
+        from magnumnp.common.state import State
+        q, n = self._q, tuple(state.mesh.n)
+        if self._occ.shape != tuple(q * k for k in n):
+            raise ValueError("occ_fine has the shape %s, not q times the mesh %s" % (self._occ.shape, n))
+        fine = State(Mesh(tuple(q * k for k in n), tuple(d / q for d in state.mesh.dx), pbc=state.mesh.pbc))
+        occ = torch.as_tensor(self._occ, device=state.device, dtype=state.dtype).reshape(n[0], q, n[1], q, n[2], q)
+        fine.material["Ms"] = (self._Ms * occ.reshape(fine.mesh.n))[..., None]
+        self._w = occ[..., None]
+        self._cnt = occ.sum(dim=(1, 3, 5)).clamp(min=1.0)[..., None]
+        self._fine = fine
+
+    def h(self, state):
+        if self._fine is None:
+            self._setup(state)
+        q, (nx, ny, nz) = self._q, state.mesh.n
+        self._fine.m = state.m.repeat_interleave(q, 0).repeat_interleave(q, 1).repeat_interleave(q, 2)
+        hf = self._demag.h(self._fine).reshape(nx, q, ny, q, nz, q, 3)
+        return (hf * self._w).sum(dim=(1, 3, 5)) / self._cnt
 
     def E(self, state, domain = Ellipsis): # without torch.compile, as DemagField.E
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes

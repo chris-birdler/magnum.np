@@ -1094,3 +1094,31 @@ units of K_d V_box. Check: the sum of the terms gives the energy of the run reco
   static accuracy of the correction suggests that the second part is the larger one; this is not shown.
 - A same-state comparison before the relaxation was tried and dropped: the transferred start of T15g has 8736 cells
   (1.8 %) with the m of void cells of D15, which gives an exchange energy far from the relaxed one.
+
+### 3.18 Reference arm X3: coarse m with the exact stray field of the fine staircase (2026-10-20, decision of Chris: option B)
+
+**Decision of Chris (about 10:20 UTC): B.** The 8 more seeds run on; in addition the reference arm X3 for the seeds
+941 … 944. Options given: A only the seeds; B seeds and X3; C X3 only.
+
+**Purpose.** d = Δ_c − Δ_g (3.15) mixes the error of the correction and the interaction of geometry and resolution of
+m (3.17). X3 separates them: ln P(T3Pc) − ln P(X3) is the error of the correction alone (window p 3 and centroid term
+against the exact field, both with the m of dx 3); ln P(X3) − ln P(D15) is the interaction (plus the effect of the V1
+weights of exchange and anisotropy against the fine staircase, which X3 cannot separate).
+
+**Model X3** (magnumnp DemagStaircaseFine; run_loops --staircase fine). The V1 cells and their weights v M_s, v A,
+v K as in T3Pc. Stray field: each body sub-cell of the fine mesh (q = 2, dx 1.5) takes m of its cell; one FFT on the
+fine mesh with the Newell solver with full PBC (extrapolation, 4 shells, as production); the field of a cell is the
+mean of the fine field over its body sub-cells. This is the gradient of the stray-field energy of the fine body
+(variational) and the same operator as the static reference of check_static. No window, no centroid term.
+
+**Tests.**
+- test_staircase.py (15 passed): open boundaries: X3 equals DemagField with v M_s plus the pairwise correction with
+  the full window within 10⁻¹⁰ M_s; with PBC: X3 equals the static reference within 10⁻¹⁰ M_s, its energy equals the
+  energy of the fine body within 10⁻⁹, and the operator is symmetric in the weights v.
+- Static check on the start states of T3Pc (seeds 941 and 944, local CPU, double precision): the stray-field energy
+  of the corrected model is 4.3·10⁻⁶ K_d V_box per particle above that of X3, in all 8 particles (1.1 % of the stray
+  field effect of the staircase, −380·10⁻⁶ per particle; 3.17). Field difference: RMS 3.0·10⁻⁴ M_s, maximum
+  2.5·10⁻³ M_s over the magnetic cells.
+
+**Runs.** jobs/80_X3.jobs: X3_s941 … X3_s944, the job line of T3Pc with only --staircase fine, start from the prepared
+state of D15 of the same seed. On box 2 beside the seeds 945 … 952 (own queue spool3, 2 slots).

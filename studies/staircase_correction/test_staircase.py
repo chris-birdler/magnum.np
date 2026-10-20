@@ -183,3 +183,47 @@ def test_field_term_with_centroid_equals_static_model(form):
     ref = Ms * ((nc.h_pair(m) if form == "pair" else nc.h_local(m))
                 + centroid_field(dem._N, v, centroid_offsets(occ, q), m))
     assert float((term.h(state) - ref).abs().max()) <= 1e-10 * Ms
+
+
+def test_fine_term_open_equals_full_window_correction():
+    """DemagStaircaseFine (exact field of the fine staircase, PROTOKOLL 3.18) equals DemagField with the moments v M_s
+    plus the pairwise correction with the full window, for open boundaries."""
+    from magnumnp import Mesh, State, DemagStaircaseFine
+    N, q, Ms = 8, 2, 8e5
+    ids = one_sphere(N, q, 2.9, (4.0, 4.3, 3.8))
+    n, pid, occ = v1_cells(ids, q)
+    nc = NearCorrection(n, occ, q, p=N - 1, periodic=False)
+    mag = torch.as_tensor(n > 0)
+    m = torch.where(mag[..., None], random_m((N, N, N), 11), torch.zeros(N, N, N, 3, dtype=torch.float64))
+    state = State(Mesh((N, N, N), (2e-9,) * 3))
+    state.m = m
+    state.material["Ms"] = torch.as_tensor(n / q ** 3 * Ms).reshape(N, N, N, 1)
+    term = DemagStaircaseFine(ids >= 0, q, Ms)
+    ref = Ms * (FFTField(N, "open").h(nc.v.reshape(N, N, N), m) + nc.h_pair(m))
+    assert float((term.h(state) - ref)[mag].abs().max()) <= 1e-10 * Ms
+
+
+def test_fine_term_energy_and_reciprocity_under_pbc():
+    """With PBC: the field is the fine field averaged over the body sub-cells (static reference of check_static), the
+    energy is the stray-field energy of the fine body, and the operator is symmetric in the weights v."""
+    from magnumnp import Mesh, State, DemagStaircaseFine
+    N, q, Ms = 16, 2, 8e5
+    ids = fcc_box(q * N, 6.0, 0.5)["ids"]
+    body = ids >= 0
+    n, pid, occ = v1_cells(ids, q)
+    v = torch.as_tensor(n / q ** 3).reshape(N, N, N, 1)
+    state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(1, 1, 1)))
+    state.material["Ms"] = v * Ms
+    term = DemagStaircaseFine(body, q, Ms, true_pbc=True)
+    m1, m2 = random_m((N, N, N), 12), random_m((N, N, N), 13)
+    state.m = m1
+    h1 = term.h(state)
+    fine = FFTField(q * N, ("newell", 1))
+    hf = fine.h(body.astype(np.float64), fine_owner_m(m1, q))
+    assert float((h1 - Ms * coarse_mean(hf, body, q))[torch.as_tensor(n > 0)].abs().max()) <= 1e-10 * Ms
+    E_f = -0.5 * 4e-7 * np.pi * Ms ** 2 * float((torch.as_tensor(body)[..., None] * fine_owner_m(m1, q) * hf).sum()) * 1e-27
+    assert abs(float(term.E(state)) - E_f) <= 1e-9 * abs(E_f)
+    state.m = m2
+    h2 = term.h(state)
+    a, b = float((v * m1 * h2).sum()), float((v * m2 * h1).sum())
+    assert abs(a - b) <= 1e-11 * (abs(a) + abs(b))

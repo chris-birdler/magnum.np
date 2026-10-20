@@ -71,7 +71,12 @@ def build(cfg, m):
     state.material["Ms"] = T(np.where(mag4, np.maximum(frac4 * Ms, args.ms_void * Ms), args.ms_void * Ms))
     state.material["A"] = T(np.where(mag4, frac4 * args.A, 0.0))
     terms = {"demag": stray}
-    if args.staircase != "none":
+    if args.staircase == "fine":                     # reference model of 3.18: exact field of the fine staircase
+        from magnumnp import DemagStaircaseFine
+        q_s = args.staircase_q
+        terms["demag"] = DemagStaircaseFine(fcc_box(q_s * N, d, dx / q_s)["ids"] >= 0, q_s, Ms, true_pbc=True,
+                                            extrapolate=True)
+    elif args.staircase != "none":
         from magnumnp import DemagStaircaseCorrection
         from magnumnp.field_terms.demag_staircase import staircase_cells
         q_s = args.staircase_q

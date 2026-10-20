@@ -135,10 +135,12 @@ def parse_args(argv=None):
                    help="voxel: staircase surface; fraction: surface cells carry their magnetic volume "
                         "fraction f (8^3 samples; --staircase_q^3 with --staircase); Ms, A, K_eff and K_p are scaled "
                         "with f")
-    g.add_argument("--staircase", choices=["none", "pair", "local"], default="none",
+    g.add_argument("--staircase", choices=["none", "pair", "local", "fine"], default="none",
                    help="near-field correction of the stray field for the cut surface cells (Donahue & McMichael 2007; "
                         "studies/staircase_correction): pair = full pairwise form (their eq. 5), local = cell-local "
-                        "tensor (eqs. 8, 9). Needs --surface fraction and a Newell --strayfield")
+                        "tensor (eqs. 8, 9); fine = reference model, the exact field of the fine staircase for the "
+                        "coarse m (one FFT on the mesh with q^3 times the cells per step; PROTOKOLL 3.18). Needs "
+                        "--surface fraction and a Newell --strayfield")
     g.add_argument("--staircase_q", type=int, default=2, help="sub-cells per axis and cell of the correction")
     g.add_argument("--staircase_p", type=int, default=3, help="half width of the correction window in cells")
     g.add_argument("--staircase_centroid", action="store_true",
@@ -897,9 +899,15 @@ def main(argv=None):
         n_s, pid_s, occ_s = staircase_cells(fcc_box(q_s * N, d, dx / q_s)["ids"], q_s)
         if not (np.array_equal(pid_s, ids.astype(np.int64)) and np.allclose(n_s / q_s**3, geo["frac"], atol=1e-6)):
             sys.exit("ERROR: --staircase: the sub-cells do not agree with the fraction geometry")
-        terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
-                                                 centroid=args.staircase_centroid, demag=strayfield))
-        term_names.insert(1, "demag_corr")
+        if args.staircase == "fine":                      # reference: exact fine field instead of the coarse one
+            from magnumnp import DemagStaircaseFine
+            strayfield = DemagStaircaseFine(fcc_box(q_s * N, d, dx / q_s)["ids"] >= 0, q_s, Ms, true_pbc=True,
+                                            extrapolate=(args.strayfield == "newell_ext"))
+            terms[0] = strayfield
+        else:
+            terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
+                                                     centroid=args.staircase_centroid, demag=strayfield))
+            term_names.insert(1, "demag_corr")
         del n_s, pid_s, occ_s
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
