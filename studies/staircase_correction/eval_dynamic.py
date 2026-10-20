@@ -16,7 +16,15 @@ Reading of D1 (fixed before the results), paired by seed:
 The condition 2 SE ≤ 0.15 (power of the test) was added by decision of Chris 2026-10-20 (PROTOKOLL 3.14), after
 design A met the first two conditions only because its SE was large.
 
+Design B (--design B, PROTOKOLL 3.11 … 3.19) also gives the proofs of Chris (2026-10-20) and the means of all arms:
+    N1  ln P(T15g) − ln P(T3)    resolution of m at the fixed morphology of dx 3 (mesh dependence)
+    N3  ln P(T3Pc) − ln P(X3)    the correction against the exact stray field of the fine staircase (same m)
+    m   ln P(D15) − ln P(X3)     resolution of m on the fine staircase (not a property of the stray field)
+  proposed reading of N1 and N3 (open for Chris): "within ±0.15" if the 95 % interval of the mean (t distribution)
+  lies inside ±0.15; "outside ±0.15" if it lies outside; else "not determined".
+
     python eval_dynamic.py --runs /root/runs > results/dynamic_D.md
+    python eval_dynamic.py --design B --runs RUNS1 RUNS2 --seeds 941 … 952 --plot results/proofs_B.png
 """
 import argparse
 import json
@@ -59,34 +67,45 @@ def bloch_end(d):
 
 
 def main():
+    global ARMS, CORRECTED, SEEDS
     ap = argparse.ArgumentParser()
-    ap.add_argument("--runs", default="/root/runs")
+    ap.add_argument("--runs", nargs="+", default=["/root/runs"], help="run roots, searched in this order")
+    ap.add_argument("--seeds", type=int, nargs="+", default=list(SEEDS))
     ap.add_argument("--json", default=None)
+    ap.add_argument("--plot", default=None, help="design B: figure of the effects with their 95 % intervals")
     ap.add_argument("--design", choices=["A", "B"], default="A",
                     help="A: arms with own preparation (D…); B: transferred start from D15 (T…, PROTOKOLL 3.11)")
     a = ap.parse_args()
-    root = pathlib.Path(a.runs)
-    global ARMS, CORRECTED
+    roots = [pathlib.Path(r) for r in a.runs]
+    SEEDS = tuple(a.seeds)
+
+    def folder(name):
+        for r in roots:
+            if (r / name).exists():
+                return r / name
+        return roots[0] / name
     if a.design == "B":
         ARMS = [("T3", "dx 3, voxel model, start from D15"),
                 ("T3Pc", "dx 3, pairwise correction with centroid term, q 2, p 3, start from D15 (main arm)"),
                 ("D15", "dx 1.5, voxel model of dx 1.5 (the source of the transfer)"),
-                ("T15g", "dx 1.5, voxel geometry of dx 3 locked, start from D15")]
+                ("T15g", "dx 1.5, voxel geometry of dx 3 locked, start from D15"),
+                ("X3", "dx 3, exact stray field of the fine staircase (reference of the correction, 3.18), start from D15")]
         CORRECTED = ["T3Pc"]
     base, fine, lock = ("T3", "D15", "T15g") if a.design == "B" else ("D3", "D15", "D15g")
-    rec = {(arm, s): EC.run_record(root / ("%s_s%d" % (arm, s))) for arm, _ in ARMS for s in SEEDS}
+    rec = {(arm, s): EC.run_record(folder("%s_s%d" % (arm, s))) for arm, _ in ARMS for s in SEEDS}
     lnP = {k: r["lnP"] for k, r in rec.items()}
     print("# Dynamic arms at d/l_ex 96, φ 0.55, 9 mT (PROTOKOLL 3.5, D1 and D2)\n")
-    print("| arm | meaning | P (W/cm³) per seed 941 / 942 / 943 / 944 | geometric mean | SD of ln P | status / Bloch points of the prepared state |")
-    print("|---|---|---|---|---|---|")
+    print("| arm | meaning | P (W/cm³) per seed %s | n | geometric mean (W/cm³) | SD of ln P | status / Bloch points of the prepared state |"
+          % " / ".join(str(s) for s in SEEDS))
+    print("|---|---|---|---|---|---|---|")
     for arm, txt in ARMS:
         vals = [lnP[(arm, s)] for s in SEEDS]
         ok = [v for v in vals if np.isfinite(v)]
         per = " / ".join("%.3g" % math.exp(v) if np.isfinite(v) else "–" for v in vals)
         gm = "%.3g" % math.exp(np.mean(ok)) if ok else "–"
         sd = "%.2f" % np.std(ok, ddof=1) if len(ok) > 1 else "–"
-        st = "; ".join("%s %s" % (rec[(arm, s)]["status"], bloch_end(root / ("%s_s%d" % (arm, s)))) for s in SEEDS)
-        print("| %s | %s | %s | %s | %s | %s |" % (arm, txt, per, gm, sd, st))
+        st = "; ".join("%s %s" % (rec[(arm, s)]["status"], bloch_end(folder("%s_s%d" % (arm, s)))) for s in SEEDS)
+        print("| %s | %s | %s | %d | %s | %s | %s |" % (arm, txt, per, len(ok), gm, sd, st))
     print()
     out = {"lnP": {"%s_s%d" % k: v for k, v in lnP.items()}}
 
@@ -122,8 +141,85 @@ def main():
             d["ci95"] = [d["mean"] - h, d["mean"] + h]
         print("| %s | %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), ci, r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
+    if a.design == "B":
+        out["proofs"] = proofs(lnP, a.plot)
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=1))
+
+
+def interval(s):
+    """95 % interval of the mean (t distribution) of a stats() dict, or None."""
+    if s["n"] < 2 or not np.isfinite(s.get("se", np.nan)):
+        return None
+    h = t_dist.ppf(0.975, s["n"] - 1) * s["se"]
+    return [s["mean"] - h, s["mean"] + h]
+
+
+def proofs(lnP, plot=None):
+    """Design B: the proofs N1 and N3, the resolution part m and the geometry effects, paired by seed."""
+    rows = [("N1", "resolution of m at fixed morphology (dx 3 geometry): ln P(T15g) − ln P(T3)", "T15g", "T3"),
+            ("N3", "correction against the exact fine stray field (same m): ln P(T3Pc) − ln P(X3)", "T3Pc", "X3"),
+            ("Δ_g", "geometry effect of the fine staircase at dx 1.5: ln P(D15) − ln P(T15g)", "D15", "T15g"),
+            ("Δ_c", "geometry effect of the correction at dx 3: ln P(T3Pc) − ln P(T3)", "T3Pc", "T3"),
+            ("m", "resolution of m on the fine staircase: ln P(D15) − ln P(X3)", "D15", "X3"),
+            ("total", "corrected dx 3 against dx 1.5 with its own staircase: ln P(T3Pc) − ln P(D15)", "T3Pc", "D15")]
+    print("\n## Proofs and mean effects (paired by seed; ln P; 95 % interval of the mean, t distribution)\n")
+    print("| effect | meaning | per seed %s | mean ± SE (n) | 95 %% interval | factor on P (mean) | reading |"
+          % " / ".join(str(s) for s in SEEDS))
+    print("|---|---|---|---|---|---|---|")
+    res = {}
+    for key, txt, x, y in rows:
+        per = [lnP[(x, s)] - lnP[(y, s)] if np.isfinite(lnP[(x, s)]) and np.isfinite(lnP[(y, s)]) else float("nan")
+               for s in SEEDS]
+        st = stats([v for v in per if np.isfinite(v)])
+        ci = interval(st)
+        if key in ("N1", "N3"):
+            if ci is None or st["n"] < 3:
+                r = "not determined (n %d)" % st["n"]
+            elif -0.15 <= ci[0] and ci[1] <= 0.15:
+                r = "within ±0.15 (proposed reading)"
+            elif ci[0] > 0.15 or ci[1] < -0.15:
+                r = "outside ±0.15 (proposed reading)"
+            else:
+                r = "not determined (proposed reading)"
+        else:
+            r = "information"
+        f4 = "%+.4f" if key == "N3" else "%+.3f"                 # N3 is about 10⁻⁴: more digits
+        ms = ((f4 + " ± %.4f (SE, n %d)") % (st["mean"], st["se"], st["n"]) if st["n"] >= 2 and np.isfinite(st["se"])
+              else "n %d" % st["n"])
+        print("| %s | %s | %s | %s | %s | %s | %s |" % (
+            key, txt, " / ".join(f4 % v if np.isfinite(v) else "–" for v in per), ms,
+            (f4 + " … " + f4) % tuple(ci) if ci else "–", "%.4f" % math.exp(st["mean"]) if st["n"] else "–", r))
+        res[key] = dict(st, per_seed=per, ci95=ci, reading=r)
+    if plot and any(res[k]["n"] >= 2 for k in res):
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        keys = [k for k, *_ in rows]
+        fig, ax = plt.subplots(figsize=(6.4, 3.6))
+        ax.axvspan(-0.15, 0.15, color="0.9", zorder=0, label="±0.15")
+        ax.axvline(0.0, color="0.5", lw=0.8)
+        for i, k in enumerate(keys):
+            r = res[k]
+            if r["n"] < 1:
+                continue
+            ax.plot(r["per_seed"], [i] * len(r["per_seed"]), "o", ms=3.5, color="0.6", zorder=2)
+            if r["ci95"]:
+                ax.plot(r["ci95"], [i, i], color="k", lw=2.0, zorder=3)
+            ax.plot([r["mean"]], [i], "D", color="tab:red", ms=6, zorder=4)
+        ax.set_yticks(range(len(keys)))
+        ax.set_yticklabels([r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"])
+        ax.invert_yaxis()
+        ax.set_xlabel(r"difference of $\ln P$")
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        ax.legend(handles=[Line2D([], [], marker="o", ls="", ms=3.5, color="0.6", label="seed"),
+                           Line2D([], [], marker="D", ls="", ms=6, color="tab:red", label="mean"),
+                           Line2D([], [], color="k", lw=2.0, label="95 % interval"),
+                           Patch(color="0.9", label="±0.15")], loc="lower right", fontsize=7, frameon=False)
+        fig.tight_layout()
+        fig.savefig(plot, dpi=160)
+    return res
 
 
 def fmt(s):

@@ -1122,3 +1122,32 @@ mean of the fine field over its body sub-cells. This is the gradient of the stra
 
 **Runs.** jobs/80_X3.jobs: X3_s941 … X3_s944, the job line of T3Pc with only --staircase fine, start from the prepared
 state of D15 of the same seed. On box 2 beside the seeds 945 … 952 (own queue spool3, 2 slots).
+
+### 3.19 Goal of Chris in three proofs; first result of X3: the correction equals the exact fine stray field in the dynamics (n 2); X3 for all 12 seeds (2026-10-20)
+
+**Goal of Chris (2026-10-20, about 13 UTC).** The roughness of m is given by the FD mesh and is not changed. The
+stray field shall be computed as on a converged mesh, ideally without steps, so that the stray field gives no extra
+pinning fields from the staircase. That m at the surface depends on the roughness is a separate point. Proofs:
+- N1: no mesh dependence at a fixed morphology.
+- N2: the stray field is correct statically, i.e. as a finer particle (or a smooth particle) gives it.
+- N3: the same dynamically.
+Thus the dynamic proof of the stray field compares T3Pc with X3 (same m, exact field of the fine staircase), not with
+D15; D15 against X3 is the resolution of m on the fine staircase (the separate point).
+
+**First X3 result** (seeds 941, 942; X3_s943, X3_s944 running): P of X3 1.746 and 1.075 W/cm³, equal to T3Pc;
+ln P(T3Pc) − ln P(X3) = −0.0001 and −0.0003. With n 2 this is not yet a result of N3.
+
+**Decision of Chris: the 8 more seeds (945 … 952) run on, and X3 runs for all of them** (jobs/85_X3n.jobs, queue
+spool3 after X3_s943/944; each X3 starts when the prepared state of D15 of its seed exists). Options given: A stop the
+seeds and finish X3 at n 4; B let them run (N1 and the resolution part with n 12); B with X3 for all seeds was the most
+complete one. Cost about 4 $ for box 2 (estimate); a top-up of the credit before about 21 h UTC is necessary.
+
+**Evaluation** (eval_dynamic.py --design B, extended): the arms T3, T3Pc, D15, T15g and X3 with their geometric
+means, the reading of D1/K2 for d, and a table of the paired effects with mean, SE, 95 % interval (t distribution)
+and the factor on P: N1 = ln P(T15g) − ln P(T3), N3 = ln P(T3Pc) − ln P(X3), Δ_g, Δ_c, m = ln P(D15) − ln P(X3) and
+total = ln P(T3Pc) − ln P(D15); --plot gives a figure of these effects. N2 comes from the static results (3.9, 3.18).
+- Reading of N1 and N3, **proposed, open for Chris**: "within ±0.15" if the 95 % interval of the mean lies inside
+  ±0.15, "outside ±0.15" if it lies outside, else "not determined". Reason: K2 needs |mean| at most 2 SE; for an
+  effect with a very small SE (N3 about 10⁻⁴) a tiny but real offset would then give "not determined".
+- State with the data of 941 … 944 (X3 n 2): N1 +0.083 ± 0.025 (SE, n 4), interval +0.005 … +0.160 (not determined
+  by the proposed reading, the upper end is above 0.15); N3 −0.0002 ± 0.0001 (n 2); total −0.014 ± 0.115 (n 4).
