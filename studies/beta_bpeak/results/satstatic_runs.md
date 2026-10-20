@@ -37,3 +37,21 @@ Notes K4_1, h_sat 2 M_s (01:30):
 - The sign of ln(A/B) changes between the two fields (+0.649 at 1 - φ, -0.579 at 2 M_s): no systematic memory of the start.
 - Question 2 (field), same start: A ln(2 M_s / 1 - φ) -0.108, B +1.120 -> both "matters" by the rule (A just above 0.10).
 - K4_1 overall: four 9 mT losses 1.31 / 2.25 / 2.51 / 4.02 e-7 from two saturated states; with 7.125: 1.31 ... 5.24 e-7.
+
+K2_0 (h_sat 1 - φ = 0.38, 2 M_s):
+
+| run | done (UTC) | static relax (it, conv) | BPs after static | passes | BPs end pass 0 | relax2 it | E/(K_d V) prepared | 9 mT w_l | cycles, calm tail | BPs in cycles |
+|---|---|---|---|---|---|---|---|---|---|---|
+| K2_0_nx_sad | FAIL 04:50 (exit code 3) | 80000, no (absolute criterion below the fp32 noise of E: E flat within 1e-9 K_d V, torque rms 0.03 A/m) | 0 | 1 | 0 | – | – | – | – | – |
+| K2_0_nx_sa200 | 04:5x | 8500, yes | 0 | 1 (41 half cycles) | 0 (max 1292 in AC) | 5000 | -7.4780e-3 | 1.350e-7 | 7, 5 | 0 |
+
+- 04:50 the dispatcher started the gate retry of K2_0_nx_sad with the old code ebcea74 and relax_maxiter 200000. The
+  patch 4bb78f1 (static relaxation with the relative criterion, Chris "Ok" 04:3x) is committed and pushed; the switch
+  of the dispatcher worktree on the box was blocked by the permission check. Stop of the retry and restart: needs the
+  go of Chris.
+- 04:5x Chris: "Ok" to the patch (option 1: the static relaxation in the field uses the relative criterion relax_tol_E
+  1e-6, 2 chunks in a row; the zero-field relaxations keep the absolute threshold 3e-10), then "Go" to stop the old
+  retry and restart. 04:54 dispatcher worktree switched to 4bb78f1 (/root/disp_commit); 04:55 the retry (PID 109449,
+  old code, in its setup) stopped with SIGTERM; the dispatcher put it back (exit code -15, attempt 1 of 1) and started
+  it at once on gpu 3: fresh start (no checkpoint), code 4bb78f1, relax_maxiter 200000 (the gate-retry value; it
+  matters only if a zero-field relaxation needs more than 80000 iterations).
