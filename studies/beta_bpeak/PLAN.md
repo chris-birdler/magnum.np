@@ -1679,7 +1679,7 @@ D7 A run whose prepared state has a BP after 3 passes.
   (the next k) goes into the queue, so the corner keeps n values. No code change.
 - (b) As (a), but without a replacement seed.
 - (c) The run stops after the preparation (saves 1.5 … 4.7 h per such run). Needs a code change.
-- Recommendation (a).
+- Recommendation (a). **Decision of Chris (13:36 UTC): (b).** Reason: more seeds can be added at any time.
 
 D8 Stop threshold of the relaxations without a field. Rule of 7.128: with a new code state, the offline check of the
 trend criterion (option 3) is made again first, and Chris decides on W and the threshold. Check made (eval_relax_noise.py
