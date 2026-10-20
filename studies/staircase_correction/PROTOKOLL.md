@@ -31,8 +31,20 @@ References: a number "7.x" is a section of the record of the β(B_peak) study, `
 - **Literature (3.1 … 3.3).** No source tests a staircase correction on a body that is curved in all three
   directions, or on hysteresis or loss. Donahue & McMichael 2007 give the method (far field by FFT, near-field
   correction from a submesh) and use its cell-local form for all their results (3.3). The variant V2 (boundary cells
-  with constant volume, idea of Chris) was not found (3.2).
-- **Status.** Stage A of PLAN.md (phase 1, static test, V1 with both forms) approved; code in progress.
+  with constant volume, idea of Chris) was not found (3.2) and cannot be built locally (3.4).
+- **Method now (3.7).** V1 (cut cells after Donahue & McMichael) plus a first-moment term in the far field: the
+  moment of each cut cell sits at the centroid of its body part (central difference of the same periodic kernel; no
+  new kernel). Without this term the window converges only as 1/p (3.6).
+- **Static result (3.6 … 3.9).** With the centroid term both forms (pairwise P, cell-local L) meet the criteria R2 of
+  PLAN.md from p = 2 on, on the production geometry (d/l_ex 300, 3 states, q = 2 and 4) and on the geometry of the
+  dynamic test (d/l_ex 96, 4 states, q = 2 and 4). At p = 3: energy error 1 … 2 % of the staircase effect S; field
+  error in the surface layer 0.2 … 0.4 % (P) and about 6 % (L) of that of the voxel model. The staircase effect S of
+  the stray-field energy: 0.05 … 0.08 |E_K| (K2), 0.23 … 0.39 |E_K| (K4), 1.0 … 2.0 |E_K| (d/l_ex 96), larger against
+  the finer target (q = 4) than against q = 2 (factor 1.7 … 1.8).
+- **Open.** R3 (sign of the corrected energy; Lanczos running, 3.10); the dynamic test of the loss (D1, arms at
+  d/l_ex 96, φ 0.55, running on two boxes); the target of the correction (fine staircase or smooth sphere) and its
+  use in the main study are decisions of Chris.
+- **Status.** Night work 2026-10-19/20 under the night mandate (decisions D1 … D7 in 3.5 … 3.10).
 
 ## 1. Goal
 
@@ -707,3 +719,18 @@ Files: results/stageB_static_A_d96_phi0.55_q2_c.json and _q4_c.json.
 - Recommendation and decision: (b). Offer 44133018 (RTX 3090, 0.163 $/h, US), instance 56811357, about 6 h ≈ 1 $
   (estimate). The queue of box 1 was restarted without D15g (spool6: D15_s944, the other D3c arms, D3f, D3c4); the
   running jobs go on. Credit before the rent: 14.82 $.
+
+### 3.10 R3 (sign of the corrected energy): method changed (D7); running (2026-10-20, night mandate)
+
+- Finding: the first R3 runs (scipy eigsh / ARPACK, smallest algebraic eigenvalue, tol 10⁻³, ncv 40, maxiter 400)
+  gave no result after 2.4 h of CPU (box 1, K2 and K4, P and L at p = 2 and 3). Cause (inference): maxiter counts the
+  restarts of ARPACK, not the field evaluations; the operator has a large cluster of eigenvalues near 0 (divergence-free
+  patterns), so the smallest eigenvalue converges slowly.
+- Options: (a) wait (unknown time, possibly many hours); (b) a plain Lanczos run with a fixed number of steps (300
+  field evaluations) and progress output: the smallest Ritz value is an upper bound of λ_min, so a value below
+  −10⁻⁴ λ_max proves an unusable form, and a converged positive value (residual ≤ 10⁻⁴ λ_max) passes; (c) only the
+  dynamic stability of the corrected runs as evidence.
+- Recommendation and decision: (b) for the forms of interest (P3 and L3, K2 and K4, q = 2, centroid term), on the CPU
+  of box 2, and (c) in addition (energy balance and closure of the corrected dynamic runs).
+- First values after 25 steps (P3): smallest Ritz value +1.20·10⁻³ (K2) and +1.19·10⁻³ (K4), largest 0.997. About
+  29 s per step on 3 threads; 300 steps take about 2.4 h per case.
