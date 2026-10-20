@@ -43,7 +43,11 @@ K2_0 (h_sat 1 - φ = 0.38, 2 M_s):
 | run | done (UTC) | static relax (it, conv) | BPs after static | passes | BPs end pass 0 | relax2 it | E/(K_d V) prepared | 9 mT w_l | cycles, calm tail | BPs in cycles |
 |---|---|---|---|---|---|---|---|---|---|---|
 | K2_0_nx_sad | FAIL 04:50 (exit code 3) | 80000, no (absolute criterion below the fp32 noise of E: E flat within 1e-9 K_d V, torque rms 0.03 A/m) | 0 | 1 | 0 | – | – | – | – | – |
+| K2_0_nx_sad (restart, 4bb78f1) | 07:3x | 1500, yes (relative 1e-6; no ramp) | 0 | 1 | 0 (AC max 151) | 5500 | -7.4867e-3 | 1.268e-7 | 7, 5 | 0 |
+| K4_1_nx_sad_rep (4bb78f1, gpu 1) | 07:52 | 1500, yes (relative 1e-6; no ramp) | 0 | 1 | 0 (AC max 94) | 9000 | -3.6312e-4 | 1.347e-7 | 8, 5 | 0 |
 | K2_0_nx_sa200 | 04:5x | 8500, yes | 0 | 1 (41 half cycles) | 0 (max 1292 in AC) | 5000 | -7.4780e-3 | 1.350e-7 | 7, 5 | 0 |
+| K2_0_nx_sbd | 06:4x | pass 0: 41000, yes (ramp); pass 1: 9500, yes (ramp) | 0 / 0 | 2 | 1 (AC max 146); pass 1: 0 (AC max 145) | 2000 / 3500 | -7.4998e-3 | 1.490e-7 | 7, 5 | 0 |
+| K2_0_nx_sb200 | 07:2x | pass 0: 1500, yes (ramp); pass 1: 2000, yes (ramp) | 0 / 0 | 2 | 1 (AC max 1292); pass 1: 0 (AC max 1294) | 5000 / 7500 | -7.4681e-3 | 2.024e-7 | 7, 5 | 0 |
 
 - 04:50 the dispatcher started the gate retry of K2_0_nx_sad with the old code ebcea74 and relax_maxiter 200000. The
   patch 4bb78f1 (static relaxation with the relative criterion, Chris "Ok" 04:3x) is committed and pushed; the switch
@@ -55,3 +59,21 @@ K2_0 (h_sat 1 - φ = 0.38, 2 M_s):
   old code, in its setup) stopped with SIGTERM; the dispatcher put it back (exit code -15, attempt 1 of 1) and started
   it at once on gpu 3: fresh start (no checkpoint), code 4bb78f1, relax_maxiter 200000 (the gate-retry value; it
   matters only if a zero-field relaxation needs more than 80000 iterations).
+
+Notes K2_0 (07:30):
+- Within one run, pass 1 starts from the same saturated state as pass 0 (E_sat equal to 3e-10) and ends in another
+  state: K2_0_nx_sb200 BPs at the end of the half cycles identical to half 12 in both passes (and in sa200), then
+  different (pass 0 ends with 1 BP, pass 1 with 0); K2_0_nx_sbd identical to half 4, then different.
+- 2 M_s: A (sa200) 1.350e-7, B (sb200) 2.024e-7, ln(A/B) -0.405 -> "not erased".
+- Start B: ln(2 M_s / 1 - φ) = ln(2.024/1.490) +0.306 -> "matters".
+- Waiting for K2_0_nx_sad (1 - φ, start A) and K4_1_nx_sad_rep.
+
+Readings by the rule of 7.127 (07:45; |Δ ln w_l| < 0.10 and the same BP count after the first pass):
+- Q1 (A against B), K4_1: 1 - φ +0.649, 2 M_s -0.579 -> "not erased" (BPs 0/0, 0/0). K2_0: 1 - φ -0.161 (BPs 0/1),
+  2 M_s -0.405 (BPs 0/1) -> "not erased". Overall "not erased" (both corners, both fields).
+- Q2 (2 M_s against 1 - φ), K4_1: A -0.108 (just above 0.10), B +1.120 -> "matters". K2_0: A +0.063 (BPs 0/0)
+  -> "does not matter"; B +0.306 -> "matters".
+- K4_1_nx_sad_rep (only the stop of the static relaxation changed): at c4 w_loop 1.343e-7 against 2.49e-7 of
+  K4_1_nx_sad -> another state (final value pending).
+
+Final evaluation: PROTOKOLL 7.129 (context-free review applied).

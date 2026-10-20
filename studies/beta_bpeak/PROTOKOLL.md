@@ -7359,6 +7359,102 @@ approved rerun K4_1_nx_sad_rep. Log: results/night_decisions_20261019.md.
 - **Decision of Chris:** the simulation stays in fp32; the energies and the diagnostics stay in fp64; the stop of the
   relaxations without a field stays option 1.
 
+### 7.129 Static saturation test: reading "not erased", but a change at the level of the rounding gives differences of the same size; all prepared states free of BPs after at most 2 passes (2026-10-20)
+
+All times UTC. Terms as in 7.125, 7.127 (static saturation test, start A and B, reading) and 7.128.
+- h: field divided by M_s. φ: packing fraction. h_sat: the field of the saturation; 1 − φ is 0.45 at K4_1 (φ 0.55) and
+  0.38 at K2_0 (φ 0.62); 2 M_s is h_sat 2.
+- Pass: the field up to h_sat (a smooth quarter-sine ramp, except the first pass of start A), held, the relaxation in
+  the static field, the decaying AC field from its peak (× 0.8 per half cycle), the relaxation without a field. A new
+  pass follows if a BP remains (at most 3). Each run keeps its h_sat in all passes. Passes and half cycles count from 0,
+  as in the logs; "pass 0" is the first pass.
+- M_par: the peak of the magnetization along the drive in a half cycle, divided by M_s.
+- E_sat: E/(K_d V) at the end of the relaxation in the static field. E_prep: E/(K_d V) of the prepared state (after the
+  last relaxation without a field).
+- w_l: the mean w_loop of the last 5 cycles of the 9 mT stage (as 7.125). Largest angle: the largest angle between
+  neighbouring cells in the last cycle of the 9 mT stage.
+- Δ ln w_l: question 1 ln w_l(A) − ln w_l(B); question 2 ln w_l(2 M_s) − ln w_l(1 − φ).
+- Data: summary.json and stdout.log of the 9 runs on the instance; working log results/satstatic_runs.md.
+
+**Results (9 runs, done 00:47 … 07:52).**
+
+| run | code | passes | BPs after pass 0 / 1 | largest BP count during the AC pass | E_prep | largest angle | w_l, 9 mT | BPs in the 9 mT cycles |
+|---|---|---|---|---|---|---|---|---|
+| K4_1_nx_sad (A, 1 − φ) | ebcea74 | 1 | 0 | 94 | −3.703·10⁻⁴ | 93° | 2.51·10⁻⁷ | 0 |
+| K4_1_nx_sbd (B, 1 − φ) | ebcea74 | 1 | 0 | 94 | −3.632·10⁻⁴ | 85° | 1.31·10⁻⁷ | 0 |
+| K4_1_nx_sa200 (A, 2 M_s) | ebcea74 | 1 | 0 | 996 | −3.703·10⁻⁴ | 93° | 2.25·10⁻⁷ | 0 |
+| K4_1_nx_sb200 (B, 2 M_s) | ebcea74 | 1 | 0 | 996 | −3.715·10⁻⁴ | 93° | 4.02·10⁻⁷ | 0 |
+| K4_1_nx_sad_rep (A, 1 − φ) | 4bb78f1 | 1 | 0 | 94 | −3.631·10⁻⁴ | 85° | 1.35·10⁻⁷ | 0 |
+| K2_0_nx_sad (A, 1 − φ) | 4bb78f1 | 1 | 0 | 151 | −7.487·10⁻³ | 112° | 1.27·10⁻⁷ | 0 |
+| K2_0_nx_sbd (B, 1 − φ) | ebcea74 | 2 | 1 / 0 | 146 / 145 | −7.500·10⁻³ | 114° | 1.49·10⁻⁷ | 0 |
+| K2_0_nx_sa200 (A, 2 M_s) | ebcea74 | 1 | 0 | 1292 | −7.478·10⁻³ | 113° | 1.35·10⁻⁷ | 0 |
+| K2_0_nx_sb200 (B, 2 M_s) | ebcea74 | 2 | 1 / 0 | 1292 / 1294 | −7.468·10⁻³ | 111° | 2.02·10⁻⁷ | 0 |
+
+- Quality: all relaxations converged (K2_0_nx_sad only in its second start, 7.128). All 9 stages met the rules
+  (steady, closed, calm tail of 5 cycles); 0 BPs at all samples of the 9 mT stages. Exception to note: K4_1_nx_sad
+  changed its state during the 9 mT stage (largest angle 85° in cycles 0 … 2, 93° from cycle 3 on; w_loop still rose by
+  about 0.3 % per cycle at the end, within the rules).
+- The two codes differ only in the stop of the static relaxation (7.128). K2_0_nx_sad (4bb78f1) is in pairs with runs
+  of ebcea74.
+- **BPs.** 0 BPs after each of the 12 static relaxations (in the held field; the failed first start of K2_0_nx_sad
+  included). During the AC pass BPs appear: at most 94 … 151 at 1 − φ and 996 … 1294 at 2 M_s; at 2 M_s more than 10
+  BPs remain at the end of each of the first 13 half cycles. After pass 0, 7 of 9 prepared states are free of BPs (K4_1
+  5 of 5, K2_0 2 of 4); pass 1 removed the remaining BP in both. Option C (7.118) gave 12 of 16 attempts free of BPs,
+  and K4_1 and K2_0 in attempt 0 (n 1 each). With 2 microstructures no difference between the two preparations can be
+  read.
+
+**Readings (rule of 7.127, fixed before the results: |Δ ln w_l| < 0.10 and the same BP count after pass 0).**
+
+| question | K4_1 | K2_0 |
+|---|---|---|
+| 1: A against B, h_sat 1 − φ | +0.649 (BPs 0 / 0): not erased | −0.161 (BPs 0 / 1): not erased |
+| 1: A against B, h_sat 2 M_s | −0.579 (BPs 0 / 0): not erased | −0.405 (BPs 0 / 1): not erased |
+| 2: 2 M_s against 1 − φ, start A | −0.108 (BPs 0 / 0): matters | +0.062 (BPs 0 / 0): does not matter |
+| 2: 2 M_s against 1 − φ, start B | +1.120 (BPs 0 / 0): matters | +0.306 (BPs 1 / 1): matters |
+
+- Question 1: "not erased" at both corners and both fields (4 of 4 pairs). The sign of Δ ln w_l changes from pair to
+  pair.
+- Question 2: K4_1 "matters" (start A only 0.008 above the limit). At K2_0 the two starts give different readings. The
+  rule does not say how to combine them; the overall reading of question 2 is open (decision of Chris).
+- **Limit of question 1:** the rerun below changes only the stop of the static relaxation of start A and gives
+  |Δ ln w_l| 0.62. This is the same size as the A/B differences (0.16 … 0.65). Thus the test cannot separate a memory of
+  the start from the selection of the state during the AC pass.
+
+**Observations on the selection of the state.**
+- E_sat of A and B agree within 2.3·10⁻⁸ relative (K4_1: −0.4166043424 and −0.4166043405 at 1 − φ, −2.121323355 and
+  −2.121323335 at 2 M_s; K2_0: −0.4033312207 and −0.4033312114, −2.4108638088 and −2.4108637857). The noise of E per
+  chunk in the field is about 1.6·10⁻⁹ (7.128); the K2_0 difference at 1 − φ (9.3·10⁻⁹) is about 6 times this noise.
+  Near a minimum E changes only to second order with the state. Thus equal E does not show equal states; the states
+  were not compared.
+- At K4_1 the AC passes of A and B are equal (the same M_par and the same BP count at the end of each half cycle) up to
+  the first large drop of M_par: half cycle 6 at 1 − φ (h 0.118, M_par 0.536 → 0.469) and half cycle 13 at 2 M_s
+  (h 0.110). From there they differ. At K2_0 they differ from half cycle 3 (1 − φ) and 13 (2 M_s) on.
+- **Rerun (Chris, 7.128):** K4_1_nx_sad_rep against K4_1_nx_sad: the same start A and field. Differences: the static
+  relaxation stopped after 1 500 instead of 2 000 iterations (E_sat −0.4166043423 and −0.4166043424), and the run used
+  another GPU (gpu 1 instead of gpu 2). M_par and the BP count at the end of each half cycle are equal up to half
+  cycle 5; the largest BP count differs from half cycle 4 on (27 against 25). Thus the passes differ at the latest at
+  the first large drop of M_par. w_l 1.35·10⁻⁷ against 2.51·10⁻⁷: Δ ln w_l −0.62.
+- The same inside one run: in K2_0_nx_sbd and K2_0_nx_sb200, pass 1 starts with the same E_sat as pass 0 (equal within
+  3·10⁻¹⁰). The BP counts at the end of the half cycles are equal up to half cycle 4 (sbd) and 12 (sb200) and then
+  differ; pass 0 ends with 1 BP, pass 1 with 0.
+- Spread of w_l over the prepared states of this test: K4_1 (5 states) 1.31 … 4.02·10⁻⁷, × 3.1, sample SD of ln w_l
+  0.47; K2_0 (4 states) 1.27 … 2.02·10⁻⁷, × 1.6, SD 0.21. With the earlier preparations of 7.125 K4_1 spans
+  1.31 … 5.24·10⁻⁷. The state after AC from 300 mT (option C, 5.24·10⁻⁷) is above all 5 states of this test, and
+  option C was higher than nx in 3 of 3 K4 microstructures (7.126).
+
+**Reading (inference; n: 2 microstructures, 4 A/B pairs, 1 rerun, 2 pairs of passes in one run).** The data agree
+with this picture: the AC demagnetization passes points where the state is not stable (the first large drop of M_par is
+one); there a very small difference decides which state the system reaches. Then the 9 mT loss of one microstructure is
+not one value but a distribution over the states that the AC demagnetization reaches, and the two stable states of
+7.126 agree with a sample of this distribution. Not excluded: a systematic effect of the preparation (option C high in
+3 of 3 K4 microstructures). Assumption, without an estimate of its size: in the real material thermal noise makes this
+selection (7.128).
+
+**Open for Chris:** whether the spread of the states goes into the realisation scatter (several prepared states per
+microstructure) and how many; how a new prepared state is made (a new random start as in option C, a new saturation
+pass, or a small perturbation of the saturated state); the overall reading of question 2. The instance stays on (Chris,
+about 08:00: "nicht stoppen"); all 4 GPUs are idle since 07:52.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
