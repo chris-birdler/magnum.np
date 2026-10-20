@@ -1211,3 +1211,33 @@ download and md5, only with his go.
 **Box 3 (2026-10-20, about 18:05 UTC):** all 10 runs of the seeds 951 and 952 done (D15, T3, T3Pc, T15g, X3). Data
 downloaded (88 files, 102 MB, md5 verified, local folder remote_20261020_box3/, not in git). Box 3 destroyed (go of
 Chris). Box 2 runs the rest.
+
+### 3.23 Interim with n 6 (seeds 941 … 944, 951, 952): N1 and N3 within ±0.15; why Δ_g, m and total scatter (2026-10-20, about 18:35 UTC)
+
+Values in ln P, mean ± SE, 95 % t-interval (eval_dynamic.py, design B; interim, the reading of the full set follows
+at n 12):
+- N1 = +0.084 ± 0.016 (n 6), +0.044 … +0.125: within ±0.15 (K4). It is not zero: at fixed morphology the finer m
+  increases P by a factor of about 1.09.
+- N3 = −0.0025 ± 0.0016 (n 6), −0.0067 … +0.0018: within ±0.15.
+- Δ_g = +0.51 ± 0.25 (n 6); Δ_c = +0.40 ± 0.13 (n 6); total = −0.19 ± 0.33 (n 6), −1.04 … +0.65;
+  m = +0.13 ± 0.18 (n 11).
+
+Because N3 is nearly zero, total is nearly −m for each seed: the full deviation of T3Pc from D15 is the difference
+between D15 and X3. These two arms have the same stray-field geometry (the 5-nm staircase), but different m and
+surface material (fine m on its own voxels against coarse m with fraction weights). It is not an error of the stray
+field.
+
+**Finding 1, seed 951: D15 changed its state during the cycles.** Loop energy of D15_s951 per cycle: 0.066 J/m³
+(cycle 2), 0.13 (3), 0.17 (4), then 0.16 J/m³ constant. In the end state of particle 2, 207 cells (0.17 % of the
+particle) differ from the prepared state (m · m_ref < 0.9), all in the interior (r/R 0.57 … 0.75). No cell is
+reversed. After the change the shares of particles 1 and 2 are about 10 times larger (phase lag 10.6 and 11.5 mrad).
+T3, T3Pc, T15g and X3 started from the same prepared state and stayed in it (overlap 0.997 … 1.000 per particle).
+Thus for seed 951 D15 measures a different state. This one event gives +1.70 in Δ_g and −1.71 in total.
+
+**Finding 2, seed 952: same state, different response.** D15 and X3 are in the same state (overlap at least 0.999
+per particle), but P(X3)/P(D15) = 1.8, and the share of particle 0 is 3.7 times larger in X3. The loss at 9 mT is a
+phase lag of 0.3 … 4 mrad (3.16). Its size depends on the local pinning of the internal structure, and this pinning
+is different for fine m on its own 5-nm staircase and for coarse m with fraction material in the field of the same
+staircase.
+
+Not checked yet: X3_s949 (6.3 W/cm³) and X3_s950 (3.9 W/cm³; D15_s950 2.4 W/cm³, other pattern of the particles).
