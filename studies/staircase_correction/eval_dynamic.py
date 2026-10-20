@@ -3,8 +3,8 @@
 Evaluation of the dynamic arms of PROTOKOLL 3.5 (D1, D2): loss density P at 9 mT, d/l_ex 96, φ 0.55, seeds 941 … 944.
 
 Value of a run: ln P of the calm tail (eval_conv.run_record of the β(B_peak) study: at least 2 calm cycles).
-Arms: D3 (dx 3 voxel), D3f (dx 3, volume fraction alone, q = 2), D3P / D3L (dx 3, pairwise / cell-local correction,
-q = 2, p = 3), D3P4 / D3L4 (the same with q = 4), D15 (dx 1.5 voxel), D15g (dx 1.5, geometry of dx 3 locked).
+Arms: see ARMS. The main corrected arm is D3Pc (pairwise form with the centroid term, q = 2, p = 3; PROTOKOLL 3.7,
+D4, D8); the other corrected arms are information.
 
 Reading of D1 (fixed before the results), paired by seed:
     Δ_c = ln P(corrected arm) − ln P(D3)        geometry effect of the correction at dx 3
@@ -30,10 +30,12 @@ import eval_conv as EC  # noqa: E402
 
 SEEDS = (941, 942, 943, 944)
 ARMS = [("D3", "dx 3, voxel model (production)"), ("D3f", "dx 3, volume fraction alone, q 2"),
-        ("D3P", "dx 3, pairwise correction, q 2, p 3"), ("D3L", "dx 3, cell-local correction, q 2, p 3"),
-        ("D3P4", "dx 3, pairwise correction, q 4, p 3"), ("D3L4", "dx 3, cell-local correction, q 4, p 3"),
+        ("D3Pc", "dx 3, pairwise correction with centroid term, q 2, p 3 (main arm, D4/D8)"),
+        ("D3Pc4", "dx 3, pairwise correction with centroid term, q 4, p 3"),
+        ("D3Lc", "dx 3, cell-local correction with centroid term, q 2, p 3 (not usable by R3; information)"),
+        ("D3P", "dx 3, pairwise correction without centroid term, q 2, p 3 (information)"),
         ("D15", "dx 1.5, voxel model of dx 1.5"), ("D15g", "dx 1.5, voxel geometry of dx 3 locked")]
-CORRECTED = ["D3P", "D3L", "D3P4", "D3L4", "D3f"]
+CORRECTED = ["D3Pc", "D3Pc4", "D3Lc", "D3P", "D3f"]
 
 
 def stats(v):
@@ -98,8 +100,8 @@ def main():
             r = "not reproduced"
         else:
             r = "not determined"
-        if arm in ("D3P4", "D3L4", "D3f"):
-            r += " (information: %s)" % ("q 4 target, the reference is q 2" if arm != "D3f" else "no near-field correction")
+        if arm != "D3Pc":
+            r += " (information)"
         print("| %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
     if a.json:
