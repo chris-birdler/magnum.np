@@ -133,9 +133,9 @@ def rerun_dir(d):
 
 
 def design_pattern(suffix=""):
-    """Run names of the design: PATTERN, or with a suffix (PLAN 4.13 S10: "_nx" for the new setup). The old and the
-    new runs never mix in one load."""
-    return PATTERN if not suffix else re.compile(r"^(S\d{3}|C\d|K\d_\d)%s$" % re.escape(suffix))
+    """Run names of the design: PATTERN, or with a suffix (PLAN 4.13 S10: "_nx" for the new setup; PLAN 4.15: "_sat",
+    with up to 2 digits for the seed index k of a corner). The old and the new runs never mix in one load."""
+    return PATTERN if not suffix else re.compile(r"^(S\d{3}|C\d|K\d_\d{1,2})%s$" % re.escape(suffix))
 
 
 def load_runs(runs, alpha=0.1, reruns=False, suffix=""):

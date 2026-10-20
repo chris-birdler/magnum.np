@@ -7,6 +7,9 @@
 #   /root/disp.out 2>&1 &" to /root/onstart.sh; start it the same way.
 #   new code: echo <commit> > /root/disp_commit; touch spool/EXIT (the running jobs end, the queued stay in spool/);
 #   when the dispatcher has ended: rm spool/EXIT and start it again.
+#   post-processing pattern: /root/postproc_pattern if it exists, else the names of PLAN 4.13 (PLAN 4.15: the file gets
+#   instance_postproc.PATTERN_SAT after the check C5); it takes effect when the supervisor starts instance_postproc
+#   again (kill the PID of instance_postproc; the loop starts it after 60 s).
 B=/root/magnum.np/studies/beta_bpeak
 W=/root/magnum.np-disp
 T=$W/studies/beta_bpeak
@@ -34,7 +37,9 @@ cd $T || exit 1
 L=$B/dispatcher.log
 echo "$(date '+%F %T') dispatcher (re)start at $(git log --oneline -1 | cut -c1-60)" >> $L
 ( while [ ! -f spool/EXIT ]; do
-      python instance_postproc.py --runs runs --stop spool/EXIT --workers 4 --pattern '^(S\d{3}|C\d|K\d_\d)_(nx|hs|ad|as)$' \
+      P='^(S\d{3}|C\d|K\d_\d)_(nx|hs|ad|as)$'
+      [ -s /root/postproc_pattern ] && P=$(head -1 /root/postproc_pattern)        # an empty file keeps the default
+      python instance_postproc.py --runs runs --stop spool/EXIT --workers 4 --pattern "$P" \
           >> $B/postproc_dispatcher.log 2>&1 && break
       echo "$(date '+%F %T') instance_postproc (dispatcher) restarted" >> runs/ALERT
       sleep 60

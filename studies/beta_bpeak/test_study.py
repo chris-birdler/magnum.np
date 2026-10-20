@@ -1249,10 +1249,7 @@ def test_init_from_jobs_have_the_init_keys_of_their_source():
             late = t.get("predemag_h") is not None and s.get("predemag_h") is None
             late_s = t.get("bloch_smooth", 0) > 0 and not s.get("bloch_smooth", 0)   # the cut after loading
             late_sat = bool(t.get("sat_static")) and not s.get("sat_static")   # saturation passes after loading
-            diff = [k for k in run_loops.INIT_KEYS if k != "relax_maxiter" and t.get(k) != s.get(k)
-                    and not (late and k in ("predemag_h", "predemag_q")) and not (late_s and k == "bloch_smooth")
-                    and not (late_sat and k in ("predemag_h", "predemag_q", "sat_static", "bloch_free_tries",
-                                                "init_mode"))]
+            diff = run_loops.init_key_diff(s, t, True, late, late_s, late_sat)
             assert not diff, "%s (%s): %s differ from %s" % (name, f.name, diff, run)
             n += 1
     assert n >= 190
@@ -2098,6 +2095,21 @@ def test_design_pattern_suffix():
     assert old.match("S012") and old.match("K3_1") and not old.match("S012_nx") and not old.match("K3_1_mc2")
     assert new.match("S012_nx") and new.match("C4_nx") and new.match("K3_1_nx") and not new.match("S012")
     assert not new.match("K1_0_nx_p64") and not new.match("K1_0_nx_stopped")
+    sat = AD.design_pattern("_sat")                                            # PLAN 4.15
+    assert sat.match("K1_0_sat") and sat.match("K3_12_sat") and sat.match("S095_sat") and sat.match("C7_sat")
+    assert not sat.match("K1_0_nx") and not sat.match("K1_123_sat") and not sat.match("K4_1_nx_sa200")
+
+
+def test_postproc_pattern_sat():
+    """instance_postproc.PATTERN_SAT (PLAN 4.15 C3): the "_sat" runs and the earlier setups; never the test runs (their
+    snapshots are not deleted by the supervisor)."""
+    import re
+    import instance_postproc as IP
+    p = re.compile(IP.PATTERN_SAT)
+    for n in ("K1_0_sat", "K4_11_sat", "S000_sat", "C3_sat", "K2_0_nx", "K4_1_ad", "K3_2_as", "K1_0_hs"):
+        assert p.match(n), n
+    for n in ("K4_1_nx_sa200", "K4_1_cr9001", "K4_1_nx_pd300", "K4_0_ad_h16", "K1_0", "S000", "K1_0_nx_p64"):
+        assert not p.match(n), n
 
 
 def test_cycle_strayfield_fd():
@@ -2622,6 +2634,51 @@ def test_relax_trend_criterion():
     E2 = [1e-9 * (20 - k) for k in range(20)] + [0.0] * 8
     assert RN.trend_stop(E2, 6, 3e-10) is not None and RN.trend_stop(E2, 6, 3e-10) >= 20
     assert RN.trend_stop([1e-9 * (20 - k) for k in range(20)], 6, 3e-10) is None
+
+
+def test_h_sat_is_an_init_key():
+    """PLAN 4.15 C1: --h_sat sets the prepared state. A load with another h_sat stops (init_key_diff); a static
+    saturation after the load (late_sat) sets it again; an old config without h_sat has the default None (1 - phi)."""
+    import run_loops as RL
+    assert "h_sat" in RL.INIT_KEYS and RL.NEW_KEYS["h_sat"] is None
+    p = lambda *a: vars(RL.parse_args(["--out", "x", "--d_lex", "96"] + list(a)))
+    src, new = p("--init_mode", "saturated", "--predemag_h", "0", "--sat_static"), p(
+        "--init_mode", "saturated", "--predemag_h", "0", "--sat_static", "--h_sat", "2")
+    assert RL.init_key_diff(src, new, True) == ["h_sat"]
+    assert RL.init_key_diff(src, src, True) == []
+    assert RL.init_key_diff(p(), new, True, late_sat=True) == []          # e.g. a pd300 state, then the passes
+    old = {k: v for k, v in src.items() if k != "h_sat"}                    # a config from before --h_sat
+    assert RL.init_key_diff(old, src, True) == []
+    assert RL.init_key_diff(dict(src, relax_maxiter=1), src, False) == ["relax_maxiter"]
+
+
+def test_sat_corner_lines():
+    """PLAN 4.15 C2: the corner study lines are the production lines of corner_newell_lines with the preparation of
+    PROTOKOLL 7.132 and the seeds of sat_seed; nothing else changes; no seed occurs twice."""
+    import shlex
+    import conv_jobs as CJ
+    from rerun_jobs import get_arg
+    src = str(pathlib.Path(__file__).resolve().parent / "jobs" / "sobol_corners.txt")
+    prod = {n: shlex.split(a) for n, a in CJ.corner_newell_lines(src)}
+    small, large = CJ.sat_corner_lines(kind="small", src=src), CJ.sat_corner_lines(kind="large", src=src)
+    assert [n for n, _ in small] == ["K%d_%d_sat" % (c, k) for k in range(4) for c in (1, 3)]
+    assert [n for n, _ in large] == ["K%d_%d_sat" % (c, k) for k in range(4) for c in (2, 4)]
+    assert sorted(CJ.sat_corner_lines(src=src)) == sorted(small + large)
+    seeds = [CJ.sat_seed(c, k) for c in (1, 2, 3, 4) for k in range(30)]
+    assert len(set(seeds)) == len(seeds) and CJ.sat_seed(1, 0) == 2011 and CJ.sat_seed(4, 2) == 2043
+    assert CJ.sat_seed(2, 8) == 2029 and CJ.sat_seed(2, 9) == 3209
+    drop = {"seed", "init_mode", "predemag_h", "h_sat", "bloch_free_tries", "sat_static"}
+    key = lambda tok: {a[2:]: tuple(get_arg(tok, a[2:]) or []) for a in tok if a.startswith("--") and a[2:] not in drop}
+    for n, a in small + large:
+        c, k = int(n[1]), int(n.split("_")[1])
+        t = shlex.split(a)
+        assert get_arg(t, "seed") == [str(CJ.sat_seed(c, k))] and "--sat_static" in t
+        assert get_arg(t, "init_mode") == ["saturated"] and get_arg(t, "predemag_h") == ["0"]
+        assert get_arg(t, "h_sat") == ["2"] and get_arg(t, "bloch_free_tries") == ["3"]
+        assert get_arg(t, "init_from") is None and get_arg(t, "n_amp") == ["7"] and "--acc" in t
+        if k < 3:                                                   # the old corner seeds: the old line of this run
+            assert get_arg(prod["K%d_%d_nx" % (c, k)], "seed") == get_arg(t, "seed")
+        assert key(t) == key(prod["K%d_0_nx" % c])
 
 
 def test_crep_lines():

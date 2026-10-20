@@ -574,6 +574,38 @@ def crep_lines(runs=CREP_RUNS, seeds=CREP_SEEDS, src="jobs/sobol_corners.txt", a
     return out
 
 
+SAT_SET = (("init_mode", ["saturated"]), ("predemag_h", ["0"]), ("h_sat", ["2"]), ("bloch_free_tries", ["3"]))
+SAT_SUFFIX = "_sat"
+SAT_N = 4                      # PLAN 4.15 D1 (c): 4 seeds per corner in the first step
+SAT_SMALL = ("K1", "K3")       # d/l_ex 212; K2 and K4 have d/l_ex 300
+
+
+def sat_seed(c, k):
+    """Seed of corner K<c>, seed index k (PLAN 4.15): k 0 ... 2 the seeds of the old corners (2011 ... 2013 for K1), k 3 ...
+    8 the same scheme, then 3000 + 100 c + k."""
+    return 2000 + 10 * c + 1 + k if k <= 8 else 3000 + 100 * c + k
+
+
+def sat_corner_lines(n=SAT_N, kind="all", src="jobs/sobol_corners.txt"):
+    """Corner study of PLAN 4.15 (approved by Chris 2026-10-20): the production line of corner_newell_lines (PLAN 4.13)
+    with the preparation of PROTOKOLL 7.132: the uniform start along the drive (--init_mode saturated), the field 2 M_s
+    at once (--h_sat 2), held and relaxed (--sat_static), the decaying AC field from its peak, the relaxation at H = 0,
+    at most 3 passes (--bloch_free_tries 3); then all 7 amplitudes. Names K<c>_<k>_sat with the seed sat_seed(c, k),
+    k = 0 ... n - 1. kind: "small" (K1, K3), "large" (K2, K4) or "all". Order: by k, then corner."""
+    corners = dict(corner_newell_lines(src))
+    out = []
+    for k in range(n):
+        for c in (1, 2, 3, 4):
+            if kind != "all" and ("K%d" % c in SAT_SMALL) != (kind == "small"):
+                continue
+            t = shlex.split(corners["K%d_0%s" % (c, NX_SUFFIX)])    # the 3 old lines of a corner differ only in --seed
+            for a, v in SAT_SET:
+                t = set_arg(t, a, v)
+            t = set_arg(t, "seed", [str(sat_seed(c, k))])
+            out.append(("K%d_%d%s" % (c, k, SAT_SUFFIX), " ".join(t) + " --sat_static"))
+    return out
+
+
 K4H_RUNS = ("K4_0", "K4_1", "K4_2")
 K4H_CYCLES = 16
 
@@ -658,6 +690,8 @@ if __name__ == "__main__":
                 k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
                 satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
                 crep_lines() if st == "crep" else
+                sat_corner_lines(kind="small") if st == "satsmall" else
+                sat_corner_lines(kind="large") if st == "satlarge" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()

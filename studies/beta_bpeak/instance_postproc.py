@@ -84,6 +84,11 @@ def process(d):
     return d, ["%s  %s/%s\n" % (md5(d / f), d.name, f) for f in files]
 
 
+# the --pattern of the supervisor on the box since PLAN 4.15 (the corner study and the main study, "_sat"; the earlier
+# setups "_nx", "_hs", "_ad", "_as" stay); set only after the check C5 of the first "_sat" run
+PATTERN_SAT = r"^(S\d{3}|C\d|K\d_\d{1,2})_(nx|hs|ad|as|sat)$"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", default=str(HERE / "runs"))

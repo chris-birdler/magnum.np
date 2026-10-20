@@ -104,7 +104,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "init_mode": "block",                                 # 2026-10-18, Bloch points, way 2 (Chris)
             "bloch_free_tries": 0,                                # 2026-10-18, Bloch points (Chris)
             "bloch_smooth": 0,                                    # 2026-10-19, Bloch points (Chris)
-            "sat_static": False}                                  # 2026-10-19, static saturation (Chris)
+            "sat_static": False,                                  # 2026-10-19, static saturation (Chris)
+            "h_sat": None}                                        # 2026-10-20, PLAN 4.15 C1 (default 1 - phi)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer", "prep_only", "sat_check",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -116,7 +117,21 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
-             "bloch_free_tries", "bloch_smooth", "sat_static"]
+             "bloch_free_tries", "bloch_smooth", "sat_static", "h_sat"]
+
+
+def init_key_diff(src_config, config, converged, late_predemag=False, late_smooth=False, late_sat=False):
+    """INIT_KEYS in which a loaded state (src_config: the config of its run) differs from config. Left out: relax_maxiter
+    if the relaxation converged; the keys that a step after the load sets again (the AC demagnetization, the cut of a
+    Bloch point, the static saturation passes). An old config without a key has the value of NEW_KEYS."""
+    skip = {"relax_maxiter"} if converged else set()
+    if late_predemag:
+        skip |= {"predemag_h", "predemag_q"}
+    if late_smooth:
+        skip |= {"bloch_smooth"}
+    if late_sat:
+        skip |= {"predemag_h", "predemag_q", "sat_static", "bloch_free_tries", "init_mode", "h_sat"}
+    return [k for k in INIT_KEYS if k not in skip and src_config.get(k, NEW_KEYS.get(k)) != config.get(k)]
 
 
 def parse_args(argv=None):
@@ -1203,12 +1218,8 @@ def main(argv=None):
         # static saturation passes of this run
         late_sat = bool(args.sat_static and "init" in c and not c["config"].get("sat_static", False))
         if "init" in c:
-            diff = [k for k in INIT_KEYS if c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)
-                    and not (k == "relax_maxiter" and c["init"].get("relax_converged"))
-                    and not (late_predemag and k in ("predemag_h", "predemag_q"))
-                    and not (late_smooth and k == "bloch_smooth")
-                    and not (late_sat and k in ("predemag_h", "predemag_q", "sat_static", "bloch_free_tries",
-                                                "init_mode"))]
+            diff = init_key_diff(c["config"], config, c["init"].get("relax_converged"), late_predemag, late_smooth,
+                                 late_sat)
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
                     "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)))
