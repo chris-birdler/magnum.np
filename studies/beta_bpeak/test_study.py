@@ -2664,6 +2664,10 @@ def test_sat_corner_lines():
     assert [n for n, _ in small] == ["K%d_%d_sat" % (c, k) for k in range(4) for c in (1, 3)]
     assert [n for n, _ in large] == ["K%d_%d_sat" % (c, k) for k in range(4) for c in (2, 4)]
     assert sorted(CJ.sat_corner_lines(src=src)) == sorted(small + large)
+    more = CJ.sat_corner_lines(6, "small", src, k0=4)                # more seeds of the same corners (k 4 and 5)
+    assert more == CJ.sat_corner_lines(6, "small", src)[8:]
+    assert [(n, get_arg(shlex.split(a), "seed")) for n, a in more] == [
+        ("K1_4_sat", ["2015"]), ("K3_4_sat", ["2035"]), ("K1_5_sat", ["2016"]), ("K3_5_sat", ["2036"])]
     seeds = [CJ.sat_seed(c, k) for c in (1, 2, 3, 4) for k in range(30)]
     assert len(set(seeds)) == len(seeds) and CJ.sat_seed(1, 0) == 2011 and CJ.sat_seed(4, 2) == 2043
     assert CJ.sat_seed(2, 8) == 2029 and CJ.sat_seed(2, 9) == 3209

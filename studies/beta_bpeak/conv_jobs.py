@@ -586,15 +586,16 @@ def sat_seed(c, k):
     return 2000 + 10 * c + 1 + k if k <= 8 else 3000 + 100 * c + k
 
 
-def sat_corner_lines(n=SAT_N, kind="all", src="jobs/sobol_corners.txt"):
+def sat_corner_lines(n=SAT_N, kind="all", src="jobs/sobol_corners.txt", k0=0):
     """Corner study of PLAN 4.15 (approved by Chris 2026-10-20): the production line of corner_newell_lines (PLAN 4.13)
     with the preparation of PROTOKOLL 7.132: the uniform start along the drive (--init_mode saturated), the field 2 M_s
     at once (--h_sat 2), held and relaxed (--sat_static), the decaying AC field from its peak, the relaxation at H = 0,
     at most 3 passes (--bloch_free_tries 3); then all 7 amplitudes. Names K<c>_<k>_sat with the seed sat_seed(c, k),
-    k = 0 ... n - 1. kind: "small" (K1, K3), "large" (K2, K4) or "all". Order: by k, then corner."""
+    k = k0 ... n - 1 (k0 > 0: more seeds of the same corners, e.g. k 4 and 5 of K1 and K3, Chris 2026-10-20). kind:
+    "small" (K1, K3), "large" (K2, K4) or "all". Order: by k, then corner."""
     corners = dict(corner_newell_lines(src))
     out = []
-    for k in range(n):
+    for k in range(k0, n):
         for c in (1, 2, 3, 4):
             if kind != "all" and ("K%d" % c in SAT_SMALL) != (kind == "small"):
                 continue
@@ -677,6 +678,8 @@ if __name__ == "__main__":
     import sys
     if "--newell" in sys.argv:
         st = sys.argv[sys.argv.index("--newell") + 1]
+        st, _, ks = st.partition(":")      # satsmall:4:6 -> the seed indices k 4 and 5 (sat_corner_lines k0, n)
+        k0, n = (int(x) for x in ks.split(":")) if ks else (0, SAT_N)
         jobs = (newell_rerun_lines() if st == "1b" else newell_eps_lines() if st == "eps" else
                 newell_tol_lines() if st == "tol" else newell_kext_lines() if st == "kext" else
                 final_lines() if st == "final" else locked_lines() if st == "locked" else
@@ -690,8 +693,8 @@ if __name__ == "__main__":
                 k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
                 satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
                 crep_lines() if st == "crep" else
-                sat_corner_lines(kind="small") if st == "satsmall" else
-                sat_corner_lines(kind="large") if st == "satlarge" else
+                sat_corner_lines(n, "small", k0=k0) if st == "satsmall" else
+                sat_corner_lines(n, "large", k0=k0) if st == "satlarge" else
                 newell_lines(int(st)))
     else:
         jobs = prec_lines() if "--prec" in sys.argv else lines()
