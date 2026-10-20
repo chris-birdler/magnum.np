@@ -15,7 +15,7 @@ flock -n 3 || { echo "$(date '+%F %T') dispatcher already running"; exit 0; }
 [ -f /root/disp_commit ] || { echo "$(date '+%F %T') no /root/disp_commit: stop"; exit 1; }
 C=$(cat /root/disp_commit)
 if [ ! -d $W ]; then
-    cd /root/magnum.np && git fetch -q --depth 50 origin feature/newell-pbc && git worktree add -q -f --detach $W "$C" || {
+    cd /root/magnum.np && git fetch -q --depth 50 origin main && git worktree add -q -f --detach $W "$C" || {
         echo "$(date '+%F %T') worktree at $C failed: stop"; exit 1; }
 fi
 cd $W || exit 1
