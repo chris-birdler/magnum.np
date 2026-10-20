@@ -1208,6 +1208,6 @@ new box is rented after the end of q = 2.
 **Decision (Chris, 2026-10-20, about 16:30 UTC):** the T arms of the seeds 949 and 950 stay on box 2 (no move to
 box 3: shorter end time, but no cost saving). Proposal to Chris: destroy box 3 when its own runs are done, after
 download and md5, only with his go.
-**Box 3 (2026-10-20, about 18:15 UTC):** all 10 runs of the seeds 951 and 952 done (D15, T3, T3Pc, T15g, X3). Data
+**Box 3 (2026-10-20, about 18:05 UTC):** all 10 runs of the seeds 951 and 952 done (D15, T3, T3Pc, T15g, X3). Data
 downloaded (88 files, 102 MB, md5 verified, local folder remote_20261020_box3/, not in git). Box 3 destroyed (go of
 Chris). Box 2 runs the rest.
