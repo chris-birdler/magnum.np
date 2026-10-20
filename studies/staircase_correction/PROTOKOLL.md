@@ -734,3 +734,35 @@ Files: results/stageB_static_A_d96_phi0.55_q2_c.json and _q4_c.json.
   of box 2, and (c) in addition (energy balance and closure of the corrected dynamic runs).
 - First values after 25 steps (P3): smallest Ritz value +1.20·10⁻³ (K2) and +1.19·10⁻³ (K4), largest 0.997. About
   29 s per step on 3 threads; 300 steps take about 2.4 h per case.
+
+**R3 results (plain Lanczos, 300 steps, centroid term, q = 2, p = 3; files results/sign_*.json).** λ_Ritz,min is
+the smallest Ritz value (an upper bound of λ_min), r its residual; λ_Ritz,max = 0.9997 in all cases.
+
+| geometry | operator | λ_Ritz,min | r | reading of the rule |
+|---|---|---|---|---|
+| K2 | P3 (pairwise) | +1.0143e-4 | 1.50e-4 | not determined |
+| K2 | reference without window term (volume fraction, positive semi-definite) | +1.0120e-4 | 1.50e-4 | not determined |
+| K2 | L3 (cell-local) | −2.192e-3 | 2.0e-5 | **not usable** |
+| K4 | P3 | +1.0425e-4 | 1.50e-4 | not determined |
+| K4 | reference without window term | +1.0404e-4 | 1.50e-4 | not determined |
+| K4 | L3 | −2.322e-3 | 3.2e-6 | **not usable** |
+
+- The cell-local form has a converged negative eigenvalue of about −2.3·10⁻³ (in units of the largest one) on both
+  geometries. Thus the stray-field energy of L is indefinite: R3 "not usable". Probable cause (inference): replacing
+  m_j by m_i makes the energy of patterns that alternate from cell to cell negative at the surface. In the dynamics
+  the exchange penalises such patterns strongly (D3Lc_s941 ran stable), but the stray-field operator itself has an
+  unphysical negative mode.
+- The pairwise form gives the same smallest Ritz value as the positive semi-definite reference within 2·10⁻⁷ after
+  300 steps (both started from the same random vector). The residual stays at 1.5·10⁻⁴ for both, because the
+  operator has a cluster of eigenvalues near 0; the strict criterion of R3 (residual at most 10⁻⁴) cannot be reached
+  with 300 steps even for the reference.
+
+**D8 — reading of stage A and the dynamic arms (decision under the night mandate).**
+- Options for R3 of P: (a) keep "not determined" and give no outcome; (b) take the agreement with the positive
+  semi-definite reference within 2·10⁻⁷ as the evidence that P adds no negative mode, plus the stable dynamic runs
+  D3Pc_s941 and D3Pc_s942 (closure 2·10⁻⁸ and 8·10⁻⁷, w_dis / w_loop 1.000); (c) more Lanczos steps.
+- Recommendation and decision: (b), with (c) as an option for Chris. **Outcome of stage A with the centroid term:
+  "go on, pairwise"** (P sufficient from p = 2 on in R2 for both geometries, both q and the dynamic-test geometry;
+  R3 as in (b)). L is "not usable" (R3).
+- Dynamic arms: the remaining arms with L (D3Lc_s943 started and stopped, D3Lc_s944, D3Lc4) are cancelled; D3Lc_s941
+  and D3Lc_s942 (finished) stay as information. The queue (spool7) runs D3Pc_s944, D3f and D3Pc4.
