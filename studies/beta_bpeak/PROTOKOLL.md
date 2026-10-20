@@ -7700,6 +7700,88 @@ then the post-processing keeps the pattern of PLAN 4.13 (no /root/postproc_patte
 runs. The first small run is expected at about 17:00 (estimate: cycles 1.5 … 1.7 h measured in the ad runs,
 preparation about 1.1 h not measured at d/l_ex 212).
 
+### 7.134 PLAN 4.15, phase 1: the check C5 passes; the large runs are released; the GPU that waits for disk space runs seeds 4 and 5 of K1 and K3 (2026-10-20)
+
+All times UTC. Terms as in PLAN 4.15, 7.132 and 7.133. Run code on the instance: 8640e55 (unchanged).
+
+**First 4 small runs.** K1_0_sat ended at 16:52 (2.44 h), then K3_0_sat (2.57 h), K1_1_sat (2.61 h) and K3_1_sat
+(2.70 h). The preparation of all 4 runs:
+
+| run | static relaxation: iterations, time | static: max angle of m to the field | AC pass: time | zero-field relaxation: iterations | passes | Bloch points after the pass |
+|---|---|---|---|---|---|---|
+| K1_0 | 1 500, 82 s | 9.77° | 0.81 h | 3 500 | 1 | 0 |
+| K1_1 | 1 500, 86 s | 9.77° | 0.88 h | 1 500 | 1 | 0 |
+| K3_0 | 1 500, 81 s | 11.33° | 0.91 h | 2 000 | 1 | 0 |
+| K3_1 | 1 500, 85 s | 11.33° | 0.96 h | 9 000 | 1 | 0 |
+
+- 1 500 iterations is the smallest number that the static relaxation can stop at: blocks of 500 iterations; the first
+  block has no energy change to compare, then 2 quiet blocks are necessary (--relax_confirm 2). All 4 static states
+  converged at the first possible check.
+- In the static state, no particle cell is more than 15° from the field. The angles are the same for the 2 seeds of
+  a corner (max 9.770° and 9.774° at K1; mean 1.1926° and 1.1924°). The seed changes only the cube axes and offsets;
+  the particle geometry of a corner does not depend on the seed. Thus at 2 M_s the geometry (the demagnetizing field
+  at the particle surfaces) sets the angles, and the cube anisotropy changes them only a little.
+- All 7 stages of each run are complete, with 7 cycles each and no Bloch point at the stage ends.
+
+**Check C5 (on K1_0_sat, before its post-processing): PASS.** The script that ran is check_sat_run.py of commit
+496de91 on main (committed after its use; the only difference is the docstring).
+- DONE exists. summary.json has the static record (criterion relative 1e-6, converged) and 1 pass.
+- 7 complete stages, 7 stage states (ckpt_00_amp00.pt … ckpt_06_amp06.pt).
+- Each cycle record has E_start. A second check (17:50 … 18:10) found the 5 terms demag, exchange, aniso_cube,
+  aniso_particle and drive in all 49 cycle records of each of the 4 finished runs.
+- Snapshots: only cycles 5 and 6 (the last 2 of 7), 16 phases each, at amp00, amp03 and amp06 (9, 50 and 150 mT).
+- 7 accumulator files with mk2 (781 440 × 7), cycles 2 … 6 kept, sum check p_box / p_dis = 1.000000.
+- `instance_postproc.py --once --pattern '^K1_0_sat$'` (16:57 … 17:13). instance_postproc catches the errors of a
+  run, thus the evidence is: the line "K1_0_sat: analysed" at 17:13:37, POSTPROC_DONE, no POSTPROC_FAILED, no
+  runs/postproc_errors.log. It wrote the 6 result files and their md5 (runs/postproc.md5) and deleted the snapshots
+  and the accumulator files. The folder went from 2.2 GB to 137 MB.
+
+**Release (PLAN 4.15, job order).** 17:15: /root/postproc_pattern holds instance_postproc.PATTERN_SAT; the
+instance_postproc of the dispatcher ended by SIGTERM to its PID and the supervisor started it again at 17:15:09 with this
+pattern (the line in runs/ALERT is from this restart). K3_0_sat, K3_1_sat and K1_1_sat were post-processed at 17:26 …
+17:32. 17:17: jobs/corners_sat_large.txt (md5 c2b3ceeb) submitted at priority 32; the dispatcher loaded the 8 jobs
+into its queue at 17:18. At that time all 8 small runs had started.
+
+**Finding: only 3 large runs fit on the disk at a time, and one GPU waits for the whole large phase.**
+- This is the case of PLAN 4.15 O2 ("GPUs wait when only large runs are left and the disk is full"); D4 (c) and the
+  wall times of the D1 table (n 4: about 30 h) assume 3 large runs at a time. The alternation of large and small runs
+  (S11) did not occur: the first 4 small runs ended at 16:52 … 17:12, the other 4 small runs took their GPUs, and the
+  large jobs came after C5 (17:17). Thus only large runs are left.
+- run_queue reserves the expected bytes of each job (--min_free_gb 3). Expected: K2 7.95 GB, K4 8.60 GB, K1 2.85 GB,
+  K3 2.55 GB. Measured at the end of the first 4 small runs: 2.19 GB (K1_1) and 1.99 GB (K3_0, K3_1), that is
+  0.77 … 0.78 of the expected value.
+- Free disk at 17:20: 27.5 GB; the 4 finished "_sat" folders held 6.3 GB. When all 8 small runs are post-processed
+  (137 MB each), about 27.5 + 6.3 − 8 × 0.14 = 32.7 GB are free (estimate; it counts the 4 running folders as empty).
+  4 large runs (2 × K2, 2 × K4) need 33.1 GB plus the 3 GB reserve, that is 36.1 GB; the difference is about 3.4 GB.
+- The state files of the old test runs on the instance (other than "_sat" and the 3 pd300 states) are 45 files with
+  1.64 GB. Their deletion would not close the difference.
+- Expected without an action: from about 20:00 one GPU waits for about 22 h; phase 1 ends at about 18:00 on
+  2026-10-21 (estimate; the D1 table gives about 30 h from 14:26, that is about 20:30).
+
+**Decision of Chris (about 18:00): option 2.** The GPU that waits takes seeds 4 and 5 of K1 and K3 (4 small runs, about
+10 GPU-h). This changes the order of D1 (c): these 4 runs start before the evaluation of the first step. Chris still
+decides on more seeds after the evaluation. The other options were: 1, accept the waiting GPU; 3, change the disk
+guard so that 4 large runs fit. Option 3 needs a correction of expected_bytes to the measured 0.77 … 0.78 (a smaller
+--min_free_gb alone is not sufficient: 33.1 GB > 32.7 GB) and a restart of the dispatcher while jobs run (risk of a
+second run of the same job). Options 1 and 2 have the same limit of 3 large runs at a time; option 2 uses the GPU
+time that is paid in both cases.
+- Code (496de91 on main): sat_corner_lines has the argument k0; `conv_jobs.py --newell satsmall:4:6` gives
+  jobs/corners_sat_small_k45.txt (md5 e802c34b): K1_4_sat, K3_4_sat, K1_5_sat, K3_5_sat with the seeds 2015, 2035,
+  2016, 2036. The lines differ from the first step only in --seed. The job files of the first step stay the same
+  (the generator gives md5 e0108708 and c2b3ceeb again). test_sat_corner_lines checks the new lines; targeted tests
+  3 passed.
+- Submitted at priority 33 at 18:04:50. A free GPU takes the next large run if it fits on the disk, else the next
+  small run.
+- Disk margin: 2 × K4 + 1 × K2 + 1 small K1 run with the reserve need 31.0 GB of the 32.7 GB. The margin becomes
+  smaller with each finished run, because each finished run keeps its state files (O4; about 0.14 GB for a small run,
+  about 0.4 GB for a large run, estimate). The guard of run_queue prevents a full disk; the effect is a longer wait.
+- Expected delay: when a large run ends, its folder holds its snapshots until its post-processing ends; a GPU that is
+  free before this takes a small run (2.4 … 2.7 h). Then the next large run waits for the next free GPU. This is the
+  expected case while small runs are left. The end of phase 1 can thus move by up to about 2.7 h (estimate).
+- For the evaluation (C4), K1 and K3 have up to 6 seeds and K2 and K4 have 4. eval_corners_sat.py uses all finished
+  "_sat" runs; the report gives n for each corner. With 6 seeds at K1 and K3, the pooled SD has 16 degrees of freedom
+  instead of 12.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
