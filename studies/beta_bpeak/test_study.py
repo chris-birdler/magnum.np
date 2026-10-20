@@ -2592,3 +2592,9 @@ def test_sat_static_options_and_jobs():
     rl = pathlib.Path(RL.__file__).read_text()          # ramp rule and the passes after loading
     assert 'ramp = not (args.init_mode == "saturated" and k == 0 and not args.init_from)' in rl
     assert "rec = predemag(0.0, kk, ramp=True)" in rl
+    # Chris 2026-10-20: the static relaxation uses the relative criterion (the absolute one is below the fp32 noise of E
+    # in the field); all other relaxations keep --relax_tol_E_abs
+    calls = [ln for ln in rl.splitlines() if "relax_converge(" in ln and "def relax_converge" not in ln]
+    assert [ln for ln in calls if "tol_abs" in ln] == [
+        '            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k, tol_abs=False)']
+    assert len(calls) == 4 and '"criterion": "relative %g" % args.relax_tol_E' in rl

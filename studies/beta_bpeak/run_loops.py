@@ -971,9 +971,11 @@ def main(argv=None):
                for i, j, k in torch.nonzero(sel).cpu().numpy()]
         return npos, nneg, pts
 
-    def relax_converge(tag):
+    def relax_converge(tag, tol_abs=True):
         """The converge relaxation of virgin_asc (alpha 1, chunks, quiet_chunk; PLAN 4.13 S7). Returns (history,
-        iterations, converged); the history has the Bloch points per chunk."""
+        iterations, converged); the history has the Bloch points per chunk. tol_abs False: the relative criterion
+        relax_tol_E also when --relax_tol_E_abs is set (static field: |E| about 0.4 K_d V, the fp32 noise of E per
+        chunk 1e-10 ... 8e-9 K_d V is above the absolute threshold; Chris 2026-10-20)."""
         magf = torch.tensor(mag.reshape(-1), device=dev)
         hist, E_prev, it, converged, quiet = [], None, 0, False, 0
         while it < args.relax_maxiter:
@@ -985,7 +987,8 @@ def main(argv=None):
                 tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
                       / constants.gamma)
                 E = float(llg.E(state))
-            q, rel, d_abs = quiet_chunk(E, E_prev, Kd * N**3 * dx**3, args.relax_tol_E, args.relax_tol_E_abs)
+            q, rel, d_abs = quiet_chunk(E, E_prev, Kd * N**3 * dx**3, args.relax_tol_E,
+                                        args.relax_tol_E_abs if tol_abs else None)
             nb = bloch()
             hist.append({"it": it, "E_over_Kd": E / (Kd * N**3 * dx**3), "rel_dE": rel, "dE_over_KdV": d_abs,
                          "torque_rms": float(tq.pow(2).mean().sqrt()), "torque_max": float(tq.max()),
@@ -1041,9 +1044,10 @@ def main(argv=None):
                     k, h0, nb_r), flush=True)
             drive.hold = 1.0
             t_s = time.time()
-            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k)
+            hist_s, it_s, conv_s = relax_converge("relax_sat" if k == 0 else "relax_sat_pass%d" % k, tol_abs=False)
             al = alignment()
             static = {"relax_iterations": it_s, "relax_converged": conv_s, "wall_s": time.time() - t_s,
+                      "criterion": "relative %g" % args.relax_tol_E,
                       "E_over_Kd": hist_s[-1]["E_over_Kd"] if hist_s else None, "alignment": al,
                       "n_bloch": list(bloch()), "ramp": ramp_rec}
             print("[sat_static] pass %d: h %.4g, converged=%s after %d iterations; alignment %s" % (
