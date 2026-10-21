@@ -1572,3 +1572,22 @@ of 9.3 decides on the box), with the readings and rules of PLAN 9.1 … 9.3, fix
 memory is offered now; the cheapest suitable offers: RTX 3090 0.28 … 0.30 $/h, A100 PCIe 0.35 $/h, RTX 4090
 0.40 … 0.46 $/h. The cost table of PLAN 9.5 assumed 0.17 … 0.20 $/h; at these prices the time of the box must be
 shorter (a faster GPU) to stay in the budget. Choice of the box: open (question to Chris).
+
+**Decision of Chris (about 12:00 UTC): box 5 = 4 × Tesla V100S** (vast.ai offer 55364320, California, 40 cores,
+315 GB host memory, 0.535 $/h, reliability 0.978). Estimate for A and B: 11 … 16 h, 5.6 … 8.3 $. Options given:
+2 × V100 (0.24 $/h, 18 … 28 h, 4.2 … 6.6 $), 4 × V100 Minnesota (1.07 $/h, over budget), 1 × RTX 4090 / A100 / RTX
+3090 (8 … 17 $). The destroy of box 5 is not yet released (also not after a failed A0).
+Credit 17.80 $ at 12:00 UTC; the instance 53995473 of another session (beta-alphatest, 0.405 $/h, not touched) also
+uses it: together about 0.94 $/h, the credit lasts about 19 h.
+
+**Setup of phase A (implementation):**
+- Job files: jobs/95_q4.jobs (X3q4 and T3Pc4, seeds 941 … 944), jobs/96_q4_T3Pc4_ext.jobs (T3Pc4 945 … 952),
+  jobs/96_q4_X3q4_extra.jobs (X3q4 945, 946; only by the rule of PLAN 9.2), jobs/97_q8_T3Pc8.jobs (phase B; only
+  by the start rule of PLAN 9.3). Each line differs from the checked q-4 template only in the name, the seed, the
+  path of the start state and (q 8) --staircase_q (checked by script).
+- Two dispatchers: X3q4 one slot on each GPU (0 … 3); T3Pc4 two slots on each GPU.
+- A0 (change of method against PLAN 9.1, same purpose and same rule): the cost is measured on the real runs, not
+  with a separate script: time per relaxation iteration (500 iterations of 1e-11 s between two log lines, same
+  operator and integrator as the cycles) of X3q4 and T3Pc4 against the same value of the q-2 run of the same arm
+  and seed. Reason: identical to production, no idle GPU. The rule of 9.1 stays: if the projection of phase A is
+  above 10 $, stop and report.
