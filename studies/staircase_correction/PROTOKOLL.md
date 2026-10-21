@@ -1746,3 +1746,41 @@ UTC box 6 has no runs (0.269 $/h). Credit at 16:57 UTC: 12.98 $.
   (pairs without an event) removes more seeds at q 4 (6 of 12) than at q 2 (4 of 12).
 - Δ_24 has the same sign and nearly the same value in all 4 pairs (−0.038 … −0.062), also in 946, whose ln P
   (+0.12) differs much from that of 943, 945, 948 (about −0.5). Its cause is not determined.
+
+### 3.30 Why some seeds respond: extra loss in single particles, events in the same particles; more seeds? (2026-10-21, about 17:30 UTC)
+
+**Question of Chris:** what are "sensitive" seeds, why do some seeds respond more than others, and do we need more
+seeds? Local check with the stored runs, no GPU: check_seed_structure.py → results/seed_structure.md and .json
+(arms T3, T15g, D15, T3Pc, X3, T3Pc4, X3q4; roots box3, box1, box2, box6; events from events_B.json and
+events_Q.json).
+
+**Method.** A seed sets the random cube axes (crystal anisotropy) of the 4 particles and the random start m. Per run
+and particle k: the loop energy of the particle in the last cycle, w_k = mu0 ∮ H dM_k (M_k: mean M along the field
+over the cells of the particle, samples_00_amp00.csv), relative to w_base, the mean w of the 4 particles of the seeds
+943, 945, 948 in the same arm. Also |mean m| per particle in the prepared state.
+
+**Findings (facts):**
+- The first assumption (uniform against non-uniform m) is wrong: in all particles of all seeds and arms, the prepared
+  state is demagnetized, |mean m| 0.00 … 0.01.
+- In the seeds 943, 945, 948, the 4 particles have the same loop energy (w / w_base 0.87 … 1.13 in T3, T15g, T3Pc,
+  X3, T3Pc4, X3q4; D15 0.80 … 1.34), and ln P is the same in all arms within 0.03.
+- In the other 9 seeds (all arms), 1 to 4 particles have extra loss, w / w_base 1.3 … 5 (without events; up to about
+  76 with an event). The extra loss changes from arm to arm; the effects Δ_g, Δ_c, N1 come from it.
+- Events occur in the particles with extra loss: 26 of 29 event particles have w / w_base above 1.3 in the same run;
+  21 of 29 are the particle with the largest w / w_base of the run. Thus "sensitive" (extra loss that comes back in
+  each cycle) and "event" (a change that stays) are found in the same particles. The mechanism (for example a
+  domain wall that jumps between pinning sites) is not checked: the runs have no maps of the dissipation.
+
+**Consequence for the readings:** the rule of 3.28 (only seeds without an event) removes the sensitive seeds first,
+and more of them at q 4. Of the 9 sensitive seeds, only 946 gives an event-free Δ_24 pair.
+
+**More seeds with the present rule (estimate from these small numbers):** a new seed gives an event-free Δ_24 pair on
+a sensitive seed with a probability of about 9/12 · 1/9 ≈ 8 %. For 3 such pairs: about 36 new seeds, each with
+D15 (3.5 h), T3 (0.4 h), T3Pc (1.3 h), T3Pc4 (1.4 h), about 240 GPU h, about 35 $ (credit 12.98 $). Not
+proposed.
+
+**Data without new runs (count only, not evaluated):** if an event removes only the particle in which it occurs (not
+the whole seed), there are 35 particle pairs for Δ_24, 18 of them in particles with extra loss, from all 9
+sensitive seeds; for N3(q 4) 15 (4); for Δ_c(2) 40 (14). Limits: the particles are coupled by the stray field (an
+event in one particle changes the field at the others; w_k of one particle can be negative in a run with an event);
+a reading per particle is a change of the method (decision of Chris).
