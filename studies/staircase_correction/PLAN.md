@@ -324,3 +324,32 @@ of Chris.
    9.3, fixed before the data.
 3. Phase B (q 8, budget at most 3 $): go in advance (the start rule of 9.3 decides on the box) or a separate go after A.
 4. Phase C: extrapolation instead of q 16 (no patch).
+
+## 10. Speed patch of the correction (go of Chris 2026-10-21: "Mach den Patch"; PROTOKOLL 3.35, 3.36)
+
+**Aim.** The same correction field, computed faster; no change of the model (same pairs, coefficients, window,
+centroid term). Scope: the pair sum and the centroid term. Not in scope (later patches): the set-up memory at q 8
+and the host build of the fine geometry.
+
+**Design.**
+- Pair sum: a sparse matrix (CSR, int32 indices) with rows 3·target + a and columns 3·source + b, built once on the
+  CPU in the set-up, then moved to the device; one sparse product per evaluation instead of gather, 15 temporaries
+  and atomic index_add.
+- Centroid term under PBC (FFT shape N³): i sin w_k in Fourier space is the periodic central difference
+  (f[x+1] − f[x−1]) / 2, and the circular convolution commutes with it. Thus h = Σ_k d_k CD_k(K * v m) −
+  K * Σ_k CD_k(v d_k m): 12 FFTs instead of 24. The open (padded) shape keeps the old code.
+- Branch perf/staircase-speed from feature/staircase-correction, own worktree; merge into the feature branch only
+  after the criteria below pass (not into main).
+
+**Acceptance criteria (fixed before the measurement).**
+- C1: the existing tests of test_staircase.py pass.
+- C2: new tests, double precision, CPU, periodic and open, random m: max |Δh| / max |h| below 1e-12 for the pair sum
+  and for the centroid term (new against old code).
+- C3: on the state T3Pc_s941 (init.pt) in single precision: max |Δh| / max |h| below 1e-5, and the term energy
+  within 1e-5 relative (the old code itself varies at about 1e-7 from the order of the atomic additions).
+- C4 (GPU, V100, geometry d/l_ex 211, q 4): pair sum at most 3 ms (now 20.9 ms), centroid term at most 3.5 ms (now
+  6.2 ms), correction at most 6 ms (now 25.4 ms). GPU memory after the set-up is reported (estimate 3.4 GB for the
+  matrix at d/l_ex 301, q 4, against 1.9 GB now).
+- C5 (GPU): one drive cycle of T3Pc_s941, old against new code: w_loop of the cycles agrees at the round-off level
+  of the single-precision runs (reported as a number).
+- Cost of C4 and C5: one 1 × V100 box for about 1 h, about 0.2 … 0.3 $ (estimate); renting needs a go of Chris.
