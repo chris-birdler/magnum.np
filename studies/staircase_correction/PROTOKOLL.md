@@ -1684,3 +1684,65 @@ particle, T3Pc − T3 0.985 … 0.994.
   (peak RAM 10.8 GB, 3.25); the GPU holds only the pair list (tgt, src, coefficients), about as at q 4. Box 6 has
   125 GB RAM (114 GB free) and 28 cores. Before 18:00 UTC at most 3 slots are free, so at most 3 set-ups can overlap
   (about 32 GB RAM, estimate); PLAN 9.3 gave at most 2 set-ups for a box with 16 cores and 64 GB.
+
+**Correction of the entry above (resources of q 8):** the statement "the GPU holds only the pair list, about as at
+q 4" is wrong. NearCorrection.__init__ builds its tensors on the default device of torch, which is the GPU in the
+runs (the traceback goes through torch/utils/_device.py). Each T3Pc8 run held 13.25 GiB of the 15.77 GiB of a V100
+after the set-up. So only 1 T3Pc8 run fits on one GPU.
+
+**What happened with the queued phase-B runs (16:08 … 17:05 UTC):** T3Pc8_s941 (GPU 0) and T3Pc8_s944 (GPU 1) ran.
+Each further T3Pc8 start on the same GPU stopped after about 4 min with "CUDA out of memory. Tried to allocate
+2.01 GiB" in NearCorrection.__init__: s942, s943, s945, s946, s947 (one attempt each, QUEUE_STATE.json in their
+folders); the dispatcher paused GPU 0 at 16:22 UTC and GPU 1 at 16:46 UTC (ALERT). The local watcher printed no line
+after 15:49 UTC (most probably the laptop slept), so these failures were seen only at 16:57 UTC. Then: the dispatcher
+(PID 2027) stopped with SIGTERM to its PID; T3Pc8_s948 (PID 24406, it had just started next to s941 and would have
+taken the last free GPU memory) stopped by PID.
+- Time of T3Pc8_s941 (1 run per GPU): relaxation 7000 iterations, 1519 s; cycles 445 … 653 s. Estimate: 1.6 … 2 h
+  per run. In cycle 2, max_angle 173° and w_loop 1.3e-6 (from 9e-8): most probably an event as in T3Pc4_s941 (not
+  evaluated).
+
+**Phase A done (17:05 UTC):** T3Pc4_s941 … s952 and X3q4_s941 … s945 DONE, no failure. Last runs: X3q4_s945 1.58 h,
+T3Pc4_s952 1.44 h. Downloaded: T3Pc4_s944, s946 … s952, X3q4_s945 to remote_20261021_box6/runs (72 files, md5 OK,
+manifest box6_part3.md5); all 17 runs of phase A are local with md5.
+
+**Events** (results/events_Q.md and .json; check_events.py --arms T3 T3Pc T3Pc4 X3q4, roots box3, box1, box2,
+box6; the rows of T3 and T3Pc are the same as in events_B.json):
+
+| arm | runs with an event | seeds |
+|---|---|---|
+| Coarse (T3) | 3 of 12 | 946, 949, 951 |
+| Coarse m corrected, q 2 (T3Pc) | 4 of 12 | 944, 947, 949, 950 |
+| Coarse m corrected, q 4 (T3Pc4) | 6 of 12 | 941, 942, 949, 950, 951, 952 |
+| Coarse m exact, q 4 (X3q4) | 2 of 5 | 941, 942 |
+
+Rule for N3: 3 event-free pairs (943, 944, 945), so X3q4_s946 is not necessary.
+
+**Readings of phase A** (results/qseries_dyn.md and .json; eval_qseries.py; event-free pairs; mean ± SE; 95 %
+t-interval):
+
+| effect | per seed | mean ± SE (n) | 95 % interval | reading |
+|---|---|---|---|---|
+| N3(q 4) | 943 +0.0015, 944 +0.0028, 945 −0.0005 | +0.0013 ± 0.0010 (3) | −0.0029 … +0.0055 | within ±0.15 |
+| Δ_24 | 943 −0.052, 945 −0.038, 946 −0.062, 948 −0.038 | −0.0475 ± 0.0058 (4) | −0.066 … −0.029 | information |
+| 2 Δ_24 | | −0.095 ± 0.012 (4) | −0.132 … −0.058 | within ±0.15 |
+| Δ_c(4) | 943 −0.043, 944 +0.042, 945 −0.050, 947 +0.082, 948 −0.051 | −0.004 ± 0.028 (5) | −0.081 … +0.073 | information |
+
+Overlap of the relaxed states per particle: T3Pc4 − T3Pc 0.9907 … 0.9996 (design B: 0.997 … 1.000; lowest value
+seed 950, particle 1); T3Pc4 − X3q4 1.0000.
+
+**Start rule of phase B (PLAN 9.3): N3(q 4) within, 2 Δ_24 within: phase B does not start.** The T3Pc8 runs s941
+(PID 19929) and s944 (PID 21536) were stopped by PID at 17:05 UTC, as agreed for this outcome; their data are not
+used. The job file is in /root/spool_x/archive_phaseB/ (a restart of the dispatcher does not load it). Since 17:05
+UTC box 6 has no runs (0.269 $/h). Credit at 16:57 UTC: 12.98 $.
+
+**Why 2 Δ_24 has this value (the estimate of 9.2 was about +0.28):**
+- The method is not the cause: N3(q 4) is +0.0013 ± 0.0010 (n 3), so the correction gives the exact field at q 4
+  also in the dynamic runs.
+- The estimate +0.28 used the mean Δ_c at q 2 (+0.27, n 6). This mean mixes two groups of seeds: 943, 945, 948 with
+  Δ_c +0.009, −0.013, −0.012, and 941, 942, 952 with Δ_c +0.53, +0.30, +0.81. At q 4, T3Pc4 has an event in exactly
+  these 3 seeds 941, 942, 952 (3 of 3; a fact, not evaluated). Of the 4 event-free Δ_24 pairs, 3 (943, 945, 948)
+  are seeds in which the correction at q 2 had no effect on P; for 946 Δ_c at q 2 is not known (T3 has an event).
+  Thus the reading "within ±0.15" is a reading on the seeds that do not respond to the correction. The rule of 3.28
+  (pairs without an event) removes more seeds at q 4 (6 of 12) than at q 2 (4 of 12).
+- Δ_24 has the same sign and nearly the same value in all 4 pairs (−0.038 … −0.062), also in 946, whose ln P
+  (+0.12) differs much from that of 943, 945, 948 (about −0.5). Its cause is not determined.
