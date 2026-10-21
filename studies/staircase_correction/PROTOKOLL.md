@@ -1849,3 +1849,30 @@ pairs with an event are negative. With all runs, 2 Δ_24 and Δ_c(4) are "not de
 - Existing mechanism for a later study (information): run_loops --acc writes the mean local dissipation p per cell
   over the measured cycles (acc_<i>_<stage>.npz). This gives the dissipation per particle without a code change, but
   only with new runs; the physical coupling of the particles stays in these data.
+
+### 3.33 What the results mean for the settings of further studies: the staircase error of the main study with q (2026-10-21, about 19:30 UTC)
+
+**Remark of Chris:** in the main β powder study the staircase error is partly far above the anisotropy energy (deck
+~/Documents/slide_decks/staircase_energy_map, figure staircase_map.png). My earlier numbers (0.05 … 0.4 |E_K| from
+3.9) were only for the states of this staircase study.
+
+**Estimate** (staircase_q_map.py; law and data of that deck: error of the stray-field energy ≈ C (Δx/d)^p K_d,
+p 1.23 from the B0b state at cells 3, 1.5, 0.75 l_ex; |E_K| ≈ A_K Q_eff K_d; the correction at q gives the error of
+cells Δx/q, because it gives the exact field of the q-staircase; extrapolated below 0.75 l_ex; m stays coarse):
+
+| point | without correction | q 2 | q 4 | q 8 | q 16 |
+|---|---|---|---|---|---|
+| corner K1 (d/l_ex 216, K_eff 1.0 kJ/m³) | 446 % | 190 % | 81 % | 34 % | 15 % |
+| K1 with the stress anisotropy (1 + r_p) | 178 % | 76 % | 32 % | 14 % | 6 % |
+| corner K3 (d/l_ex 215, K_eff 2.8 kJ/m³) | 161 % | 68 % | 29 % | 12 % | 5 % |
+| K3 with (1 + r_p) | 64 % | 27 % | 12 % | 5 % | 2 % |
+| main study, 104 points with (1 + r_p): median (range) | 67 % (14 … 306) | 28 % (6 … 130) | 12 % (2 … 55) | 5 % (1 … 24) | 2 % (0 … 10) |
+| main points below the 10 % rule of 3.1 | 0 % | 11 % | 43 % | 79 % | 99 % |
+| test geometry of this study (d/l_ex 92, Q_eff 1/144) | 204 % | 87 % | 37 % | 16 % | – |
+
+Dynamic information (this study, test geometry): from q 2 to q 4 the static error falls from about 87 % to 37 % of
+|E_K|, and ln P changes by −0.048 ± 0.006 (n 4, event-free pairs; the sensitive seeds are mostly not in the pairs).
+
+Limits of the options: q 8 needs 13.25 GiB GPU memory for the set-up already at d/l_ex 96 (3.29), so only 1 run on a
+16-GB GPU; whether a production box still fits is not checked. q 16 needs a patch (convolution form instead of the
+table of 343 · q⁶ · 6 values, about 280 GB). The decision on the setting is open (Chris).
