@@ -4,6 +4,10 @@ Schematic of design B (PROTOKOLL 3.28): the five arms as cross-sections of one p
 arrows between them. Each effect is ln P(arrow head) − ln P(arrow tail). Not to scale: the real sphere (d/l_ex 96,
 dx 3 l_ex = 10 nm) has 16 cells of 10 nm on its radius; the schematic has 5.3.
 
+Names (Chris, 2026-10-21): coarse 10 nm, fine 5 nm; "roughness" is the step size of the voxelised surface (before:
+"staircase"). Coarse (run code T3), Fine m (T15g), Fine (D15), Coarse m, fine roughness with Newell + correction
+(T3Pc) or with the exact FFT (X3).
+
     python plot_scheme.py --plot results/scheme_B.png
 """
 import argparse
@@ -19,6 +23,7 @@ from matplotlib.patches import Arc, FancyArrowPatch, Patch, Rectangle  # noqa: E
 R = 5.3          # sphere radius in cells of 10 nm (schematic)
 NC = 6           # cells of 10 nm on each side of a panel
 BLUE = np.array([0.30, 0.50, 0.80])
+M = r"$\mathbf{m}$"
 
 
 def cells(h):
@@ -29,7 +34,7 @@ def cells(h):
 
 
 def outline(F, h):
-    """Surface segments of the staircase F (cells of size h); the cuts at x 0 and y 0 are not surface."""
+    """Surface segments of the voxel surface F (cells of size h); the cuts at x 0 and y 0 are not surface."""
     seg = []
     for i, j in F:
         if (i + 1, j) not in F:
@@ -39,8 +44,9 @@ def outline(F, h):
     return seg
 
 
-def panel(ax, x0, y0, name, text, m_h, fill, field_h):
-    """m_h: cell size of m; fill: 'voxel <h>' or 'fraction' (cells of 10 nm weighted by v); field_h: staircase of the field."""
+def panel(ax, x0, y0, title, sub, text, code, m_h, fill, field_h):
+    """m_h: cell size of m; fill: 'voxel <h>' or 'fraction' (cells of 10 nm weighted by v); field_h: roughness of the
+    surface that the stray field sees."""
     for k in np.arange(0, NC + 1e-9, m_h):
         ax.plot([x0 + k, x0 + k], [y0, y0 + NC], color="0.75", lw=0.4, zorder=1)
         ax.plot([x0, x0 + NC], [y0 + k, y0 + k], color="0.75", lw=0.4, zorder=1)
@@ -57,8 +63,11 @@ def panel(ax, x0, y0, name, text, m_h, fill, field_h):
     ax.add_collection(LineCollection(seg, colors="k", lw=2.2, zorder=3))
     ax.add_patch(Arc((x0, y0), 2 * R, 2 * R, theta1=0, theta2=90, color="tab:red", lw=1.4, ls="--", zorder=4))
     ax.add_patch(Rectangle((x0, y0), NC, NC, fill=False, color="0.4", lw=0.8, zorder=5))
-    ax.text(x0 + NC - 0.2, y0 + NC - 0.25, name, ha="right", va="top", fontsize=12, weight="bold", zorder=6)
+    ax.text(x0 + NC / 2, y0 + NC + 0.95, title, ha="center", va="bottom", fontsize=11.5, weight="bold")
+    ax.text(x0 + NC / 2, y0 + NC + 0.2, sub, ha="center", va="bottom", fontsize=9)
     ax.text(x0 + NC / 2, y0 - 0.3, text, ha="center", va="top", fontsize=8, linespacing=1.4)
+    ax.text(x0 + NC / 2, y0 - 0.5 - 0.72 * (text.count("\n") + 1), "run code " + code, ha="center", va="top",
+            fontsize=7.5, color="0.45")
 
 
 def arrow(ax, p, q, sym, label, lx, ly, ha="center", rad=0.0):
@@ -73,47 +82,53 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--plot", required=True)
     a = ap.parse_args()
-    fig, ax = plt.subplots(figsize=(9.6, 8.4))
-    X, Y = (0, 11, 22), (0, 12)                                  # columns and rows of the panels
-    M = r"$\mathbf{m}$"
-    panel(ax, X[0], Y[1], "T3", M + " on 10-nm cells\nfield: Newell, 10-nm staircase", 1.0, "voxel 1", 1.0)
-    panel(ax, X[2], Y[1], "T15g", M + " on 5-nm cells, geometry of T3\nfield: Newell, 10-nm staircase",
-          0.5, "voxel 1", 1.0)
-    panel(ax, X[0], Y[0], "T3Pc", M + " on 10-nm cells, weight $v$\nfield: Newell + correction,\n5-nm staircase",
+    fig, ax = plt.subplots(figsize=(10.4, 9.6))
+    X, Y = (0, 12.5, 25), (0, 15)                                # columns and rows of the panels
+    xc = X[1] + NC / 2
+    panel(ax, X[0], Y[1], "Coarse", "coarse " + M + ", coarse roughness",
+          M + " on 10-nm cells\nstray field: Newell, 10-nm roughness", "T3", 1.0, "voxel 1", 1.0)
+    panel(ax, X[2], Y[1], "Fine " + M, "fine " + M + ", coarse roughness",
+          M + " on 5-nm cells, roughness of Coarse\nstray field: Newell, 10-nm roughness", "T15g", 0.5, "voxel 1", 1.0)
+    panel(ax, X[0], Y[0], "Coarse " + M + ", fine roughness", "Newell + correction",
+          M + " on 10-nm cells, weight $v$\nstray field: Newell + correction,\n5-nm roughness", "T3Pc",
           1.0, "fraction", 0.5)
-    panel(ax, X[1], Y[0], "X3", M + " on 10-nm cells, weight $v$\nfield: exact (fine FFT),\n5-nm staircase",
+    panel(ax, X[1], Y[0], "Coarse " + M + ", fine roughness", "exact FFT",
+          M + " on 10-nm cells, weight $v$\nstray field: exact FFT on 5-nm cells,\n5-nm roughness", "X3",
           1.0, "fraction", 0.5)
-    panel(ax, X[2], Y[0], "D15", M + " on 5-nm cells, own geometry\nfield: Newell, 5-nm staircase", 0.5, "voxel 0.5", 0.5)
+    panel(ax, X[2], Y[0], "Fine", "fine " + M + ", fine roughness",
+          M + " on 5-nm cells\nstray field: Newell, 5-nm roughness", "D15", 0.5, "voxel 0.5", 0.5)
 
     arrow(ax, (X[0] + 6.3, Y[1] + 3), (X[2] - 0.3, Y[1] + 3),
-          r"$N_1$", "only the cells of " + M + ": 10 nm → 5 nm\n(same 10-nm geometry)", 14, Y[1] + 5.4)
-    arrow(ax, (X[0] + 3, Y[1] - 1.9), (X[0] + 3, Y[0] + 6.3),
-          r"$\Delta_\mathrm{c}$", "field of the 5-nm staircase\n(correction), " + M + " stays coarse",
-          X[0] + 3.5, Y[0] + 8.6, ha="left")
-    arrow(ax, (X[2] + 3, Y[1] - 1.9), (X[2] + 3, Y[0] + 6.3),
-          r"$\Delta_\mathrm{g}$", "5-nm geometry: field\nand surface of " + M, X[2] + 2.5, Y[0] + 8.6, ha="right")
+          r"$N_1$", "only " + M + " becomes fine\n(same coarse roughness)", xc, Y[1] + 5.0)
+    arrow(ax, (X[0] + 3, Y[1] - 2.9), (X[0] + 3, Y[0] + 8.4),
+          r"$\Delta_\mathrm{c}$", "the stray field gets the fine\nroughness (correction),\n" + M + " stays coarse",
+          X[0] + 3.5, Y[0] + 11.2, ha="left")
+    arrow(ax, (X[2] + 3, Y[1] - 2.9), (X[2] + 3, Y[0] + 8.4),
+          r"$\Delta_\mathrm{g}$", "the roughness becomes fine:\nstray field and\nsurface of " + M,
+          X[2] + 2.5, Y[0] + 11.2, ha="right")
     arrow(ax, (X[1] - 0.3, Y[0] + 3), (X[0] + 6.3, Y[0] + 3),
-          r"$N_3$", "correction\nagainst exact field", (X[0] + 6 + X[1]) / 2, Y[0] + 5.2)
+          r"$N_3$", "correction\nagainst exact FFT", (X[0] + 6 + X[1]) / 2, Y[0] + 5.2)
     arrow(ax, (X[1] + 6.3, Y[0] + 3), (X[2] - 0.3, Y[0] + 3),
-          r"$m$", "cells of " + M + ": 10 → 5 nm,\nsame field geometry", (X[1] + 6 + X[2]) / 2, Y[0] + 5.2)
-    arrow(ax, (X[2] + 3, Y[0] - 2.4), (X[0] + 3, Y[0] - 2.4),
-          "total", "corrected 10-nm model against the 5-nm model", 14, Y[0] - 6.3, rad=-0.18)
+          r"$m$", "only " + M + " becomes fine\n(same fine roughness)", (X[1] + 6 + X[2]) / 2, Y[0] + 5.2)
+    arrow(ax, (X[2] + 3, Y[0] - 3.3), (X[0] + 3, Y[0] - 3.3),
+          "total", "Coarse " + M + ", fine roughness (correction) against Fine", xc, Y[0] - 7.3, rad=-0.16)
 
-    ax.text(14, Y[1] + 8.4, r"each effect $=\ \ln P(\mathrm{arrow\ head}) - \ln P(\mathrm{arrow\ tail})$",
+    ax.text(xc, Y[1] + 11.0, r"each effect $=\ \ln P(\mathrm{arrow\ head}) - \ln P(\mathrm{arrow\ tail})$",
             ha="center", va="center", fontsize=10)
-    ax.text(14, Y[1] + 7.1, r"$d = \Delta_\mathrm{c} - \Delta_\mathrm{g} = N_1 + N_3 - m$", ha="center", va="center",
+    ax.text(xc, Y[1] + 9.7, r"$d = \Delta_\mathrm{c} - \Delta_\mathrm{g} = N_1 + N_3 - m$", ha="center", va="center",
             fontsize=11, bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="0.5"))
     ax.legend(handles=[Patch(color=BLUE, label="magnetic cell"),
                        Patch(color=1 - 0.5 * (1 - BLUE), label="cell partly filled (weight $v$)"),
                        Line2D([], [], color="0.75", lw=0.8, label="cells of " + M),
                        Line2D([], [], color="k", lw=2.2, label="surface seen by the stray field"),
                        Line2D([], [], color="tab:red", lw=1.4, ls="--", label="smooth sphere (goal)")],
-              loc="center", bbox_to_anchor=(14, 9.0), bbox_transform=ax.transData, fontsize=8, frameon=False)
-    ax.text(14, Y[0] - 7.6, "Cross-section of one particle surface, not to scale (real: 16 cells of 10 nm on the "
-            "radius). All arms start from the same prepared state.", ha="center", va="center", fontsize=7.5,
-            color="0.3")
-    ax.set_xlim(-0.8, 28.8)
-    ax.set_ylim(Y[0] - 8.3, Y[1] + 9.2)
+              loc="center", bbox_to_anchor=(xc, Y[0] - 9.8), bbox_transform=ax.transData, ncol=3, fontsize=8,
+              frameon=False)
+    ax.text(xc, Y[0] - 11.9, "Cross-section of one particle surface, not to scale (real: 16 cells of 10 nm on the "
+            "radius). Coarse: 10 nm, fine: 5 nm.\nRoughness: step size of the surface. All arms start from the same "
+            "prepared state.", ha="center", va="center", fontsize=7.5, color="0.3", linespacing=1.4)
+    ax.set_xlim(-1.5, X[2] + NC + 1.5)
+    ax.set_ylim(Y[0] - 12.8, Y[1] + 11.7)
     ax.set_aspect("equal")
     ax.axis("off")
     fig.tight_layout()

@@ -1490,4 +1490,18 @@ the stray field. Seed 952 (m = −0.61, 3.23 finding 2: same state, different re
 one particle surface (cells of m, magnetic cells with the weight v, surface seen by the stray field, smooth sphere),
 the effects as arrows (ln P of the arrow head minus ln P of the arrow tail), and the identity d = N1 + N3 − m.
 
+**Decision (Chris, 2026-10-21, about 09:00 UTC): names of the arms.** In figures and new text the arms have names that
+tell what is coarse (10 nm) and what is fine (5 nm). "Roughness" (step size of the voxelised surface) replaces
+"staircase". The run codes stay in the folder names and are given in grey in the figures.
+
+| name | m | roughness | stray field | run code |
+|---|---|---|---|---|
+| Coarse | coarse | coarse | Newell | T3 |
+| Fine m | fine | coarse | Newell | T15g |
+| Fine | fine | fine | Newell | D15 |
+| Coarse m, fine roughness (Newell + correction) | coarse, weight v | fine | Newell + correction | T3Pc |
+| Coarse m, fine roughness (exact FFT) | coarse, weight v | fine | exact FFT on the fine cells | X3 |
+
+results/scheme_B.png is made again with these names (plot_scheme.py).
+
 Open decision of Chris (unchanged, 3.26): how to read N1.
