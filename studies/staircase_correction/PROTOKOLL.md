@@ -1391,3 +1391,34 @@ mean offset of the cells of each particle from its site is 0 nm, the largest r/R
 1 run decides the mean: ln P at 9 mT has a heavy tail from local events in a few surface cells. The goal of 3.19
 ("no additional pinning fields from the stray field") is a question about these events; the numbers per arm (0 … 4
 of 12) are too small for a claim. Open decision of Chris: how to read N1 (options in the message of 2026-10-21).
+
+### 3.27 Series in q up to q 8: exact field X3 and correction T3Pc for 6 states; box 2 destroyed (2026-10-21, about 02:50 UTC)
+
+**Runs** (box 2, /root/qseries/run.sh and run2.sh, code b7b6054 in /root/msc2). T3Pc at q 8 on the CPU (6 threads)
+for T3Pc_s941 … s944 and X3_s952: 2567 … 3130 s for each state. X3 at q 8 on the GPU (RTX 3090) for X3_s952, X3_s951
+and T3Pc_s941: the first state took 12426 s, nearly all for the Newell kernel of the 384³ mesh (1.37 GB); with this
+kernel in the cache each further state took 5 s. The energies that the local runs also have (E_vox, uniform m, E_full)
+agree with the local values within 1·10⁻⁹ (relative). The q-8 values are merged into the local meta.json files
+(fe_data/, not in git). Download of /root/qseries without the kernel cache: 50 files, 47 MB, md5 verified
+(remote_20261021_box2/qseries/, manifest qseries.md5).
+
+**Results** (results/q_series.md and .json, fe/q_series.py). Staircase effect (E_vox − E_q) / S(q 2) at q 2 / 4 / 8:
+- X3, the exact field of the q-staircase: 1.000 / 1.520 … 1.523 / 1.772 … 1.774 (q 8: 3 states).
+- T3Pc: 0.992 / 1.508 … 1.511 / 1.760 … 1.763 (6 states).
+- T3Pc − X3: +0.80 … +0.81 / +1.15 … +1.16 / +1.25 … +1.26 % of S(q 2). Up to q 8 the correction stays within 1.3 % of
+  S(q 2) of the exact field, that is 0.7 % of the staircase effect at q 8.
+- Ratio of the increments of X3, (q 4 → 8) / (q 2 → 4): 0.484 … 0.485. This agrees with convergence of first order in
+  1/q (ratio 0.5). With this assumption the smooth spheres lie at about 2.03 S(q 2) (estimate). The share of the way
+  from the 10-nm staircase to the smooth spheres is then about 49 % at q 2, 75 % at q 4 and 87 % at q 8 (estimate).
+- The 6 states differ by at most 0.4 % in these numbers.
+
+**Reading.** The correction gives the static energy of the q-staircase for the real states within 1.3 % of S(q 2) for
+q 2 … 8. The step size in the stray field is still large at q 2: the production with q 2 has about half of the effect
+of the smooth spheres (estimate). Thus for the goal of 3.19 (the stray field as for the smooth spheres) q 2 is not
+sufficient statically; q 8 gives about 87 % (estimate). Not shown: whether the rest changes the loss (the dynamic
+check at q 4 of 3.22 is postponed).
+
+**Box 2** (vast.ai 56811357) destroyed 2026-10-21, about 02:45 UTC (go of Chris, 3.25), after the download and the
+md5 check of all results (3.26 and this section). Not downloaded: the kernel cache (384³ kernel 1.37 GB, recomputable
+in about 3.5 h on an RTX 3090; 48³ kernel 2.8 MB) and the code copies /root/msc and /root/msc2 (in git). No instance
+of this session is left. Credit after the destroy: 20.70 $.
