@@ -205,3 +205,122 @@ criterion.
 **Risks.** The difference method assumes that the FE error of the inner charge sheets is the same for both bodies;
 ε measures this only for the 5-nm staircase. The sampling of the smooth surface converges slowly (3.24: 64 → 512
 points changed E_s by 4 % of S; 4096 → 32768 by 0.35 %). The 64³ mesh may exceed the 12 GB limit of the container.
+
+## 9. Phase 5 (proposal 2026-10-21): dynamic series in q (q 4, q 8) and the way to the smooth spheres
+
+**Question.** The production uses q 2. Statically q 2 covers only about 49 % of the way from the 10-nm roughness to
+the smooth spheres, q 4 about 75 %, q 8 about 87 % (3.27, estimate with convergence of first order in 1/q). Does the
+loss P change on this way, and does the correction stay exact dynamically at q 4?
+
+**History (PROTOKOLL).** 2026-10-20: the design-A arms D3Pc4 were cancelled before their start (focus on q 2). Then
+3.22 decided a dynamic check at q 4 (X3q4 and T3Pc4, seeds 941 … 944, budget 4 … 6 $); it waited for the end of
+q 2, which is now done. An early proposal (3.11) already gave "P(q) dynamically at dx 3 and an extrapolation to
+q → ∞"; this phase does that. q 16 is not possible with the current code: the coupling table has 343 × q³ × q³ × 6
+values, about 280 GB at q 16 (3.25; a convolution form would remove the table: a patch, not built).
+
+**Names** (3.28): Coarse (T3), Coarse m corrected (T3Pc; at q 4 and 8: T3Pc4, T3Pc8), Coarse m exact (X3; at q 4:
+X3q4).
+
+**Facts used.**
+- Run time of the q-2 runs (stdout.log, median and range of 12 runs; 3.28): Coarse 0.43 h, Coarse m exact 0.85 h
+  (0.57 … 1.42), Coarse m corrected 1.29 h (1.12 … 2.17), Fine m 1.31 h, Fine 3.46 h. The GPUs ran 3 … 4.6 runs at
+  the same time, thus these are not controlled benchmarks, and the time per step barely grew with the number of cells.
+- Time step: 6.6 ps on the 10-nm cells, 1.9 ps on the 5-nm cells (3.28).
+- Coarse m corrected at q 4: field of the correction per call 1.7 s against 1.6 s at q 2 (CPU, 3.22). At q 8: set-up
+  20 min (8 cores, local) … 43 … 52 min (6 threads, box), peak host memory 10.8 GB (3.25, 3.27).
+- Coarse m exact: the Newell kernel of 384³ cells (q 8) took 12426 s (3.27); for 192³ (q 4) about 1/8 of it, about
+  0.4 h (estimate). Run time at q 4: 6 … 10 h on a shared GPU (estimate of 3.22).
+- Correction against exact field, static: within 1.3 % of S(q 2) for q 2 … 8 (3.27). N3 at q 2, dynamic: scatter
+  of the pairs about 0.003 (3.26).
+
+### 9.1 Phase A0: measure the cost on the rented box (first 30 min, before the queue starts)
+- For T3Pc4, X3q4 and T3Pc8 and, as reference, T3Pc and X3 at q 2 (production geometry: d/l_ex 96, φ 0.55,
+  dx 3 l_ex, N 48; the field terms as in fe/fe_states.py): the time per field evaluation (mean of 20 calls) alone on
+  the GPU and with 4 X3q4 at the same time; the peak GPU and host memory; the time step of 200 RKF45 steps from a
+  real state.
+- Projection per run: run time of the q-2 run of the same arm and seed × ratio of the times per evaluation × ratio of
+  the time steps (q 2 / q) + set-up. The number of cycles is adaptive (7 … 15); the projection uses the number of the
+  q-2 run (an estimate).
+- Rule (fixed now): if the projection of phase A is above its budget (9.7), stop and report before the queue starts.
+  The same rule applies to phase B before B starts. A time step below 6.6 ps enters the projection through its ratio.
+
+### 9.2 Phase A: q 4 (dynamic)
+- X3q4 on the seeds 941 … 944, as decided in 3.22 (no new choice of seeds after the q-2 data).
+- Rule for N3 (fixed now): if fewer than 3 seeds have an event-free pair of T3Pc4 and X3q4, X3q4 runs also for the
+  seed 945, then 946 (this order), until 3 pairs exist; at most these 2 more runs.
+- T3Pc4 on the seeds 941 … 952 (extension of 3.22).
+- Job lines: jobs/95_q4.jobs (checked 2026-10-21: they differ from the q-2 production lines only in --staircase_q),
+  plus the same lines for T3Pc4_s945 … s952 and X3q4_s945 … s946. Start state: the prepared state of D15 of each seed
+  (--init_transfer; run_loops reads only init.pt, which holds its config; 12 files of 11 MB, local, md5 before the
+  upload).
+- Code: the current branch; magnumnp/ and run_loops.py are unchanged since 50c36c9, the clean commit of box 3
+  (checked with git diff). magnum.pi is not used and not uploaded.
+- Evaluation code (local, during the runs; no dependency on the results): check_events.py and eval_dynamic.py get
+  the new arms, with the magnetic cells of the q-staircase of each arm (staircase_cells(fine_ids(N, q, …), q)).
+
+**Readings, fixed before the data.** On the seed pairs without an event (rule of 3.28); the event numbers of each arm
+are always reported; mean ± SE, 95 % t-interval; band ±0.15 in ln P (K4). Three outcomes for each reading: "within
+±0.15" (the interval lies inside the band), "outside ±0.15" (it lies outside), else "not determined"; with fewer than
+3 pairs always "not determined".
+- N3(q 4) = ln P(T3Pc4) − ln P(X3q4).
+- Δ_24 = ln P(T3Pc4) − ln P(T3Pc): the step from q 2 to q 4 at the same coarse m.
+- The step from q 2 to the smooth spheres, Δ_2∞. With convergence of first order in 1/q (an assumption: the static
+  increments halve, ratio 0.485, 3.27) the steps halve, thus Δ_2∞ ≈ 2 Δ_24 per seed. Reading on 2 Δ_24: "within ±0.15"
+  means "q 2 is sufficient for the smooth spheres". Information: if the loss followed the static staircase effect,
+  Δ_24 would be about +0.14 and 2 Δ_24 about +0.28 (estimate: Δ_c at q 2 is +0.27 for 1 S, q 2 → 4 adds 0.52 S).
+- Δ_c(q 4) = ln P(T3Pc4) − ln P(T3): information.
+
+### 9.3 Phase B: q 8 (dynamic, only the correction)
+- T3Pc8 on the seeds 941 … 952; job lines as T3Pc4 with --staircase_q 8, the same start states. N3 at q 8 stays
+  static (3.27): X3 at q 8 needs an FFT on 384³ cells in each step and is not practicable dynamically.
+- Start rule (fixed now): B starts only if N3(q 4) is "within ±0.15" and the reading of 2 Δ_24 is not "within ±0.15".
+  B needs a go of Chris. If he gives it in advance, the rule decides on the box of phase A without a new question.
+- The set-up of the coupling table is made again in each run (run_loops has no cache, although the geometry is the
+  same for all seeds). Thus at most 2 set-ups at the same time; box with at least 16 cores and 64 GB host memory.
+  A cache of the table would be a patch (not proposed now).
+- Readings (same outcomes and pairs as 9.2): Δ_48 = ln P(T3Pc8) − ln P(T3Pc4); Δ_2∞ ≈ Δ_24 + 2 Δ_48 (first order),
+  reading as in 9.2. Check of first order per seed, Δ_48 − Δ_24 / 2: "consistent with first order" if its interval
+  includes 0 (a weak test; information).
+
+### 9.4 Phase C: the smooth spheres (evaluation only, no q 16)
+- With B: ln P(∞) ≈ ln P(q 8) + Δ_48 per seed (the rest of a series that halves), with SE; an estimate.
+- Without B: ln P(∞) ≈ ln P(q 4) + Δ_24 per seed; an estimate.
+- If the check of first order in 9.3 gives "not consistent": no extrapolation; q 16 would need the patch above
+  (decision of Chris). The static FE check of the smooth-sphere energy (section 8) stays parked.
+
+### 9.5 Cost (estimates; one box; RTX 3090 on vast.ai, about 0.17 … 0.20 $/h; credit 20.70 $)
+The runs of a phase share one box, so the cost is the time of the box.
+
+| Phase | Runs | Time of the box | Cost |
+|---|---|---|---|
+| A0 | timing | 0.5 h | 0.1 $ |
+| A | X3q4 × 4 at the same time (they set the time), T3Pc4 × 12 beside them | 1 … 2 days | 4 … 10 $ |
+| A, rule of 9.2 | X3q4 × 0 … 2 more | 0 … 0.5 day | 0 … 2 $ |
+| B | T3Pc8 × 12, 3 … 4 at the same time, set-ups 2 at the same time | 8 … 12 h | 1.4 … 2.4 $ |
+| C | evaluation, local | 0 | 0 |
+| Total | | about 1.5 … 3 days | about 6 … 15 $ |
+
+The upper limit of A assumes that 4 X3q4 at the same time take up to twice the 6 … 10 h of 3.22 (GPU-bound).
+
+**Infrastructure.** One box: RTX 3090 (24 GB), at least 16 cores and 64 GB host memory. Dispatcher run_queue.py
+--spool (a job is done only by its DONE file). After the last run: download, md5, report; destroy only with the go
+of Chris.
+
+### 9.6 Risks
+- The main reading (2 Δ_24) may stay "not determined": the scatter of Δ_24 is not known. N3, which changes only the
+  method of the field, scatters by about 0.003; Δ_c, which also changes the surface material, by about 0.34. At most
+  8 pairs are event-free (Coarse m corrected had events in 4 of 12 seeds at q 2; events at q 4 reduce this). With the
+  scatter of Δ_c, n 8 gives a half-width of about ±0.28 for Δ_24 and ±0.57 for 2 Δ_24. Phase A measures this
+  scatter. More pairs need new seeds, and new seeds need new runs of Fine (3.5 h each): the parked option 2 of 3.28.
+- The run time of X3q4 is uncertain by a factor of about 2 (A0 and its rule handle it).
+- The exchange and the anisotropy keep the coarse cells with the weights v of the q-staircase; the series in q
+  changes the stray field and these weights, not the resolution of m (Limits, section 7).
+- First order in 1/q is an assumption from 3 static points; the reading of 2 Δ_24 depends on it.
+
+### 9.7 Decisions of Chris
+1. Phase A0 and A: q 4 as in 3.22, plus T3Pc4 on the seeds 945 … 952, plus the rule for N3 (at most 2 more X3q4).
+   Budget of A: proposal at most 10 $ (3.22 had 4 … 6 $ for the 8 runs without the extension).
+2. The readings of 9.2 and 9.3 (main reading on 2 Δ_24 with the assumption of first order) and the rules of 9.1 …
+   9.3, fixed before the data.
+3. Phase B (q 8, budget at most 3 $): go in advance (the start rule of 9.3 decides on the box) or a separate go after A.
+4. Phase C: extrapolation instead of q 16 (no patch).

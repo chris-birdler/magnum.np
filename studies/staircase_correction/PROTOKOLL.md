@@ -1542,3 +1542,22 @@ comparison (the same state, different method) does not hold. Rules:
 Readings of design B with this rule: N1 within ±0.15 (+0.074 ± 0.014, SE, n 9); N3 within ±0.15 (−0.0009 ± 0.0011,
 n 8; also with all runs, n 12); D1 d not determined (+0.096 ± 0.125, n 6). Event numbers (of 12): Coarse 3, Fine m 0,
 Fine 2, Coarse m corrected 4, Coarse m exact 4; no difference can be shown at n 12.
+
+**Run times and time steps of the q-2 runs** (stdout.log; median and range of the 12 runs of each arm; the GPUs ran
+3 … 4.6 runs at the same time, thus not controlled benchmarks). Run time (relaxation and cycles): Coarse 0.43 h
+(0.33 … 0.50), Coarse m exact 0.85 h (0.57 … 1.42), Coarse m corrected 1.29 h (1.12 … 2.17), Fine m 1.31 h
+(1.14 … 1.98), Fine 3.46 h (2.10 … 4.86). Time per step (seeds 943, 944): Coarse 24 … 28 ms, Fine m 27 … 40 ms
+(8 times the cells), Fine 57 … 69 ms. Time step: 6.6 ps on the 10-nm cells (about 5000 steps per cycle), 1.9 ps on
+the 5-nm cells (about 17 500 steps). The explicit RKF45 resolves the fastest exchange mode,
+ω_max = 12 γ J_s (l_ex/dx)²; dt · ω_max is 2.3 (10 nm) and 2.7 (5 nm), thus the time step is at the stability limit
+of the exchange and scales with dx². Coarse m exact keeps the coarse time step.
+
+**Option 2, parked (decision of Chris, 2026-10-21, about 11:00 UTC).** New seeds with all five arms, in stages: 12
+seeds first (about 25 box hours, about 5 $), then a new estimate of SD and mean, then 0 … 24 more (up to about
+10 $; estimates). Goal: about 20 seeds without an event, so that the 95 % intervals of d, m and total reach about
+±0.15 (SD without events about 0.31 … 0.32; about 50 % of the seeds are free of events in the four arms of d). It
+measures whether fine m at the surface (and with it the treatment of exchange and anisotropy at the surface) changes
+P; it is not needed to show the correction (N3). Chris may release it later.
+
+**Next step (proposal):** PLAN section 9, the dynamic series in q (q 4, q 8) and the extrapolation to the smooth
+spheres; checked by a context-free review (12 findings, all taken in); waiting for the go of Chris.
