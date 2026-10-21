@@ -1840,9 +1840,9 @@ pairs with an event are negative. With all runs, 2 Δ_24 and Δ_c(4) are "not de
   particle 3: 0.44, T15g_s950: 1.12).
 - Cause: w_k is the work of the applied field on particle k. The energy balance of particle k also has the work of
   the stray field of the other particles; only the sum over the 4 particles is the dissipation. Scale (estimate):
-  the swing of M_k is 1.8 % of Ms (2.1·10⁴ A/m); the dipole field of this swing at a neighbour (centre distance
-  1.1 d) is about 0.6 … 1.3 kA/m, the same order as the drive amplitude (1.34 kA/m). At φ 0.55 this coupling is
-  expected physics, not an error.
+  the swing (max − min) of M_k is 1.8 % of Ms, an amplitude of about 1.05·10⁴ A/m; the dipole field of this amplitude
+  at a neighbour (centre distance 1.10 d) is about 0.3 … 0.65 kA/m (equator … axis), 25 … 50 % of the drive amplitude
+  (about 1.34 kA/m, h 0.001125 · Ms). At φ 0.55 this coupling is expected physics, not an error.
 - Consequence: excluding only the particle with the event does not leave measurements that are free of the event.
   Option 1 is stopped at its own pre-check, before any effect was computed per particle. The readings of 3.29 and
   the seed-level findings of 3.30 stay as recorded (with the correction of the wording in 3.30).
