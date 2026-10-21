@@ -25,6 +25,7 @@ R = 5.3          # sphere radius in cells of 10 nm (schematic)
 NC = 6           # cells of 10 nm on each side of a panel
 BLUE = np.array([0.30, 0.50, 0.80])
 ORANGE = "tab:orange"
+GREEN = "#1b7837"  # what an effect measures
 W = 1            # width of the correction zone in the schematic (runs: window p = 3 cells)
 M = r"$\mathbf{m}$"
 
@@ -95,19 +96,21 @@ def panel(ax, x0, y0, title, sub, text, code, m_h, fill, field_h, zone=False):
             fontsize=7.5, color="0.45")
 
 
-def arrow(ax, p, q, sym, label, lx, ly, ha="center", rad=0.0):
-    """Arrow from p to q; the effect symbol at (lx, ly), its meaning below it."""
+def arrow(ax, p, q, sym, label, lx, ly, meas, mx, my, ha="center", mha="center", rad=0.0):
+    """Arrow from p to q; the effect symbol at (lx, ly) with what changes below it; on the other side of the arrow
+    (mx, my) what the difference measures."""
     ax.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=14, lw=1.6, color="0.15",
                                  connectionstyle="arc3,rad=%g" % rad, zorder=7))
     ax.text(lx, ly, sym, ha=ha, va="bottom", fontsize=13, zorder=8)
     ax.text(lx, ly - 0.1, label, ha=ha, va="top", fontsize=8.5, linespacing=1.4, zorder=8)
+    ax.text(mx, my, meas, ha=mha, va="top", fontsize=8.5, linespacing=1.4, color=GREEN, style="italic", zorder=8)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--plot", required=True)
     a = ap.parse_args()
-    fig, ax = plt.subplots(figsize=(10.4, 9.9))
+    fig, ax = plt.subplots(figsize=(12.6, 9.9))
     X, Y = (0, 12.5, 25), (0, 15)                                # columns and rows of the panels
     xc = X[1] + NC / 2
     panel(ax, X[0], Y[1], "Coarse", "coarse " + M + ", coarse roughness",
@@ -124,19 +127,25 @@ def main():
           M + " on 5-nm cells\nstray field: Newell on 5-nm cells", "D15", 0.5, "voxel 0.5", 0.5)
 
     arrow(ax, (X[0] + 6.3, Y[1] + 3), (X[2] - 0.3, Y[1] + 3),
-          r"$N_1$", "only " + M + " becomes fine\n(same coarse roughness)", xc, Y[1] + 5.0)
+          r"$N_1$", "only " + M + " becomes fine\n(same coarse roughness)", xc, Y[1] + 5.0,
+          "effect of the resolution of " + M + "\n(mesh dependence at fixed roughness)", xc, Y[1] + 2.6)
     arrow(ax, (X[0] + 3, Y[1] - 2.9), (X[0] + 3, Y[0] + 8.4),
           r"$\Delta_\mathrm{c}$", "the stray field gets the fine\nroughness (correction),\n" + M + " stays coarse",
-          X[0] + 3.5, Y[0] + 11.2, ha="left")
+          X[0] + 3.5, Y[0] + 11.2, "effect of the finer\nstray field alone", X[0] + 2.5, Y[0] + 11.0,
+          ha="left", mha="right")
     arrow(ax, (X[2] + 3, Y[1] - 2.9), (X[2] + 3, Y[0] + 8.4),
           r"$\Delta_\mathrm{g}$", "the roughness becomes fine:\nstray field and\nsurface of " + M,
-          X[2] + 2.5, Y[0] + 11.2, ha="right")
+          X[2] + 2.5, Y[0] + 11.2, "full effect of the fine\nroughness (stray field\nand " + M + ")",
+          X[2] + 3.5, Y[0] + 11.0, ha="right", mha="left")
     arrow(ax, (X[1] - 0.3, Y[0] + 3), (X[0] + 6.3, Y[0] + 3),
-          r"$N_3$", "correction\nagainst exact field", (X[0] + 6 + X[1]) / 2, Y[0] + 5.2)
+          r"$N_3$", "correction\nagainst exact field", (X[0] + 6 + X[1]) / 2, Y[0] + 5.2,
+          "error of the\ncorrection", (X[0] + 6 + X[1]) / 2, Y[0] + 2.6)
     arrow(ax, (X[1] + 6.3, Y[0] + 3), (X[2] - 0.3, Y[0] + 3),
-          r"$m$", "only " + M + " becomes fine\n(same fine roughness)", (X[1] + 6 + X[2]) / 2, Y[0] + 5.2)
-    arrow(ax, (X[2] + 3, Y[0] - 3.3), (X[0] + 3, Y[0] - 3.3),
-          "total", "Coarse " + M + " corrected against Fine", xc, Y[0] - 7.3, rad=-0.16)
+          r"$m$", "only " + M + " becomes fine\n(same fine roughness)", (X[1] + 6 + X[2]) / 2, Y[0] + 5.2,
+          "effect of the resolution\nof " + M + " at fine roughness", (X[1] + 6 + X[2]) / 2, Y[0] + 2.6)
+    arrow(ax, (X[2] + 3, Y[0] - 3.6), (X[0] + 3, Y[0] - 3.6),
+          "total", "Coarse " + M + " corrected against Fine", xc, Y[0] - 8.6,
+          "remaining error of the corrected\ncoarse model against the fine model", xc, Y[0] - 4.4, rad=-0.3)
 
     ax.text(xc, Y[1] + 11.0, r"each effect $=\ \ln P(\mathrm{arrow\ head}) - \ln P(\mathrm{arrow\ tail})$",
             ha="center", va="center", fontsize=10)
@@ -149,13 +158,16 @@ def main():
                        Line2D([], [], color="tab:red", lw=1.4, ls="--", label="smooth sphere (goal)"),
                        Patch(facecolor="none", edgecolor=ORANGE, hatch="///", lw=1.8,
                              label="correction zone: exact coupling of the fine\nroughness (schematic 1 cell, runs 3 cells)")],
-              loc="center", bbox_to_anchor=(xc, Y[0] - 10.2), bbox_transform=ax.transData, ncol=3, fontsize=8,
+              loc="center", bbox_to_anchor=(xc, Y[0] - 11.4), bbox_transform=ax.transData, ncol=3, fontsize=8,
               frameon=False)
-    ax.text(xc, Y[0] - 12.6, "Cross-section of one particle surface, not to scale (real: 16 cells of 10 nm on the "
+    ax.text(xc, Y[0] - 13.6, "Cross-section of one particle surface, not to scale (real: 16 cells of 10 nm on the "
             "radius). Coarse: 10 nm, fine: 5 nm.\nRoughness: step size of the surface. All arms start from the same "
             "prepared state.", ha="center", va="center", fontsize=7.5, color="0.3", linespacing=1.4)
-    ax.set_xlim(-1.5, X[2] + NC + 1.5)
-    ax.set_ylim(Y[0] - 13.5, Y[1] + 11.7)
+    ax.text(xc - 0.4, Y[1] + 8.5, "black: what changes along the arrow", ha="right", va="center", fontsize=8.5)
+    ax.text(xc + 0.4, Y[1] + 8.5, "green: what the difference measures", ha="left", va="center", fontsize=8.5,
+            color=GREEN, style="italic")
+    ax.set_xlim(-5.0, X[2] + NC + 5.0)
+    ax.set_ylim(Y[0] - 14.4, Y[1] + 11.7)
     ax.set_aspect("equal")
     ax.axis("off")
     fig.tight_layout()

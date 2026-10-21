@@ -1488,7 +1488,11 @@ the stray field. Seed 952 (m = −0.61, 3.23 finding 2: same state, different re
 
 **Schematic of the arms and effects** (Chris asked; plot_scheme.py, results/scheme_B.png): the five arms as cross-sections of
 one particle surface (cells of m, magnetic cells with the weight v, surface seen by the stray field, smooth sphere),
-the effects as arrows (ln P of the arrow head minus ln P of the arrow tail), and the identity d = N1 + N3 − m.
+the effects as arrows (ln P of the arrow head minus ln P of the arrow tail), and the identity d = N1 + N3 − m. Each arrow gives what changes (black) and what the difference measures
+(green): N1 effect of the resolution of m at fixed roughness; Δ_c effect of the finer stray field alone; Δ_g full
+effect of the fine roughness (stray field and m); N3 error of the correction; m effect of the resolution of m at
+fine roughness; total remaining error of the corrected coarse model against the fine model. The full difference
+Coarse → Fine is N1 + Δ_g.
 
 **Decision (Chris, 2026-10-21, about 09:00 UTC): names of the arms.** In figures and new text the arms have names that
 tell what is coarse (10 nm) and what is fine (5 nm). "Roughness" (step size of the voxelised surface) replaces
