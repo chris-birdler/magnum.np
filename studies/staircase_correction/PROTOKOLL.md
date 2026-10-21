@@ -1500,11 +1500,25 @@ tell what is coarse (10 nm) and what is fine (5 nm). "Roughness" (step size of t
 | Fine m | fine | coarse | Newell on 5-nm cells | T15g |
 | Fine | fine | fine | Newell on 5-nm cells | D15 |
 | Coarse m corrected | coarse, weight v | fine | Newell on 10-nm cells + correction | T3Pc |
-| Coarse m FFT | coarse, weight v | fine | Newell on 5-nm cells (exact for this m) | X3 |
+| Coarse m exact | coarse, weight v | fine | Newell on all 5-nm cells | X3 |
 
 results/scheme_B.png is made again with these names (plot_scheme.py). Final form (Chris): the title is a short
 name that separates the arms at a glance; the line below the title always tells what m and the roughness are (for
 example "fine m, coarse roughness"). All arms use the Newell tensor with FFT (X3: DemagField on the fine mesh,
 DemagStaircaseFine); T3Pc is named "corrected" because only its correction separates it (Chris).
+
+**Coarse m corrected against Coarse m exact** (Chris asked why their two panels were the same). The correction uses
+the fine sub-cells only for the pairs of cells with at least one cut cell (0 < n < q³) inside the window of ±p cells
+around the target cell (p 3, that is ±30 nm); these couplings come once from the geometry (NearCorrection). Outside
+the window each cell acts as the moment M_s v at the centroid of its filled part (centroid term). Coarse m exact does
+one FFT on all fine cells at each evaluation of the field. The schematic now shows the window around one cut cell
+(±1 cell in the schematic) and the centroid moments outside it.
+
+Wall time per cycle at q 2 (stdout.log, median over the cycles of each run folder; the runs shared the GPUs of boxes
+1 … 3 with other runs, thus this is not a controlled benchmark): Coarse 103 … 159 s (12 folders), Coarse m corrected
+364 … 600 s (14), Coarse m exact 188 … 304 s (12), Fine m 328 … 911 s (16), Fine 690 … 1262 s (12). At q 2 the
+correction is not faster than the exact field. The fine FFT grows with q³ (q 8: 384³ cells, kernel 3.5 h and
+1.37 GB, 3.27); the work of the correction at each step depends on the number of cut cells and on the window, nearly
+not on q (its setup grows with q: 43 … 52 min at q 8). No dynamic run at q 4 or q 8 is measured for either arm.
 
 Open decision of Chris (unchanged, 3.26): how to read N1.
