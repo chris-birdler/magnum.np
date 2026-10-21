@@ -2044,3 +2044,11 @@ of the V100 and the measured times of 3.35; reports in the session record):
   3.35); (B5) the host build of the sub-cell map only for the coarse surface cells, without the fine mesh: checked
   bitwise equal at N 48 q 4, N 104 q 2, N 148 q 2; 1 … 20 s instead of 6 … 44 s, and q 8 at N 148 becomes possible.
   Not worth it: pruning small pairs, symmetric storage, a pattern table. No other problem in the new code.
+
+**C3 locally (about 21:00 … 21:35 UTC): not done; deferred by Chris.** Three local runs of profile_staircase.py
+--compare on T3Pc_s941 did not finish: the first hit its time limit (20 min), the second was stopped by me, the third
+ended with a segmentation fault. All stack dumps (faulthandler, every 45 s) show the Newell kernel set-up
+(DemagField._init_N, demag_f), which is unchanged code and runs before any patched code. The laptop had a load of
+15 … 17 on 8 cores from a job of another session (6 processes, not touched); the same kernel took 105 s before.
+Probable cause of the crash: the faulthandler watchdog reads the frames while torch computes (not proven). Decision
+of Chris: leave C3 for now. On a GPU box the same check takes seconds.
