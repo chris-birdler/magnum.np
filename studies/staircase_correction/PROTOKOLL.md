@@ -1591,3 +1591,22 @@ uses it: together about 0.94 $/h, the credit lasts about 19 h.
   operator and integrator as the cycles) of X3q4 and T3Pc4 against the same value of the q-2 run of the same arm
   and seed. Reason: identical to production, no idle GPU. The rule of 9.1 stays: if the projection of phase A is
   above 10 $, stop and report.
+
+**Rent (about 12:00 … 12:20 UTC+2):**
+- Box 5 (vast.ai 57033607, 4 × V100S, offer 55364320): the contract was made, but the start failed ("Required
+  resources are currently unavailable, state change queued"). Stopped by this session (no data; storage about
+  0.02 $/h). Destroy: waits for the go of Chris.
+- Decision of Chris: option c, 2 × V100 (Washington, 0.24 $/h). That offer was gone; rented the nearly equal offer
+  56430903: box 6 = instance 57035457, 2 × Tesla V100-SXM2-16GB, 28 cores, 125 GB, Quebec, 0.269 $/h, reliability
+  0.992, label staircase-box6-q, ssh6.vast.ai:35554. Estimate for A and B at this price: 18 … 28 h, 4.7 … 7.4 $.
+- Code: bundle of e72b5b6 (/root/msc5); torch 2.7.1+cu126 with sm_70; test_staircase.py on the box: 15 passed. The
+  12 start states (D15 init.pt) uploaded, md5 OK.
+- Dispatchers (10:16 UTC): spool_x X3q4_s941 … s944 (--gpus 0,1,0,1: two on each GPU), spool_t T3Pc4_s941 … s952
+  (--gpus 0,1). /root/a0_watch.sh logs the progress of each run every 60 s (/root/runs/a0_progress.txt) for A0.
+
+**Finding at the start (transfer to q 4):** the transfer of the D15 state (dx 1.5) to the magnetic cells of the
+q-4 staircase reports 67968 cells, of which 2496 (3.7 %) have no 5-nm sub-cell of the same particle (at q 2: 0).
+These are cells with only 2.5-nm sub-cells in the sphere; they start with the plain block mean of the fine m
+(transfer_m) and are then relaxed with the rest. Consequence for the readings: Δ_24 compares the relaxed states of
+T3Pc4 and T3Pc; as in design B (check_state_overlap.py), the overlap of these states per particle is checked before
+Δ_24 is read.
