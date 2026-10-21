@@ -7782,6 +7782,152 @@ time that is paid in both cases.
   "_sat" runs; the report gives n for each corner. With 6 seeds at K1 and K3, the pooled SD has 16 degrees of freedom
   instead of 12.
 
+### 7.135 PLAN 4.15, phase 1: the first step is complete (25 runs, each free of BPs after at most 3 passes); evaluation C4: the target of D1 is met at K1 and K3, not at K2 and K4; at K1, 2 of 9 runs have a different loss pattern (2026-10-21)
+
+All times UTC. Terms as in PLAN 4.15, 7.132 … 7.134 (BP: Bloch point; pass; prepared state; flag B). Run code on the
+instance: 8640e55 (unchanged). New terms:
+- R1: the share of the loss in the fundamental of the drive (acc.json).
+- Top 10 % share: the share of the loss in the 10 % of the cells with the largest loss. With a uniform loss it is 0.10.
+- Core share: the share of the loss at r < 0.5 (r: distance from the particle centre over the particle radius). With a
+  uniform loss it is 0.125 (the volume share of r < 0.5).
+- Calm tail: the cycles of a stage that the steady-tail rule keeps (at least 2). w_loop: the loop area of one cycle
+  (energy per cycle). ε: w_dis / w_loop − 1 (w_dis: the dissipated energy of the cycle).
+- S9 flag (PLAN 4.13): mean |ε| of the calm tail more than 0.02, or SD of ln w_loop in the calm tail more than 0.05;
+  that is, the cycles of the stage are not steady.
+- Stage names: by the nominal amplitude (9, 20, 35, 50, 70, 100, 150 mT). ln P uses the nominal amplitudes. (acc.json
+  also gives a measured B_peak, for example 12 … 16 mT in the 9 mT stage at K3; this entry does not use it.)
+
+**Runs after 7.134 and the decisions of Chris.**
+- 04:54: the seeds 4 and 5 of K1 and K3 were finished, and GPU 3 waited for disk space. **Decision of Chris (about
+  04:58): seeds 6 and 7 of K1 and K3, one run at a time, only when no large run can start.**
+  jobs/corners_sat_small_k67.txt (md5 dbde55e1, commit 0ca5504 on main): K1_6, K3_6, K1_7, K3_7 with the seeds 2017,
+  2037, 2018, 2038; the lines differ from the seed 4 and 5 lines only in --seed. K1_6 started at 05:03 on GPU 3, while
+  K4_2 waited for disk space; K4_2 started at 07:36 on the GPU of K2_0 after the post-processing of K2_0.
+- 07:30: K1_6 ended. The next small run did not fit the disk guard: free 25.9 GB, reserved for the 3 running large
+  runs 20.7 GB; a small run needs 2.55 … 2.85 GB plus the reserve of 3 GB. My expectation "K3_6 follows K1_6" was
+  wrong: I did not calculate the disk for the next small run. Options: 1, wait (GPU 3 idle until about 14:30, about
+  7 GPU-h); 2, download and delete the state files of old test runs (48 files, about 1.7 GB), then one small run fits
+  at once. **Decision of Chris (about 09:45): option 1.** A script on the instance (/root/submit_after.sh) submitted
+  K3_6, K1_7 and K3_7 when the dispatcher started K4_3 (13:16). At that time no large job waited. K3_6 started at
+  13:17. K3_7 started before K1_7 at 14:27: K1_7 needed about 0.1 GB more than the free margin.
+- 17:28: Chris asked for a run that does not make phase 1 longer. One small run fit on the free GPU: K1_8 (seed 2019;
+  jobs/corners_sat_small_k8.txt, md5 d541db7d, commit 254bfa1). **Decision of Chris (17:28): go.** It ended at 19:59,
+  before K4_3 (20:28).
+- The post-processing of the last run (K4_3) ended at 20:59, without an error in any of the 25 runs. Phase 1 took
+  about 30.5 h from 14:26 on 2026-10-20, that is about 12.4 $ (0.405 $/h). The D1 table gives about 30 h for 16 runs.
+  7.134 expected the end at about 18:00 without an action, and up to about 2.7 h later with the seeds 4 and 5. The
+  end was about 3 h later than 18:00. The large runs with more than one pass took longer than the estimate of about
+  7.2 h (K2_0 11.7 h, K2_2 9.0 h, K2_3 9.3 h). I did not separate this part from a delay by the seed 4 and 5 runs.
+  The seed 6, 7 and 8 runs started only when no large job could start (K1_6) or when no large job was left.
+- Run times (dispatcher log, wall time per job with setup): 108.2 V100-h for the 25 runs (small runs 43.9 h, large
+  runs 64.3 h). The 16 runs of the first step (k 0 … 3): 85.0 V100-h; the D1 table estimate is about 87 V100-h.
+- n per corner: K1 9, K2 4, K3 8, K4 4. The seeds after k 3 ran on GPUs that the disk limit of 3 large runs left
+  free, each with a go of Chris. The order of D1 (c) changed (7.134); the first step (4 seeds per corner) and the rule
+  "Chris decides on more seeds after the evaluation" did not change. D6 (b): only k 0 … 2 of each corner go into the
+  fits of the main study.
+
+**Preparation.** No run kept a BP after 3 passes; D7 (b) was not used.
+
+| corner | runs | free of BPs after pass 1 | after pass 2 | after pass 3 | preparation, median | cycles, median |
+|---|---|---|---|---|---|---|
+| K1 | 9 | 9 | 9 | 9 | 0.92 h | 1.49 h |
+| K2 | 4 | 1 | 3 | 4 | 5.00 h | 3.80 h |
+| K3 | 8 | 8 | 8 | 8 | 1.03 h | 1.56 h |
+| K4 | 4 | 4 | 4 | 4 | 2.49 h | 4.21 h |
+
+- K2_0 (3 passes): after pass 1, 1 BP (charge −1, particle 0, at the grid index (151, 141, 7)); after pass 2, 1 BP
+  (charge +1, particle 2, at the grid index (78, 141, 60)); after pass 3, none. The BP was not at the same place. In
+  the 3 passes, the BP counts at the end of each half cycle and the peak of M_par are the same for the half cycles
+  0 … 11; they are different from half cycle 12 (h 0.137) on.
+- K2_2: 2 BPs after pass 1, none after pass 2. K2_3: 1 BP after pass 1, none after pass 2.
+
+**Data and evaluation.** Download of the 25 run folders without the state files (*.pt): 654 files, 192 MB; md5
+against the instance: all equal. Manifest: runs/MANIFEST_corners_sat_20261021.md5 (local). eval_corners_sat.py of
+commit 0c7cd19 (unchanged on main 254bfa1); results/corners_sat_report.md and results/corners_sat_data.json. 25 of 25
+runs have a value. β 9 … 150 mT of a run needs a value at 6 or more of the 7 amplitudes.
+
+**Readings of PLAN 4.15 (mean ± SE; SD = sample SD; CI = 95 % CI, t distribution).**
+
+| output | K1 (n 9) | K2 (n 4) | K3 (n 8) | K4 (n 4) | pooled SD (21 dof) |
+|---|---|---|---|---|---|
+| β 9 … 150 mT | 2.069 ± 0.036; SD 0.107 | 2.270 ± 0.032; SD 0.064 | 2.239 ± 0.025; SD 0.072 | 1.899 ± 0.052; SD 0.103 | 0.091 |
+| β 9 … 50 mT | 2.061 ± 0.028; SD 0.085 | 2.284 ± 0.041; SD 0.081 | 2.056 ± 0.039; SD 0.112 | 1.861 ± 0.090; SD 0.179 | 0.111 |
+| β 9-20-35 mT | 2.048 ± 0.012; SD 0.035 | 2.233 ± 0.056; SD 0.113 | 2.051 ± 0.036; SD 0.102 | 1.802 ± 0.110; SD 0.220 | 0.113 |
+| β 70 … 150 mT | 2.193 ± 0.125; SD 0.375 | 2.190 ± 0.075; SD 0.150 | 3.204 ± 0.173; SD 0.488 | 1.868 ± 0.127; SD 0.254 | 0.381 |
+| ln P 9 mT | −0.202 ± 0.099; SD 0.298 | 1.332 ± 0.076; SD 0.151 | 0.481 ± 0.030; SD 0.084 | 1.915 ± 0.152; SD 0.304 | 0.230 |
+| ln P 50 mT | 3.342 ± 0.129; SD 0.386 | 5.252 ± 0.061; SD 0.122 | 4.007 ± 0.047; SD 0.134 | 5.138 ± 0.105; SD 0.209 | 0.266 |
+| ln P 100 mT | 4.758 ± 0.147; SD 0.441 | 6.729 ± 0.038; SD 0.075 | 5.484 ± 0.037; SD 0.104 | 6.478 ± 0.031; SD 0.063 | 0.281 |
+
+(P in W/cm³. In results/corners_sat_report.md, not here: the window 35-50-70 mT, the CIs, the values per run, and the
+paired differences against the ad, nx and old runs of k 0 … 2. At K1, β 9 … 150 mT is 0.31 … 0.53 lower than in the
+old runs of the same microstructure.)
+
+- **Target of D1** (half-width of the 95 % CI of β 9 … 150 mT at most 0.10): K1 0.082, met; K3 0.060, met; K2 0.103,
+  not met; K4 0.164, not met. The SD of each corner needs n 5 at K2 and n 7 at K4, but these SDs have only 3 degrees
+  of freedom each, thus these n are not certain. With the pooled SD 0.091 (21 dof): n 6 per corner. The pooled SD
+  agrees with the estimate 0.09 of option C (ad) in the D1 table.
+- **Levers** β(Ki) − β(K1), SE from the 2 corner SEs:
+
+| lever | β 9 … 150 mT | β 9 … 50 mT | β 70 … 150 mT |
+|---|---|---|---|
+| K2 − K1 | +0.201 ± 0.048 | +0.222 ± 0.050 | −0.003 ± 0.146 |
+| K3 − K1 | +0.170 ± 0.044 | −0.006 ± 0.049 | +1.011 ± 0.213 |
+| K4 − K1 | −0.170 ± 0.063 | −0.200 ± 0.094 | −0.325 ± 0.178 |
+
+  The levers depend on the window. K3 − K1 is zero within its SE at 9 … 50 mT and +1.0 at 70 … 150 mT. K2 − K1 is
+  +0.22 at 9 … 50 mT; at 70 … 150 mT its SE (0.15) is too large to give a value. (β 9 … 150 mT is one fit over all 7
+  amplitudes, not a sum of the windows.)
+- **β 70 … 150 mT at K3: 3.20 ± 0.17 (n 8).** At 150 mT, R1 at K3 is 0.33 … 0.66. 5 of 8 K3 runs have an S9 flag at
+  100 or 150 mT. But K3_2 and K3_6 have β 70 … 150 mT of 3.53 and 3.75 without an S9 flag. Measured, not explained.
+- **Flags and the change of β 9 … 150 mT without the flagged stages** (a run keeps a value only with 6 or more
+  amplitudes left):
+  - Flag B (a BP at one sample or more): K2 10 of 28 stages (K2_1 and K2_2 at 50 … 150 mT, K2_0 and K2_3 at 150 mT);
+    K1, K3 and K4 none. K2 without these stages: 2.219 ± 0.066 (n 2: K2_0, K2_3) instead of 2.270 (n 4).
+  - The first stage with a BP in the cycles at K2: here 150 mT (K2_0), 50 mT (K2_1), 50 mT (K2_2), 150 mT (K2_3). In
+    the option C runs of the same seeds (7.118): 100 mT (K2_0), 70 mT (K2_1), 150 mT (K2_2).
+  - S9 flags: K1 in 3 of 9 runs, K2 in none, K3 in 5 of 8, K4 in 4 of 4 (each at 150 mT). Without the flagged stages:
+    K1 2.050 (n 8), K2 2.270 (n 4), K3 2.133 (n 6); K4 no value (only K4_1 keeps 6 amplitudes).
+- S5 energy-terms check on the 125 calm-tail cycles per amplitude (d: the numerical error of the energy balance per
+  cycle, PLAN 4.13): median |d| 0.0003 … 0.0049, max |d| 0.07 (9 mT). Information only.
+
+**Finding: at K1, 2 of 9 runs (K1_4, K1_8) have a different loss pattern.** Their values are between those of the
+other 7 K1 runs and those of K3; for ln P at 50 and 100 mT they are in the range of K3:
+
+| quantity | K1_4 | K1_8 | other 7 K1 runs (range) | K3 (8 runs) |
+|---|---|---|---|---|
+| ln P 9 mT | 0.512 | 0.053 | −0.375 … −0.309 | mean 0.481, SD 0.084 |
+| ln P 50 mT | 3.984 | 4.055 | 3.104 … 3.204 | mean 4.007, SD 0.134 |
+| ln P 100 mT | 5.617 | 5.445 | 4.507 … 4.589 | mean 5.484, SD 0.104 |
+| β 9 … 150 mT | 2.123 | 2.339 | 2.004 … 2.041 | mean 2.239, SD 0.072 |
+| top 10 % share, 9 mT | 0.58 | 0.47 | 0.26 … 0.28 | 0.56 … 0.62 |
+| core share, 9 mT | 0.32 | 0.30 | 0.17 … 0.19 | 0.39 … 0.47 |
+| R1, 100 mT | 0.64 | 0.62 | 0.91 … 0.96 | 0.65 … 0.88 |
+| energy of the prepared state, E / (K_d V) | 0.001675 | 0.001692 | 0.001712 … 0.001731 | – |
+| ripple_rms (domains.json), ° | 16.27 | 15.80 | 16.55 … 17.07 | – |
+
+(V: the volume of the simulation box; K_d: the demagnetizing energy constant.)
+- At 50 mT the loss of these 2 runs is about 2.3 times larger (Δ ln P about 0.85). At 9 mT it is more concentrated
+  (top 10 % share) and has a larger share in the particle cores. At 150 mT the core share of K1_8 (0.18) is the same
+  as in the other 7 runs.
+- Their prepared states have the 2 lowest energies and the 2 lowest ripple_rms values of the 9 K1 states. The other
+  measures of domains.json do not separate them: wall area A_w 163 870 … 164 672 (K1_8 has the largest value), l_C
+  78 in all 9, F90 0.757 … 0.768.
+- Parameters and seeds are correct (config.json: φ 0.62, L_eff/l_ex 30, d/l_ex 212; seeds 2015 and 2019). The
+  prepared states have no BP, and no stage of these runs has flag B. K1_4 has an S9 flag at 100 and 150 mT, K1_8 at
+  150 mT.
+- Sensitivity (information only; the evaluation keeps all 9 runs): without K1_4 and K1_8, the SD of β 9 … 150 mT at K1
+  is 0.012 (n 7) instead of 0.107; the pooled SD is 0.066 (19 dof) instead of 0.091, and it needs n 5 per corner
+  instead of 6. The pooled SD of β 9-20-35 mT is 0.118 instead of 0.113; that of ln P 9 mT is 0.145 instead of 0.230.
+  Levers of β 9 … 150 mT: K2 − K1 +0.247 ± 0.033, K3 − K1 +0.216 ± 0.026, K4 − K1 −0.123 ± 0.052.
+- The cause is not known. Whether the 2 runs are valid realisations of K1, that is, whether K1 has a second type of
+  prepared state with a different loss, is a model question for Chris. No run is removed without a decision of Chris.
+
+**Input of D3** (rule of PLAN 4.15): expected SE of the range effect of a factor on β 9 … 150 mT at N 96:
+0.06 × s / 0.15, with s 0.091: 0.036 (with s 0.066 from the sensitivity: 0.026). Window 9-20-35 mT: 0.10 × s₁ / 0.27,
+with s₁ 0.113: 0.042 (with s₁ 0.118 from the sensitivity: 0.044).
+
+**Open for Chris:** the second step of D1 (K2 and K4 do not meet the target); the question of the 2 K1 runs; D3.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
