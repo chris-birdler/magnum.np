@@ -1511,8 +1511,8 @@ DemagStaircaseFine); T3Pc is named "corrected" because only its correction separ
 the fine sub-cells only for the pairs of cells with at least one cut cell (0 < n < q³) inside the window of ±p cells
 around the target cell (p 3, that is ±30 nm); these couplings come once from the geometry (NearCorrection). Outside
 the window each cell acts as the moment M_s v at the centroid of its filled part (centroid term). Coarse m exact does
-one FFT on all fine cells at each evaluation of the field. The schematic now shows the window around one cut cell
-(±1 cell in the schematic) and the centroid moments outside it.
+one FFT on all fine cells at each evaluation of the field. The schematic shows the correction zone hatched: the cells
+within the window of a cut cell (1 cell in the schematic, 3 cells in the runs).
 
 Wall time per cycle at q 2 (stdout.log, median over the cycles of each run folder; the runs shared the GPUs of boxes
 1 … 3 with other runs, thus this is not a controlled benchmark): Coarse 103 … 159 s (12 folders), Coarse m corrected
@@ -1520,5 +1520,8 @@ Wall time per cycle at q 2 (stdout.log, median over the cycles of each run folde
 correction is not faster than the exact field. The fine FFT grows with q³ (q 8: 384³ cells, kernel 3.5 h and
 1.37 GB, 3.27); the work of the correction at each step depends on the number of cut cells and on the window, nearly
 not on q (its setup grows with q: 43 … 52 min at q 8). No dynamic run at q 4 or q 8 is measured for either arm.
+
+Reading of Chris (2026-10-21): for convergence in q and for large systems the window method (correction) is needed;
+the exact fine field (Coarse m exact) stays the reference.
 
 Open decision of Chris (unchanged, 3.26): how to read N1.

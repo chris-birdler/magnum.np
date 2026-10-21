@@ -15,6 +15,7 @@ import argparse
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
+matplotlib.rcParams["hatch.linewidth"] = 1.2
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.collections import LineCollection  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
@@ -24,7 +25,7 @@ R = 5.3          # sphere radius in cells of 10 nm (schematic)
 NC = 6           # cells of 10 nm on each side of a panel
 BLUE = np.array([0.30, 0.50, 0.80])
 ORANGE = "tab:orange"
-W = 1            # half width of the correction window in the schematic (runs: p = 3 cells)
+W = 1            # width of the correction zone in the schematic (runs: window p = 3 cells)
 M = r"$\mathbf{m}$"
 
 
@@ -46,18 +47,17 @@ def outline(F, h):
     return seg
 
 
-def target_cell():
-    """The cut cell of 10 nm nearest to the diagonal: centre of the correction window in the schematic."""
-    fine, full = cells(0.5), cells(1.0)
-    cut = {(a // 2, b // 2) for a, b in fine} - {c for c in full if all((2 * c[0] + a, 2 * c[1] + b) in fine
-                                                                       for a in (0, 1) for b in (0, 1))}
-    return min(cut, key=lambda c: abs(c[0] - c[1]) + abs(np.hypot(c[0] + 0.5, c[1] + 0.5) - R))
+def cut_cells():
+    """Cells of 10 nm that the fine surface cuts (0 < v < 1)."""
+    fine = cells(0.5)
+    return {c for c in {(a // 2, b // 2) for a, b in fine}
+            if not all((2 * c[0] + a, 2 * c[1] + b) in fine for a in (0, 1) for b in (0, 1))}
 
 
-def panel(ax, x0, y0, title, sub, text, code, m_h, fill, field_h, window=False):
+def panel(ax, x0, y0, title, sub, text, code, m_h, fill, field_h, zone=False):
     """m_h: cell size of m; fill: 'voxel <h>' or 'fraction' (cells of 10 nm weighted by v); field_h: roughness of the
-    surface that the stray field sees. window: the correction (pairwise form) for one target cell: inside the window
-    the fine surface, outside each cell of 10 nm as a moment at the centroid of its filled part."""
+    surface that the stray field sees. zone: the cells within W cells of a cut cell, where the correction gives the
+    exact coupling of the fine surface (pairwise form: the window of each cut cell)."""
     for k in np.arange(0, NC + 1e-9, m_h):
         ax.plot([x0 + k, x0 + k], [y0, y0 + NC], color="0.75", lw=0.4, zorder=1)
         ax.plot([x0, x0 + NC], [y0 + k, y0 + k], color="0.75", lw=0.4, zorder=1)
@@ -71,24 +71,19 @@ def panel(ax, x0, y0, title, sub, text, code, m_h, fill, field_h, window=False):
         for i, j in cells(h):
             ax.add_patch(Rectangle((x0 + i * h, y0 + j * h), h, h, color=BLUE, lw=0, zorder=0))
     seg = outline(cells(field_h), field_h)
-    if window:
-        ti, tj = target_cell()
-        lo, hi = (ti - W, tj - W), (ti + W + 1, tj + W + 1)
-        inside = lambda x, y: lo[0] <= x <= hi[0] and lo[1] <= y <= hi[1]  # noqa: E731
-        seg = [s for s in seg if inside((s[0][0] + s[1][0]) / 2, (s[0][1] + s[1][1]) / 2)]
-        fine = cells(0.5)
-        for i, j in cells(1.0) | {(a // 2, b // 2) for a, b in fine}:
-            if inside(i + 0.5, j + 0.5):
-                continue
-            sub_c = [((2 * i + a + 0.5) / 2, (2 * j + b + 0.5) / 2) for a in (0, 1) for b in (0, 1)
-                     if (2 * i + a, 2 * j + b) in fine]
-            if sub_c:
-                cx, cy = np.mean(sub_c, axis=0)
-                ax.plot([x0 + cx], [y0 + cy], "o", ms=2.6, color="k", zorder=3)
-        x1, y1 = max(lo[0], 0), max(lo[1], 0)
-        ax.add_patch(Rectangle((x0 + x1, y0 + y1), min(hi[0], NC) - x1, min(hi[1], NC) - y1, fill=False,
-                               color=ORANGE, lw=1.6, ls="--", zorder=6))
-        ax.add_patch(Rectangle((x0 + ti, y0 + tj), 1, 1, fill=False, color=ORANGE, lw=2.2, zorder=6))
+    if zone:
+        cut = cut_cells()
+        Z = {(i, j) for i, j in cells(1.0) | {(a // 2, b // 2) for a, b in cells(0.5)}
+             if any(max(abs(i - a), abs(j - b)) <= W for a, b in cut)}
+        for i, j in Z:
+            ax.add_patch(Rectangle((x0 + i, y0 + j), 1, 1, fill=False, hatch="///", edgecolor=ORANGE, lw=0, zorder=2))
+        edge = []                                                    # border of the zone, not on the cuts x 0, y 0
+        for i, j in Z:
+            for (a, b), e in (((i + 1, j), [(i + 1, j), (i + 1, j + 1)]), ((i, j + 1), [(i, j + 1), (i + 1, j + 1)]),
+                              ((i - 1, j), [(i, j), (i, j + 1)]), ((i, j - 1), [(i, j), (i + 1, j)])):
+                if (a, b) not in Z and a >= 0 and b >= 0:
+                    edge.append([(x0 + u, y0 + w) for u, w in e])
+        ax.add_collection(LineCollection(edge, colors=ORANGE, lw=1.8, zorder=2))
     seg = [[(x0 + a, y0 + b) for a, b in s] for s in seg]
     ax.add_collection(LineCollection(seg, colors="k", lw=2.2, zorder=3))
     ax.add_patch(Arc((x0, y0), 2 * R, 2 * R, theta1=0, theta2=90, color="tab:red", lw=1.4, ls="--", zorder=4))
@@ -120,8 +115,8 @@ def main():
     panel(ax, X[2], Y[1], "Fine " + M, "fine " + M + ", coarse roughness",
           M + " on 5-nm cells, roughness of Coarse\nstray field: Newell on 5-nm cells", "T15g", 0.5, "voxel 1", 1.0)
     panel(ax, X[0], Y[0], "Coarse " + M + " corrected", "coarse " + M + ", fine roughness",
-          M + " on 10-nm cells, weight $v$\nstray field: Newell on 10-nm cells\n+ correction in the window", "T3Pc",
-          1.0, "fraction", 0.5, window=True)
+          M + " on 10-nm cells, weight $v$\nstray field: Newell on 10-nm cells\n+ correction near the surface", "T3Pc",
+          1.0, "fraction", 0.5, zone=True)
     panel(ax, X[1], Y[0], "Coarse " + M + " exact", "coarse " + M + ", fine roughness",
           M + " on 10-nm cells, weight $v$\nstray field: Newell on all\n5-nm cells", "X3",
           1.0, "fraction", 0.5)
@@ -152,10 +147,8 @@ def main():
                        Line2D([], [], color="0.75", lw=0.8, label="cells of " + M),
                        Line2D([], [], color="k", lw=2.2, label="surface seen by the stray field"),
                        Line2D([], [], color="tab:red", lw=1.4, ls="--", label="smooth sphere (goal)"),
-                       Line2D([], [], color=ORANGE, lw=1.6, ls="--",
-                              label="correction window around the marked cell\n(schematic ±1 cell, runs ±3 cells)"),
-                       Line2D([], [], marker="o", ls="", ms=3, color="k",
-                              label="outside the window: moment at the\ncentroid of the filled part")],
+                       Patch(facecolor="none", edgecolor=ORANGE, hatch="///", lw=1.8,
+                             label="correction zone: exact coupling of the fine\nroughness (schematic 1 cell, runs 3 cells)")],
               loc="center", bbox_to_anchor=(xc, Y[0] - 10.2), bbox_transform=ax.transData, ncol=3, fontsize=8,
               frameon=False)
     ax.text(xc, Y[0] - 12.6, "Cross-section of one particle surface, not to scale (real: 16 cells of 10 nm on the "
