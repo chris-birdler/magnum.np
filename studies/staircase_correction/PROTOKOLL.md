@@ -1773,13 +1773,16 @@ over the cells of the particle, samples_00_amp00.csv), relative to w_base, the m
   same seed (T3, else T15g), because the loop of a particle after its event is large anyway: of the 29 event
   particles (16 different particles; the arms share events, for example T3Pc and X3), 25 have w / w_base above 1.3
   there (17.8 by chance with the shares of these runs), and 15 are the particle with the largest w / w_base there
-  (7.2 by chance). Thus "sensitive" (extra loss that comes back in each cycle) and "event" (a change that stays)
-  are found in the same particles. The mechanism (for example a domain wall that jumps between pinning sites) is
-  not checked: the runs have no maps of the dissipation.
+  (7.2 by chance). Thus a large share of the loop energy and an event (a change that stays) occur together in the
+  same particles (a co-occurrence; the chance values assume independent particles, but 3.32 shows a strong coupling).
+  The mechanism is not checked: the runs have no maps of the dissipation. In the stationary cycles there are no
+  jumps (3.16: M_k(t) is a sinusoid; the loss is the phase lag of a linear response, which depends on the local
+  pinning of the internal structure, 3.23).
 
 **Consequence for the readings:** the rule of 3.28 (only seeds without an event) removes the sensitive seeds first,
-and more of them at q 4. Of the 9 sensitive seeds, only 946 gives an event-free Δ_24 pair; its Δ_24 (−0.062) is in the range of
-the 3 seeds without extra loss (−0.038 … −0.052): n 1, no conclusion.
+and more of them at q 4. Of the 9 sensitive seeds, only 946 gives an event-free Δ_24 pair; its Δ_24 (−0.062) is near
+the values of the 3 seeds without extra loss (−0.038 … −0.052; 946 is slightly outside this range): n 1, no
+conclusion.
 
 **More seeds with the present rule (estimate from these small numbers):** a new seed gives an event-free Δ_24 pair on
 a sensitive seed with a probability of about 9/12 · 1/9 ≈ 8 %. For 3 such pairs: about 36 new seeds, each with
@@ -1872,6 +1875,18 @@ cells Δx/q, because it gives the exact field of the q-staircase; extrapolated b
 
 Dynamic information (this study, test geometry): from q 2 to q 4 the static error falls from about 87 % to 37 % of
 |E_K|, and ln P changes by −0.048 ± 0.006 (n 4, event-free pairs; the sensitive seeds are mostly not in the pairs).
+
+Correction (review of 3.34): the reduction with q above uses the exponent 1.23 of the deck (mesh refinement of the
+B0b state, m relaxed on each mesh). The increments of the exact field X3 in this study (3.27) give 0.4845 per halving,
+first order, exponent 1.05; this is the better value for the correction (m stays coarse). With it (same script, same
+base error without correction):
+
+| point | without correction | q 2 | q 4 | q 8 | q 16 |
+|---|---|---|---|---|---|
+| K1 with (1 + r_p) | 178 % | 86 % | 42 % | 20 % | 10 % |
+| K3 with (1 + r_p) | 64 % | 31 % | 15 % | 7 % | 4 % |
+| main study, 104 points with (1 + r_p): median (range) | 67 % (14 … 306) | 32 % (7 … 148) | 16 % (3 … 72) | 8 % (2 … 35) | 4 % (1 … 17) |
+| main points below the 10 % rule of 3.1 | 0 % | 8 % | 29 % | 59 % | 91 % |
 
 Limits of the options: q 8 needs 13.25 GiB GPU memory for the set-up already at d/l_ex 96 (3.29), so only 1 run on a
 16-GB GPU; whether a production box still fits is not checked. q 16 needs a patch (convolution form instead of the
