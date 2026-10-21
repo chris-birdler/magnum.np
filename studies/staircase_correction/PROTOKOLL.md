@@ -1951,3 +1951,48 @@ X3, T3Pc4, X3q4 (D15 0.80 … 1.34; 3.30). Other seeds: the 9 seeds with at leas
   8 / 29 / 59 % of the points (3.33, estimate). Thus the correction is expected to remove most of the stray-field
   error of the staircase there. Its effect on the loss at that geometry is not measured.
 - Open: the cost per time step (3.35) and the choice of q.
+
+### 3.35 GPU profile of the correction: cost per field evaluation, set-up memory, cost of the main study (2026-10-21, about 20:15 UTC)
+
+**Go of Chris:** profile on a GPU (the local CPU profile gave other shares: pair sum 76 … 79 % of the correction; CPU
+numbers are not used for costs). Box 7: vast.ai 57100794, 1 × Tesla V100-SXM2-16GB (the GPU of the main study),
+0.135 $/h, label staircase-box7-profile, rented about 19:20 UTC. profile_staircase.py (commit e48d6d8): the model as
+run_loops builds it (energy_budget.build), single precision, CUDA_DEVICE 0, 20 repetitions after a warm-up. Two
+first attempts failed in the script (device not set; random generator on the CPU); fixed in fe66652 and e48d6d8,
+no other change. Results: results/profile_gpu.md and .json; logs in remote_20261021_box7 (md5 manifests
+box7_prof.md5, box7_prof2.md5).
+
+**Result** (ms per field evaluation; base = Newell stray field + exchange + anisotropy):
+
+| geometry | q | pairs (M) | base | correction | pair sum | centroid term | factor of the field terms |
+|---|---|---|---|---|---|---|---|
+| test (d/l_ex 92, φ 0.55, N 48) | 2 / 4 / 8 | 2.7 / 4.3 / 4.9 | 1.7 … 1.8 | 7.0 … 7.2 | 2.2 / 3.4 / 3.9 | 6.3 … 6.4 | 5.0 … 5.1 |
+| main study (d/l_ex 211, φ 0.65, N 104) | 2 / 4 | 15.3 / 23.1 | 1.7 / 1.8 | 18.3 / 25.4 | 13.7 / 20.9 | 6.5 / 6.2 | 12.0 / 15.4 |
+| main study (d/l_ex 301, φ 0.65, N 148) | 2 / 4 | 31.1 / 47.4 | 4.7 | 51.7 / 67.9 | 33.5 / 49.7 | 17.8 / 17.9 | 12.1 / 15.6 |
+
+- At the geometries of the main study the correction costs 12 … 16 times the other field terms. The pair sum is
+  66 … 82 % of it (about 0.9 ms per million pairs); the centroid term is 4.3 … 5.1 times the Newell field (24 FFTs
+  against 6).
+- The pairs grow with q, because more cells are cut (d/l_ex 211: 46592 cut cells at q 2, 70016 at q 4). Thus q 4
+  costs about 1.4 times q 2 per evaluation; q 8 more again.
+- The parts sum to more than the total (2.2 + 6.4 > 7.2 ms at the test geometry): the GPU runs them partly at the
+  same time.
+- Set-up at q 2 and q 4 (main geometries): 1.8 … 2.9 s, GPU peak 3.9 … 11.1 GB reserved; the host build of the fine
+  geometry takes 23 … 69 s and 6.7 … 17.1 GB at q 4. q 8: at the test geometry 24 s and 13.8 GB; at d/l_ex 211 "CUDA
+  out of memory" in the set-up (einsum; 4.02 GiB more at 15.66 GiB in use); at d/l_ex 301 the process was killed in
+  the build of the fine geometry (1184³ cells) on the host. Thus q 8 does not run at the main geometries with the
+  present code on a 16-GB GPU.
+
+**Cost of a time step (estimate).** The production profile of the main study (beta_bpeak PROTOKOLL 7.122: K1_0_ad,
+d/l_ex 212; K4_2_ad, d/l_ex 300; V100) gives the time share of the stray field in the stages: 36.6 % and 41.8 %.
+With the Newell times above (1.3 and 4.2 ms), one stage takes about 3.6 and 10 ms. The correction adds 18 … 68 ms.
+Thus a time step costs about 6 times (q 2) and 8 times (q 4) as much as without the correction (estimate; at the test
+geometry the same method gives about the factor 3 that the runs showed, 3.28).
+- Main study (point estimate 225 V100-h, range 260 … 380 V100-h, beta_bpeak PROTOKOLL 7.122): with q 4 about
+  1800 V100-h (range 2100 … 3000), about 180 $ (210 … 300 $) at 0.10 $ per V100-h. With q 2 about 1350 V100-h.
+- Possible gain (estimate, not tested): the pair sum moves about 1.5 GB per evaluation at d/l_ex 211, q 4
+  (23 M pairs × (6 coefficients + 3 + 3 components) × 4 B, + 2 indices × 8 B). At the memory bandwidth of a V100
+  (900 GB/s) this is about 2 ms, against 20.9 ms measured. The centroid term can use the forward FFT of v m of the
+  stray field and fewer inverse FFTs. With both, the factor per time step would be about 2 … 2.5 (estimate). Both are
+  patches (not built).
+- Box 7 has no work since 20:05 UTC (0.135 $/h); destroy waits for the go of Chris.
