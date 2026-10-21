@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Why some seeds respond to the stray-field changes and others not (PROTOKOLL 3.30): per run and particle,
+Why some seeds respond to the stray-field changes and others not (PROTOKOLL 3.30, 3.32): per run and particle,
 the structure of the prepared state (init.pt) and the share of the loop energy.
 
 Per particle k (cells of the arm's geometry, as in check_events.py):
@@ -8,7 +8,9 @@ Per particle k (cells of the arm's geometry, as in check_events.py):
 - f60: the fraction of the cells whose m makes more than 60° with the mean direction of the particle;
 - rR60: the mean r/R of these cells (r: distance from the sphere centre, FCC site with minimum image);
 - w: loop energy of the particle in the last cycle, mu0 ∮ H dM_k (M_k: mean M along the field over the particle,
-  samples_00_amp00.csv), in J/m³; share: w_k · n_k / sum(w · n) with n_k the cells of the particle;
+  samples_00_amp00.csv), in J/m³; share: w_k · n_k / sum(w · n) with n_k the cells of the particle. w_k is the work
+  of the applied field on particle k, not its dissipation: the stray field moves energy between the particles, so
+  w_k can be negative; only the sum is the dissipation (PROTOKOLL 3.32);
 - swing: (max − min) of M_k / Ms in the last cycle.
 
     python check_seed_structure.py --runs ROOT1 ... --arms T3 T3Pc D15 --events results/events_Q.json \

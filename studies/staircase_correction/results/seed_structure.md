@@ -1,4 +1,4 @@
-# Seed structure: extra loss per particle and events (PROTOKOLL 3.30)
+# Seed structure: partition of the loop energy over the particles, and events (PROTOKOLL 3.30, 3.32)
 
 Reference of each arm: the seeds 943 945 948 (mean of the loop energy w of their 4 particles: w_base; mean of their ln P: ln P_base).
 

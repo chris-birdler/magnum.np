@@ -1764,8 +1764,11 @@ over the cells of the particle, samples_00_amp00.csv), relative to w_base, the m
   state is demagnetized, |mean m| 0.00 … 0.01.
 - In the seeds 943, 945, 948, the 4 particles have the same loop energy (w / w_base 0.87 … 1.13 in T3, T15g, T3Pc,
   X3, T3Pc4, X3q4; D15 0.80 … 1.34), and ln P is the same in all arms within 0.03.
-- In the other 9 seeds (all arms), 1 to 4 particles have extra loss, w / w_base 1.3 … 5 (without events; up to about
-  76 with an event). The extra loss changes from arm to arm; the effects Δ_g, Δ_c, N1 come from it.
+- In the other 9 seeds (all arms), the loop energy is distributed unequally over the 4 particles, w / w_base 1.3 … 5
+  in 1 to 4 particles (without events; up to about 76 with an event). This partition changes from arm to arm; the
+  effects Δ_g, Δ_c, N1 occur only in these seeds. Correction (3.32): w_k is the work of the applied field on
+  particle k, not the dissipation in particle k; the stray field moves energy between the particles, so w_k can be
+  negative. "Extra loss in single particles" is therefore not shown; shown is the unequal partition.
 - Events occur in the particles that have extra loss before any change. Check against an event-free run of the
   same seed (T3, else T15g), because the loop of a particle after its event is large anyway: of the 29 event
   particles (16 different particles; the arms share events, for example T3Pc and X3), 25 have w / w_base above 1.3
@@ -1824,3 +1827,25 @@ pairs with an event are negative. With all runs, 2 Δ_24 and Δ_c(4) are "not de
 - Decision of Chris: option 1 of 3.31 locally: an event removes only the particle in which it occurs, not the whole
   seed. First step: the coupling check (does an event in one particle change the loop energy of the other particles
   of the same run?).
+
+**Coupling check of option 1 (local, about 19:00 UTC): option 1 is not usable.**
+- A direct check (the same run before and after its event) is not possible: the events occur in the cycles 0 … 2,
+  before the measured cycles (from cycle 3 on), while the drive amplitude is still corrected; from cycle 3 on each
+  run is stationary to 3 digits.
+- The data show a strong coupling of the particles in the quantity w_k = mu0 ∮ H dM_k (H: applied field): particles
+  without an event in a run with an event have a negative or a much changed w_k in the stationary cycles, for
+  example D15_s949 particle 2 (event in particle 3): w / w_base −5.9, in T15g_s949 (no event) +3.0; D15_s951
+  particles 0 and 3 (event in particle 2): −0.05 and −2.6, in T15g_s951 +1.28 and +0.95; T3_s946 particle 3 (events in
+  particles 0 and 2): −2.0, in T15g_s946 +1.35. Also without an event the partition moves between arms (D15_s950
+  particle 3: 0.44, T15g_s950: 1.12).
+- Cause: w_k is the work of the applied field on particle k. The energy balance of particle k also has the work of
+  the stray field of the other particles; only the sum over the 4 particles is the dissipation. Scale (estimate):
+  the swing of M_k is 1.8 % of Ms (2.1·10⁴ A/m); the dipole field of this swing at a neighbour (centre distance
+  1.1 d) is about 0.6 … 1.3 kA/m, the same order as the drive amplitude (1.34 kA/m). At φ 0.55 this coupling is
+  expected physics, not an error.
+- Consequence: excluding only the particle with the event does not leave measurements that are free of the event.
+  Option 1 is stopped at its own pre-check, before any effect was computed per particle. The readings of 3.29 and
+  the seed-level findings of 3.30 stay as recorded (with the correction of the wording in 3.30).
+- Existing mechanism for a later study (information): run_loops --acc writes the mean local dissipation p per cell
+  over the measured cycles (acc_<i>_<stage>.npz). This gives the dissipation per particle without a code change, but
+  only with new runs; the physical coupling of the particles stays in these data.
