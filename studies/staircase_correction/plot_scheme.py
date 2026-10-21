@@ -5,7 +5,7 @@ arrows between them. Each effect is ln P(arrow head) − ln P(arrow tail). Not t
 dx 3 l_ex = 10 nm) has 16 cells of 10 nm on its radius; the schematic has 5.3.
 
 Names (Chris, 2026-10-21): coarse 10 nm, fine 5 nm; "roughness" is the step size of the voxelised surface (before:
-"staircase"). Coarse (run code T3), Fine m (T15g), Fine (D15), Coarse m, fine roughness with Newell + correction
+"staircase"). Coarse (run code T3), Fine m, coarse roughness (T15g), Fine (D15), Coarse m, fine roughness with Newell + correction
 (T3Pc) or with the exact FFT (X3).
 
     python plot_scheme.py --plot results/scheme_B.png
@@ -87,7 +87,7 @@ def main():
     xc = X[1] + NC / 2
     panel(ax, X[0], Y[1], "Coarse", "coarse " + M + ", coarse roughness",
           M + " on 10-nm cells\nstray field: Newell, 10-nm roughness", "T3", 1.0, "voxel 1", 1.0)
-    panel(ax, X[2], Y[1], "Fine " + M, "fine " + M + ", coarse roughness",
+    panel(ax, X[2], Y[1], "Fine " + M + ", coarse roughness", "",
           M + " on 5-nm cells, roughness of Coarse\nstray field: Newell, 10-nm roughness", "T15g", 0.5, "voxel 1", 1.0)
     panel(ax, X[0], Y[0], "Coarse " + M + ", fine roughness", "Newell + correction",
           M + " on 10-nm cells, weight $v$\nstray field: Newell + correction,\n5-nm roughness", "T3Pc",

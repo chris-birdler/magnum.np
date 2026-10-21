@@ -1497,11 +1497,12 @@ tell what is coarse (10 nm) and what is fine (5 nm). "Roughness" (step size of t
 | name | m | roughness | stray field | run code |
 |---|---|---|---|---|
 | Coarse | coarse | coarse | Newell | T3 |
-| Fine m | fine | coarse | Newell | T15g |
+| Fine m, coarse roughness | fine | coarse | Newell | T15g |
 | Fine | fine | fine | Newell | D15 |
 | Coarse m, fine roughness (Newell + correction) | coarse, weight v | fine | Newell + correction | T3Pc |
 | Coarse m, fine roughness (exact FFT) | coarse, weight v | fine | exact FFT on the fine cells | X3 |
 
-results/scheme_B.png is made again with these names (plot_scheme.py).
+results/scheme_B.png is made again with these names (plot_scheme.py). Second change (Chris): "Fine m, coarse
+roughness" is the full name in the title, so that the name alone tells the arm.
 
 Open decision of Chris (unchanged, 3.26): how to read N1.
