@@ -1528,4 +1528,17 @@ not on q (its setup grows with q: 43 … 52 min at q 8). No dynamic run at q 4 o
 Reading of Chris (2026-10-21): for convergence in q and for large systems the window method (correction) is needed;
 the exact fine field (Coarse m exact) stays the reference.
 
-Open decision of Chris (unchanged, 3.26): how to read N1.
+**Decision of Chris (2026-10-21, about 10:30 UTC): the paired effects are read on the seed pairs without an event.**
+Reason of Chris: the scatter from different configurations and microstructures is very high (known from the other
+studies); the rule is necessary, not a repair. Physical reason: an event is a change of the prepared state (cells with
+m · m0 < 0.9); a pair with an event in one arm compares two different states, so the precondition of the paired
+comparison (the same state, different method) does not hold. Rules:
+- A pair counts if both runs keep their prepared state (check_events.py, threshold 0.9; any threshold from 0.81 to
+  0.948 gives the same runs). The rule was fixed after the n-12 data; it applies unchanged to all later runs.
+- The event numbers of each arm are a separate result and are always reported (the pinning question of 3.19: the
+  method can change the event rate, and the exclusion hides this).
+- eval_dynamic.py --exclude_events now labels the values as this reading ("event-free pairs");
+  results/dynamic_B_noevents.md is made again (numbers unchanged).
+Readings of design B with this rule: N1 within ±0.15 (+0.074 ± 0.014, SE, n 9); N3 within ±0.15 (−0.0009 ± 0.0011,
+n 8; also with all runs, n 12); D1 d not determined (+0.096 ± 0.125, n 6). Event numbers (of 12): Coarse 3, Fine m 0,
+Fine 2, Coarse m corrected 4, Coarse m exact 4; no difference can be shown at n 12.

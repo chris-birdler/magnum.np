@@ -26,9 +26,10 @@ Design B (--design B, PROTOKOLL 3.11 … 3.19) also gives the proofs of Chris (2
     python eval_dynamic.py --runs /root/runs > results/dynamic_D.md
     python eval_dynamic.py --design B --runs RUNS1 RUNS2 --seeds 941 … 952 --plot results/proofs_B.png
 
-Information, not a reading (PROTOKOLL 3.26, 3.28; exclusion after the data): --exclude_events EVENTS.json (output of
-check_events.py) leaves out the runs with changed cells, so each effect uses only the seed pairs without an event in
-either arm.
+Reading on the seed pairs without an event (decision of Chris 2026-10-21, PROTOKOLL 3.28; the rule was fixed after the
+n-12 data): --exclude_events EVENTS.json (output of check_events.py) leaves out the runs with an event (changed cells,
+a change of the prepared state), so each effect uses only the seed pairs in which both runs keep their state. The
+event numbers of each arm are a separate result (check_events.py).
 """
 import argparse
 import json
@@ -80,7 +81,7 @@ def main():
     ap.add_argument("--design", choices=["A", "B"], default="A",
                     help="A: arms with own preparation (D…); B: transferred start from D15 (T…, PROTOKOLL 3.11)")
     ap.add_argument("--exclude_events", default=None,
-                    help="events JSON of check_events.py: leave out the runs with an event (information only, 3.28)")
+                    help="events JSON of check_events.py: leave out the runs with an event (reading of 3.28)")
     a = ap.parse_args()
     roots = [pathlib.Path(r) for r in a.runs]
     SEEDS = tuple(a.seeds)
@@ -108,8 +109,9 @@ def main():
         left = sorted(k for k in lnP if ev["%s_s%d" % k]["changed"])
         for k in left:
             lnP[k] = float("nan")
-        print("**Information, not a reading (exclusion after the data, PROTOKOLL 3.28):** the runs with an event "
-              "(changed cells, %s) are left out: %s.\n" % (a.exclude_events, ", ".join("%s_s%d" % k for k in left)))
+        print("**Reading on the seed pairs without an event (decision of Chris, PROTOKOLL 3.28; rule fixed after the "
+              "n-12 data):** the runs with an event (a change of the prepared state; %s) are left out: %s. The event "
+              "numbers of each arm are a separate result.\n" % (a.exclude_events, ", ".join("%s_s%d" % k for k in left)))
     print("| arm | meaning | P (W/cm³) per seed %s | n | geometric mean (W/cm³) | SD of ln P | status / Bloch points of the prepared state |"
           % " / ".join(str(s) for s in SEEDS))
     print("|---|---|---|---|---|---|---|")
@@ -147,8 +149,10 @@ def main():
             r = "not reproduced"
         else:
             r = "not determined"
-        if arm not in ("D3Pc", "T3Pc") or a.exclude_events:
+        if arm not in ("D3Pc", "T3Pc"):
             r += " (information)"
+        if a.exclude_events:
+            r += " (event-free pairs)"
         ci = "–"
         if d["n"] >= 2 and np.isfinite(d["se"]):
             h = t_dist.ppf(0.975, d["n"] - 1) * d["se"]
@@ -157,7 +161,7 @@ def main():
         print("| %s | %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), ci, r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
     if a.design == "B":
-        out["proofs"] = proofs(lnP, a.plot, info=bool(a.exclude_events))
+        out["proofs"] = proofs(lnP, a.plot, eventfree=bool(a.exclude_events))
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=1))
 
@@ -170,9 +174,9 @@ def interval(s):
     return [s["mean"] - h, s["mean"] + h]
 
 
-def proofs(lnP, plot=None, info=False):
-    """Design B: the proofs N1 and N3, the resolution part m and the geometry effects, paired by seed. info: runs are
-    left out after the data, so the readings of N1 and N3 are information only."""
+def proofs(lnP, plot=None, eventfree=False):
+    """Design B: the proofs N1 and N3, the resolution part m and the geometry effects, paired by seed. eventfree: the
+    runs with an event are left out (reading of 3.28); the readings of N1 and N3 then hold for the event-free pairs."""
     rows = [("N1", "resolution of m at fixed morphology (dx 3 geometry): ln P(T15g) − ln P(T3)", "T15g", "T3"),
             ("N3", "correction against the exact fine stray field (same m): ln P(T3Pc) − ln P(X3)", "T3Pc", "X3"),
             ("Δ_g", "geometry effect of the fine staircase at dx 1.5: ln P(D15) − ln P(T15g)", "D15", "T15g"),
@@ -198,8 +202,8 @@ def proofs(lnP, plot=None, info=False):
                 r = "outside ±0.15"
             else:
                 r = "not determined"
-            if info:
-                r += " (information)"
+            if eventfree:
+                r += " (event-free pairs)"
         else:
             r = "information"
         f4 = "%+.4f" if key == "N3" else "%+.3f"                 # N3 is about 10⁻⁴: more digits

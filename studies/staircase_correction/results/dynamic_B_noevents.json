@@ -91,7 +91,7 @@
      0.41602227059793045
     ]
    },
-   "reading": "not determined (information)"
+   "reading": "not determined (event-free pairs)"
   }
  },
  "proofs": {
@@ -118,7 +118,7 @@
     0.04036358830361898,
     0.10713353206187061
    ],
-   "reading": "within \u00b10.15 (information)"
+   "reading": "within \u00b10.15 (event-free pairs)"
   },
   "N3": {
    "n": 8,
@@ -143,7 +143,7 @@
     -0.003517733342048655,
     0.001730166760174553
    ],
-   "reading": "within \u00b10.15 (information)"
+   "reading": "within \u00b10.15 (event-free pairs)"
   },
   "\u0394_g": {
    "n": 10,
