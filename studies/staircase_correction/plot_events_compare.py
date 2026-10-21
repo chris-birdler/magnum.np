@@ -6,8 +6,10 @@ of both sets are next to each other in each row. Information only: the exclusion
 
     python plot_events_compare.py --all results/dynamic_B.json --noevents results/dynamic_B_noevents.json \
         --plot results/proofs_B_compare.png
-    python plot_events_compare.py --set Q --all results/qseries_dyn_all.json --noevents results/qseries_dyn.json \
-        --plot results/proofs_Q_compare.png
+    python plot_events_compare.py --set Q --all results/dynamic_B.json results/qseries_dyn_all.json \
+        --noevents results/dynamic_B_noevents.json results/qseries_dyn.json --plot results/proofs_Q_compare.png
+With --set Q the rows are the effects that have the same meaning at q 2 and q 4 (N3, Δ_c), and the step Δ_24; N1 and
+Δ_g do not depend on q, m and total need a fine reference with the roughness of q 4 (not computed).
 """
 import argparse
 import json
@@ -21,22 +23,27 @@ from matplotlib.patches import Patch  # noqa: E402
 
 SETS = {"B": (["N1", "N3", "Δ_g", "Δ_c", "m", "total"],
                [r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"]),
-        "Q": (["N3(q 4)", "Δ_24", "2 Δ_24", "Δ_c(4)"],
-              [r"$N_3(q = 4)$", r"$\Delta_{24}$", r"$2\,\Delta_{24}$", r"$\Delta_\mathrm{c}(q = 4)$"])}
+        "Q": (["N3", "N3(q 4)", "Δ_c", "Δ_c(4)", "Δ_24"],
+              [r"$N_3(q = 2)$", r"$N_3(q = 4)$", r"$\Delta_\mathrm{c}(q = 2)$", r"$\Delta_\mathrm{c}(q = 4)$",
+               r"$\Delta_{24}$"])}
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--all", required=True, help="JSON of eval_dynamic.py with all runs")
-    ap.add_argument("--noevents", required=True, help="JSON of eval_dynamic.py --exclude_events")
+    ap.add_argument("--all", nargs="+", required=True, help="JSON of eval_dynamic.py (or eval_qseries.py) with all runs")
+    ap.add_argument("--noevents", nargs="+", required=True, help="JSON of eval_dynamic.py --exclude_events (or "
+                    "eval_qseries.py), in the same order")
     ap.add_argument("--plot", required=True)
     ap.add_argument("--set", default="B", choices=sorted(SETS), help="B: design B (eval_dynamic.py); Q: series in q "
                     "(eval_qseries.py)")
     a = ap.parse_args()
     KEYS, LABELS = SETS[a.set]
-    sec = "proofs" if a.set == "B" else "effects"
-    full = json.loads(pathlib.Path(a.all).read_text())[sec]
-    free = json.loads(pathlib.Path(a.noevents).read_text())[sec]
+    full, free = {}, {}
+    for dst, files in ((full, a.all), (free, a.noevents)):
+        for f in files:
+            d = json.loads(pathlib.Path(f).read_text())
+            dst.update(d.get("proofs", {}))                    # eval_dynamic.py
+            dst.update(d.get("effects", {}))                   # eval_qseries.py
     fig, ax = plt.subplots(figsize=(6.4, 4.2))
     ax.axvspan(-0.15, 0.15, color="0.9", zorder=0)
     ax.axvline(0.0, color="0.5", lw=0.8)

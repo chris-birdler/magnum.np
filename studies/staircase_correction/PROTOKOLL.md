@@ -1796,6 +1796,11 @@ Request of Chris: the plot of 3.28 (all runs against event-free pairs) also for 
 and .json; plot_events_compare.py --set Q → results/proofs_Q_compare.png. Checks: proofs_B_compare.png and
 qseries_dyn.md are the same as before the change (md5, diff).
 
+Remark of Chris: the first plot showed other quantities than at q 2. Only N3 and Δ_c have the same meaning at q 2 and
+q 4; N1 and Δ_g contain no q run (the same values as at q 2); m and total need a fine reference with the roughness of
+q 4 (Fine on 2.5-nm cells, not computed; D15 has the roughness of q 2). The plot now shows N3 and Δ_c at q 2 and q 4
+and Δ_24, each with all runs and with the event-free pairs.
+
 | effect | all runs: mean ± SE (n) | 95 % interval | event-free pairs: mean ± SE (n) |
 |---|---|---|---|
 | N3(q 4) | +0.0054 ± 0.0046 (5) | −0.008 … +0.018 | +0.0013 ± 0.0010 (3) |
