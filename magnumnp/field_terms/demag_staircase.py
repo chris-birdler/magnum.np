@@ -39,7 +39,7 @@ from magnumnp.field_terms.field_terms import LinearFieldTerm
 from magnumnp.field_terms.demag import demag_f, demag_g
 
 __all__ = ["DemagStaircaseCorrection", "DemagStaircaseFine", "NearCorrection", "staircase_cells", "centroid_offsets",
-           "centroid_field"]
+           "centroid_field", "centroid_field_fourier", "pair_matrix"]
 
 NEWELL_P = 20          # Newell radius of DemagField (in cell diagonals), the same on both meshes
 SYM = ((0, 1, 2), (1, 3, 4), (2, 4, 5))   # 3x3 index -> component of (xx, xy, xz, yy, yz, zz)
@@ -61,6 +61,37 @@ def sym_matvec(c, m):
     return torch.stack([c[..., 0] * m[..., 0] + c[..., 1] * m[..., 1] + c[..., 2] * m[..., 2],
                         c[..., 1] * m[..., 0] + c[..., 3] * m[..., 1] + c[..., 4] * m[..., 2],
                         c[..., 2] * m[..., 0] + c[..., 4] * m[..., 1] + c[..., 5] * m[..., 2]], dim=-1)
+
+
+def pair_matrix(tgt, src, cf, n_cells, dtype=None):
+    """Sparse matrix (CSR, int32 indices) of the pair sum h_t += C m_s over the pairs (tgt, src, cf), C the symmetric
+    3x3 matrix of the 6 components cf (SYM): rows 3 t + a, columns 3 s + b, size 3 n_cells. Built on the CPU; pairs
+    with the same (t, s) are summed. One sparse product replaces the gather, sym_matvec and the atomic index_add of
+    each evaluation (PROTOKOLL 3.36)."""
+    tgt, src = tgt.cpu().long(), src.cpu().long()
+    cf = cf.cpu()
+    key, order = torch.sort(tgt * n_cells + src)
+    cf = cf[order]
+    key, inv = torch.unique_consecutive(key, return_inverse=True)
+    if len(key) < len(inv):
+        cf = torch.zeros(len(key), 6, dtype=cf.dtype).index_add_(0, inv, cf)
+    cf = cf.to(dtype if dtype is not None else cf.dtype)
+    t, s = key // n_cells, key % n_cells
+    nb = len(key)
+    if 9 * nb >= 2 ** 31:
+        raise ValueError("pair_matrix: %d entries do not fit int32 indices" % (9 * nb))
+    K = torch.bincount(t, minlength=n_cells)                         # blocks per block row
+    j = torch.arange(nb) - (torch.cumsum(K, 0) - K)[t]               # place of each block in its block row
+    crow = torch.zeros(3 * n_cells + 1, dtype=torch.int64)
+    crow[1:] = torch.cumsum(torch.repeat_interleave(3 * K, 3), 0)    # rows 3 t + a hold 3 K_t entries each
+    col = torch.empty(9 * nb, dtype=torch.int32)
+    val = torch.empty(9 * nb, dtype=cf.dtype)
+    c3 = torch.arange(3)
+    for a in range(3):
+        pos = ((crow[3 * t + a] + 3 * j)[:, None] + c3).reshape(-1)  # row 3 t + a, block j, column b
+        col[pos] = (3 * s[:, None] + c3).reshape(-1).to(torch.int32)
+        val[pos] = cf[:, list(SYM[a])].reshape(-1)
+    return torch.sparse_csr_tensor(crow.to(torch.int32), col, val, size=(3 * n_cells, 3 * n_cells))
 
 
 def blocks(fine, q):
@@ -99,7 +130,34 @@ def centroid_field(Nhat, v, d, m, shape=None):
     """First-moment part of the far field of the cut cells, with the rfft kernel Nhat of DemagField (list of lists
     [3][3]; shape: its FFT shape, (N, N, N) with PBC, (2N, 2N, 2N) for open boundaries):
         h_i = d_i . (D K * (v m))_i - sum_k (D_k K * (v d_k m))_i,
-    D_k K = central difference of the kernel along k (i sin w_k in Fourier space). Arrays [N, N, N(, 3)]."""
+    D_k K = central difference of the kernel along k (i sin w_k in Fourier space). Arrays [N, N, N(, 3)].
+
+    With PBC the FFT is circular: i sin w_k is then exactly the periodic central difference (f[x+1] - f[x-1]) / 2,
+    and the convolution commutes with it. Thus h = sum_k d_k CD_k(K * v m) - K * sum_k CD_k(v d_k m): two
+    convolutions (12 FFTs) instead of 24 (PROTOKOLL 3.36). Open boundaries use centroid_field_fourier."""
+    N = v.shape[0]
+    s = tuple(shape) if shape is not None else (N, N, N)
+    if s != (N, N, N):
+        return centroid_field_fourier(Nhat, v, d, m, shape=s)
+
+    def conv(src):
+        """K * src for the 3 components [N, N, N, 3]: one batched rfftn and one batched irfftn."""
+        f = torch.fft.rfftn(src, s=s, dim=(0, 1, 2))
+        return torch.fft.irfftn(torch.stack([sum(Nhat[b][a] * f[..., a] for a in range(3)) for b in range(3)], -1),
+                                s=s, dim=(0, 1, 2))
+
+    def cd(f, k):
+        """Periodic central difference along axis k: (f[x+1] - f[x-1]) / 2."""
+        return 0.5 * (torch.roll(f, -1, k) - torch.roll(f, 1, k))
+
+    vm = v[..., None] * m
+    h1 = conv(vm)
+    h = sum(d[..., k:k + 1] * cd(h1, k) for k in range(3))
+    return h - conv(sum(cd(vm * d[..., k:k + 1], k) for k in range(3)))
+
+
+def centroid_field_fourier(Nhat, v, d, m, shape=None):
+    """centroid_field with the differences in Fourier space (24 FFTs); any FFT shape, also open boundaries."""
     N = v.shape[0]
     s = tuple(shape) if shape is not None else (N, N, N)
     dev, dt = Nhat[0][0].device, torch.real(Nhat[0][0]).dtype
@@ -295,9 +353,8 @@ class DemagStaircaseCorrection(LinearFieldTerm):
                 tg += [t[a], nc.J[b]]
                 sr += [nc.J[a], t[b]]
                 cf += [CA[a], CB[b]]
-            self._tgt = torch.cat(tg).to(dev)
-            self._src = torch.cat(sr).to(dev)
-            self._cf = torch.cat(cf).to(device=dev, dtype=dt)
+            self._A = pair_matrix(torch.cat(tg), torch.cat(sr), torch.cat(cf), nc.N ** 3, dtype=dt).to(dev)
+            del tg, sr, cf
         self._shape = tuple(state.mesh.n)
         self._ready = True
         del nc
@@ -310,7 +367,7 @@ class DemagStaircaseCorrection(LinearFieldTerm):
             h = torch.zeros_like(m)
             h[self._idx] = sym_matvec(self._k, m[self._idx])
         else:
-            h = torch.zeros_like(m).index_add_(0, self._tgt, sym_matvec(self._cf, m[self._src]))
+            h = (self._A @ m.reshape(-1)).reshape(-1, 3)
         h = (self._Ms * h).reshape(self._shape + (3,))
         if self._centroid:
             dem = self._demag

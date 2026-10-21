@@ -17,6 +17,7 @@ set_precision("double")
 
 from geometry import fcc_box  # noqa: E402
 from nearfield import NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean, centroid_offsets, centroid_field  # noqa: E402
+from magnumnp.field_terms.demag_staircase import centroid_field_fourier, pair_matrix, sym_matvec  # noqa: E402
 
 
 def one_sphere(N, q, r, centre):
@@ -104,19 +105,20 @@ def test_uniform_m_cubic_body_exact_energy():
     assert abs(E / exact - 1) < 5e-4, (E, exact)
 
 
-@pytest.mark.parametrize("form", ["pair", "local"])
-def test_field_term_equals_correction(form):
-    """DemagStaircaseCorrection (the field term of magnum.np) gives M_s times the correction of NearCorrection."""
+@pytest.mark.parametrize("form,periodic", [("pair", True), ("pair", False), ("local", True)])
+def test_field_term_equals_correction(form, periodic):
+    """DemagStaircaseCorrection (the field term of magnum.np; the pair form as one sparse matrix, PROTOKOLL 3.36) gives
+    M_s times the correction of NearCorrection (gather and index_add per offset)."""
     from magnumnp import Mesh, State, DemagStaircaseCorrection
     N, q, Ms = 16, 2, 8e5
     ids = fcc_box(q * N, 6.0, 0.5)["ids"]
     n, pid, occ = v1_cells(ids, q)
-    nc = NearCorrection(n, occ, q, p=2, periodic=True)
+    nc = NearCorrection(n, occ, q, p=2, periodic=periodic)
     m = random_m((N, N, N), 6)
     state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(1, 1, 1)))
     state.m = m
     state.material["Ms"] = torch.as_tensor(n / q ** 3 * Ms).reshape(N, N, N, 1)
-    term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form=form)
+    term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form=form, periodic=periodic)
     h = term.h(state)
     ref = Ms * (nc.h_pair(m) if form == "pair" else nc.h_local(m))
     assert float((h - ref).abs().max()) <= 1e-12 * Ms
@@ -227,3 +229,34 @@ def test_fine_term_energy_and_reciprocity_under_pbc():
     h2 = term.h(state)
     a, b = float((v * m1 * h2).sum()), float((v * m2 * h1).sum())
     assert abs(a - b) <= 1e-11 * (abs(a) + abs(b))
+
+
+def test_centroid_pbc_differences_equal_fourier():
+    """Under PBC the centroid term with central differences in real space (12 FFTs) equals the form with i sin w in
+    Fourier space (24 FFTs) (PROTOKOLL 3.36, criterion C2 of PLAN 10)."""
+    N, q = 16, 4
+    ids = fcc_box(q * N, 6.0, 0.25)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    co = FFTField(N, ("newell", 1))
+    v = torch.as_tensor(n / q ** 3)
+    d = centroid_offsets(occ, q)
+    m = random_m((N, N, N), 11)
+    co.h(v, m)                                                     # sets up the kernel
+    new = centroid_field(co.term._N, v, d, m)
+    old = centroid_field_fourier(co.term._N, v, d, m)
+    assert float((new - old).abs().max()) <= 1e-12 * float(old.abs().max())
+
+
+def test_pair_matrix_equals_index_add_and_sums_duplicates():
+    """pair_matrix gives the pair sum of gather, sym_matvec and index_add, also with repeated (target, source) pairs."""
+    g = torch.Generator().manual_seed(12)
+    n_cells, P = 50, 400
+    tgt = torch.randint(0, n_cells, (P,), generator=g)
+    src = torch.randint(0, n_cells, (P,), generator=g)
+    tgt, src = torch.cat([tgt, tgt[:30]]), torch.cat([src, src[:30]])          # 30 repeated pairs
+    cf = torch.randn(len(tgt), 6, generator=g, dtype=torch.float64)
+    m = torch.randn(n_cells, 3, generator=g, dtype=torch.float64)
+    ref = torch.zeros_like(m).index_add_(0, tgt, sym_matvec(cf, m[src]))
+    A = pair_matrix(tgt, src, cf, n_cells)
+    new = (A @ m.reshape(-1)).reshape(-1, 3)
+    assert float((new - ref).abs().max()) <= 1e-12 * float(ref.abs().max())
