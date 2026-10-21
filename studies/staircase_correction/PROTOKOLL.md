@@ -1620,3 +1620,10 @@ T3Pc4 and T3Pc; as in design B (check_state_overlap.py), the overlap of these st
   with 2 at the same time, 6 … 11 h. Phase A about 6 … 11 h, about 1.6 … 3.0 $; far below the budget of 10 $. The
   estimate of 3.22 for X3q4 (6 … 10 h per run) was too high. The queue goes on.
 - Credit at 10:49 UTC: 17.22 $.
+
+**Evaluation code of the series in q (written during the runs, PLAN 9.2):** check_events.py --arms knows T3Pc4, X3q4,
+T3Pc8 (magnetic cells of the q-staircase of each arm; design B output unchanged, checked: events_B.json and .md
+identical). eval_qseries.py gives the readings of PLAN 9.2 … 9.3 on the event-free pairs, the event numbers, the
+overlap of the relaxed states per particle (T3Pc4 − T3Pc, T3Pc8 − T3Pc4, T3Pc4 − X3q4) and the start rule of
+phase B. Test on the q-2 data: geometric means of T3 and T3Pc as in 3.26; overlap T3Pc − X3 (s941) 1.0000 per
+particle, T3Pc − T3 0.985 … 0.994.

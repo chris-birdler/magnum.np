@@ -6,11 +6,13 @@ For each run: the cells inside the particles whose m changed between the start o
 (checkpoint.pt), m · m0 < 0.9, per particle with the range of r/R (distance from the sphere centre over the radius; the
 centre is the FCC site with the minimum image, not the mean of the cell positions, which is wrong for a particle that
 crosses the box edge). Also the loop energy W_loop of each cycle (summary.json), which shows when a change occurs.
-Magnetic cells: the voxel geometry (T3, D15), the cells of the q-2 staircase (T3Pc, X3), the locked dx-3 geometry (T15g).
+Magnetic cells: the voxel geometry (T3, D15), the cells of the q-staircase (T3Pc, X3: q 2; T3Pc4, X3q4: q 4; T3Pc8:
+q 8; PROTOKOLL 3.29), the locked dx-3 geometry (T15g).
 Check of the threshold 0.9 (PROTOKOLL 3.28): the smallest m · m0 over all magnetic cells and the numbers of cells below
 0.97 and 0.99.
 
     python check_events.py --runs ROOT1 ROOT2 ... --seeds 941 ... 952 --out results/events_B   (writes .md and .json)
+    python check_events.py --runs ... --arms T3Pc4 X3q4 T3Pc8 --out results/events_Q   (series in q, PLAN 9)
 """
 import argparse
 import json
@@ -30,6 +32,16 @@ from fe_states import fine_ids  # noqa: E402
 from magnumnp.field_terms.demag_staircase import staircase_cells  # noqa: E402
 
 ARMS = ("T3", "T3Pc", "X3", "T15g", "D15")
+QARMS = ("T3Pc4", "X3q4", "T3Pc8")                              # series in q (PLAN 9)
+
+
+def arm_q(arm):
+    """q of the staircase of an arm with the fraction surface (T3Pc, X3: 2; T3Pc4, X3q4: 4; T3Pc8: 8), else 0."""
+    for head in ("T3Pc", "X3q", "X3"):
+        if arm.startswith(head):
+            tail = arm[len(head):]
+            return int(tail) if tail else 2
+    return 0
 
 
 def load_m(path):
@@ -40,9 +52,10 @@ def magnetic_ids(arm, N, d, dx):
     """Particle index of the magnetic cells of the arm, -1: void."""
     if arm in ("T3", "D15"):
         return fcc_box(N, d, dx)["ids"]
-    if arm in ("T3Pc", "X3"):
-        n2, pid2, _ = staircase_cells(fine_ids(N, 2, d, dx), 2)
-        return np.where(n2 > 0, pid2, -1)
+    q = arm_q(arm)
+    if q:
+        nq, pidq, _ = staircase_cells(fine_ids(N, q, d, dx), q)
+        return np.where(nq > 0, pidq, -1)
     ids = fcc_box(N // 2, d, 2 * dx)["ids"]                     # T15g: the voxel geometry of dx 3 on the dx-1.5 mesh
     return ids.repeat(2, 0).repeat(2, 1).repeat(2, 2)
 
@@ -51,11 +64,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", nargs="+", required=True, help="run roots, searched in this order")
     ap.add_argument("--seeds", type=int, nargs="+", default=list(range(941, 953)))
+    ap.add_argument("--arms", nargs="+", default=list(ARMS), choices=list(ARMS) + list(QARMS))
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     roots = [pathlib.Path(r) for r in a.runs]
     cache, out, rows = {}, {}, []
-    for arm in ARMS:
+    for arm in a.arms:
         for s in a.seeds:
             name = "%s_s%d" % (arm, s)
             d = next((r / name for r in roots if (r / name / "DONE").exists()), None)
