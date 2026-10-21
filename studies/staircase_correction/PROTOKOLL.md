@@ -1627,3 +1627,15 @@ identical). eval_qseries.py gives the readings of PLAN 9.2 … 9.3 on the event-
 overlap of the relaxed states per particle (T3Pc4 − T3Pc, T3Pc8 − T3Pc4, T3Pc4 − X3q4) and the start rule of
 phase B. Test on the q-2 data: geometric means of T3 and T3Pc as in 3.26; overlap T3Pc − X3 (s941) 1.0000 per
 particle, T3Pc − T3 0.985 … 0.994.
+
+**Status and change of the queue (13:12 … 13:19 UTC):**
+- Done: X3q4_s941 (2.51 h), X3q4_s943 (2.82 h), T3Pc4_s941, T3Pc4_s942 (2.22 h), T3Pc4_s943 (1.39 h); no failure.
+  Credit at 12:00 UTC: 16.42 $.
+- Finding: the X3q4 queue ends soon, its 4 slots then stay empty; the T3Pc4 dispatcher had 1 slot on each GPU. GPU 0
+  with one T3Pc4 run (relaxation) was at 24 % use.
+- Go of Chris: 2 slots on each GPU for the waiting T3Pc4 runs. Done so: the T3Pc4 dispatcher (PID 2147, no restart
+  loop, no signal handler) was stopped with SIGTERM to its PID only; its running jobs T3Pc4_s944 and s945 continue
+  (they write DONE themselves). Its job file is in /root/spool_t/archive_restart/ (no second start of these jobs).
+  The 7 waiting jobs T3Pc4_s946 … s952 (unchanged lines of 20_t3pc4.jobs; no run folder existed) are in
+  /root/spool_x/20_t3pc4_rest.jobs; the X3q4 dispatcher (--gpus 0,1,0,1) loaded them ("7 jobs, 7 to run") and
+  started s946 and s947 on GPU 0 at once. GPU 0 use then 58 %.
