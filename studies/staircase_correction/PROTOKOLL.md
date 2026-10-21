@@ -1811,3 +1811,16 @@ and Δ_24, each with all runs and with the event-free pairs.
 Facts: the pairs with an event spread over −1.33 … +0.86 (Δ_24) and −2.36 … +2.49 (Δ_c(4)); 6 of the 8 Δ_24
 pairs with an event are negative. With all runs, 2 Δ_24 and Δ_c(4) are "not determined"; N3(q 4) stays within ±0.15
 (T3Pc4 and X3q4 have their events in the same seeds and particles).
+
+### 3.32 Box 6 destroyed; next step: reading per particle (2026-10-21, about 18:40 UTC)
+
+- Before the destroy: the rest of box 6 downloaded to remote_20261021_box6 (manifest box6_part4.md5, 43 files, md5
+  OK): the stopped T3Pc8 folders, dispatcher logs, a0_progress.txt, queue status, spool files, d15_init.md5. The 12
+  start states D15_s941 … s952/init.pt on the box are identical to the local files (md5). Not downloaded: the pip
+  cache and the code bundle (commit e72b5b6 is in git). Nothing must be computed again for more seeds at q 2 or q 4.
+- Go of Chris: box 6 (vast.ai 57035457) destroyed. Box 5 (57033607) is no longer in the account (it never got
+  resources; removed by vast.ai). The account has only instance 53995473 of the other session (not touched).
+  Credit after the destroy: 11.72 $.
+- Decision of Chris: option 1 of 3.31 locally: an event removes only the particle in which it occurs, not the whole
+  seed. First step: the coupling check (does an event in one particle change the loop energy of the other particles
+  of the same run?).
