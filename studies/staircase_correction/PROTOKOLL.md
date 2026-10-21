@@ -1475,6 +1475,6 @@ and each row shows its n. results/proofs_B.png is made again with this layout; d
 **Comparison on one axis** (plot_events_compare.py, results/proofs_B_compare.png; Chris did not see the difference in the two
 figures with different x scales): each row shows the seed pairs (open: pair with an event) and the mean with its 95 %
 interval for all runs and for the runs without an event. The events make the large values: the interval of N1
-becomes 14 times narrower without them; N3 does not change.
+becomes about 13 times narrower without them (half-width 0.45 against 0.034); N3 does not change.
 
 Open decision of Chris (unchanged, 3.26): how to read N1.
