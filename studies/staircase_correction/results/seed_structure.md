@@ -85,6 +85,7 @@ Reference of each arm: the seeds 943 945 948 (mean of the loop energy w of their
 ## Events and extra loss
 
 - Particles with an event: 29; with w / w_base > 1.3 in the same run: 26; the particle with the largest w / w_base of the run: 21.
+- The same particles in an event-free run of the same seed (T3, else T15g): 29 event particles; with w / w_base > 1.3 there: 25; the particle with the largest w / w_base there: 15.
 - T3: seeds with a particle with w / w_base > 1.3: 941 942 944 946 947 949 950 951 952 (9 of 12).
 - T15g: seeds with a particle with w / w_base > 1.3: 941 942 944 946 947 949 950 951 952 (9 of 12).
 - D15: seeds with a particle with w / w_base > 1.3: 941 942 943 944 946 947 949 950 951 952 (10 of 12).

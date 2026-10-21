@@ -129,6 +129,21 @@ def main():
     print("- Particles with an event: %d; with w / w_base > %.1f in the same run: %d; the particle with the largest "
           "w / w_base of the run: %d." % (len(ev_all), EXTRA, sum(r["w_rel"][k] > EXTRA for r, k in ev_all),
                                          sum(r["w_rel"][k] == max(r["w_rel"]) for r, k in ev_all)))
+    # the post-event loop of a switched particle is large anyway: compare with an event-free run of the same seed
+    # (T3 if it has no event, else T15g), whose loss shows where the extra loss is before any change
+    n_ref, n_ext, n_top = 0, 0, 0
+    for r, k in ev_all:
+        ref = next((out.get("%s_s%d" % (x, r["seed"])) for x in ("T3", "T15g")
+                    if out.get("%s_s%d" % (x, r["seed"])) and not out["%s_s%d" % (x, r["seed"])]["event_particles"]
+                    and "w_rel" in out["%s_s%d" % (x, r["seed"])]), None)
+        if ref is None or ref is r:
+            continue
+        n_ref += 1
+        n_ext += ref["w_rel"][k] > EXTRA
+        n_top += ref["w_rel"][k] == max(ref["w_rel"])
+    print("- The same particles in an event-free run of the same seed (T3, else T15g): %d event particles; with "
+          "w / w_base > %.1f there: %d; the particle with the largest w / w_base there: %d." % (
+              n_ref, EXTRA, n_ext, n_top))
     for arm in a.arms:
         sens = [r["seed"] for r in out.values() if r["arm"] == arm and "w_rel" in r and max(r["w_rel"]) > EXTRA]
         print("- %s: seeds with a particle with w / w_base > %.1f: %s (%d of %d)." % (

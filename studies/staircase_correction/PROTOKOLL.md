@@ -1766,18 +1766,22 @@ over the cells of the particle, samples_00_amp00.csv), relative to w_base, the m
   X3, T3Pc4, X3q4; D15 0.80 … 1.34), and ln P is the same in all arms within 0.03.
 - In the other 9 seeds (all arms), 1 to 4 particles have extra loss, w / w_base 1.3 … 5 (without events; up to about
   76 with an event). The extra loss changes from arm to arm; the effects Δ_g, Δ_c, N1 come from it.
-- Events occur in the particles with extra loss: 26 of 29 event particles have w / w_base above 1.3 in the same run;
-  21 of 29 are the particle with the largest w / w_base of the run. Thus "sensitive" (extra loss that comes back in
-  each cycle) and "event" (a change that stays) are found in the same particles. The mechanism (for example a
-  domain wall that jumps between pinning sites) is not checked: the runs have no maps of the dissipation.
+- Events occur in the particles that have extra loss before any change. Check against an event-free run of the
+  same seed (T3, else T15g), because the loop of a particle after its event is large anyway: of the 29 event
+  particles (16 different particles; the arms share events, for example T3Pc and X3), 25 have w / w_base above 1.3
+  there (17.8 by chance with the shares of these runs), and 15 are the particle with the largest w / w_base there
+  (7.2 by chance). Thus "sensitive" (extra loss that comes back in each cycle) and "event" (a change that stays)
+  are found in the same particles. The mechanism (for example a domain wall that jumps between pinning sites) is
+  not checked: the runs have no maps of the dissipation.
 
 **Consequence for the readings:** the rule of 3.28 (only seeds without an event) removes the sensitive seeds first,
-and more of them at q 4. Of the 9 sensitive seeds, only 946 gives an event-free Δ_24 pair.
+and more of them at q 4. Of the 9 sensitive seeds, only 946 gives an event-free Δ_24 pair; its Δ_24 (−0.062) is in the range of
+the 3 seeds without extra loss (−0.038 … −0.052): n 1, no conclusion.
 
 **More seeds with the present rule (estimate from these small numbers):** a new seed gives an event-free Δ_24 pair on
 a sensitive seed with a probability of about 9/12 · 1/9 ≈ 8 %. For 3 such pairs: about 36 new seeds, each with
-D15 (3.5 h), T3 (0.4 h), T3Pc (1.3 h), T3Pc4 (1.4 h), about 240 GPU h, about 35 $ (credit 12.98 $). Not
-proposed.
+D15 (3.5 h), T3 (0.4 h), T3Pc (1.3 h), T3Pc4 (1.4 h), about 240 h of run time. These times were measured with
+2 … 3 runs on one GPU, so the cost is only roughly known: about 15 … 35 $ (credit 12.98 $). Not proposed.
 
 **Data without new runs (count only, not evaluated):** if an event removes only the particle in which it occurs (not
 the whole seed), there are 35 particle pairs for Δ_24, 18 of them in particles with extra loss, from all 9
