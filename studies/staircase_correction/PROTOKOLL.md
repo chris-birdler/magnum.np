@@ -1788,3 +1788,21 @@ the whole seed), there are 35 particle pairs for Δ_24, 18 of them in particles 
 sensitive seeds; for N3(q 4) 15 (4); for Δ_c(2) 40 (14). Limits: the particles are coupled by the stray field (an
 event in one particle changes the field at the others; w_k of one particle can be negative in a run with an event);
 a reading per particle is a change of the method (decision of Chris).
+
+### 3.31 Series in q: effects with all runs and without the runs with an event (2026-10-21, about 18:00 UTC)
+
+Request of Chris: the plot of 3.28 (all runs against event-free pairs) also for q 4. eval_qseries.py --all_runs
+(information: also the runs with an event; the start rule is not applied in this mode) → results/qseries_dyn_all.md
+and .json; plot_events_compare.py --set Q → results/proofs_Q_compare.png. Checks: proofs_B_compare.png and
+qseries_dyn.md are the same as before the change (md5, diff).
+
+| effect | all runs: mean ± SE (n) | 95 % interval | event-free pairs: mean ± SE (n) |
+|---|---|---|---|
+| N3(q 4) | +0.0054 ± 0.0046 (5) | −0.008 … +0.018 | +0.0013 ± 0.0010 (3) |
+| Δ_24 | −0.152 ± 0.155 (12) | −0.49 … +0.19 | −0.0475 ± 0.0058 (4) |
+| 2 Δ_24 | −0.30 ± 0.31 (12) | −0.98 … +0.38 | −0.095 ± 0.012 (4) |
+| Δ_c(4) | +0.12 ± 0.32 (12) | −0.57 … +0.82 | −0.004 ± 0.028 (5) |
+
+Facts: the pairs with an event spread over −1.33 … +0.86 (Δ_24) and −2.36 … +2.49 (Δ_c(4)); 6 of the 8 Δ_24
+pairs with an event are negative. With all runs, 2 Δ_24 and Δ_c(4) are "not determined"; N3(q 4) stays within ±0.15
+(T3Pc4 and X3q4 have their events in the same seeds and particles).

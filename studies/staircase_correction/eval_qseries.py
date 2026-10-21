@@ -98,6 +98,8 @@ def main():
     ap.add_argument("--runs", nargs="+", required=True, help="run roots, searched in this order")
     ap.add_argument("--seeds", type=int, nargs="+", default=list(range(941, 953)))
     ap.add_argument("--events", required=True, help="JSON of check_events.py with the arms " + " ".join(ARMS))
+    ap.add_argument("--all_runs", action="store_true",
+                    help="information: use all runs with an event record, also the runs with an event (PROTOKOLL 3.31)")
     ap.add_argument("--json", default=None)
     a = ap.parse_args()
     roots = [pathlib.Path(r) for r in a.runs]
@@ -109,11 +111,14 @@ def main():
             rec = EC.run_record(folder(roots, name))
             status[name] = rec["status"]
             event[name] = bool(ev[name]["changed"]) if name in ev else None
-            lnP[(arm, s)] = rec["lnP"] if event[name] is False else float("nan")   # no event record: not used
+            use = event[name] is not None if a.all_runs else event[name] is False   # no event record: not used
+            lnP[(arm, s)] = rec["lnP"] if use else float("nan")
     out = {"lnP": {"%s_s%d" % k: v for k, v in lnP.items()}, "event": event, "status": status}
-    print("# Dynamic series in q: readings of PLAN 9 (pairs without an event, rule of 3.28)\n")
+    print("# Dynamic series in q: readings of PLAN 9 (%s)\n" % (
+        "all runs, also the runs with an event; information only" if a.all_runs
+        else "pairs without an event, rule of 3.28"))
     print("| arm | runs done | runs with an event | runs without an event record | geometric mean of P (W/cm³), "
-          "event-free runs |")
+          "%s |" % ("runs used" if a.all_runs else "event-free runs"))
     print("|---|---|---|---|---|")
     for arm in ARMS:
         names = ["%s_s%d" % (arm, s) for s in a.seeds]
@@ -154,11 +159,15 @@ def main():
                                                                        for v in per),
                                                  ms, "%+.4f … %+.4f" % tuple(ci) if ci else "–", r))
         out["effects"][key] = dict(st, per_seed=per, ci95=ci, reading=r)
-    n3, a2 = out["effects"]["N3(q 4)"]["reading"], out["effects"]["2 Δ_24"]["reading"]
-    start_b = n3 == "within ±0.15" and a2 != "within ±0.15"
-    print("\nStart rule of phase B (PLAN 9.3): N3(q 4) %s; 2 Δ_24 %s; phase B starts: %s." % (
-        n3, a2, "yes" if start_b else "no"))
-    out["start_phase_B"] = start_b
+    if a.all_runs:
+        print("\nStart rule of phase B (PLAN 9.3): not applied here (it uses the event-free pairs).")
+        out["start_phase_B"] = None
+    else:
+        n3, a2 = out["effects"]["N3(q 4)"]["reading"], out["effects"]["2 Δ_24"]["reading"]
+        start_b = n3 == "within ±0.15" and a2 != "within ±0.15"
+        print("\nStart rule of phase B (PLAN 9.3): N3(q 4) %s; 2 Δ_24 %s; phase B starts: %s." % (
+            n3, a2, "yes" if start_b else "no"))
+        out["start_phase_B"] = start_b
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=1))
 

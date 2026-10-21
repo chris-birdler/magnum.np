@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 """
-Design B (PROTOKOLL 3.28): the effects of eval_dynamic.py with all runs and without the runs with an event, on one
-axis. Seed pairs with an event in one of the two arms are open circles; the means and 95 % intervals (t distribution)
+Design B (PROTOKOLL 3.28) and the series in q (--set Q, PROTOKOLL 3.31): the effects of eval_dynamic.py or
+eval_qseries.py with all runs and without the runs with an event, on one axis. Seed pairs with an event in one of the two arms are open circles; the means and 95 % intervals (t distribution)
 of both sets are next to each other in each row. Information only: the exclusion rule was set after the data.
 
     python plot_events_compare.py --all results/dynamic_B.json --noevents results/dynamic_B_noevents.json \
         --plot results/proofs_B_compare.png
+    python plot_events_compare.py --set Q --all results/qseries_dyn_all.json --noevents results/qseries_dyn.json \
+        --plot results/proofs_Q_compare.png
 """
 import argparse
 import json
@@ -17,8 +19,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
-KEYS = ["N1", "N3", "Δ_g", "Δ_c", "m", "total"]
-LABELS = [r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"]
+SETS = {"B": (["N1", "N3", "Δ_g", "Δ_c", "m", "total"],
+               [r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"]),
+        "Q": (["N3(q 4)", "Δ_24", "2 Δ_24", "Δ_c(4)"],
+              [r"$N_3(q = 4)$", r"$\Delta_{24}$", r"$2\,\Delta_{24}$", r"$\Delta_\mathrm{c}(q = 4)$"])}
 
 
 def main():
@@ -26,9 +30,13 @@ def main():
     ap.add_argument("--all", required=True, help="JSON of eval_dynamic.py with all runs")
     ap.add_argument("--noevents", required=True, help="JSON of eval_dynamic.py --exclude_events")
     ap.add_argument("--plot", required=True)
+    ap.add_argument("--set", default="B", choices=sorted(SETS), help="B: design B (eval_dynamic.py); Q: series in q "
+                    "(eval_qseries.py)")
     a = ap.parse_args()
-    full = json.loads(pathlib.Path(a.all).read_text())["proofs"]
-    free = json.loads(pathlib.Path(a.noevents).read_text())["proofs"]
+    KEYS, LABELS = SETS[a.set]
+    sec = "proofs" if a.set == "B" else "effects"
+    full = json.loads(pathlib.Path(a.all).read_text())[sec]
+    free = json.loads(pathlib.Path(a.noevents).read_text())[sec]
     fig, ax = plt.subplots(figsize=(6.4, 4.2))
     ax.axvspan(-0.15, 0.15, color="0.9", zorder=0)
     ax.axvline(0.0, color="0.5", lw=0.8)
@@ -37,7 +45,8 @@ def main():
             kept = w == w                                          # NaN in the event-free set: pair with an event
             ax.plot([v], [i], "o", ms=4, zorder=2, color="0.45", mfc="0.45" if kept else "none")
         for r, dy, c in ((full[k], -0.17, "k"), (free[k], +0.17, "tab:blue")):
-            ax.plot(r["ci95"], [i + dy] * 2, color=c, lw=2.0, zorder=3)
+            if r["ci95"] is not None:
+                ax.plot(r["ci95"], [i + dy] * 2, color=c, lw=2.0, zorder=3)
             ax.plot([r["mean"]], [i + dy], "D", color=c, ms=5, zorder=4)
     ax.set_yticks(range(len(KEYS)))
     ax.set_yticklabels(["%s  ($n = %d$ / $%d$)" % (t, full[k]["n"], free[k]["n"]) for t, k in zip(LABELS, KEYS)])
