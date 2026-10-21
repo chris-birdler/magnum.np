@@ -260,3 +260,23 @@ def test_pair_matrix_equals_index_add_and_sums_duplicates():
     A = pair_matrix(tgt, src, cf, n_cells)
     new = (A @ m.reshape(-1)).reshape(-1, 3)
     assert float((new - ref).abs().max()) <= 1e-12 * float(ref.abs().max())
+
+
+def test_pair_matrix_builds_on_the_cpu_with_another_default_device():
+    """magnum.np sets the default device to the GPU; pair_matrix must still build on the CPU (audit 2026-10-21).
+    The meta device stands for the GPU: any tensor made on the default device would fail to mix with the CPU data."""
+    g = torch.Generator().manual_seed(13)
+    n_cells, P = 40, 300
+    tgt = torch.randint(0, n_cells, (P,), generator=g)
+    src = torch.randint(0, n_cells, (P,), generator=g)
+    tgt, src = torch.cat([tgt, tgt[:20]]), torch.cat([src, src[:20]])
+    cf = torch.randn(len(tgt), 6, generator=g, dtype=torch.float64)
+    m = torch.randn(n_cells, 3, generator=g, dtype=torch.float64)
+    ref = (pair_matrix(tgt, src, cf, n_cells) @ m.reshape(-1)).reshape(-1, 3)
+    torch.set_default_device("meta")
+    try:
+        A = pair_matrix(tgt, src, cf, n_cells)
+    finally:
+        torch.set_default_device("cpu")
+    assert A.device.type == "cpu"
+    assert float(((A @ m.reshape(-1)).reshape(-1, 3) - ref).abs().max()) == 0.0

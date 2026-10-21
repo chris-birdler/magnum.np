@@ -67,7 +67,12 @@ def pair_matrix(tgt, src, cf, n_cells, dtype=None):
     """Sparse matrix (CSR, int32 indices) of the pair sum h_t += C m_s over the pairs (tgt, src, cf), C the symmetric
     3x3 matrix of the 6 components cf (SYM): rows 3 t + a, columns 3 s + b, size 3 n_cells. Built on the CPU; pairs
     with the same (t, s) are summed. One sparse product replaces the gather, sym_matvec and the atomic index_add of
-    each evaluation (PROTOKOLL 3.36)."""
+    each evaluation (PROTOKOLL 3.36). All work is on the CPU, also when magnum.np set the default device to a GPU."""
+    with torch.device("cpu"):
+        return _pair_matrix_cpu(tgt, src, cf, n_cells, dtype)
+
+
+def _pair_matrix_cpu(tgt, src, cf, n_cells, dtype):
     tgt, src = tgt.cpu().long(), src.cpu().long()
     cf = cf.cpu()
     key, order = torch.sort(tgt * n_cells + src)
