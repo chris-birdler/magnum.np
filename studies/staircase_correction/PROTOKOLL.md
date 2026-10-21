@@ -1486,4 +1486,8 @@ identity d = N1 + N3 − m holds exactly (checked: deviation below 1e-15). N3 is
 scatter; thus all scatter of d comes from m = ln P(D15) − ln P(X3), the finer m on the same 5-nm staircase, not from
 the stray field. Seed 952 (m = −0.61, 3.23 finding 2: same state, different response) gives the large value.
 
+**Schematic of the arms and effects** (Chris asked; plot_scheme.py, results/scheme_B.png): the five arms as cross-sections of
+one particle surface (cells of m, magnetic cells with the weight v, surface seen by the stray field, smooth sphere),
+the effects as arrows (ln P of the arrow head minus ln P of the arrow tail), and the identity d = N1 + N3 − m.
+
 Open decision of Chris (unchanged, 3.26): how to read N1.
