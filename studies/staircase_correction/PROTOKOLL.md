@@ -1995,4 +1995,5 @@ geometry the same method gives about the factor 3 that the runs showed, 3.28).
   (900 GB/s) this is about 2 ms, against 20.9 ms measured. The centroid term can use the forward FFT of v m of the
   stray field and fewer inverse FFTs. With both, the factor per time step would be about 2 … 2.5 (estimate). Both are
   patches (not built).
-- Box 7 has no work since 20:05 UTC (0.135 $/h); destroy waits for the go of Chris.
+- Box 7 had no work from 20:05 UTC. Go of Chris ("Destroy"): box 7 (vast.ai 57100794) destroyed at about 20:25 UTC;
+  all results were local before (md5). The account has only instance 53995473 of the other session. Credit 11.03 $.
