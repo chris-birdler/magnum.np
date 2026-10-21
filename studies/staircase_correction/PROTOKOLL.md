@@ -1662,3 +1662,25 @@ particle, T3Pc − T3 0.985 … 0.994.
   the X3q4_s944 production line: only name, seed and D15 path differ) is in /root/spool_x/10_x3q4_extra.jobs,
   priority 10, so it starts at the next free slot before T3Pc4_s950 … s952. X3q4_s946 runs only if after 945 fewer
   than 3 event-free pairs exist (also decided as soon as the events of T3Pc4_s944 and s945 are known).
+
+**Progress and phase B queued in advance (14:29 … 15:12 UTC):**
+- T3Pc4_s945 DONE (no dispatcher, it continued after the stop of 13:17); downloaded (8 files, md5 OK, manifest
+  box6_part2.md5); check_events: no event (smallest m · m0 1.000). Possible event-free N3 pairs now: 943, 944 (if
+  T3Pc4_s944 stays without an event), 945 (if X3q4_s945 stays without an event).
+- T3Pc4_s944: the relaxation stopped after 42500 iterations (two quiet chunks: 2.82e-10, 7.33e-11). From 5000
+  iterations on, the torque rms stayed at 0.07 A/m and |dE|/(K_d V) per chunk scattered from 5e-11 to 2e-9 around
+  the threshold 3e-10: the known fp32 noise of E (decision of 2026-10-20: the threshold stays). T3Pc4_s942 needed
+  18500 iterations for the same reason.
+- At 15:03 UTC: T3Pc4 7 of 12 DONE; X3q4_s945 started; credit 14.29 $.
+- Go of Chris (option 3, about 15:05 UTC): phase B is queued now with the lowest priority, so that its runs fill
+  only the slots that phase A sets free (from about 16:30 UTC 2 … 3 slots would stay empty until X3q4_s945 ends,
+  about 18:00 UTC). This is an exception to the rule "prepare nothing that depends on a measurement that still
+  runs". The start rule of PLAN 9.3 is applied unchanged when phase A ends: if it gives "no", the T3Pc8 runs are
+  stopped and their job file removed; their data are not used.
+- /root/spool_x/97_t3pc8.jobs: the 12 lines of jobs/97_q8_T3Pc8.jobs; checked against the T3Pc4 lines on the box:
+  only the name and --staircase_q (4 → 8) differ. The dispatcher loaded them ("12 jobs, 12 to run, priority 97");
+  T3Pc4_s952 (priority 20) and X3q4 (priority 10) go first.
+- Resources: the 4.3-GB block table of q 8 (343 × q³ × q³ × 6 values) exists only on the host during the set-up
+  (peak RAM 10.8 GB, 3.25); the GPU holds only the pair list (tgt, src, coefficients), about as at q 4. Box 6 has
+  125 GB RAM (114 GB free) and 28 cores. Before 18:00 UTC at most 3 slots are free, so at most 3 set-ups can overlap
+  (about 32 GB RAM, estimate); PLAN 9.3 gave at most 2 set-ups for a box with 16 cores and 64 GB.
