@@ -1477,4 +1477,13 @@ figures with different x scales): each row shows the seed pairs (open: pair with
 interval for all runs and for the runs without an event. The events make the large values: the interval of N1
 becomes about 13 times narrower without them (half-width 0.45 against 0.034); N3 does not change.
 
+**D1 without events** (Chris: "without events the means are nearly equal"; information, exclusion after the data). The
+means +0.27 (Δ_c, n 6) and +0.30 (Δ_g, n 10) above come from different seeds. On the same 6 seeds without an event in
+any arm (941, 942, 943, 945, 948, 952): Δ_c = +0.271 ± 0.140, Δ_g = +0.176 ± 0.100, paired d = Δ_c − Δ_g =
++0.096 ± 0.125 (SE, n 6), 95 % interval −0.225 … +0.416; per seed +0.04 / −0.18 / −0.00 / +0.02 / −0.01 / +0.70. With
+the rule of D1 (3.14) this is "not determined": |d| ≤ 2 SE and ≤ 0.15, but 2 SE = 0.25 > 0.15. For each seed the
+identity d = N1 + N3 − m holds exactly (checked: deviation below 1e-15). N3 is about 0 and N1 is small with a small
+scatter; thus all scatter of d comes from m = ln P(D15) − ln P(X3), the finer m on the same 5-nm staircase, not from
+the stray field. Seed 952 (m = −0.61, 3.23 finding 2: same state, different response) gives the large value.
+
 Open decision of Chris (unchanged, 3.26): how to read N1.
