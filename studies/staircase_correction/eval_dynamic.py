@@ -25,6 +25,10 @@ Design B (--design B, PROTOKOLL 3.11 … 3.19) also gives the proofs of Chris (2
 
     python eval_dynamic.py --runs /root/runs > results/dynamic_D.md
     python eval_dynamic.py --design B --runs RUNS1 RUNS2 --seeds 941 … 952 --plot results/proofs_B.png
+
+Information, not a reading (PROTOKOLL 3.26, 3.28; exclusion after the data): --exclude_events EVENTS.json (output of
+check_events.py) leaves out the runs with changed cells, so each effect uses only the seed pairs without an event in
+either arm.
 """
 import argparse
 import json
@@ -75,6 +79,8 @@ def main():
     ap.add_argument("--plot", default=None, help="design B: figure of the effects with their 95 % intervals")
     ap.add_argument("--design", choices=["A", "B"], default="A",
                     help="A: arms with own preparation (D…); B: transferred start from D15 (T…, PROTOKOLL 3.11)")
+    ap.add_argument("--exclude_events", default=None,
+                    help="events JSON of check_events.py: leave out the runs with an event (information only, 3.28)")
     a = ap.parse_args()
     roots = [pathlib.Path(r) for r in a.runs]
     SEEDS = tuple(a.seeds)
@@ -95,6 +101,15 @@ def main():
     rec = {(arm, s): EC.run_record(folder("%s_s%d" % (arm, s))) for arm, _ in ARMS for s in SEEDS}
     lnP = {k: r["lnP"] for k, r in rec.items()}
     print("# Dynamic arms at d/l_ex 96, φ 0.55, 9 mT (PROTOKOLL 3.5, D1 and D2)\n")
+    if a.exclude_events:
+        ev = json.loads(pathlib.Path(a.exclude_events).read_text())
+        missing = ["%s_s%d" % k for k in lnP if "%s_s%d" % k not in ev]
+        assert not missing, "no event record for %s" % missing
+        left = sorted(k for k in lnP if ev["%s_s%d" % k]["changed"])
+        for k in left:
+            lnP[k] = float("nan")
+        print("**Information, not a reading (exclusion after the data, PROTOKOLL 3.28):** the runs with an event "
+              "(changed cells, %s) are left out: %s.\n" % (a.exclude_events, ", ".join("%s_s%d" % k for k in left)))
     print("| arm | meaning | P (W/cm³) per seed %s | n | geometric mean (W/cm³) | SD of ln P | status / Bloch points of the prepared state |"
           % " / ".join(str(s) for s in SEEDS))
     print("|---|---|---|---|---|---|---|")
@@ -132,7 +147,7 @@ def main():
             r = "not reproduced"
         else:
             r = "not determined"
-        if arm not in ("D3Pc", "T3Pc"):
+        if arm not in ("D3Pc", "T3Pc") or a.exclude_events:
             r += " (information)"
         ci = "–"
         if d["n"] >= 2 and np.isfinite(d["se"]):
@@ -142,7 +157,7 @@ def main():
         print("| %s | %s | %s | %s | %s |" % (arm, fmt(dc), fmt(d), ci, r))
         out["arms"][arm] = {"delta_c": dc, "d": d, "reading": r}
     if a.design == "B":
-        out["proofs"] = proofs(lnP, a.plot)
+        out["proofs"] = proofs(lnP, a.plot, info=bool(a.exclude_events))
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(out, indent=1))
 
@@ -155,8 +170,9 @@ def interval(s):
     return [s["mean"] - h, s["mean"] + h]
 
 
-def proofs(lnP, plot=None):
-    """Design B: the proofs N1 and N3, the resolution part m and the geometry effects, paired by seed."""
+def proofs(lnP, plot=None, info=False):
+    """Design B: the proofs N1 and N3, the resolution part m and the geometry effects, paired by seed. info: runs are
+    left out after the data, so the readings of N1 and N3 are information only."""
     rows = [("N1", "resolution of m at fixed morphology (dx 3 geometry): ln P(T15g) − ln P(T3)", "T15g", "T3"),
             ("N3", "correction against the exact fine stray field (same m): ln P(T3Pc) − ln P(X3)", "T3Pc", "X3"),
             ("Δ_g", "geometry effect of the fine staircase at dx 1.5: ln P(D15) − ln P(T15g)", "D15", "T15g"),
@@ -182,6 +198,8 @@ def proofs(lnP, plot=None):
                 r = "outside ±0.15"
             else:
                 r = "not determined"
+            if info:
+                r += " (information)"
         else:
             r = "information"
         f4 = "%+.4f" if key == "N3" else "%+.3f"                 # N3 is about 10⁻⁴: more digits
@@ -196,7 +214,7 @@ def proofs(lnP, plot=None):
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         keys = [k for k, *_ in rows]
-        fig, ax = plt.subplots(figsize=(6.4, 3.6))
+        fig, ax = plt.subplots(figsize=(6.4, 3.9))
         ax.axvspan(-0.15, 0.15, color="0.9", zorder=0, label="±0.15")
         ax.axvline(0.0, color="0.5", lw=0.8)
         for i, k in enumerate(keys):
@@ -208,7 +226,8 @@ def proofs(lnP, plot=None):
                 ax.plot(r["ci95"], [i, i], color="k", lw=2.0, zorder=3)
             ax.plot([r["mean"]], [i], "D", color="tab:red", ms=6, zorder=4)
         ax.set_yticks(range(len(keys)))
-        ax.set_yticklabels([r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"])
+        labels = [r"$N_1$", r"$N_3$", r"$\Delta_\mathrm{g}$", r"$\Delta_\mathrm{c}$", r"$m$", "total"]
+        ax.set_yticklabels(["%s  ($n = %d$)" % (t, res[k]["n"]) for t, k in zip(labels, keys)])
         ax.invert_yaxis()
         ax.set_xlabel(r"difference of $\ln P$")
         from matplotlib.lines import Line2D
@@ -216,7 +235,8 @@ def proofs(lnP, plot=None):
         ax.legend(handles=[Line2D([], [], marker="o", ls="", ms=3.5, color="0.6", label="seed"),
                            Line2D([], [], marker="D", ls="", ms=6, color="tab:red", label="mean"),
                            Line2D([], [], color="k", lw=2.0, label="95 % interval"),
-                           Patch(color="0.9", label="±0.15")], loc="lower right", fontsize=7, frameon=False)
+                           Patch(color="0.9", label="±0.15")], loc="upper center", bbox_to_anchor=(0.5, -0.2),
+                  ncol=4, fontsize=7, frameon=False)            # below the axes: no seed point is hidden
         fig.tight_layout()
         fig.savefig(plot, dpi=160)
     return res

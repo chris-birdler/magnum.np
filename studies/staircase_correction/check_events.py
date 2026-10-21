@@ -7,6 +7,8 @@ For each run: the cells inside the particles whose m changed between the start o
 centre is the FCC site with the minimum image, not the mean of the cell positions, which is wrong for a particle that
 crosses the box edge). Also the loop energy W_loop of each cycle (summary.json), which shows when a change occurs.
 Magnetic cells: the voxel geometry (T3, D15), the cells of the q-2 staircase (T3Pc, X3), the locked dx-3 geometry (T15g).
+Check of the threshold 0.9 (PROTOKOLL 3.28): the smallest m · m0 over all magnetic cells and the numbers of cells below
+0.97 and 0.99.
 
     python check_events.py --runs ROOT1 ROOT2 ... --seeds 941 ... 952 --out results/events_B   (writes .md and .json)
 """
@@ -59,7 +61,7 @@ def main():
             d = next((r / name for r in roots if (r / name / "DONE").exists()), None)
             ck = next((r / name / "checkpoint.pt" for r in roots if (r / name / "checkpoint.pt").exists()), None)
             if d is None or ck is None:
-                rows.append("| %s | %d | missing | | | |" % (arm, s))
+                rows.append("| %s | %d | missing | | | | |" % (arm, s))
                 continue
             cfg = json.loads((d / "config.json").read_text())
             lex = units(cfg["Js"], cfg["A"])["l_ex"]
@@ -81,18 +83,23 @@ def main():
                     rr = np.linalg.norm(r, axis=-1) / (0.5 * D)
                     parts[k] = {"cells": int(sel.sum()), "rR_min": float(rr.min()), "rR_max": float(rr.max()),
                                 "dot_min": float(dot[sel].min())}
-            out[name] = {"W_loop": W, "changed": parts}
+            dm = dot[ids >= 0]
+            low = {"%g" % t: int((dm < t).sum()) for t in (0.97, 0.99)}
+            out[name] = {"W_loop": W, "changed": parts, "dot_min_all": float(dm.min()), "cells_below": low}
             txt = "; ".join("particle %d: %d cells, r/R %.2f … %.2f, min m·m0 %.2f" % (
                 k, p["cells"], p["rR_min"], p["rR_max"], p["dot_min"]) for k, p in parts.items()) or "none"
-            rows.append("| %s | %d | %s | %s | %.3f | %s |" % (arm, s, txt, " / ".join("%.3g" % w for w in W),
-                                                              W[0] / W[-1], "yes" if parts else "no"))
+            rows.append("| %s | %d | %s | %s | %.3f | %.3f (%d / %d) | %s |" % (
+                arm, s, txt, " / ".join("%.3g" % w for w in W), W[0] / W[-1], dm.min(), low["0.97"], low["0.99"],
+                "yes" if parts else "no"))
             print(rows[-1], flush=True)
     md = ["# Design B: local events in the particles during the cycles (PROTOKOLL 3.26)\n",
           "Changed cells: cells inside the particles with m · m0 < 0.9 between the start of the cycles and the end. "
           "W_loop: loop energy of each cycle in J/m³ (cycle 0 starts from rest, so in a run without a change it is "
-          "about 0.45 … 0.57 of the last cycle).\n",
-          "| arm | seed | changed cells per particle | W_loop per cycle (J/m³) | W_loop cycle 0 / last | event |",
-          "|---|---|---|---|---|---|"] + rows
+          "about 0.45 … 0.57 of the last cycle). Smallest m · m0: over all magnetic cells of the run, with the numbers of "
+          "cells below 0.97 and below 0.99 (check of the threshold 0.9, PROTOKOLL 3.28).\n",
+          "| arm | seed | changed cells per particle | W_loop per cycle (J/m³) | W_loop cycle 0 / last "
+          "| smallest m · m0 (cells < 0.97 / < 0.99) | event |",
+          "|---|---|---|---|---|---|---|"] + rows
     pathlib.Path(a.out + ".md").write_text("\n".join(md) + "\n")
     pathlib.Path(a.out + ".json").write_text(json.dumps(out, indent=1))
 

@@ -1422,3 +1422,54 @@ check at q 4 of 3.22 is postponed).
 md5 check of all results (3.26 and this section). Not downloaded: the kernel cache (384³ kernel 1.37 GB, recomputable
 in about 3.5 h on an RTX 3090; 48³ kernel 2.8 MB) and the code copies /root/msc and /root/msc2 (in git). No instance
 of this session is left. Credit after the destroy: 20.70 $.
+
+### 3.28 Threshold of the event detection; effects without the runs with an event (2026-10-21, about 07:40 UTC)
+
+**Event detection** (check_events.py, 3.26). For each cell inside a particle: m · m0 between the start of the cycles
+(m0, init.pt) and the end of the run (m, checkpoint.pt). Both states are at the same phase of the field, because
+run_loops.py writes checkpoint.pt after the last full cycle of the stage. A cell is changed if m · m0 < 0.9 (a rotation
+of more than about 26°). A run has an event if at least one cell is changed. W_loop of each cycle (summary.json) gives
+the time of the change.
+
+**Check of the threshold 0.9** (Chris asked; all 60 runs of design B; new column of results/events_B.md, keys
+dot_min_all and cells_below in events_B.json). Smallest m · m0 over all magnetic cells of a run:
+- 13 runs with an event: 0.26 … 0.80.
+- 47 runs without an event: at least 0.988, with one exception: D15_s950, 0.948 (6 cells below 0.97, 72 below 0.99).
+- Each threshold above 0.80 and up to 0.948 gives the same 13 runs. With a threshold above 0.948, D15_s950 is a 14th
+  run (border case). D15_s950 enters only Δ_g, m and total, not N1 and N3.
+- Limit of the method: a cell that changes and changes back before the end of the run is not found by this
+  comparison. Only W_loop shows it.
+
+**Effects without the runs with an event** (information, not a reading: the exclusion rule was set after the data;
+eval_dynamic.py --exclude_events results/events_B.json; results/dynamic_B_noevents.md and .json, figure
+results/proofs_B_noevents.png). Each effect uses only the seed pairs without an event in either arm. Values in ln P,
+mean ± SE (n), 95 % t-interval:
+
+| effect | mean ± SE (n) | 95 % interval | note |
+|---|---|---|---|
+| N1 | +0.074 ± 0.014 (9) | +0.040 … +0.107 | all 9 pairs positive (+0.015 … +0.119; sign test, two-sided p 0.004) |
+| N3 | −0.0009 ± 0.0011 (8) | −0.0035 … +0.0017 | |
+| Δ_g | +0.300 ± 0.088 (10) | +0.101 … +0.498 | |
+| Δ_c | +0.271 ± 0.140 (6) | −0.089 … +0.631 | |
+| m | +0.029 ± 0.122 (7) | −0.269 … +0.327 | |
+| total | −0.030 ± 0.121 (7) | −0.326 … +0.265 | |
+
+- For the event-free runs the data are sufficient for N1 and N3: both intervals lie inside ±0.15, the interval of N1
+  is about 4 times narrower than the band. The interval of N1 does not include 0: a small mesh dependence of about
+  +8 % in P (factor 1.077) remains.
+- Δ_c, m and total scatter also without events (SE 0.12 … 0.14). The cause is in 3.23, finding 2: the loss at 9 mT is
+  a phase lag of 0.3 … 4 mrad, which depends on the local pinning.
+- The result is valid only for runs without an event. The event numbers T3 3 of 12, T15g 0 of 12 cannot be
+  separated from chance (Fisher exact test, two-sided p 0.22).
+
+**More seeds do not decide N1** (Chris asked whether more seeds give clean results): new seeds have events at about
+the same rate (13 of 60 runs). With the SD 0.71 of the paired N1 values (n 12, with events), 24 seeds give a 95 %
+half-width of about 0.29; K4 needs about 90 seeds (estimate, the same distribution assumed). Thus the third reading of
+N1 in the message of 2026-10-21 (12 more seeds with all arms, about 5 … 6 $) does not decide N1; it only gives the
+event rate with more precision. A test of the event rate itself needs about 40 seeds for each arm (estimate).
+
+**Figure layout** (eval_dynamic.py): the legend is now below the axes (in the event-free figure it hid one seed point),
+and each row shows its n. results/proofs_B.png is made again with this layout; dynamic_B.md and .json are identical to
+3.26.
+
+Open decision of Chris (unchanged, 3.26): how to read N1.
