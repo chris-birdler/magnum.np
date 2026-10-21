@@ -1639,3 +1639,26 @@ particle, T3Pc − T3 0.985 … 0.994.
   The 7 waiting jobs T3Pc4_s946 … s952 (unchanged lines of 20_t3pc4.jobs; no run folder existed) are in
   /root/spool_x/20_t3pc4_rest.jobs; the X3q4 dispatcher (--gpus 0,1,0,1) loaded them ("7 jobs, 7 to run") and
   started s946 and s947 on GPU 0 at once. GPU 0 use then 58 %.
+
+**X3q4 done; rule for N3 applied (13:26 … 13:30 UTC):**
+- X3q4_s941 … s944 DONE (2.51 / 3.08 / 2.82 / 3.07 h), no failure. Downloaded with T3Pc4_s941 … s943 to
+  remote_20261021_box6/runs (56 files, 22 MB, md5 OK; manifest box6_part1.md5).
+- check_events.py (threshold 0.9) on these runs:
+
+  | run | event | changed cells | smallest m · m0 |
+  |---|---|---|---|
+  | X3q4_s941 | yes | particle 0: 21, particle 1: 14 (r/R 0.88 … 1.03) | 0.043 |
+  | X3q4_s942 | yes | particles 1 / 2 / 3: 221 / 95 / 285 (r/R 0.62 … 1.03) | −0.867 |
+  | X3q4_s943 | no | none | 1.000 |
+  | X3q4_s944 | no | none | 0.998 |
+  | T3Pc4_s941 | yes | particle 0: 21, particle 1: 14 (r/R 0.88 … 1.03) | 0.043 |
+  | T3Pc4_s942 | yes | particles 1 / 2 / 3: 226 / 95 / 288 (r/R 0.62 … 1.03) | −0.867 |
+  | T3Pc4_s943 | no | none | 1.000 |
+
+  Facts, not evaluated: in each seed the two arms have the event in the same particles and nearly the same cells;
+  at q 2 the events of T3Pc and X3 were in the seeds 944, 947, 949, 950 (3.26).
+- Consequence: of the seeds 941 … 944, at most 2 can give an event-free N3 pair (943; 944 if T3Pc4_s944 stays
+  without an event). The rule of PLAN 9.2 applies: X3q4_s945 (line of jobs/96_q4_X3q4_extra.jobs; checked against
+  the X3q4_s944 production line: only name, seed and D15 path differ) is in /root/spool_x/10_x3q4_extra.jobs,
+  priority 10, so it starts at the next free slot before T3Pc4_s950 … s952. X3q4_s946 runs only if after 945 fewer
+  than 3 event-free pairs exist (also decided as soon as the events of T3Pc4_s944 and s945 are known).
