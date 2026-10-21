@@ -1997,3 +1997,50 @@ geometry the same method gives about the factor 3 that the runs showed, 3.28).
   patches (not built).
 - Box 7 had no work from 20:05 UTC. Go of Chris ("Destroy"): box 7 (vast.ai 57100794) destroyed at about 20:25 UTC;
   all results were local before (md5). The account has only instance 53995473 of the other session. Credit 11.03 $.
+
+### 3.36 Speed patch of the correction (PLAN 10) and an independent audit of the time step (2026-10-21, about 21:00 UTC)
+
+**Patch** (go of Chris: "Mach den Patch"; branch perf/staircase-speed from feature/staircase-correction, worktree
+~/Documents/code/magnum.np-staircase-perf; commits 2b4a2d9, 01ed90c):
+- Pair sum: pair_matrix builds one CSR matrix (int32 indices; rows 3·target + a, columns 3·source + b; equal pairs
+  summed) on the CPU in the set-up; each evaluation is one sparse product. Local CPU check (2.7 M random pairs):
+  25 ms against 324 ms for gather + index_add (fp32), relative difference 2.4e-7 (fp32) and 6.6e-16 (fp64).
+- Centroid term under PBC: periodic central differences in real space instead of i sin w_k in Fourier space; two
+  convolutions with batched FFTs (12 FFTs instead of 24). The padded open shape keeps the old function
+  (centroid_field_fourier).
+- C1 and C2 of PLAN 10: test_staircase.py 18 passed (the 15 old tests; the pair-form test now also with open
+  boundaries; new: centroid term new against old under PBC, q 4, below 1e-12; pair_matrix against index_add with
+  repeated pairs, below 1e-12).
+- Finding of the audit (below), fixed before any GPU use: magnum.np sets the default device to the GPU, so
+  pair_matrix made some index tensors on the GPU and mixed them with CPU tensors; the set-up would have failed on a
+  GPU. The CPU tests could not see it. Fix: pair_matrix works inside torch.device("cpu"); new test with the meta
+  device as default (the old code fails it with "expected to be in the same device"); targeted tests 5 passed.
+- Open: C3 (local, the state T3Pc_s941, old against new), C4 and C5 (GPU; need a box).
+
+**Independent audits** (two context-free agents, read-only, no GPU; all gains are estimates from a bandwidth model
+of the V100 and the measured times of 3.35; reports in the session record):
+- Time step without the correction (agent A). Basis: production times per accepted step 20.8 ms at N 104 and
+  44.1 ms at N 152 (run summaries), about 3.3 and 7.0 ms per stage. Up to N 104 the time per call does not grow with
+  N: the runs are partly limited by the CPU side (Python, compile guards, about 40 kernel launches per stray-field
+  call). Items: (A1) one compiled function for the local fields, the field sum, the LLG right-hand side and dt:
+  about 15 % at N 148, about 20 % at N 104; (A2) the stray-field path: component-major layout, one fused complex
+  multiply, kernel pre-scaled by 1/n, the block term folded into the k = 0 entries: about 14 % (the trivial part
+  about 4 %); (A3) compiled RKF45 combination and error norm: about 13 % at N 148; (A4) the RKF45 step tries a full
+  step past the end of each sample interval and rejects it (rkf45.py, step(); checked in the code): about 4.5 %, a
+  one-line fix, bitwise the same in the normal case; (A5) CUDA graphs: up to about 30 % at N 104; (A6) one batched
+  FFT for the 3 components: unknown, to measure. A1 … A4 together: about 7.0 → 4 ms per stage at N 148. Not
+  proposed: box sizes with small prime factors (104 = 8·13, 148 = 4·37) would speed up all FFTs, but change the
+  geometry (decision of Chris). Small bugs outside the production path: the kernel cache name has no true_pbc and no
+  image-shell count; alpha = 0 and rtol = 0 are ignored by "or". A1 … A3 change round-off only, which changes single
+  runs after events: check with seed pairs, not bitwise.
+- Correction (agent B), besides the device finding: (B1) take K * (v m) from the stray-field term (6 FFTs fewer;
+  1.3 … 4.2 ms per call; changes about 1e-8 relative through the void moments; needs one combined term);
+  (B2) BSR with 3×3 blocks instead of CSR: 40 instead of 72 bytes per pair, about half the pair-sum time and memory
+  (BSR @ vector works on the CPU; GPU dispatch to check); (B3) the 4-fold FCC translation symmetry of the geometry
+  (checked bitwise at N 104 and 148): a quarter of the matrix memory; (B4) set-up memory for q 8 and q 16: the table
+  [343, q³, q³, 6] (4.3 GB at q 8, 276 GB at q 16) can be replaced by a cross-correlation of the two sub-cell patterns
+  (checked: 5.6e-17), the full sub-cell map is converted to fp64 on the GPU (4.6 GB at N 104, 13.3 GB at N 148 at
+  q 8), and the einsum copies the whole table in each batch (4.02 GiB, the amount of the out-of-memory report of
+  3.35); (B5) the host build of the sub-cell map only for the coarse surface cells, without the fine mesh: checked
+  bitwise equal at N 48 q 4, N 104 q 2, N 148 q 2; 1 … 20 s instead of 6 … 44 s, and q 8 at N 148 becomes possible.
+  Not worth it: pruning small pairs, symmetric storage, a pattern table. No other problem in the new code.
