@@ -5,7 +5,7 @@ two parts of the correction (pair sum of the window, centroid term), set-up time
 on a GPU, the peak GPU memory. The model is built as run_loops builds it (energy_budget.build); the precision is that
 of the runs (single). On a CPU the times give only the parts that exist, not the GPU times of the runs.
 
-    python profile_staircase.py --config RUN/config.json --init RUN/init.pt               # the run itself
+    CUDA_DEVICE=0 python profile_staircase.py --config RUN/config.json --init RUN/init.pt   # the run itself, GPU 0
     python profile_staircase.py --config RUN/config.json --d_lex 216 --phi 0.65 --Leff_lex 30   # other geometry
 """
 import argparse
@@ -80,7 +80,7 @@ def main():
         g = torch.Generator().manual_seed(1)
         m = torch.randn((N, N, N, 3), generator=g, dtype=torch.float64)
         m /= m.norm(dim=-1, keepdim=True)
-    m = m.to("cuda" if torch.cuda.is_available() else "cpu")
+    m = m.to(torch.get_default_device())                    # magnum.np's device (set CUDA_DEVICE as the dispatcher does)
     t = time.perf_counter()
     state, terms, ids, Kd = EB.build(cfg, m)
     t_build = time.perf_counter() - t
