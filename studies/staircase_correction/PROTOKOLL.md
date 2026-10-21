@@ -1561,3 +1561,14 @@ P; it is not needed to show the correction (N3). Chris may release it later.
 
 **Next step (proposal):** PLAN section 9, the dynamic series in q (q 4, q 8) and the extrapolation to the smooth
 spheres; checked by a context-free review (12 findings, all taken in); waiting for the go of Chris.
+
+### 3.29 Dynamic series in q: go for phases A and B (2026-10-21, about 11:30 UTC)
+
+**Decision of Chris:** go for phase A (A0 and A, PLAN 9.1 … 9.2) and phase B (PLAN 9.3, in advance: the start rule
+of 9.3 decides on the box), with the readings and rules of PLAN 9.1 … 9.3, fixed before the data. Budget: A at most
+10 $, B at most 3 $. Phase C (extrapolation instead of q 16) is not yet decided (no cost).
+
+**Market (vast.ai search, 2026-10-21 about 11:30 UTC):** no RTX 3090 near 0.17 … 0.20 $/h with at least 30 GB host
+memory is offered now; the cheapest suitable offers: RTX 3090 0.28 … 0.30 $/h, A100 PCIe 0.35 $/h, RTX 4090
+0.40 … 0.46 $/h. The cost table of PLAN 9.5 assumed 0.17 … 0.20 $/h; at these prices the time of the box must be
+shorter (a faster GPU) to stay in the budget. Choice of the box: open (question to Chris).
