@@ -1472,4 +1472,9 @@ event rate with more precision. A test of the event rate itself needs about 40 s
 and each row shows its n. results/proofs_B.png is made again with this layout; dynamic_B.md and .json are identical to
 3.26.
 
+**Comparison on one axis** (plot_events_compare.py, results/proofs_B_compare.png; Chris did not see the difference in the two
+figures with different x scales): each row shows the seed pairs (open: pair with an event) and the mean with its 95 %
+interval for all runs and for the runs without an event. The events make the large values: the interval of N1
+becomes 14 times narrower without them; N3 does not change.
+
 Open decision of Chris (unchanged, 3.26): how to read N1.
