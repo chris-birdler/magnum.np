@@ -1610,3 +1610,13 @@ These are cells with only 2.5-nm sub-cells in the sphere; they start with the pl
 (transfer_m) and are then relaxed with the rest. Consequence for the readings: Δ_24 compares the relaxed states of
 T3Pc4 and T3Pc; as in design B (check_state_overlap.py), the overlap of these states per particle is checked before
 Δ_24 is read.
+
+**A0 result (10:49 UTC, 33 min after the start; rule of PLAN 9.1 met):**
+- Time per 500 relaxation iterations: X3q4 108 … 150 s (two X3q4 and one T3Pc4 on each GPU), T3Pc4 68 … 74 s.
+  q-2 reference (X3_s943, box 2, shared GPU): 70 s; T3Pc_s943: 89 s.
+- T3Pc4_s941: relaxation converged after 4500 iterations (777 s); cycles 364 and 400 s; time step 6.59 … 6.66 ps,
+  the same as at q 2 (the small cells of the q-4 staircase do not make the system stiffer).
+- Projection (estimate): X3q4 about 1.5 … 3.5 h per run after the kernel; T3Pc4 about 1.0 … 1.8 h per run, 12 runs
+  with 2 at the same time, 6 … 11 h. Phase A about 6 … 11 h, about 1.6 … 3.0 $; far below the budget of 10 $. The
+  estimate of 3.22 for X3q4 (6 … 10 h per run) was too high. The queue goes on.
+- Credit at 10:49 UTC: 17.22 $.
