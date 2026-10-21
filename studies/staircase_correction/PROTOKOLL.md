@@ -1496,14 +1496,15 @@ tell what is coarse (10 nm) and what is fine (5 nm). "Roughness" (step size of t
 
 | name | m | roughness | stray field | run code |
 |---|---|---|---|---|
-| Coarse | coarse | coarse | Newell | T3 |
-| Fine m | fine | coarse | Newell | T15g |
-| Fine | fine | fine | Newell | D15 |
-| Coarse m Newell | coarse, weight v | fine | Newell + correction | T3Pc |
-| Coarse m FFT | coarse, weight v | fine | exact FFT on the fine cells | X3 |
+| Coarse | coarse | coarse | Newell on 10-nm cells | T3 |
+| Fine m | fine | coarse | Newell on 5-nm cells | T15g |
+| Fine | fine | fine | Newell on 5-nm cells | D15 |
+| Coarse m corrected | coarse, weight v | fine | Newell on 10-nm cells + correction | T3Pc |
+| Coarse m FFT | coarse, weight v | fine | Newell on 5-nm cells (exact for this m) | X3 |
 
 results/scheme_B.png is made again with these names (plot_scheme.py). Final form (Chris): the title is a short
 name that separates the arms at a glance; the line below the title always tells what m and the roughness are (for
-example "fine m, coarse roughness").
+example "fine m, coarse roughness"). All arms use the Newell tensor with FFT (X3: DemagField on the fine mesh,
+DemagStaircaseFine); T3Pc is named "corrected" because only its correction separates it (Chris).
 
 Open decision of Chris (unchanged, 3.26): how to read N1.
