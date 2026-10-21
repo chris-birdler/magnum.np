@@ -1891,3 +1891,63 @@ base error without correction):
 Limits of the options: q 8 needs 13.25 GiB GPU memory for the set-up already at d/l_ex 96 (3.29), so only 1 run on a
 16-GB GPU; whether a production box still fits is not checked. q 16 needs a patch (convolution form instead of the
 table of 343 · q⁶ · 6 values, about 280 GB). The decision on the setting is open (Chris).
+
+### 3.34 Interpretation of the correction: results and conclusion (2026-10-21, about 20:00 UTC)
+
+Summary of the discussion with Chris on the results of 3.26 … 3.33. A context-free review checked the draft against
+the sources; its findings are taken in (one of them corrected 3.30 and 3.33 above).
+
+**Terms of this section.** Base seeds: 943, 945, 948; all 4 particles have w / w_base 0.87 … 1.13 in T3, T15g, T3Pc,
+X3, T3Pc4, X3q4 (D15 0.80 … 1.34; 3.30). Other seeds: the 9 seeds with at least one particle above 1.3 w_base in T3
+(941, 942, 944, 946, 947, 949, 950, 951, 952). w_k is the work of the applied field on particle k (3.32).
+
+**Shown, static:**
+1. The correction gives the stray field of the q-staircase: energy error 1 … 2 % of the staircase effect S (3.7 …
+   3.9; pairwise form, window 3 cells, with the centroid term). Up to q 8 it stays within 1.3 % of S(q 2) of the
+   exact field X3 (3.27).
+2. The exact field X3 converges in q: the ratio of its increments per halving of the sub-cell is 0.484 … 0.485, that
+   is first order in 1/q. Share of the way from the 10-nm staircase to the smooth spheres: about 49 / 75 / 87 % at
+   q 2 / 4 / 8 (3.27; an estimate from 3 static points).
+
+**Shown, dynamic:**
+3. N3 (correction against the exact field): q 2: −0.0009 ± 0.0011 (SE, n 8, event-free pairs), −0.0020 ± 0.0010
+   (n 12, all runs) (3.26, 3.28). q 4: +0.0013 ± 0.0010 (n 3, event-free), +0.0054 ± 0.0046 (n 5, all runs; X3q4 ran
+   for 5 seeds) (3.29, 3.31). Both arms have their events in the same seeds and particles, and in nearly the same
+   cells.
+4. Effect on the loss at q 2 (event-free pairs, 3.28). On the same 6 seeds: Δ_c +0.271 ± 0.140, Δ_g +0.176 ± 0.100,
+   paired d = Δ_c − Δ_g +0.096 ± 0.125, 95 % interval −0.225 … +0.416: not determined. Direct comparison with
+   Fine: total −0.030 ± 0.121 (n 7), 95 % interval of the mean −0.33 … +0.27: not determined. Per seed, total is
+   −0.44 … +0.60 on the other seeds and smaller than 0.03 on the base seeds. Because N3 ≈ 0, total = −m per seed
+   within 0.01. Thus the per-seed difference to Fine is the effect of the finer m (m = ln P(D15) − ln P(X3)), not of
+   the stray field. With all runs (3.26): Δ_g +0.604 ± 0.224, Δ_c +0.275 ± 0.282, total −0.216 ± 0.190 (n 12).
+5. Step q 2 → q 4 (3.29). Event-free: −0.0475 ± 0.0058 (n 4: 943, 945, 946, 948). On the base seeds the changes at
+   q 2 gave Δ_c −0.013 … +0.009, Δ_g −0.034 … +0.013 and N1 +0.015 … +0.022, but Δ_24 is −0.052 … −0.038 and
+   Δ_c(4) −0.051 … −0.043. T3 → T3Pc and T3Pc → T3Pc4 change the stray field and the volume weights of the surface
+   cells together, so these values cannot separate the two. The cause of the −0.04 … −0.05 is not determined
+   (possible: the volume weights, which change with q; the start state at q 4, whose overlap with T3Pc is 0.9907 …
+   0.9996 per particle, 3.29). For the other seeds the step is not determined: events remove 8 of the 12 pairs, and
+   of the other seeds only 946 stays (Δ_24 −0.062).
+6. Events (of 12 runs): T3 3, T15g 0, D15 2, T3Pc 4, X3 4, T3Pc4 6; X3q4 2 of 5. With the runs that have an event,
+   the scatter is large (Δ_24 −1.33 … +0.86 per seed, −0.152 ± 0.155, n 12, not determined). Without them, most
+   other seeds are missing. Events and a large share of the loop energy occur together in the same particles (3.30;
+   a co-occurrence, the mechanism is not checked). In the stationary cycles there are no jumps: the loss is the
+   phase lag of a linear response, and this lag depends on the local pinning of the internal structure (3.16, 3.23).
+   Hint, not significant: 6 seed pairs have an event only in the run with coarse m, 1 only in the run with fine m
+   (pairs T3/T15g and T3Pc/D15; seed 951 is on both sides); sign test p 0.06 one-sided, 0.125 two-sided.
+7. The base seeds are valid data with a real non-uniform magnetization dynamics. They show no effect of the changes
+   at q 2. They cannot show how strongly the loss of the other seeds responds to q.
+
+**Conclusion (discussed with Chris):**
+- For the stray field the method is clear. The correction gives the field of the q-staircase within the tolerances
+  above (statically up to q 8, dynamically at q 2 and q 4). This field converges to that of the smooth spheres, first
+  order in 1/q.
+- The convergence of the loss in q is not shown and not contradicted. From q 4 on the events remove the other seeds
+  from the pairs.
+- The steps of m stay; they are part of the FD model. At q 2 the per-seed difference to Fine is this effect of m.
+- At q 2 the effect of the correction on the loss against Fine is not determined (paired d +0.10 ± 0.13, total
+  −0.03 ± 0.12; the 95 % intervals of the means are about ±0.3).
+- Main β powder study: without the correction the static staircase error is 14 … 306 % of |E_K| (median 67 %). With
+  the correction it falls about as q^−1.05: median 32 / 16 / 8 % at q 2 / 4 / 8; below the 10 % rule of 3.1 are
+  8 / 29 / 59 % of the points (3.33, estimate). Thus the correction is expected to remove most of the stray-field
+  error of the staircase there. Its effect on the loss at that geometry is not measured.
+- Open: the cost per time step (3.35) and the choice of q.
