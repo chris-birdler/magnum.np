@@ -78,7 +78,7 @@ def main():
         m = torch.load(a.init, map_location="cpu", weights_only=False)["m"]
     else:
         g = torch.Generator().manual_seed(1)
-        m = torch.randn((N, N, N, 3), generator=g, dtype=torch.float64)
+        m = torch.randn((N, N, N, 3), generator=g, dtype=torch.float64, device="cpu")
         m /= m.norm(dim=-1, keepdim=True)
     m = m.to(torch.get_default_device())                    # magnum.np's device (set CUDA_DEVICE as the dispatcher does)
     t = time.perf_counter()
