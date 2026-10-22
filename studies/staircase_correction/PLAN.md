@@ -533,8 +533,8 @@ equal) including the control.
   accept or reject decision). The result then gives the probe ρ up to the interval before; Chris decides.
 - B1 (approved model change; ms_void, the ratio Ms_void / Ms without a unit, is 1e-8 in production; S1 measured a field
   change of 3.2e-9 relative with it, and 1.5e-16 in double precision without void moments): S1 has verified the code.
-  The double-precision run measures only the size of the model change. Proposal, open for Chris: pass if ρ in double
-  precision is at most 0.1 ρ_null, that is the model change is at least 10 times smaller than the scatter that
+  The double-precision run measures only the size of the model change. Criterion (approved by Chris): pass if ρ in
+  double precision is at most 0.1 ρ_null, that is the model change is at least 10 times smaller than the scatter that
   round-off causes in production.
 - Information, no criterion: ρ and the largest angle in degrees between m_new and m_old after each saved sample
   interval; the probe ρ after each sample interval; the counts of tries and accepted steps in both arms; D_new in
@@ -559,3 +559,6 @@ use of the new code in the main study is decided after section 13. The S3 bounds
 calibration 1e-5) and the S3 proposal of 3.39 are not used; S3 in single precision gives ρ_null and stays as
 information. The field change of B1 is 3.2e-9 relative (measured, S1); "about 1e-8" in sections 11 and 12 was the
 estimate. The scripts s4_a.sh and s4_eval.py stay as a record; they did not run.
+
+**Decision of Chris (2026-10-22, about 11:00 UTC).** Section 13 approved as written, with the B1 criterion 0.1 ρ_null
+("Ok").
