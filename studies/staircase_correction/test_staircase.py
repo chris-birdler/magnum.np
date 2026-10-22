@@ -305,3 +305,29 @@ def test_setup_in_blocks_of_offsets_is_bitwise_equal(q):
     blk = NearCorrection(n, occ, q, 2, centroid=True, table_bytes=3 * q ** 6 * 6 * 8)
     assert torch.equal(one.B, blk.B)
     assert torch.equal(centroid_offsets(occ, q), centroid_offsets(occ, q, chunk=1000))
+
+
+@pytest.mark.parametrize("ms_void, tol", [(0.0, 1e-12), (1e-8, 1e-7)])
+def test_centroid_term_from_the_stray_field(ms_void, tol):
+    """Audit B1: the centroid term takes K * (v m) from the stray field of DemagField (h_demag / M_s). Without void
+    moments it equals the own convolution within round-off; with them (ms_void, as in run_loops) the change is of
+    the order of ms_void. last_h gives nothing for another tensor or after an in-place change."""
+    from magnumnp import Mesh, State, DemagField, DemagStaircaseCorrection
+    torch.set_default_dtype(torch.float64)
+    N, q, Ms = 16, 2, 8e5
+    ids = fcc_box(q * N, 6.0, 0.5)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    v = n / q ** 3
+    state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(2, 2, 2)))
+    state.m = random_m((N, N, N), 11)
+    state.material["Ms"] = torch.as_tensor(np.maximum(v, ms_void) * Ms).reshape(N, N, N, 1)
+    dem = DemagField(true_pbc=True, extrapolate=True)
+    term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form="pair", centroid=True, demag=dem)
+    state.m = state.m.clone()
+    h_own = term.h(state)                                      # no stray field of this m yet: own convolution
+    assert dem.last_h(state) is None
+    dem.h(state)
+    h_b1 = term.h(state)                                       # K * (v m) from the stray field
+    assert float((h_b1 - h_own).abs().max() / h_own.abs().max()) < tol
+    state.m.mul_(1.0)
+    assert dem.last_h(state) is None

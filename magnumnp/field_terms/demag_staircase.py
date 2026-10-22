@@ -137,7 +137,7 @@ def centroid_offsets(occ, q, chunk=1 << 18):
     return d.reshape(*shape, 3)
 
 
-def centroid_field(Nhat, v, d, m, shape=None):
+def centroid_field(Nhat, v, d, m, shape=None, h1=None):
     """First-moment part of the far field of the cut cells, with the rfft kernel Nhat of DemagField (list of lists
     [3][3]; shape: its FFT shape, (N, N, N) with PBC, (2N, 2N, 2N) for open boundaries):
         h_i = d_i . (D K * (v m))_i - sum_k (D_k K * (v d_k m))_i,
@@ -145,7 +145,10 @@ def centroid_field(Nhat, v, d, m, shape=None):
 
     With PBC the FFT is circular: i sin w_k is then exactly the periodic central difference (f[x+1] - f[x-1]) / 2,
     and the convolution commutes with it. Thus h = sum_k d_k CD_k(K * v m) - K * sum_k CD_k(v d_k m): two
-    convolutions (12 FFTs) instead of 24 (PROTOKOLL 3.36). Open boundaries use centroid_field_fourier."""
+    convolutions (12 FFTs) instead of 24 (PROTOKOLL 3.36). Open boundaries use centroid_field_fourier.
+
+    h1: K * (v m), if the caller has it (the stray field of DemagField divided by M_s; a uniform part does not
+    matter, the differences remove it): then one convolution (6 FFTs; audit B1)."""
     N = v.shape[0]
     s = tuple(shape) if shape is not None else (N, N, N)
     if s != (N, N, N):
@@ -162,7 +165,8 @@ def centroid_field(Nhat, v, d, m, shape=None):
         return 0.5 * (torch.roll(f, -1, k) - torch.roll(f, 1, k))
 
     vm = v[..., None] * m
-    h1 = conv(vm)
+    if h1 is None:
+        h1 = conv(vm)
     h = sum(d[..., k:k + 1] * cd(h1, k) for k in range(3))
     return h - conv(sum(cd(vm * d[..., k:k + 1], k) for k in range(3)))
 
@@ -389,7 +393,12 @@ class DemagStaircaseCorrection(LinearFieldTerm):
             dem = self._demag
             if not hasattr(dem, "_N"):
                 dem._N = dem._init_N(state)
-            h = h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=tuple(dem._shape(state)))
+            # K * (v m) from the stray field of this m, if DemagField has it (audit B1): material Ms = v M_s, so
+            # h_demag / M_s = K * (v m) + the field of the void moments (ms_void, about 1e-8) + the uniform block
+            # term of true_pbc, which the central differences remove
+            hd = dem.last_h(state) if hasattr(dem, "last_h") else None
+            h = h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=tuple(dem._shape(state)),
+                                              h1=None if hd is None else hd / self._Ms)
         return h
 
     def E(self, state, domain = Ellipsis): # without torch.compile, as DemagField.E
