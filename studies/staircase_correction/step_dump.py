@@ -70,7 +70,8 @@ def main(argv):
             if "probe_idx" not in res:
                 mag = (state.m.detach().norm(dim=-1) > 0).reshape(-1).cpu().nonzero().squeeze(1)
                 g = torch.Generator().manual_seed(0)
-                res["probe_idx"] = mag[torch.randperm(len(mag), generator=g)[:2048]].sort().values
+                # device: magnum.np sets the default device to cuda on the GPU, the generator is on the CPU
+                res["probe_idx"] = mag[torch.randperm(len(mag), generator=g, device="cpu")[:2048]].sort().values
             tr = res["trace"]
             tr["tries"].append(tries[0])
             tr["accepted"].append(int(state._step))
