@@ -78,9 +78,9 @@ def build(cfg, m):
                                             extrapolate=True)
     elif args.staircase != "none":
         from magnumnp import DemagStaircaseCorrection
-        from magnumnp.field_terms.demag_staircase import staircase_cells
+        from geometry import fcc_subcells
         q_s = args.staircase_q
-        n_s, pid_s, occ_s = staircase_cells(fcc_box(q_s * N, d, dx / q_s)["ids"], q_s)
+        n_s, pid_s, occ_s = fcc_subcells(N, d, dx, q_s)                # as run_loops (bitwise equal; audit B5)
         assert np.array_equal(pid_s, ids.astype(np.int64)) and np.allclose(n_s / q_s ** 3, geo["frac"], atol=1e-6)
         terms["demag_corr"] = DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
                                                        centroid=args.staircase_centroid, demag=stray)
