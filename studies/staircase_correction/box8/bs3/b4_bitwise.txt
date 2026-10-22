@@ -1,0 +1,2 @@
+after  256 sample intervals: bitwise equal False, max |dm| 1.259e-04, t 3.333333333333364e-08 / 3.333333333333333e-08
+RESULT bitwise equal: False
