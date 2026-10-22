@@ -10,6 +10,10 @@ Reduce the per-cell accumulators of one run (run_loops --acc, audit 3 item 9b) t
              smoothed 0.5 L_eff, as phase_extra.py), rest, and the 10 % cells with the largest p: volume share,
              share of the local loss p, share of p_fund, mean and spread of the local lag of the fundamental
              along the drive (weighted by |m1_par|^2, relative to the drive fundamental h1)
+  particles  per particle q (ids == q, PROTOKOLL 7.137): share of the box loss, R1 = p_fund / p of the particle,
+             R_harm and R_rest of the particle (with mk2), and for the classes core (r/R < 0.5), rim (>= 0.8), texture
+             top 10 % and p top 10 % (thresholds of the whole box): the volume share of the class in the particle and
+             the concentration c = (share of the particle loss in the class) / (volume share)
   slices     in the plane z = first cell layer, for x = p, harm (Σ_{k=2..K} p_k), rest (p − Σ_k p_k, signed):
              <stage>_x_rel = x / <stage>_x_scale (float16, float32 if float16 overflows), <stage>_x_scale = mean |x|
              and <stage>_x_mean = mean x of the particle cells of the plane (W/m³, float64); read the values with
@@ -18,6 +22,7 @@ Reduce the per-cell accumulators of one run (run_loops --acc, audit 3 item 9b) t
              (values above 65504 overflow to inf, PROTOKOLL 7.61). Before 2026-10-14 there was no _scale: x_rel =
              x / x_mean, and a plane with x_mean ≤ 0 was stored as zeros (the rest at 60 MHz, PROTOKOLL 7.90)
     python acc_reduce.py runs/S001 [...]
+    python acc_reduce.py --out DIR runs/S001 [...]     (writes DIR/<run>/acc.json and acc_slices.npz instead)
 """
 import json
 import math
@@ -68,8 +73,10 @@ def harmonic_loss(mk2, alpha, Ms, w):
     return alpha * MU0 * Ms / GAMMA * w * w * k[None, :] ** 2 * mk2.astype(np.float64) / 2.0
 
 
-def run(d):
+def run(d, out_dir=None):
+    """Reduce the accumulators of run folder d; write acc.json and acc_slices.npz into out_dir (default: d)."""
     d = pathlib.Path(d)
+    out_dir = pathlib.Path(out_dir) if out_dir else d
     cfg = json.loads((d / "config.json").read_text())
     alpha, Ms = cfg["alpha"], cfg["Js"] / MU0
     e = np.array(cfg["direction"], float)
@@ -123,12 +130,24 @@ def run(d):
             if harm is not None:
                 where[k]["p_harm_share"] = float(ph[sel].sum() / ph.sum())
                 where[k]["p_rest_share"] = float(prest[sel].sum() / prest.sum())
+        pid = ids[mask]
+        particles = []
+        for q in range(int(pid.max()) + 1):
+            sq = pid == q
+            rec = {"p_share": float(p[sq].sum() / p.sum()), "R1": float(pf[sq].sum() / p[sq].sum())}
+            if harm is not None:
+                rec.update({"R_harm": float(ph[sq].sum() / p[sq].sum()), "R_rest": float(prest[sq].sum() / p[sq].sum())})
+            for k in ("r<0.5", "r>=0.8", "texture top 10%", "p top 10%"):
+                v = float(classes[k][sq].mean())
+                rec["vol " + k] = v
+                rec["c " + k] = float(p[sq & classes[k]].sum() / p[sq].sum() / v) if v > 0 else float("nan")
+            particles.append(rec)
         B = 1000.0 * np.abs(np.loadtxt(next(d.glob("samples_*_%s.csv" % stage)), delimiter=",", comments="#")[:, 7]).max()
         out["stages"].append({"stage": stage, "B_peak_mT": float(B), "n_samples": int(z["n_samples"]),
                               "cycles_from": int(z["cycles_from"]), "check_p_box_over_p_dis": check,
                               "check_ok": abs(check - 1.0) < CHECK_TOL, "R1": R1,
                               "lag_drive_deg": math.degrees(float(np.angle(a1.sum() / h1))) if abs(h1) > 0 else None,
-                              "where": where, **({"harm": harm} if harm is not None else {})})
+                              "where": where, "particles": particles, **({"harm": harm} if harm is not None else {})})
         fp = np.zeros(ids.shape, np.float32)
         fp[mask] = p
         fm = np.zeros(ids.shape, np.float32)
@@ -150,10 +169,15 @@ def run(d):
                where["texture top 10%"]["p_share"], where["p top 10%"]["p_share"]), flush=True)
     slices["ids"] = ids[:, :, 0]
     out["stages"].sort(key=lambda s: s["B_peak_mT"])
-    (d / "acc.json").write_text(json.dumps(out, indent=1))
-    np.savez_compressed(d / "acc_slices.npz", **slices)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "acc.json").write_text(json.dumps(out, indent=1))
+    np.savez_compressed(out_dir / "acc_slices.npz", **slices)
 
 
 if __name__ == "__main__":
-    for d in sys.argv[1:]:
-        run(d)
+    args = sys.argv[1:]
+    top = None
+    if args[:1] == ["--out"]:
+        top, args = pathlib.Path(args[1]), args[2:]
+    for d in args:
+        run(d, top / pathlib.Path(d).name if top else None)
