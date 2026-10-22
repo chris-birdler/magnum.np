@@ -7928,6 +7928,206 @@ with s₁ 0.113: 0.042 (with s₁ 0.118 from the sensitivity: 0.044).
 
 **Open for Chris:** the second step of D1 (K2 and K4 do not meet the target); the question of the 2 K1 runs; D3.
 
+### 7.136 PLAN 4.15, phase 1: investigation of K1_4 and K1_8; start of the second step of D1 (2026-10-21/22)
+
+All times UTC. Terms as in PLAN 4.15 and 7.132 … 7.135. Run code on the instance: 8640e55 (unchanged).
+
+**Summary.**
+- The additional loss of K1_4 and K1_8 is mostly in particles 0 and 3 (the particles with the easy axis at 37° to the
+  drive); at K1_8 also in particle 2.
+- In the other 7 K1 runs, no effect of the easy-axis angle on the loss of a particle is found (−1.4 ± 3.4 W/cm³ at
+  50 mT, mean ± SE, n 7).
+- In the prepared state, the core of the particles 0 and 3 of the other 7 K1 runs has a mean m·e of magnitude
+  0.34 … 0.64 (14 particles). The magnitude is below 0.11 in 3 of the 5 particles with at least 2 times the reference
+  loss at 50 mT, and in particles 0 and 3 of K3_0 and K3_1. This is a correlation, not a cause.
+- The per-cell change between the two states at H = 0 follows the angle of the easy axis, also in a normal run. It is
+  not a measure of the particle loss.
+- The cause of the additional loss is not known.
+
+**Terms.**
+- Particle p (0 … 3): the order of geometry.FCC_SITES. The easy axis of the particle anisotropy
+  (anisotropy_model.particle_axes) is at 37° to the drive for the particles 0 and 3 (cos 0.795) and at 79° for the
+  particles 1 and 2 (cos 0.188). This is the same in all runs (it does not depend on the seed).
+- e: the drive direction (x). r: the distance from the particle centre over the particle radius. Core: r < 0.5, as
+  for the core share of 7.135.
+- P_p: the loss density of particle p in W/cm³ of the particle volume. P_p is f (30 MHz) times μ0 ∮ H dM_p (M_p: the
+  mean of M_s m·e over the cells of particle p, column Mp<p> of samples_<i>_<stage>.csv; H: the applied field). Mean of
+  the last 2 cycles of the stage (eval_corners_sat uses the calm tail of at least 2 cycles). The 4 particles have the
+  same number of cells, thus φ_vox / 4 times the sum of the 4 P_p is the value P of the simulation box (ln P of 7.135).
+- P_ref: the mean P_p of the 28 particles of the other 7 K1 runs (K1_0 … K1_3, K1_5 … K1_7) at the same amplitude.
+- Replay: a run of run_loops with the production job line of a run, started from the state that the run stored after
+  its 35 mT stage (ckpt_02_amp02.pt). It runs the stages 50 … 150 mT again.
+- States at H = 0: the state at phase 180° (H = 0 on the falling branch) and at phase 360° (H = 0 on the rising
+  branch) of the last 50 mT cycle of a replay. Branch angle: per cell, the angle between m in these 2 states. Mean
+  branch angle: the mean over the cells of a particle (195 360 cells in each K1 particle, 194 016 at K3). Angle sum:
+  the sum of the branch angles over a set of cells.
+- dM0_p: M_p at H = 0 on the falling branch minus M_p at H = 0 on the rising branch, last cycle of the stage, over
+  M_s (from the samples files, linear interpolation at the sign changes of H).
+- Azimuth concentration: for a set of cells, the length of the mean unit vector of their azimuths around u_p. 1: all
+  cells are at one azimuth (one patch). Near 0: no single azimuth.
+
+**Decisions of Chris and runs.**
+- 21:16: "D1 c, und k1 untersuchen". The second step of D1 (c): seeds 4 and 5 of K2 and K4 (then n 6 at each corner).
+  Investigate K1_4 and K1_8 (finding of 7.135).
+- 21:17: jobs/corners_sat_large_k45.txt (main e7bce26, md5 f179999e: K2_4_sat, K4_4_sat, K2_5_sat, K4_5_sat with the
+  seeds 2025, 2045, 2026, 2046; the lines differ from seed 0 only in --seed) submitted at priority 35. Start 21:18:
+  K2_4 on GPU 3, K4_4 on GPU 0, K2_5 on GPU 1. K4_5 waits for disk space (only 3 large runs fit, 7.134).
+- 21:34: "go" for 2 proposals:
+  1. Replays of K1_4 and K1_5 (a K1 run with normal loss), with snapshots of the last 50 mT cycle, on GPU 2. GPU 2 was
+     free because K4_5 waits for disk space.
+  2. Seeds 9 … 12 of K1 on the GPU that the 3 large runs leave free (main 59877a9:
+     jobs/corners_sat_small_K1_k9_12.txt, md5 295e20fc, seeds 3109 … 3112, made with
+     `conv_jobs.py --newell satsmall:9:13 | grep "^K1_"`). /root/submit_after.sh waits for the start line of K4_5_sat
+     in dispatcher.log and then submits the file at priority 36. Reason: a small run that starts before K4_5 takes
+     disk space and makes the wait of K4_5 longer.
+- 22:44: "Ok": replays of K1_8 and K3_0 in the same way.
+
+**Replays.** The job line is the production line of the run with 2 changes only: `--snap_cycles 1 --snap_mT 50.0`
+(with --snap_phases 16 of the production line: 16 phases of the last 50 mT cycle), and
+`--out runs/<run>_rep50 --init_stage <run>_sat/ckpt_02_amp02.pt`. All 4 ran on GPU 2: K1_4 and K1_5 21:37 … 23:33, K1_8
+and K3_0 22:44 … 00:40 (from 22:44 to 23:33, 4 runs on the same GPU).
+- Check: w_loop of the 7 cycles at 50 mT is the same as in the original run within 3.5e-5 (relative) in all 4 replays
+  (results/k1_replay_check.json). Thus the 50 mT stage is reproducible from the stored states. The check does not
+  compare the stages 70 … 150 mT, and the replays do not test the prepared state or the stages 9 … 35 mT.
+- The 4 replay folders (2.2 GB, mostly snapshots) stay on the instance. Their names do not match the pattern of
+  instance_postproc, thus it does not delete their snapshots.
+
+**Scripts** (main, commit given at the end of this entry; the instance used the same files):
+- eval_k1_loops.py (local, samples files of the 25 runs of the first step): P_p, dM0_p and q_ell_p (below) at 9 and
+  50 mT. Check: φ_vox / 4 times the sum of the P_p is equal to the box value from M_par and to W_loop of summary.json
+  (same cycles) within 1e-4 in all 25 runs at the 2 amplitudes. This check shows that the split into particles is
+  complete; it does not test the loop areas themselves.
+- eval_k1_states.py (instance, CPU): descriptors per particle of the prepared state (init.pt) and of the state after the
+  9 mT stage (ckpt_00_amp00.pt) of K1_0 … K1_8, K3_0 and K3_1.
+- eval_k1_switch.py (instance, CPU): the branch angles of the 4 replays. Earlier versions of the script gave the same
+  values for the quantities that they have in common.
+- plot_k1_switch.py (instance): the figure.
+- Results (study branch): results/k1_loops.md and .json, results/k1_states.json, results/k1_switch.json,
+  results/k1_replay_check.json. The figure k1_switch_p0_50mT.png stays local (png files are not in git; md5 in the
+  last line of this entry).
+
+**Result 1: the additional loss of K1_4 and K1_8 is mostly in particles 0 and 3; at K1_8 also in particle 2.**
+P_p at 50 mT in W/cm³ of the particle volume:
+
+| runs | P_0 | P_1 | P_2 | P_3 |
+|---|---|---|---|---|
+| K1, the other 7 runs (range) | 25 … 48 | 27 … 45 | 27 … 51 | 28 … 53 |
+| K1_4 | 114 | 60 | 47 | 125 |
+| K1_8 | 157 | 43 | 94 | 78 |
+| K3, 8 runs (range) | 84 … 143 | 41 … 70 | 33 … 59 | 92 … 189 |
+
+- P_ref at 50 mT: 37.6 W/cm³ (SD 6.9 W/cm³, 28 particles). Within one run, the P_p of the other 7 runs differ by up
+  to a factor 2 (K1_1: 27 … 53 W/cm³).
+- Effect of the easy-axis angle in the other 7 K1 runs: per run, the mean of P_0 and P_3 minus the mean of P_1 and
+  P_2 is −1.4 ± 3.4 W/cm³ at 50 mT and −0.11 ± 0.10 W/cm³ at 9 mT (mean ± SE, n 7 runs). Thus no effect of the
+  easy-axis angle is found in these runs; at 2 SE, an effect larger than about 7 W/cm³ (18 % of P_ref) at 50 mT is not
+  probable.
+- K1_4: P_0 and P_3 are 3.0 and 3.3 times P_ref, P_1 1.6 times (above the range of the other runs). Of the loss above
+  P_ref, particles 0 and 3 have 84 %, particle 1 12 %.
+- K1_8: P_0 4.2, P_2 2.5, P_3 2.1 times P_ref. Of the loss above P_ref, particles 0 and 3 have 72 %, particle 2 25 %.
+- Comparison with K3: at K1_4, all 4 P_p are in the K3 ranges. At K1_8, P_0 and P_2 are above the K3 ranges and P_3
+  is below the K3 range. At K3, particles 0 and 3 have the 2 largest P_p in all 8 runs (also at K4 in all 4 runs; at
+  K2 in 3 of 4 runs at 50 mT and in 2 of 4 runs at 9 mT).
+- At 9 mT (P_ref 1.15 W/cm³, other 7 runs 0.8 … 1.5 W/cm³): K1_4 P_0 4.3 W/cm³ (3.8 times P_ref), P_2 2.1 (1.9), P_3
+  2.9 (2.6), P_1 1.4 (1.2); K1_8 P_0 2.3 (2.0), the other 3 particles 1.2 … 1.4 times P_ref. Particle 0 or 3 has the
+  largest P_p in both runs at both amplitudes (at 50 mT: K1_4 P_3, K1_8 P_0). This is also so in 3 of the other 7 runs
+  at 9 mT and in 4 of 7 at 50 mT. The order of the other particles is not the same at 9 and at 50 mT.
+
+**Result 2: the core of particles 0 and 3 in the prepared state.** eval_k1_states.py, init.pt, mean m·e in the core:
+
+| runs | particle 0 | particle 1 | particle 2 | particle 3 |
+|---|---|---|---|---|
+| K1, the other 7 runs (range of the magnitude) | 0.35 … 0.53 | 0.52 … 0.54 | 0.51 … 0.55 | 0.34 … 0.64 |
+| K1_4 | 0.016 | −0.529 | −0.536 | 0.035 |
+| K1_8 | 0.101 | −0.528 | −0.454 | 0.491 |
+| K3_0, K3_1 | −0.083, 0.098 | 0.263, 0.369 | 0.277, 0.346 | 0.015, −0.019 |
+
+- The mean m·e of each whole particle is near 0 in all these runs (magnitude at most 0.004). Thus in the normal K1
+  particles, the outer part (r > 0.5) has a mean m·e of the opposite sign.
+- The core m·e is near 0 in 3 of the 5 particles with P_p at least 2 times P_ref (K1_4 particles 0 and 3, K1_8 particle
+  0) and in particles 0 and 3 of K3_0 and K3_1. It is not near 0 in K1_8 particle 3 (0.491) and K1_8 particle 2
+  (−0.454; the other runs −0.51 … −0.55). K1_4 particle 1 has 1.6 times P_ref and a normal value (−0.529).
+- Two other descriptors (mean m·u_p in the core, and the share of the particle cells with |m·u_p| < 0.5) do not
+  separate the runs: K1_4 is inside the range of the other 7 runs. K1_8 particle 0 is outside in both (magnitude of
+  the core m·u_p 0.10 against 0.19 … 0.40; share 0.35 against 0.37 … 0.43). K1_8 particle 2 is outside only in the
+  share, by 0.003 (0.361 against 0.364 … 0.369).
+- 7.135 also gives for the 2 runs the 2 lowest energies and the 2 lowest ripple_rms values of the 9 prepared K1 states.
+- The state after the 9 mT stage has the same descriptors as the prepared state (differences at most 0.003).
+- Count: a core m·e of magnitude below 0.11 occurs in 3 of the 5 particles with P_p at least 2 times P_ref at 50 mT,
+  and in 0 of the 14 particles 0 and 3 of the other 7 K1 runs. n: 2 runs with additional loss, 7 without. This is a
+  correlation, not a cause.
+
+**Result 3: the branch angle at 50 mT (replays: 1 K1 run with normal loss, 2 K1 runs with additional loss, 1 K3 run).**
+
+| run | mean branch angle p0 / p1 / p2 / p3, ° | cells above 45°, p0 / p3 | cells above 90°, p0 / p3 | largest angle, p0 / p3, ° | dM0_p p0 / p1 / p2 / p3, 1e-4 M_s |
+|---|---|---|---|---|---|
+| K1_5 (normal loss) | 0.87 / 0.07 / 0.11 / 1.35 | 0 / 1 | 0 / 0 | 17 / 47 | 0.63 / 1.08 / 0.96 / 0.86 |
+| K1_4 | 4.18 / 0.07 / 0.18 / 3.79 | 70 / 74 | 2 / 4 | 113 / 113 | 2.54 / 1.32 / 1.11 / 2.72 |
+| K1_8 | 5.90 / 0.11 / 0.13 / 2.01 | 241 / 17 | 14 / 0 | 135 / 86 | 3.31 / 1.00 / 2.05 / 1.59 |
+| K3_0 | 3.35 / 0.37 / 0.79 / 3.34 | 15 / 6 | 0 / 0 | 65 / 77 | 3.57 / 2.38 / 1.84 / 4.22 |
+
+(dM0_p from the samples files of the original runs.)
+- The mean branch angle follows the angle of the easy axis in all 4 runs: particles 0 and 3 have 0.87 … 5.90°,
+  particles 1 and 2 at most 0.79°. This is also so in K1_5, where P_1 (45 W/cm³) has 0.07° and P_0 (25 W/cm³) has
+  0.87°. In K1_8, particle 2 has 2.5 times P_ref but 0.13°. Thus the mean branch angle is not a measure of the
+  particle loss. dM0_p follows P_p (K1_5: 0.63e-4 at P_0, 1.08e-4 at P_1), because q_ell_p (below) is near 1.
+- The net change is small: a rotation of all cells of a particle by its mean branch angle (2.0 … 5.9° in particles 0
+  and 3 of K1_4, K1_8 and K3_0) can change M_p by up to 0.035 … 0.10 M_s; dM0_p is 1.6e-4 … 4.2e-4 M_s.
+- Between the 2 states at H = 0, at most 14 cells of a particle (0.007 %) turn by more than 90°.
+- The radial distribution of the angle sum is nearly the same in all 16 particles: share at r < 0.5: 0.14 … 0.29;
+  0.5 … 0.8: 0.38 … 0.46; r > 0.8: 0.28 … 0.43 (volume shares 0.125, 0.387, 0.488). In particles 0 and 3 of K1_4 and
+  K1_8 the share at r < 0.5 is 0.14 … 0.20, in K1_5 0.18. This is a different quantity from the core share of the
+  loss in 7.135.
+- The cells above 30° (at most 0.62 % of a particle): mean r 0.88 … 0.97 in 6 of the 7 particles that have such cells
+  (a uniform distribution gives 0.75). In K1_8 particle 0 (1 207 cells, the largest set) the mean r is 0.81 (10 %
+  quantile 0.65). Azimuth concentration (particles 0 / 3): K1_4 0.81 / 0.94 (one patch on each particle), K1_8 0.09
+  (cells at several azimuths) / 0.26, K3_0 0.41 / 0.54; K1_5 particle 3 1.00 (6 cells).
+- q_ell_p (eval_k1_loops.py): dM0_p over the value of an elliptic loop with the same area, 2 w_p / (π μ0 Ĥ M_s)
+  (w_p = P_p / f; Ĥ: the field amplitude). It is 0.60 … 1.36 in the 100 particles at the 2 amplitudes; the 2 lowest
+  values are K1_4 particles 0 (0.60) and 2 (0.67) at 9 mT. Run value: the sum of q_ell_p w_p over the sum of w_p.
+  Pearson correlation of the run value with R1 of acc.json: 0.15 at 9 mT and −0.07 at 50 mT over the 25 runs (4
+  corners with different R1 levels); within K1 (n 9) 0.97 and 0.72, set by K1_4 and K1_8 (the lowest K1 values of
+  both). This entry draws no conclusion from q_ell_p.
+
+**Result 4: the figure (k1_switch_p0_50mT.png).** Particle 0, last 50 mT cycle, one cut through the particle centre.
+The cut plane holds u_0 and the direction from the centre to the mean position of the cells above 30°. K1_5 has no
+such cells in particle 0; there the script uses the direction of K1_4, thus K1_5 and K1_4 have the same cut plane.
+Columns: m·u_0 in the 2 states at H = 0, and the branch angle (the colour scale ends at 45°).
+- K1_5: two regions with m·u_0 of opposite sign, the wall between them is parallel to u_0. No change is visible in the
+  angle panel.
+- K1_4: a band with m·u_0 < 0 crosses the particle at an angle to u_0, between regions with m·u_0 > 0. The largest
+  angles are at the 2 places where the edges of the band touch the surface.
+- K1_8: in this cut, the branch angle is at most about 19° (read from the colour). The cells above 30° are not in this
+  cut, because they are at several azimuths and the cut goes through their mean direction.
+- K3_0: a wall through the centre; the largest angles are at the 2 ends of the wall at the surface.
+- Limit: one cut of one particle in each run; 1 run of each type.
+
+**Reading.**
+- The loss of K1_4 and K1_8 is not an error of the particle split (sum check), and the 50 mT stage is reproducible
+  (replays).
+- The additional loss is mostly in the particles with the easy axis at 37° to the drive. In the other 7 K1 runs, no
+  effect of the easy-axis angle on the particle loss is found (above).
+- A core m·e of magnitude below 0.11 occurs in 3 of the 5 particles with additional loss and in 0 of the 14
+  particles 0 and 3 of the other 7 K1 runs, and at K3_0 and K3_1. The data does not show whether this is the cause.
+- The cause of the additional loss is not known.
+
+**Second step of D1, state at 04:30.**
+- K2_4_sat and K4_4_sat ended at 03:54 and 03:56 (time of their DONE files; dispatcher: 6.60 h and 6.65 h). Each needed 1 pass and has no BP in
+  the prepared state.
+- K2_5_sat: after pass 1 the prepared state had 3 BPs, after pass 2 1 BP; pass 3 runs (at 04:26 in half cycle 18,
+  with BPs). If a BP stays after pass 3, D7 (b) applies: the run has no value and gets no replacement seed; K2 then has
+  n 5.
+- K4_5_sat started at 04:21 on GPU 3, after the post-processing of K2_4 had made disk space free. submit_after.sh then
+  submitted K1_9 … K1_12 (priority 36). K1_9 waits for disk space until the post-processing of K4_4 ends.
+- Idle GPUs: GPU 2 from the end of the replays (00:40), GPU 0 and GPU 3 from 03:56 and 03:54. GPU 3 took K4_5 at
+  04:21. Cost about 0.10 $/h for each idle GPU.
+
+**Open for Chris:** the question of 7.135 stays: are K1_4 and K1_8 valid realisations of K1, that is, does K1 have a
+second type of state with a different loss? With the seeds 9 … 12, 13 K1 runs show how frequent this type is (2 of 9
+until now). D3 after the second step of D1.
+
+Commits: main 1562c63; figure k1_switch_p0_50mT.png md5 fb5c6b34.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
