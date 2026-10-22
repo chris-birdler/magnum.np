@@ -39,17 +39,16 @@ def _llg_rhs_sum(m, hs: list, alpha, no_precession: bool):
     h = hs[0]
     for f in hs[1:]:
         h = h + f
-    if torch.is_tensor(alpha) and alpha.dim() == m.dim():
-        alpha = alpha[...,0]
     gamma_prime = constants.gamma / (1. + alpha**2)
-    mx, my, mz = m[...,0], m[...,1], m[...,2]
-    hx, hy, hz = h[...,0], h[...,1], h[...,2]
+    # components with the last axis of size 1, so that alpha broadcasts as in _llg_rhs (a scalar or [..., 1])
+    mx, my, mz = m[...,0:1], m[...,1:2], m[...,2:3]
+    hx, hy, hz = h[...,0:1], h[...,1:2], h[...,2:3]
     cx, cy, cz = my*hz - mz*hy, mz*hx - mx*hz, mx*hy - my*hx      # m x h
     a = -alpha * gamma_prime
     dx, dy, dz = a * (my*cz - mz*cy), a * (mz*cx - mx*cz), a * (mx*cy - my*cx)  # -alpha gamma' m x (m x h)
     if not no_precession:
         dx, dy, dz = dx - gamma_prime*cx, dy - gamma_prime*cy, dz - gamma_prime*cz
-    return torch.stack([dx, dy, dz], dim=-1)
+    return torch.cat([dx, dy, dz], dim=-1)
 
 
 class LLGSolver(object):

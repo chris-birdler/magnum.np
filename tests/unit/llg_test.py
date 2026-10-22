@@ -150,13 +150,34 @@ def test_llg_rhs_sum_against_reference(dtype, tol, n_fields, alpha_field, no_pre
     """The fused right-hand side (field sum and cross products in one pass, audit item A1) gives the result of
     accumulate_h and _llg_rhs within round-off (PLAN 11, S1)."""
     from magnumnp.solvers.llg import _llg_rhs, _llg_rhs_sum
+    default = torch.get_default_dtype()
     torch.set_default_dtype(dtype)
+    try:
+        _check_rhs_sum(dtype, tol, n_fields, alpha_field, no_precession)
+    finally:
+        torch.set_default_dtype(default)
+
+
+def _check_rhs_sum(dtype, tol, n_fields, alpha_field, no_precession):
+    from magnumnp.solvers.llg import _llg_rhs, _llg_rhs_sum
     g = torch.Generator().manual_seed(2)
+    dev = torch.empty(0).device                     # the default device of magnum.np (a GPU with CUDA_DEVICE set)
     n = (6, 5, 4)
-    r = torch.randn(n + (3,), generator=g, dtype=torch.float64)
-    m = (r / r.norm(dim=-1, keepdim=True)).to(dtype)
-    hs = [(1e5 * torch.randn(n + (3,), generator=g, dtype=torch.float64)).to(dtype) for _ in range(n_fields)]
-    alpha = (0.05 + 0.1 * torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype) if alpha_field else 0.1
+    r = torch.randn(n + (3,), generator=g, dtype=torch.float64, device="cpu")
+    m = (r / r.norm(dim=-1, keepdim=True)).to(dtype=dtype, device=dev)
+    hs = [(1e5 * torch.randn(n + (3,), generator=g, dtype=torch.float64, device="cpu")).to(dtype=dtype, device=dev)
+          for _ in range(n_fields)]
+    alpha = (0.05 + 0.1 * torch.rand(n + (1,), generator=g, dtype=torch.float64, device="cpu")).to(dtype=dtype, device=dev) \
+        if alpha_field else 0.1
     ref = _llg_rhs(m, accumulate_h(iter(hs)), alpha, no_precession)
     new = _llg_rhs_sum(m, hs, alpha, no_precession)
+    assert new.shape == m.shape
+    assert float((new - ref).abs().max() / ref.abs().max()) < tol
+    # alpha as a material value of a State (a tensor subclass, [n, 1]) and a drive field that is expanded
+    state = State(Mesh(n, (1e-9,) * 3))
+    state.material = {"alpha": 0.1}
+    hs[-1] = hs[-1][0, 0, 0].expand(n + (3,))
+    ref = _llg_rhs(m, accumulate_h(iter(hs)), state.material["alpha"], no_precession)
+    new = _llg_rhs_sum(m, hs, state.material["alpha"], no_precession)
+    assert new.shape == m.shape
     assert float((new - ref).abs().max() / ref.abs().max()) < tol
