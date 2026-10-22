@@ -472,3 +472,90 @@ K4_0, K4_1; S1 and S3 use K1_2 (N 108) and K4_2 (N 156).
 matrix, BSR) has 45 % less matrix memory but is not faster (0 … 16 % slower on the V100); B3 (FCC translation
 symmetry) saves only memory and depends on the geometry. With B4 and B5, q 8 fits a 16-GB GPU at both main geometries.
 Both are a later option for q 16 or larger boxes.
+
+## 13. Precision test of the speed patches (decision of Chris 2026-10-22, about 10:30 UTC; replaces stage 4)
+
+**Reason.** S3 in single precision cannot decide (PROTOKOLL 3.39). The start-to-end criterion of a state change marks
+about 130 000 cells in every arm, because the first cycle of a prepared state changes m in many cells. RMS(D_null) is
+4.5e-5 … 1.2e-4, above the calibration bound 1e-5: the adaptive step control takes a different number of tries in each
+arm (5311 … 5373 accepted steps in the cycle). Stage 4 decides on a statistic over few states, with events excluded.
+Chris wants a verification that the scatter of the dynamics cannot hide.
+
+**Principle.** A patch that only changes the order of operations changes each field evaluation by round-off. The unit
+round-off is 2^-24 (6.0e-8) in single precision and 2^-53 (1.1e-16) in double precision. A real change of the computed
+function (a fault or a model change) keeps its size in both precisions. In double precision, two arms with round-off
+differences only take the same sequence of accepted and rejected tries with a high probability, and their trajectories
+stay together. The test measures this sequence; it does not assume it.
+
+**Set-up.**
+- Each patch: its S3 run pair (old, new) again, with --precision_cycles double. This is the existing mechanism of
+  2026-10-17: the run loads the init.pt and does all of its own work in double precision; no arm relaxes; the Newell
+  kernel is computed again (run_loops.py gives no cache folder); the coefficients of the correction take the dtype of
+  the state. The other arguments (also atol_cycles 1e-7, rtol_cycles 1e-6), the start state and the code trees are
+  those of S3; only the precision changes.
+- Correction off: K1_2_sat (N 108). Correction on (q 4): the start state of the B S3 (K1_2_sat transferred to the
+  fraction surface, bs3/prep/init.pt).
+- step_dump.py --trace saves m after 1, 2, 4, …, 256 sample intervals (one drive cycle), and after each sample
+  interval the counts of RKF45 tries and of accepted steps, t, and m in 2048 probe cells (a fixed choice of magnetic
+  cells, the same in all arms).
+- Positive control, one for each code branch: the old code (9b15ea9 for A, 0125db3 for B) with the drive amplitude
+  changed by the relative amount 1e-6 (--b_list 0.006000006 instead of 0.006). It shows that the test sees a known
+  small change, and it gives the detection limit: the relative drive change that gives ρ = 1e-3 ρ_null (linear
+  response).
+- One geometry (Chris): the code paths do not depend on the geometry, and S1 tests the operators on several sizes and
+  boundary set-ups.
+
+**Pairs (code trees of S3).**
+
+| patch | old | new |
+|---|---|---|
+| A2 | 9b15ea9 | 31aa455 |
+| A1 | 31aa455 | c0da045 + the llg.py change of 3d9de71 (tree A_a1f on box 8, md5 of git diff db467c1c…) |
+| A3 | c0da045 + the llg.py change of 3d9de71 | 3d9de71 |
+| PLAN 10 | c63e862 | 01ed90c |
+| B5 | 01ed90c | c56c0a5 |
+| B4 | c56c0a5 | d538bde |
+| B1 | 0125db3 | df0f811 |
+
+A4 passed S2 (bitwise equal). B5 and B4 change only the set-up; if their S3 end states in single precision are
+bitwise equal (m and t after 256 sample intervals), they pass as in S2 and do not run again. 0125db3 changes only
+energy_budget.py against d538bde (not on the run path). Runs: A 4 + 1 control; B 5 (7 if B5 or B4 is not bitwise
+equal) including the control.
+
+**Criteria (fixed before the data).**
+- ρ: the RMS over the magnetic cells of |m_new − m_old| after the cycle. ρ_null: the median ρ of the 3 null runs of
+  S3 in single precision of the same code branch (old code, start m + 1e-7 r), that is the scatter of production runs
+  that round-off alone causes. The yardstick is the same for all patches of a branch.
+- Patches without a model change (A1, A2, A3, PLAN 10, B4, B5): pass if ρ in double precision is at most 1e-3 ρ_null;
+  fail otherwise. The bound has a wide margin: when the tries agree, a round-off difference in double precision is
+  of the order of the unit round-off times the gain that the positive control shows (estimate).
+- Not determined: the counts of tries or accepted steps of the two arms differ after a sample interval (one changed
+  accept or reject decision). The result then gives the probe ρ up to the interval before; Chris decides.
+- B1 (approved model change; ms_void, the ratio Ms_void / Ms without a unit, is 1e-8 in production; S1 measured a field
+  change of 3.2e-9 relative with it, and 1.5e-16 in double precision without void moments): S1 has verified the code.
+  The double-precision run measures only the size of the model change. Proposal, open for Chris: pass if ρ in double
+  precision is at most 0.1 ρ_null, that is the model change is at least 10 times smaller than the scatter that
+  round-off causes in production.
+- Information, no criterion: ρ and the largest angle in degrees between m_new and m_old after each saved sample
+  interval; the probe ρ after each sample interval; the counts of tries and accepted steps in both arms; D_new in
+  double precision; the ρ of the pair in single precision (S3).
+
+**Limits of the test.**
+- torch.compile makes its kernels for each dtype: the double-precision runs do not run the single-precision kernels of
+  production. Those are checked only by S1 in single precision on the GPU and by S3 in single precision (the A1 fault
+  of 3.39 was found there).
+- Open finding: in single precision, ρ of the A2 pair is 1.0e-5, 5 times ρ_null (1.9e-6); A1 and A3 give ρ_null. The
+  cause is not known (assumption: a systematic difference of the rounding of the fp32 kernel, 1/n and the block term
+  are now in the kernel). The double-precision test shows if A2 changes the computed function.
+- Only q 4 with the correction. Production q 8 (if Chris decides for it) uses the same code paths with more pairs; B
+  at q 8 is open until the q decision (section 12).
+
+**Cost (estimate).** A: 5 runs at N 108 without the correction, up to 3 at a time. B: 5 … 7 runs with the correction
+q 4, one at a time (about 2 × the memory of single precision). About 3 … 4 V100-h after the B S3, about 0.6 $ for
+box 8.
+
+**Changes to sections 11 and 12.** Section 13 replaces stage 4 (section 11) and the stage-4 steps of section 12; the
+use of the new code in the main study is decided after section 13. The S3 bounds of section 11 (|D_new| at most 1e-4,
+calibration 1e-5) and the S3 proposal of 3.39 are not used; S3 in single precision gives ρ_null and stays as
+information. The field change of B1 is 3.2e-9 relative (measured, S1); "about 1e-8" in sections 11 and 12 was the
+estimate. The scripts s4_a.sh and s4_eval.py stay as a record; they did not run.
