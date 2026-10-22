@@ -353,3 +353,92 @@ and the host build of the fine geometry.
 - C5 (GPU): one drive cycle of T3Pc_s941, old against new code: w_loop of the cycles agrees at the round-off level
   of the single-precision runs (reported as a number).
 - Cost of C4 and C5: one 1 × V100 box for about 1 h, about 0.2 … 0.3 $ (estimate); renting needs a go of Chris.
+
+## 11. Acceptance of speed patches (decision of Chris 2026-10-22: option 2; criteria to be approved by Chris)
+
+**Aim.** A speed patch must not change the results beyond the round-off of single precision. Round-off cannot be
+avoided: each fp32 change of the order of operations changes each field evaluation at the level of 1e-7, and the
+trajectories then differ. The yardstick is the spread that round-off alone gives (null runs). Scope: each speed patch
+on the production path: the speed patch of PLAN 10, A1 … A6 (time step) and B1 … B5 (correction) of PROTOKOLL 3.36.
+A patch with a known change of the model (B1: about 1e-8 relative in the field, through the void moments) is a model
+change: Chris approves it as such, and its predicted change replaces the round-off bound of S1.
+
+**Terms.**
+- Old: the same model and settings as the new code, without the speed patches. Correction off: the code state of the
+  main study. Correction on: feature/staircase-correction at the commit before the bundle. The arms differ only by
+  the patches or by the null perturbation.
+- Null run, two kinds: (i) repeat: the old code again, where two old runs are not bitwise equal (the old correction
+  uses atomic additions); (ii) perturbed start: the old code from a perturbed init.pt. A script of this plan writes it:
+  in fp64, m + ε r in the cells with |m| above 0, ε 1e-7, r a fixed random field with |r| 1 per cell (seeds 1, 2, 3),
+  renormalized, cast to fp32; the void keeps m = 0. The script reports the RMS and the maximum of |Δm| after the cast
+  and the share of changed cells. The old code is not changed.
+- State change: cells inside the particles with m · m0 below 0.9 between the start and the end of the cycles (the
+  criterion of check_events.py, PROTOKOLL 3.26; the threshold was checked only at d/l_ex 92, 3.28, and is checked
+  again on the null runs of stage 4 with the smallest m · m0 and the cells below 0.97 and 0.99).
+- Event cycle: a cycle with w_loop at most 0 or |ε| above 0.20 (β(B_peak) record 7.54). Both are reported.
+- ln P: the logarithm of the loss density of the measured cycle (P = f K_d w_loop). D: the difference of ln P against
+  the old arm on the same state (D_new for the new arm, D_null for a null run).
+
+**Stages 1 … 3: for each patch, before it goes into the bundle.**
+- S1, operator level. Each changed function, new against old, on random m and on named states:
+  remote_20261021_box2/runs/T3Pc_s941/init.pt (N 48), one phase-1 state of K1 (N 108) and one of K4 (N 156) of the
+  main study (open point 2); periodic and open where the code has both.
+  - Field terms: max |Δh| / max |h| below 1e-12 in double precision and below 1e-5 in single precision; the term
+    energy within 1e-5 of |E_total|.
+  - Integrator (A1, A3 … A6): from a fixed state, one RKF45 try: Δm and the error norm below 1e-12 (fp64) and 1e-5
+    (fp32) relative; over 1000 steps the same sequence of accepted and rejected tries (fp64).
+  - Device placement: one test with the meta device as default device (lesson of 3.36).
+  - B4, B5 (set-up at q 8): at N 48 with q 8 (the old code runs there) and at the main geometries with q 2 and q 4.
+    At q 8 the main geometries have no old reference (3.35).
+- S2, bit equality. Precondition: two old runs are bitwise equal. Then, for a patch that keeps the order of all
+  operations (for example A4): m after one sample interval and after one cycle is bitwise equal (torch.equal). If the
+  precondition or the test fails, the patch goes to S3.
+- S3, one cycle without a state change. One phase-1 state of K1 (N 108), the 9 mT stage; arms: old, 3 null runs (kind
+  (i) where it applies, else (ii) with the seeds 1, 2, 3), new. Criteria: |D_new| at most 1e-4 (deciding), and |D_new|
+  at most 10 × max(RMS(D_null), 1e-6). Calibration: before the first S3 decision the 3 null runs must have RMS(D_null)
+  at most 1e-5; else Chris sets a new bound. If an arm has a state change, S3 runs again on another state, and the
+  state change is reported.
+- The speed patch of PLAN 10: C5 (test geometry, no null run) is its PLAN 10 criterion; it also goes through S3.
+
+**Stage 4: once for the bundle, before the new code state of the main study.**
+- States: 8 prepared states of phase 1 of the main study, 2 for each corner (K<c>_<k>_sat, init.pt; Newell solver,
+  static saturation, no Bloch point; β(B_peak) record 7.132 … 7.135). N: K1 108, K2 152, K3 104, K4 156.
+- Command line: the production line of the state with --init_from <state>/init.pt --b_list 0.006 --n_amp 1
+  --max_cycles 4, without --acc, --acc_harm, --keep_stage_ckpt and --snap_* (as in 7.122); the same line in all arms.
+  ln P comes from cycle 3, the last cycle, in all arms.
+- Arms: old, one null run (kind (i) where it applies, else (ii) with seed 1), new.
+- The analysis uses only the states without a state change and without an event cycle in all arms (rule of Chris in
+  3.28). At least 6 such states are necessary; with fewer, the result is "not determined: more states".
+- Deciding criterion (equivalence): the 90 % t-interval of the mean of D_new (t(0.95, n − 1), 1.89 at n 8) is inside
+  ± δ. Proposal δ 0.01 (1 % of P): the difference N3 of two correction methods on the same start states was
+  −0.0009 ± 0.0011 (n 8, without events, 3.28). Option δ 0.03: the cycle scatter of ln P is 2.3 … 2.7 % (7.54).
+- Result: pass if the interval is inside ± δ. Fail if |mean D_new| is above δ; then the patches are tested one by one
+  with S3 on the states with the largest |D_new|. Not determined if |mean D_new| is at most δ but the interval is not
+  inside ± δ: Chris decides between more states and acceptance.
+- Information, no fail by itself: the mean of D_new ± SE and the t-test against 0; RMS(D_new) / RMS(D_null); the
+  counts of state changes and event cycles in each arm. A count difference cannot be shown at n 8 (3.28: Fisher p 0.22
+  for 3 against 0 of 12). A state change in the new arm only goes to Chris as information.
+
+**Cost (estimates).**
+- S1: minutes. S3: 5 one-cycle runs at N 108 plus the kernel set-up, about 0.5 … 0.7 V100-h per patch; for 10
+  patches about 5 … 7 V100-h.
+- Stage 4, correction off: 24 runs of 4 cycles; one 9 mT cycle takes 107 s at N 108 and 253 s at N 156 in production
+  (7.122), plus about 2 min per start. The Newell kernels (about 7 min at N 104 … 108 and about 18 … 20 min at N 152 …
+  156 on the CPU of box 8) are built once for each geometry before the runs, in an empty cache folder (the cache name
+  has no true_pbc and no shell count, 3.36). About 6 … 8 V100-h, about 1 $.
+- Stage 4, correction on: the old and null arms run the unpatched correction, which costs about 6 (q 2) … 8 (q 4)
+  times a time step without it (3.35): about 35 … 45 V100-h, about 5 … 7 $. At q 4 the old set-up may not fit a 16-GB
+  GPU at N 152 and 156 (11.1 GB reserved at N 148, 3.35). At q 8 the old code does not run at the main geometries:
+  stage 4 has no old arm there.
+
+**Decisions and open points for Chris.**
+1. Approval of this section and the bound δ (0.01 recommended, or 0.03).
+2. The init.pt of the phase-1 states (8 for stage 4, 2 for S1 and S3; about 15 … 45 MB each) are on the production box
+   of the other session (instance 53995473), which this session does not touch. Download by that session, or by this
+   session with a go of Chris.
+3. Which patches go into the bundle; each patch needs its own go ("patch").
+4. Timing: a bundle between phase 1 and phase 2 of PLAN 4.15 breaks its condition 3 (one commit for both phases); the
+   phase-1 runs would then be a test only. A merge into main needs a go of Chris.
+5. Stage 4 with the correction off, or on with which q (cost above).
+6. The evaluation scripts of S3 and stage 4 (perturbed start, state-change check with free run names) belong to this
+   plan; they do not change the simulation code.
