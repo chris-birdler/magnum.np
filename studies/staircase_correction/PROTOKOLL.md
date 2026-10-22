@@ -2147,3 +2147,60 @@ A states.
    magnetization, d with the diameter); N1, N3, Δ_c and Δ_g stay.
 4. The FE attempt (3.24, 3.25) is a negative result in the limits; the paper does not name the private FE code.
 5. The GPU cost and the speed patch stay out (scope of Chris); the paper says that the cost is not part of it.
+
+### 3.38 Box 8: C3 … C5 of the speed patch pass; GPU profile of the time step; acceptance plan for speed patches (2026-10-22, about 04:30 … 07:00 UTC)
+
+**Box.** Go of Chris ("Miete die Box fürs profiling"): vast.ai 57159233 (offer 56430902, the host of box 7: 1 × Tesla
+V100-SXM2-16GB, 28 cores, 125 GB, Quebec, 0.135 $/h, label staircase-box8-profile), rented 04:36 UTC. Code by git
+bundle: perf/staircase-speed 01ed90c (new), feature/staircase-correction c63e862 (old, the parent of the patch), main.
+
+**C3 (T3Pc_s941, init.pt, single precision, GPU; profile_staircase.py --compare).** New against old: max |Δh| / max |h|
+6.8e-7 at q 2 and 5.4e-7 at q 4; relative difference of the term energy 2.3e-9 and 1.8e-8. Criterion 1e-5: pass.
+
+**C4 (V100, single, 20 repetitions; ms per field evaluation).**
+
+| geometry | q | pair sum new / old | centroid term new / old | correction new / old | GPU memory after set-up (allocated / reserved, GB) |
+|---|---|---|---|---|---|
+| test, N 48 | 2 | 0.25 / 2.18 | 2.82 / 6.42 | 3.06 / 7.18 | 0.21 / 1.13 |
+| d/l_ex 211, φ 0.65, N 104 | 4 | 2.16 / 20.82 | 3.47 / 6.46 | 5.75 / 24.99 | 1.78 / 5.52 |
+| d/l_ex 211, N 104 | 2 | 1.49 / – | 3.47 / – | 5.06 / – | 1.23 / 4.43 |
+| d/l_ex 301, φ 0.65, N 148 | 4 | 4.50 / 49.7 (3.35) | 11.25 / 17.9 (3.35) | 16.09 / 67.9 (3.35) | 3.75 / 11.35 |
+| d/l_ex 301, N 148 | 2 | 3.06 / 33.5 (3.35) | 11.30 / 17.8 (3.35) | 14.71 / 51.7 (3.35) | 2.58 / 7.80 |
+
+- Criteria at d/l_ex 211, q 4 (pair sum at most 3 ms, centroid term at most 3.5 ms, correction at most 6 ms): pass
+  (the centroid term with 3.47 ms only just). New against old at this geometry: max |Δh| / max |h| 8.1e-7.
+- At N 148 the centroid term dominates (FFTs of the size 148 = 4 · 37 are slow): 11.3 ms of 16.1 ms.
+
+**C5 (one drive cycle of T3Pc_s941 from its init.pt, the arguments of the run, --max_cycles 1; runs old a, new a, old
+b, new b in turn).** No event. Relative differences of w_loop: old a against old b 1.0e-5, new a against new b 1.8e-5,
+new against old 2.0e-5 … 4.8e-5 (w_dis: up to 1.4e-4). Both codes are not deterministic (atomic additions in the old
+pair sum; also the new code). New against old is 2 … 5 times old against old; the field-level difference of the
+two codes is about 5 times that of two old evaluations (6.8e-7 against about 1e-7, 3.36): another order of the fp32
+sums. Reading (reported to Chris): round-off level, pass. The wall times of C5 are not used (other runs shared the
+GPU).
+
+**GPU profile of the time step without the correction (prof_step.py, commit 31fe568; code of main 1562c63).** The
+wrapper runs run_loops.main; after 300 sample intervals (warm-up) it measures 40 sample intervals without the
+profiler and 10 with torch.profiler (CPU and CUDA). Each kernel goes to the innermost label (field term, rest of the
+stage, rest of the RKF45 try, rest of step) on the call chain of its launch call; all kernel time is attributed.
+Three errors of the script were found and fixed in sanity runs before the measurement (the GPU-side events of the
+labels were counted as kernels; the Triton kernels have the name of their CPU event and were dropped; the first
+attribution by the CPU tree counted some kernels twice); the sanity runs shared the GPU with C5 and are not used.
+
+| state | N | ms per stage (no profiler) | GPU busy per stage | share | kernels per stage |
+|---|---|---|---|---|---|
+| T3_s941 (test geometry, model Coarse, its init.pt) | 48 | 3.55 | 0.35 ms | 10 % | 84 |
+| geometry of K1_0_ad (7.122), 1000 relaxation iterations from the random start (no Newell state of it was local) | 108 | 3.91 | 2.40 ms | 61 % | 87 |
+| K4_1_nx_pd300 (clean option C state, twin of K4_2_ad) | 156 | 7.61 | 7.53 ms | 99 % | 87 |
+
+GPU time per stage (ms): N 156: stray field 3.55 (of it 0.66 for the stack of the 3 components), rest of the stage
+(field sum, LLG right-hand side, cross products) 1.65, rest of the RKF45 try (combinations, error norm) 1.22,
+anisotropy 0.60, exchange 0.28, drive 0.01. N 108: 1.03, 0.56, 0.42, 0.21, 0.10, 0.01.
+- Reading: at N 48 the CPU side (Python, launches) sets the time; at N 108 both (GPU 61 %); at N 156 the GPU. Thus
+  the audit items A1 … A3 (fewer kernels and fewer passes over memory) help at both main sizes.
+
+**Acceptance of speed patches (PLAN 11, 12).** Chris chose option 2: stages 1 … 3 for each patch, stage 4 once for the
+bundle. A context-free review of the first draft of PLAN 11 gave 20 findings (events, the null runs, the statistics,
+the states); PLAN 11 was rewritten. Chris approved PLAN 11 (δ 0.01) and PLAN 12 (all audit patches except A5 CUDA
+graphs and A6 batched FFT; B1 as a model change). Download of 10 phase-1 states of the main study from instance
+53995473 with the go of Chris (scp only, md5 checked; remote_20261022_prod/, manifest prod_states.md5).
