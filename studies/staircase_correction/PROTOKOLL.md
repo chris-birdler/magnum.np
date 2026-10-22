@@ -2286,4 +2286,57 @@ test of B5 and B4 in single precision cannot pass (result: max |Δm| 1.7e-4 and 
 runs B5 and B4 in fp64, as planned for this case. (ii) A different order of the sums is round-off; its effect scales
 with the unit round-off, so the precision test stays valid.
 
-Precision test (prec.sh): started 12:32 UTC.
+**Precision test of PLAN 13 (box 8, 12:41 … 15:17 UTC).** A first start (12:32 UTC) stopped at the first sample
+interval: the trace of step_dump.py made `randperm` with a CPU generator, and magnum.np sets the default device to cuda
+on the GPU (the local test ran on the CPU). Fix e2e7ea1, checked on the box GPU; restart 12:41 UTC. All 12 runs ended
+with exit 0 in the first try. One run in fp64 for each tree; the B pairs share runs (c63 → 01e → c56 → d53). Results:
+box8/prec/prec.json and prec.txt. The m.pt files (12 × 285 MB) stay on the box.
+
+Result with the approved criteria: **"not determined" for all 7 pairs.** In every pair the counts of RKF45 tries and
+accepted steps differ first after sample interval 8 … 43 of 256 (A2 15, A1 14, A3 14, PLAN 10 11, B5 11, B4 43, B1 8).
+
+Cause (from the data):
+1. The step control flips also under fp64 round-off. The positive controls flip too (A after interval 14, B after 8).
+   Thus a difference of the step sequence does not separate a real change from round-off. The local test of the trace
+   (3.39, T3_s941) compared only two bitwise equal runs; it did not test a round-off pair over a full cycle.
+2. After the first flip, the two runs use different time steps, and ρ grows to a level that does not scale with the unit
+   round-off: A2 has ρ 1.0e-5 in single precision and 1.5e-8 in fp64, a factor 700 (the ratio of the unit round-offs is
+   5e8). Before the flip, the difference grows by a factor e in about 1.5 sample intervals (A2: 2.9e-14 after interval
+   1, 7.4e-11 after interval 13). Thus ρ after the cycle cannot meet the bound 1e-3 ρ_null for code that changes only the
+   rounding; another run does not change this.
+3. The counts lag the real change of the time steps by at least one interval (A2: the probe ρ rises by a factor 23
+   after interval 14, the counts differ after interval 15).
+
+The detection limits that prec.txt prints (9.4e-10 and 9.5e-10) are not valid: they use ρ after the cycle and linear
+response, and the flip breaks the linear response.
+
+Data before the first flip (sample intervals 1, 2 and 4; all pairs and both controls have the same step counts there).
+Ratio: ρ of the pair divided by ρ of the positive control (old code, drive × (1 + 1e-6)) of the same geometry after
+the same interval. Control ρ after 1 / 2 / 4 intervals: A 5.4e-10 / 2.1e-9 / 8.1e-9, B 4.7e-10 / 1.9e-9 / 7.7e-9.
+
+| pair | ρ after 1 / 2 / 4 | ratio to the control after 1 / 2 / 4 | largest ratio | first step difference | ρ after the cycle | D in fp64 |
+|---|---|---|---|---|---|---|
+| A2 | 2.9e-14 / 3.1e-13 / 3.5e-13 | 5.4e-5 / 1.5e-4 / 4.4e-5 | 1.5e-4 | 15 | 1.5e-8 | +4.0e-9 |
+| A1 | 1.3e-14 / 1.4e-13 / 1.7e-13 | 2.4e-5 / 6.7e-5 / 2.1e-5 | 6.7e-5 | 14 | 3.1e-9 | −4.4e-9 |
+| A3 | 6.9e-15 / 7.4e-14 / 8.9e-14 | 1.3e-5 / 3.5e-5 / 1.1e-5 | 3.5e-5 | 14 | 2.1e-8 | −5.3e-10 |
+| PLAN 10 | 5.5e-16 / 8.3e-15 / 8.5e-14 | 1.2e-6 / 4.3e-6 / 1.1e-5 | 1.1e-5 | 11 | 2.1e-8 | +2.1e-10 |
+| B5 | 5.5e-16 / 1.0e-14 / 1.7e-13 | 1.2e-6 / 5.2e-6 / 2.2e-5 | 2.2e-5 | 11 | 1.1e-8 | −4.3e-9 |
+| B4 | 5.4e-16 / 8.5e-15 / 1.2e-13 | 1.2e-6 / 4.4e-6 / 1.6e-5 | 1.6e-5 | 43 | 1.9e-8 | +6.8e-9 |
+| B1 | 8.1e-10 / 1.2e-9 / 2.1e-9 | 1.7 / 0.65 / 0.27 | 1.7 | 8 | 3.7e-8 | +6.1e-7 |
+| control A | 5.4e-10 / 2.1e-9 / 8.1e-9 | 1 | – | 14 | 2.1e-6 | +2.0e-6 |
+| control B | 4.7e-10 / 1.9e-9 / 7.7e-9 | 1 | – | 8 | 3.0e-6 | +1.9e-6 |
+
+Observations (one run pair for each patch; no fp64 null run):
+- The six speed patches change m after one interval by 5.4e-16 … 2.9e-14, that is 5 … 260 times the fp64 unit round-off
+  (1.1e-16). Their largest ratio to the control is 1.5e-4 (A2, interval 2): they act as a relative drive change of at
+  most 1.5e-10.
+- B1 (model change) has the size of a relative drive change of 0.3 … 1.7 × 1e-6, 4 orders above the speed patches. Its
+  D in fp64 (+6.1e-7) is 100 times the D of the speed patches (at most 6.8e-9) and 1 % of RMS D_null in single
+  precision. The size of this effect against the field change of 3.2e-9 measured in S1 is not explained yet.
+- After the cycle, the D of the six speed patches is at most 6.8e-9 in fp64; the controls give D +2.0e-6 and +1.9e-6
+  (twice the relative drive change, as w_loop scales with the square of the drive in linear response).
+- Steps in the cycle in fp64: A 4613 … 4616, B 5023 … 5031; in single precision A 5311 … 5373, B 5652 … 5750.
+- Limit: fp64 compiles other kernels; the production kernels in single precision are covered only by S1 and S3 (ρ_new
+  1.0 … 1.1 ρ_null, except A2 with 5.2 ρ_null).
+
+A new criterion is a decision of Chris (reported 2026-10-22, about 15:30 UTC).
