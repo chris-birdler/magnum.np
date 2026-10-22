@@ -280,3 +280,15 @@ def test_pair_matrix_builds_on_the_cpu_with_another_default_device():
         torch.set_default_device("cpu")
     assert A.device.type == "cpu"
     assert float(((A @ m.reshape(-1)).reshape(-1, 3) - ref).abs().max()) == 0.0
+
+
+@pytest.mark.parametrize("N, d_lex, q", [(48, 92.214, 2), (48, 92.214, 4), (48, 92.214, 8), (40, 80.0, 3)])
+def test_fcc_subcells_bitwise_equal_to_fine_mesh(N, d_lex, q):
+    """fcc_subcells (audit B5: only the cells near a sphere surface test their sub-cells) gives bitwise the result
+    of staircase_cells on the fine mesh of fcc_box."""
+    from geometry import fcc_subcells
+    from magnumnp.field_terms.demag_staircase import staircase_cells
+    lex, dx = 3.3421710327935706e-09, 3.0 * 3.3421710327935706e-09
+    n0, p0, o0 = staircase_cells(fcc_box(q * N, d_lex * lex, dx / q)["ids"], q)
+    n1, p1, o1 = fcc_subcells(N, d_lex * lex, dx, q)
+    assert np.array_equal(n0, n1) and np.array_equal(p0, p1) and np.array_equal(o0, o1)

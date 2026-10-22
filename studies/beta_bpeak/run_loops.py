@@ -894,9 +894,10 @@ def main(argv=None):
     term_names = ["demag", "exchange"]                    # PLAN 4.13 S5: names of the energy terms, same order
     if args.staircase != "none":                          # near-field correction of the cut cells (staircase)
         from magnumnp import DemagStaircaseCorrection
-        from magnumnp.field_terms.demag_staircase import staircase_cells
+        from geometry import fcc_subcells
         q_s = args.staircase_q
-        n_s, pid_s, occ_s = staircase_cells(fcc_box(q_s * N, d, dx / q_s)["ids"], q_s)
+        # = staircase_cells(fcc_box(q_s N, d, dx / q_s)["ids"], q_s), without the fine mesh (bitwise equal; audit B5)
+        n_s, pid_s, occ_s = fcc_subcells(N, d, dx, q_s)
         if not (np.array_equal(pid_s, ids.astype(np.int64)) and np.allclose(n_s / q_s**3, geo["frac"], atol=1e-6)):
             sys.exit("ERROR: --staircase: the sub-cells do not agree with the fraction geometry")
         if args.staircase == "fine":                      # reference: exact fine field instead of the coarse one
