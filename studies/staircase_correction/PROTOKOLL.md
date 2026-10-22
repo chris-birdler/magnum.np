@@ -2205,7 +2205,7 @@ the states); PLAN 11 was rewritten. Chris approved PLAN 11 (δ 0.01) and PLAN 12
 graphs and A6 batched FFT; B1 as a model change). Download of 10 phase-1 states of the main study from instance
 53995473 with the go of Chris (scp only, md5 checked; remote_20261022_prod/, manifest prod_states.md5).
 
-### 3.39 Speed patches of PLAN 12: build and stages 1 … 3 (2026-10-22, about 07:00 … 09:00 UTC; in progress)
+### 3.39 Speed patches of PLAN 12: build, stages 1 … 3 and precision test (2026-10-22, from about 07:00 UTC; in progress)
 
 **Build.** A on perf/timestep (worktree ~/Documents/code/magnum.np-timestep, from main 9e0ea7c; the physics code is the
 same as that of phase 1, 8640e55): A4 9b15ea9, A2 31aa455, A1 c0da045 (fixed in 3d9de71, see below), A3 9bf0c0d.
@@ -2248,3 +2248,42 @@ Two findings on the criteria of PLAN 11 (reported to Chris; his go is open):
 2. The calibration fails: RMS(D_null) is 4.5e-5 … 1.2e-4, above 1e-5. The cause is the step control: the runs take
    5311 … 5373 steps. Proposal: |D_new| at most 10 RMS(D_null) and at most 1e-3 (10 times below δ of stage 4).
 With the proposal A2, A1 and A3 pass; with the approved criteria all three are "not usable".
+
+**Fault in the run scripts of the B S3 runs (found 2026-10-22, about 09:50 UTC).** The first queue started 3 runs with
+the correction at the same time (each about 5.6 … 6.0 GB steady, more in the set-up) on the 16-GB GPU: p10 null 2, null
+3 and new and b5 old, null 1 and new stopped with "CUDA out of memory". The log showed "exit 0", because
+`echo "$(date) … exit $?"` reads the exit code of the command substitution. Fix (box8/rerun_b.sh, 6efc42f): at most 2
+runs on the GPU, a new run only with at least 7000 MiB free, `rc=$?` directly after the run, a run with "out of memory"
+starts again (at most 3 tries). The 3 complete runs of the first queue (b5 null 2 and null 3, b4 old) stay. All reruns
+ended with exit 0 in the first try (09:58 … 12:31 UTC).
+
+**Decision of Chris: PLAN 13 replaces stage 4** (PLAN.md section 13, about 11:00 UTC): a precision test in fp64 on one
+geometry. S3 gives only ρ_null (the yardstick) and information; its bounds are not used.
+
+**S3 of the B patches** (prepared state bs3/prep: K1_2_sat, transferred with the arguments of the B runs, q 4; one
+cycle; old, 3 null runs with perturbed start, new; single precision). ρ: RMS over the magnetic cells of |m_arm − m_old|
+at the end of the cycle; ρ_null: median of the 3 null runs.
+
+| pair | D_new | D_null (3 runs) | RMS D_null | ρ new / ρ_null | steps old / null / new |
+|---|---|---|---|---|---|
+| PLAN 10 (c63e862 → 01ed90c) | +3.1e-5 | +6.3e-5, +1.2e-5, +8.3e-5 | 6.0e-5 | 2.8e-6 / 2.8e-6 | 5692 / 5723, 5692, 5675 / 5680 |
+| B5 (01ed90c → c56c0a5) | +7.2e-5 | +6.1e-5, +5.8e-5, +3.8e-5 | 5.3e-5 | 3.1e-6 / 2.8e-6 | 5674 / 5693, 5713, 5691 / 5694 |
+| B4 (c56c0a5 → d538bde) | −4.9e-5 | −4.6e-5, −7.4e-5, −5.3e-5 | 5.9e-5 | 2.9e-6 / 2.7e-6 | 5653 / 5658, 5662, 5660 / 5695 |
+| B1 (0125db3 → df0f811) | +2.5e-5 | +6.8e-5, +8.5e-5, +3.5e-6 | 6.3e-5 | 2.8e-6 / 2.8e-6 | 5652 / 5715, 5671, 5711 / 5750 |
+
+In all arms 214 663 … 214 664 cells change by the start-to-end criterion (initial magnetization, as for A). No cell has
+m_arm · m_old below 0.9999. The D_null values of one pair have the same sign, because all arms of the pair are compared
+with the same old run. With the proposal criterion of S3 all four pairs pass (information only).
+
+**Finding: the B runs in single precision on the GPU are not reproducible from run to run.** Two pairs of runs used the
+same tree, the same arguments and the same start state:
+- p10 new and b5 old (both 01ed90c): ln w_loop differs by 2.9e-5, 5680 against 5674 steps, ρ 2.7e-6;
+- b5 new and b4 old (both c56c0a5): 5694 against 5653 steps, ρ 2.9e-6.
+Thus an unchanged run scatters as much as a null run with the start perturbation 1e-7. For A (no correction), two old
+runs were bitwise equal (S2 of A4). The cause is not determined. Candidate (estimate, not tested): an operation with
+atomic adds or a library algorithm without a fixed order in the path of the correction. Consequences: (i) the bitwise
+test of B5 and B4 in single precision cannot pass (result: max |Δm| 1.7e-4 and 1.3e-4, not bitwise); prec.sh therefore
+runs B5 and B4 in fp64, as planned for this case. (ii) A different order of the sums is round-off; its effect scales
+with the unit round-off, so the precision test stays valid.
+
+Precision test (prec.sh): started 12:32 UTC.
