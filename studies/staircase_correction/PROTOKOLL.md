@@ -2204,3 +2204,47 @@ bundle. A context-free review of the first draft of PLAN 11 gave 20 findings (ev
 the states); PLAN 11 was rewritten. Chris approved PLAN 11 (δ 0.01) and PLAN 12 (all audit patches except A5 CUDA
 graphs and A6 batched FFT; B1 as a model change). Download of 10 phase-1 states of the main study from instance
 53995473 with the go of Chris (scp only, md5 checked; remote_20261022_prod/, manifest prod_states.md5).
+
+### 3.39 Speed patches of PLAN 12: build and stages 1 … 3 (2026-10-22, about 07:00 … 09:00 UTC; in progress)
+
+**Build.** A on perf/timestep (worktree ~/Documents/code/magnum.np-timestep, from main 9e0ea7c; the physics code is the
+same as that of phase 1, 8640e55): A4 9b15ea9, A2 31aa455, A1 c0da045 (fixed in 3d9de71, see below), A3 9bf0c0d.
+B on perf/staircase-speed after the patch of PLAN 10 (01ed90c): B5 c56c0a5 (+ 0125db3 for energy_budget), B4 d538bde,
+B1 df0f811 (model change, approved). B2 and B3 are not built (decision of Chris; PLAN 12). Local tests: unit tests of
+each patch against the old code (fp64 below 1e-12, fp32 below 1e-5; for A4 and B4/B5 bitwise).
+
+**Box tests (V100, box 8).**
+- A4, S2: two old runs are bitwise equal (precondition); new against old bitwise equal after 1 and after 256 sample
+  intervals (K1_2_sat, N 108). Accepted.
+- A2, S1 on the GPU (production states, single): max |Δh| / max |h| 2.6e-7 (N 108) and 2.4e-7 (N 156); stray field
+  0.99 ms against 1.44 ms and 2.15 ms against 3.28 ms per call.
+- A1: the first S3 runs with A1 stopped in the second RKF45 stage: in production alpha is a CoWTensor [n, 1], and under
+  torch.compile on the GPU alpha[..., 0] kept the axis; the right-hand side had 5 axes. The local tests (torch 2.14,
+  CPU) did not see it, also not with a CoWTensor alpha. Fix 3d9de71: components with an axis of size 1, alpha not
+  indexed. Reproduced and checked in the production path on the GPU. Local tests now also with torch 2.7.1 (the
+  version of production).
+- B5, S1: bitwise equal to the fine-mesh path also at N 104 q 8 (81 536 cut cells; 6.2 s against 246 s and 45.7 GB
+  host memory), N 148 q 2 and q 4.
+- B4, S1 on the GPU (N 48): bitwise at q 2 and q 4; at q 8 relative 6e-16 (fp64 order of the blocks); peak GPU memory
+  3.3 GB against 12.0 GB, 7.7 s against 24 s.
+- q 8 at the main geometries now runs on the 16-GB V100 (profile_staircase.py, B code with B1): d/l_ex 211, N 104:
+  set-up 43 s, peak 5.5 / 8.1 GB, correction 5.1 ms; d/l_ex 301, N 148: set-up 86 s, peak 11.4 / 15.4 GB (close to the
+  limit), correction 15.5 ms.
+- B2 measured (random pattern of the size of the pair sum, GPU shared with other runs): BSR 3.70 ms against CSR 3.18
+  ms at 23 M blocks, memory 0.92 GB against 1.67 GB, values equal within 1.6e-7.
+
+**S3 of A2, A1, A3 (K1_2_sat, N 108, one cycle; old, 3 null runs with perturbed start, new).**
+
+| patch | D_new | D_null (3 runs) | RMS D_null | RMS |Δm| at the end, new / null | cells with m · m_old below 0.9999 |
+|---|---|---|---|---|---|
+| A2 | +1.6e-4 | +8.1e-5, +1.8e-4, +6.2e-5 | 1.2e-4 | 1.0e-5 / 1.9e-6 | 0 |
+| A1 (fixed) | +7.2e-5 | +1.5e-6, +9.0e-5, +9.2e-5 | 7.4e-5 | 1.9e-6 / 1.9e-6 | 0 |
+| A3 | −4.7e-5 | +3.1e-5, +6.7e-5, +2.3e-5 | 4.5e-5 | 1.9e-6 / 1.9e-6 | 0 |
+
+Two findings on the criteria of PLAN 11 (reported to Chris; his go is open):
+1. The state change as defined (start against end of the cycle) marks 130 261 … 130 263 of 1 259 712 magnetic cells in
+   every arm, also the old one: the first cycle from a prepared state is the initial magnetization, not a stationary
+   cycle (3.26 assumed stationary cycles). Proposal: cells with m_arm · m_old below 0.9 at the end of the cycle.
+2. The calibration fails: RMS(D_null) is 4.5e-5 … 1.2e-4, above 1e-5. The cause is the step control: the runs take
+   5311 … 5373 steps. Proposal: |D_new| at most 10 RMS(D_null) and at most 1e-3 (10 times below δ of stage 4).
+With the proposal A2, A1 and A3 pass; with the approved criteria all three are "not usable".
