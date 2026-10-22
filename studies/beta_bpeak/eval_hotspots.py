@@ -283,7 +283,7 @@ def run(d):
 
 def report(res):
     L = ["# Hot spots of the loss outside f (eval_hotspots.py)", "",
-         "Hot cells: the 1 % of the particle cells with the largest loss outside f (q = p - p_f). Main regions: the "
+         "Hot cells: the 1 %% of the particle cells with the largest loss outside f (q = p - p_f). Main regions: the "
          "regions that carry half of q of the hot cells. Shares are shares of q of all particle cells. Type from the "
          "gradient tensor (wall: 1 direction, line: 2, 3D: 3; threshold %.1f). J: largest step between neighbouring "
          "phases / range (sine 0.19, step 1); rep: cycle 2 - cycle 1 / range. Reference: the same for the loss at f."
@@ -319,9 +319,9 @@ def main():
     ap.add_argument("runs", nargs="+")
     a = ap.parse_args()
     res = [run(d) for d in a.runs]
-    print(report(res))
     if a.json:
         pathlib.Path(a.json).write_text(json.dumps(res, indent=1))
+    print(report(res))
 
 
 if __name__ == "__main__":
