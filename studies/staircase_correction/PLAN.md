@@ -442,3 +442,28 @@ change: Chris approves it as such, and its predicted change replaces the round-o
 5. Stage 4 with the correction off, or on with which q (cost above).
 6. The evaluation scripts of S3 and stage 4 (perturbed start, state-change check with free run names) belong to this
    plan; they do not change the simulation code.
+
+**Decisions of Chris (2026-10-22, about 06:00 UTC).** Section 11 approved, with δ 0.01 (the recommendation). Download
+of the start states approved ("nur Download"): 10 init.pt of phase 1 (K1_0, K1_1, K1_2, K2_0, K2_1, K3_0, K3_1, K4_0,
+K4_1, K4_2 _sat) were copied from instance 53995473 with scp, md5 checked (remote_20261022_prod/, gitignored,
+manifest prod_states.md5); nothing else was done on that instance. Stage 4 uses K1_0, K1_1, K2_0, K2_1, K3_0, K3_1,
+K4_0, K4_1; S1 and S3 use K1_2 (N 108) and K4_2 (N 156).
+
+## 12. Build of the speed patches (go of Chris 2026-10-22: "alles freigegeben", as proposed in the chat)
+
+- Patches: all items of the audit (PROTOKOLL 3.36) except A5 (CUDA graphs; Chris) and A6 (one batched FFT; tested in
+  the fp32 campaign of 2026-07 and rejected: slower than the loop over the components at both precisions on the V100;
+  bench/fp32_validation.tex). B1 is approved as a model change (about 1e-8 relative in the field).
+- Branches: A1 … A4 on perf/timestep from main (own worktree ~/Documents/code/magnum.np-timestep; the worktree of main
+  is used by another session). B1 … B5 on perf/staircase-speed after the patch of PLAN 10. No merge into main or into
+  the feature branch without a go of Chris.
+- Order: A4, then A2, A1, A3 (order of these three after the profile of the time step), then B5, B4, B2, B3, B1 (the
+  model change last).
+- For each patch: one commit; S1 (local fp64 on the CPU, fp32 on box 8), S2 or S3 on box 8 (section 11); the result
+  in the PROTOKOLL; push of the branch.
+- Stage 4 at the end, once, with the correction off (tests A1 … A4). Stage 4 of the B patches only after the decision
+  of Chris on the correction in the main study and on q. The use of the new code in the main study (phase 1 and 2 of
+  PLAN 4.15) is decided after stage 4.
+- Box 8 (0.135 $/h) stays for the tests between the patches (go of Chris).
+- Cost (estimate): S3 about 0.5 … 0.7 V100-h for each of 8 patches, stage 4 about 6 … 8 V100-h; with the waiting time
+  of box 8 during the build about 3 … 7 $ in total.
