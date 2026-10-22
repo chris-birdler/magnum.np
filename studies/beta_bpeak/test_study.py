@@ -630,6 +630,65 @@ def test_acc_reduce_signed_slice_round_trip(tmp_path):
     assert np.allclose(slice_values(z, "b", "rest"), 5.0)
 
 
+# --- eval_hotspots.py: structure type and motion measures on synthetic states (sphere d 300 l_ex, L_eff 18) ------
+# Ratios found (ripple 0 / 15 / 20 deg): walls l2/l1 <= 0.17; vortex l2/l1 >= 0.95, l3/l1 <= 0.15; Bloch point
+# l3/l1 >= 0.77; ripple alone 3D (l3/l1 0.38 ... 0.49). Threshold 0.3.
+
+def _hot_types(m, ids):
+    import eval_hotspots as H
+    D = H.grad_dirs(m, ids)
+    mask = ids >= 0
+    regs, _, _ = H.regions((D ** 2).sum(axis=(0, -1))[mask], ids, mask)
+    return {H.structure_type(H.tensor(D, H.dilate_in(sel, ids == 0, H.DILATE)))[0] for sel, _ in regs}
+
+
+@pytest.mark.parametrize("kind,expect", [("single180", "wall"), ("slab180", "wall"), ("vortex", "line")])
+@pytest.mark.parametrize("ripple", [0.0, 20.0])
+def test_hotspot_type_synthetic(kind, expect, ripple):
+    import domains
+    st, _ = domains.synthetic_state(kind, 3.0, Leff=18.0, d=300.0, ripple_deg=ripple, seed=1)
+    assert _hot_types(st["m"], st["ids"]) == {expect}
+
+
+@pytest.mark.parametrize("ripple", [0.0, 20.0])
+def test_hotspot_type_bloch_point(ripple):
+    """Hedgehog m = r / |r| in the sphere (a Bloch point at the centre), with the ripple of synthetic_state."""
+    import domains
+    st, _ = domains.synthetic_state("ripple", 3.0, Leff=18.0, d=300.0, ripple_deg=ripple, seed=1)
+    N = st["m"].shape[0]
+    x = (np.arange(N) + 0.5) * 3.0 - N * 1.5
+    X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
+    m = np.stack([X, Y, Z], -1) / np.maximum(np.sqrt(X ** 2 + Y ** 2 + Z ** 2), 1e-9)[..., None]
+    m = m + (st["m"] - np.array([1.0, 0.0, 0.0]) if ripple else 0.0)
+    m /= np.linalg.norm(m, axis=-1, keepdims=True)
+    m = np.where((st["ids"] >= 0)[..., None], m, 0.0).astype(np.float32)
+    assert _hot_types(m, st["ids"]) == {"3D"}
+
+
+def test_hotspot_step_measure():
+    import eval_hotspots as H
+    ph = 2 * np.pi * (np.arange(16) + 1) / 16
+    J, rep, rng = H.step_measure(np.tile(np.sin(ph), 2), 16)
+    assert abs(J - 0.5 * np.sin(np.pi / 8)) < 1e-9 and rep < 1e-12 and abs(rng - 2.0) < 1e-9   # J 0.19
+    J, rep, _ = H.step_measure(np.tile(np.r_[np.ones(8), -np.ones(8)], 2), 16)
+    assert abs(J - 1.0) < 1e-12 and rep < 1e-12
+    assert H.step_measure(np.r_[np.sin(ph), np.sin(ph + 0.2)], 16)[1] < H.REP_MAX      # rep 0.07
+    assert H.step_measure(np.r_[np.sin(ph), np.sin(ph + 1.0)], 16)[1] > H.REP_MAX      # rep 0.34
+
+
+def test_hotspot_regions_periodic():
+    """A hot blob across the box face is one region; the main regions carry half of the hot loss."""
+    import eval_hotspots as H
+    N = 20
+    ids = np.zeros((N, N, N), np.int8)
+    q = np.zeros((N, N, N))
+    q[[0, 1, N - 1, N - 2], 5:8, 5:8] = 10.0                   # one blob across x = 0
+    q[10:12, 15:17, 15:17] = 4.0                                  # a second, weaker blob
+    regs, hot, n = H.regions(q.ravel(), ids, ids >= 0, hot_q=0.995)            # the 44 cells of the blobs
+    assert n == 2 and len(regs) == 1 and regs[0][0].sum() == 36
+    assert abs(hot - 1.0) < 1e-12
+
+
 def test_min_calm_stop_rule():
     """PLAN 4.5: the calm tail counts the calm cycles at the end of the measured cycles (from 2 on after a drive
     correction); it equals the number of cycles that analyze.steady_tail keeps. With --min_calm N > 0 a stage stops
