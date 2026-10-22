@@ -355,3 +355,48 @@ def test_true_pbc_extrapolated_kernel():
     state.m = m.clone()
     with pytest.raises(ValueError):
         DemagField(true_pbc=True, extrapolate=True).h(state)
+
+
+def _h_reference(dem, state):
+    """h() of DemagField before the fused kernel product (audit item A2): loop over the components, the block term
+    of true_pbc as a separate term."""
+    dim = [i for i in range(3) if state.mesh.n[i] > 1]
+    s = [dem._shape(state)[i] for i in dim]
+    M = state.material["Ms"] * state.m
+    hk = [0, 0, 0]
+    for ax in range(3):
+        mk = torch.fft.rfftn(M[..., ax], dim=dim, s=s)
+        for i in range(3):
+            hk[i] = hk[i] + dem._N[i][ax] * mk
+    h = torch.stack([torch.fft.irfftn(x, s=s, dim=dim)[:state.mesh.n[0], :state.mesh.n[1], :state.mesh.n[2]]
+                     for x in hk], dim=3)
+    if dem._true_pbc:
+        from magnumnp.field_terms.demag import block_demag_factors
+        h = h + torch.tensor(block_demag_factors(state), dtype=h.dtype) * M.mean(dim=(0, 1, 2))
+    return h
+
+
+@pytest.mark.parametrize("dtype, tol", [(torch.float64, 1e-12), (torch.float32, 1e-5)])
+@pytest.mark.parametrize("pbc, kw", [((2, 2, 2), {"true_pbc": True, "extrapolate": True}),
+                                     ((1, 1, 1), {"true_pbc": True}),
+                                     ((1, 1, 1), {}),
+                                     ((0, 0, 0), {}),
+                                     ((2, 0, 1), {})])
+def test_fused_h_against_reference(dtype, tol, pbc, kw):
+    """The fused kernel product (1/n and the block term of true_pbc in the kernel) gives the field of the loop over
+    the components within round-off (PLAN 11, S1): random m, a varying Ms with a void, periodic and open."""
+    torch.set_default_dtype(dtype)
+    n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+    g = torch.Generator().manual_seed(1)
+    state = State(Mesh(n, dx, pbc=pbc))
+    ms = 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)
+    ms[:2, :2, :2] = 0.
+    state.material = {"Ms": ms}
+    r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+    state.m = r / r.norm(dim=-1, keepdim=True)
+    dem = DemagField(p=2, **kw)
+    h = dem.h(state)
+    h_ref = _h_reference(dem, state)
+    assert float((h - h_ref).abs().max() / h_ref.abs().max()) < tol
+    E, E_ref = float(dem.E(state)), float((-0.5 * constants.mu_0 * ms * state.m * h_ref * state.mesh.cell_volumes).sum())
+    assert abs(E / E_ref - 1) < tol

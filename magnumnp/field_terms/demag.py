@@ -27,6 +27,16 @@ import os
 
 __all__ = ["DemagField"]
 
+@torch.compile
+def _kernel_product(N, m_fft):
+    """h(k) = N(k) M(k) for the symmetric kernel N = [xx, xy, xz, yy, yz, zz] (real, last axis of size 1) and the
+    spectra of the three components as real views (last axis: real and imaginary part), in one pass."""
+    Nxx, Nxy, Nxz, Nyy, Nyz, Nzz = N
+    mx, my, mz = m_fft
+    return (Nxx * mx + Nxy * my + Nxz * mz,
+            Nxy * mx + Nyy * my + Nyz * mz,
+            Nxz * mx + Nyz * my + Nzz * mz)
+
 def f(x, y, z):
     x, y, z = abs(x), abs(y), abs(z)
     x2, y2, z2 = x**2, y**2, z**2
@@ -284,30 +294,38 @@ class DemagField(LinearFieldTerm):
                              torch.stack(self._N[2], dim=-1)], dim=-1)
             return (N * state.m).sum(dim=-1)
 
-        hx = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.device)
-        hy = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.device)
-        hz = torch.zeros(self._N[0][0].shape, dtype=complex_dtype[self._N[0][0].dtype], device=state.device)
+        if not hasattr(self, "_N_h"):
+            self._N_h = self._kernel_h(state, s)
 
-        M = state.material["Ms"] * state.m # compute M once; M[...,ax] below is a view (no copy)
-        for ax in range(3):
-            m_pad_fft1D = torch.fft.rfftn(M[:,:,:,ax], dim = dim, s = s)
+        # M = Ms m with the component first and contiguous (one pass), so that each rfftn reads a contiguous array
+        M = torch.empty((3,) + tuple(state.m.shape[:3]), dtype=state.m.dtype, device=state.device)
+        Ms = state.material["Ms"]
+        Ms = torch.broadcast_to(Ms, state.m.shape).permute(3,0,1,2) if torch.is_tensor(Ms) else Ms
+        torch.mul(state.m.permute(3,0,1,2), Ms, out=M)
+        m_fft = [torch.view_as_real(torch.fft.rfftn(M[ax], dim = dim, s = s)) for ax in range(3)]
 
-            hx += self._N[0][ax] * m_pad_fft1D
-            hy += self._N[1][ax] * m_pad_fft1D
-            hz += self._N[2][ax] * m_pad_fft1D
-
-        hx = torch.fft.irfftn(hx, dim = dim)
-        hy = torch.fft.irfftn(hy, dim = dim)
-        hz = torch.fft.irfftn(hz, dim = dim)
+        # unnormalized inverse: the factor 1/n is in self._N_h
+        hx, hy, hz = [torch.fft.irfftn(torch.view_as_complex(hk), s = s, dim = dim, norm = "forward")
+                      for hk in _kernel_product(self._N_h, m_fft)]
 
         h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                          hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                          hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
-        if self._true_pbc:
-            if not hasattr(self, "_N_block"):
-                self._N_block = torch.tensor(block_demag_factors(state), dtype=h.dtype, device=h.device)
-            h = h + self._N_block * M.mean(dim=(0,1,2))
         return h
+
+    def _kernel_h(self, state, s):
+        """The six kernel components that h() uses: N / n (n: number of FFT points), and with true_pbc the block
+        term in the k = 0 entries of the diagonal. The k = 0 part of the inverse transform is N(0) M(k = 0) / n =
+        N(0) <M>, so N_ii(0) + N_block,i adds N_block,i <M_i>. self._N stays unchanged (other code uses it)."""
+        n = float(np.prod(s))
+        N = [self._N[0][0], self._N[0][1], self._N[0][2], self._N[1][1], self._N[1][2], self._N[2][2]]
+        N = [K.to(torch.float64) for K in N]
+        if self._true_pbc:
+            N_block = block_demag_factors(state)
+            for i, c in enumerate((0, 3, 5)):
+                N[c] = N[c].clone()
+                N[c][(0,)*N[c].dim()] += N_block[i]
+        return [(K / n).to(self._N[0][0].dtype).unsqueeze(-1) for K in N]
 
     def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
