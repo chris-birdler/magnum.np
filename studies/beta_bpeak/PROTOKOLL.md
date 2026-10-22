@@ -7928,7 +7928,7 @@ with s₁ 0.113: 0.042 (with s₁ 0.118 from the sensitivity: 0.044).
 
 **Open for Chris:** the second step of D1 (K2 and K4 do not meet the target); the question of the 2 K1 runs; D3.
 
-### 7.136 PLAN 4.15, phase 1: investigation of K1_4 and K1_8; start of the second step of D1 (2026-10-21/22)
+### 7.136 PLAN 4.15, phase 1: investigation of K1_4 and K1_8; start of the second step of D1 (2026-10-21/22) (corrected in 7.137)
 
 All times UTC. Terms as in PLAN 4.15 and 7.132 … 7.135. Run code on the instance: 8640e55 (unchanged).
 
@@ -8127,6 +8127,144 @@ second type of state with a different loss? With the seeds 9 … 12, 13 K1 runs 
 until now). D3 after the second step of D1.
 
 Commits: main 1562c63; figure k1_switch_p0_50mT.png md5 fb5c6b34.
+
+### 7.137 Correction of 7.136: its particle values are the work of the applied field, not the loss; the loss of each particle from the accumulators; loss origin of K1 with the methods of the main study (2026-10-22, questions of Chris)
+
+All times UTC. Terms as in 7.136. Code on main: e3294d2 (acc_reduce.py: split per particle and --out;
+eval_k1_origin.py), 9e0ea7c (eval_k1_particles.py).
+
+**Summary.**
+- The particle values P_p of 7.136 are the work of the applied field on each particle. The loss of a particle is its
+  dissipation; the stray field moves energy between the particles. Several statements of 7.136 fall (list below).
+- From the accumulators of the 4 replays: the additional loss of K1_4 and K1_8 is in 3 particles, all with the easy
+  axis at 37° to the drive (K1_4 particles 0 and 3, K1_8 particle 0). These 3 particles, and particles 0 and 3 of
+  K3_0, are the only 5 of the 16 particles with a core m·e near 0 in the prepared state. This is a correlation, not a
+  cause.
+- With the methods of the main study (7.69, 7.70, 7.72, 7.125), over all 9 K1 runs: in K1_4 and K1_8 the wall area is
+  the same at 9 and 50 mT, the switched volume between the 2 states at H = 0 is 2.3 … 4.4 times larger, the loss is
+  more in the zones of the largest texture and in the cores, and more of it is outside the fundamental.
+
+**Correction of 7.136.**
+- P_p of 7.136 is f μ0 ∮ H dM_p: the work of the applied field on particle p. New name: F_p. It is not the loss of
+  particle p. F_p and the loss are equal only in the sum over the 4 particles. Thus the sum check of 7.136 does not test
+  the split into particles.
+- D_p: the loss of particle p, that is the Gilbert dissipation of its cells, from the accumulators (acc_reduce.py, new
+  key "particles"), in W/cm³ of the particle volume. D_p is the box value P of the original run (f W_loop, last 2
+  cycles) times the share of the particle in the loss of the replay accumulators (calm cycles 2 … 6) times 4 / φ_vox.
+  D_p is known only for the 4 replays (50 … 150 mT). instance_postproc deleted the accumulators of the original runs.
+- Why F_p and D_p differ. Over a closed cycle, the work of the applied field on a particle is equal to its dissipation
+  plus the energy that it gives to the other particles through its stray field. These transfers cancel only in the sum
+  over the particles. Checks against other causes:
+  - Same cycles: F_p over the cycles 2 … 6 of the original run is equal to F_p of the last 2 cycles within
+    0.2 W/cm³; the spread between single cycles is at most 1.2 W/cm³.
+  - Same states: the box values of the replay accumulators (R1, R_rest, loss shares in the core, the texture top 10 %
+    and the loss top 10 %) are equal to acc.json of the original runs within 7e-5 at 50, 70, 100 and 150 mT. This also
+    extends the replay check of 7.136 (50 mT only) to 70 … 150 mT.
+  - No contact: at least one void cell lies between any two particles (rule of geometry.py, 26-neighbourhood;
+    ms_void 1e-8). Thus there is no exchange coupling between the particles.
+  - The sum of F_p − D_p over the 4 particles is 0 by construction (not a check).
+- Size and direction of the transfer at 50 mT (F_p − D_p): −99 … +62 W/cm³. Particles 1 and 2 give energy (F_p > D_p in
+  8 of 8); particles 0 and 3 receive energy (F_p < D_p in 7 of 8; not K1_8 particle 3). K1_8 particle 0 receives
+  99 W/cm³ of its 257 W/cm³ (39 %). Also in the normal run K1_5 the transfer is ±8 … 13 W/cm³; thus F_p is not a measure
+  of the particle loss in normal runs either.
+- Statements of 7.136 that fall (they used F_p):
+  1. Result 1: "at K1_8 also in particle 2", "K1_4 P_1 1.6 times P_ref", the shares of the loss above P_ref, the
+     comparison with the K3 ranges, the 9 mT values, the particle ranks, the SD of 6.9 W/cm³, "differ by up to a
+     factor 2 (K1_1: 27 … 53 W/cm³)" and the ranges of the table. P_ref (37.6 W/cm³ at 50 mT, 1.15 W/cm³ at 9 mT)
+     stays: per run, the mean of the 4 F_p is equal to the mean of the 4 D_p.
+  2. The test of the easy-axis angle in the other 7 K1 runs (−1.4 ± 3.4 W/cm³ at 50 mT, −0.11 ± 0.10 W/cm³ at 9 mT). It
+     cannot be made with D_p, because the accumulators of these runs are deleted. K1_5 alone (n 1): the mean of D_0 and
+     D_3 minus the mean of D_1 and D_2 is +8.8 W/cm³ at 50 mT.
+  3. Result 2: the count "3 of the 5 particles with at least 2 times the reference loss" and the counterexamples
+     (K1_8 particle 3, K1_8 particle 2, K1_4 particle 1). With D_p these particles have 52, 32 and 31 W/cm³. The new
+     count is in Result 1 below.
+  4. Result 3: "the mean branch angle is not a measure of the particle loss" (it rested on F_p). The statement is
+     withdrawn. Over all 16 particles of the 4 replays, the Spearman ρ of the mean branch angle is 0.98 with D_p and
+     0.64 with F_p. Over particles 0 and 3 only (n 8) it is 0.88 with D_p and 0.95 with F_p, thus this subset does not
+     separate the two. The particles are not independent (4 runs, 2 corners). The mean branch angle is the measure
+     "rot" of eval_hist_snapshots.py (7.126) for each particle; eval_k1_switch.py computed it again instead of using
+     that script.
+  5. "dM0_p follows P_p" and q_ell_p: dM0_p and F_p come from the same M_p; they describe the work of the applied
+     field, not the loss.
+  6. Reading: "not an error of the particle split (sum check)"; and the Summary and Reading statements that use 1 … 5.
+- Statements of 7.136 that stay: the box values P and ln P; the replay check; the core m·e table of Result 2 (prepared
+  state, init.pt; the state at 50 mT was not measured); in Result 3 the cell counts, the largest angles, the net change,
+  the radial distribution of the angle sum and the cells above 30°; the figure; the second step of D1.
+- The rule of 7.126 (the loss ratio is near the square of the rot ratio) does not hold per particle. Against the same
+  particle of K1_5: K1_4 particle 0, rot ratio 4.83 (square 23), D ratio 3.35; particle 3, 2.81 (7.9), 3.66; K1_8
+  particle 0, 6.81 (46), 6.61; particle 3, 1.49 (2.2), 1.24. The D ratio is 0.69 … 1.30 times the rot ratio (n 4,
+  1 reference run). Information only.
+
+**Result 1: the loss of each particle (replays, eval_k1_particles.py).** D_p in W/cm³ of the particle volume; core
+m·e of the prepared state:
+
+| run | core m·e, particles 0 / 1 / 2 / 3 | D_0 / D_1 / D_2 / D_3 at 50 mT | at 150 mT |
+|---|---|---|---|
+| K1_5 (normal loss) | −0.520 / −0.534 / −0.542 / 0.493 | 39 / 31 / 32 / 42 | 420 / 283 / 285 / 387 |
+| K1_4 | 0.016 / −0.529 / −0.536 / 0.035 | 130 / 31 / 32 / 153 | 2708 / 290 / 295 / 1772 |
+| K1_8 | 0.101 / −0.528 / −0.454 / 0.491 | 257 / 32 / 32 / 52 | 4361 / 294 / 300 / 418 |
+| K3_0 | −0.083 / 0.263 / 0.277 / 0.015 | 101 / 34 / 39 / 135 | 2303 / 315 / 345 / 1623 |
+
+- K1_5 is the only K1 reference run with D_p. Its P at 50 mT is the lowest of the 7 normal K1 runs (ln P 3.104; range
+  3.104 … 3.203). Ratios against K1_5 have n 1.
+- In the 3 K1 runs, particles 1 and 2 have the same D_p within 2 % at 50 mT (31 … 32 W/cm³) and within 6.1 % at
+  150 mT (283 … 300 W/cm³). The additional loss of K1_4 and K1_8 is in K1_4 particles 0 and 3 and in K1_8 particle 0;
+  all 3 have the easy axis at 37° to the drive. K1_8 particle 3 has 1.24 times the D_3 of K1_5.
+- Count at 50 mT: the 5 particles with D_p of 100 W/cm³ or more (K1_4 particles 0 and 3, K1_8 particle 0, K3_0
+  particles 0 and 3) have a core m·e of magnitude below 0.11: 3 of 3 at K1, 5 of 5 with K3_0. The other 11 particles
+  have a magnitude of 0.26 or more and D_p of 31 … 52 W/cm³. The 9 K1 particles of these 11 have 0.45 … 0.54; at K3
+  particles 1 and 2 have 0.26 and 0.28 (a smaller gap). n: 16 particles of 4 runs; 1 K1 run with normal loss. This is
+  a correlation, not a cause.
+- In these 5 particles at 50 mT: concentration of the particle loss in the core 2.4 … 3.9 (K1_5 particles 0 and 3:
+  1.6 and 1.7); in the texture top 10 % 5.0 … 6.2 (K1_5: 1.7 and 2.0); R1_p 0.60 … 0.97 (K1_5: 0.99 and 0.98). R1_p:
+  the share of the particle loss at f (p_fund / p over the particle cells; acc_reduce.py).
+
+**Result 2: loss origin of the 9 K1 runs with the methods of the main study (eval_k1_origin.py; values of the whole
+box, no split into particles).** Methods: 7.69 (location: concentration c = loss share / volume share), 7.70 and 7.72
+(channels: R1 at f, R_harm at 2f … 7f, R_rest; from the harmonic sums R_k of acc.json), 7.125 (switched volume V_sw
+and wall area A_w; s = V_sw / A_w of the 2 half cycles H max ↔ H min (s_0) and H = 0 falling ↔ rising (s_1);
+s_mean = (s_0 + s_1) / 2; X = A_w · s_mean²; 7.125 reads s as the wall path, and viscous wall motion gives a loss that
+grows with X). V_sw counts all changes of m, also rotation (domains.py); thus s is not only wall motion. Data: acc.json
+and domains.json of the original runs.
+
+| quantity | other 7 K1 runs (range) | K1_4 | K1_8 |
+|---|---|---|---|
+| A_w at 9 / 50 / 150 mT, l_ex² | 163 856 … 164 068 / 163 434 … 163 656 / 154 116 … 154 477 | 164 018 / 163 512 / 156 519 | 164 657 / 164 213 / 155 522 |
+| s_1 at 9 / 50 mT, l_ex | 0.046 … 0.087 / 0.31 … 0.56 | 0.29 / 1.50 | 0.15 / 1.47 |
+| s_0 at 9 / 50 mT, l_ex | 0.929 … 0.935 / 5.19 … 5.22 | 1.03 / 5.72 | 0.96 / 5.39 |
+| c core at 9 / 50 mT | 1.38 … 1.52 / 1.34 … 1.51 | 2.52 / 2.50 | 2.39 / 2.05 |
+| c texture top 10 % at 9 / 50 mT | 1.21 … 1.59 / 1.42 … 1.87 | 4.43 / 4.57 | 3.36 / 4.52 |
+| R1 at 50 / 150 mT | 0.89 … 0.99 / 0.92 … 0.94 | 0.84 / 0.53 | 0.71 / 0.42 |
+| R_harm, R_rest at 50 mT | 0.007 … 0.077, 0.000 … 0.037 | 0.12, 0.04 | 0.14, 0.16 |
+
+- The wall area differs by at most 0.4 % from the range of the other runs at 9 and 50 mT; at 150 mT K1_4 is 1.3 % and
+  K1_8 0.7 % above it. s_1 is 2.3 … 4.4 times the mean of the other runs (9 and 50 mT); s_0 is 1.03 … 1.10 times.
+  s_0 is much larger than s_1 and sets most of X.
+- Scale check of 7.125: the slope of ln P on ln X over the 9 K1 runs is 1.53, 1.84 and 2.67 at 9, 50 and 150 mT (7.125:
+  1.30 … 1.46 for 12 pairs of the same microstructure). Δ ln X / Δ ln P against the mean of the other 7 runs (K1_4,
+  K1_8): 0.65 and 0.57 at 9 mT, 0.61 and 0.45 at 50 mT, 0.43 and 0.27 at 150 mT. Pearson r of ln P with ln X: 1.00,
+  0.98, 0.96 (n 9); without K1_4 and K1_8: 0.94, 0.26, 0.63 (n 7). The 2 runs set r; here the runs have different
+  microstructures, in 7.125 the pairs had the same.
+
+**Reading.**
+- The additional loss of K1_4 and K1_8 is in particles with the easy axis at 37° to the drive that had a core m·e near
+  0 in the prepared state (3 particles), as in K3_0 (2 particles).
+- In K1_4 and K1_8, the switched volume between the 2 states at H = 0 is larger, the loss is more in the zones of the
+  largest texture and in the cores, and more of it is outside the fundamental.
+- Read as viscous wall motion (7.125), X gives the direction and about half of the difference in ln P at 9 and 50 mT
+  (0.45 … 0.65), less at 150 mT (0.27 … 0.43).
+- Open: why the switched volume is larger in these particles; whether the core state is the cause.
+
+**Running: loss split per particle for the next runs.** /root/k1acc/watch_particles.sh (started 05:12, PID 211384)
+waits for DONE of K1_9 … K1_12, K2_5 and K4_5. Then it runs acc_reduce.py (e3294d2) with --out /root/k1acc/out on
+their accumulators, before instance_postproc deletes them. Time from DONE to the deletion: 15.5 min (K1_8), 17 min
+(K1_7), 25 min (K2_4), 58 min (K4_4); the process looks every 20 s. The run folders and the dispatcher checkout
+(8640e55, no local changes) do not change. Reason for a separate process: a changed tracked file in the dispatcher
+checkout makes git_commit "8640e55-dirty" for new runs, and a resume of a run then stops at the git_commit check of
+run_loops.py.
+
+Results (study branch): results/k1_particles.md and .json, results/k1_particles_rep50/<run>_acc.json (4 files),
+results/k1_origin.md and .json.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
