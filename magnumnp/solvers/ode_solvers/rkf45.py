@@ -86,6 +86,9 @@ class RKF45(object):
     def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
         remaining = float(dt) # track remaining time in python to avoid device syncs
         while remaining > 0.:
+            if self._dt > remaining:
+                # a try past the end of the interval is always rejected below; try the rest directly
+                self._dt = remaining
             _x1, _t1, err = self._try_step(t, x, **kwargs)
             if atol == None:
                 atol = self._atol
