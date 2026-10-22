@@ -292,3 +292,16 @@ def test_fcc_subcells_bitwise_equal_to_fine_mesh(N, d_lex, q):
     n0, p0, o0 = staircase_cells(fcc_box(q * N, d_lex * lex, dx / q)["ids"], q)
     n1, p1, o1 = fcc_subcells(N, d_lex * lex, dx, q)
     assert np.array_equal(n0, n1) and np.array_equal(p0, p1) and np.array_equal(o0, o1)
+
+
+@pytest.mark.parametrize("q", [2, 4])
+def test_setup_in_blocks_of_offsets_is_bitwise_equal(q):
+    """Audit B4: the table K^f(q offset + a - b) in blocks of offsets and the centroids in blocks of cells give
+    bitwise the values of one block."""
+    from geometry import fcc_subcells
+    lex = 3.3421710327935706e-09
+    n, pid, occ = fcc_subcells(32, 60.0 * lex, 3 * lex, q)
+    one = NearCorrection(n, occ, q, 2, centroid=True)
+    blk = NearCorrection(n, occ, q, 2, centroid=True, table_bytes=3 * q ** 6 * 6 * 8)
+    assert torch.equal(one.B, blk.B)
+    assert torch.equal(centroid_offsets(occ, q), centroid_offsets(occ, q, chunk=1000))

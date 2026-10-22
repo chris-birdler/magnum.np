@@ -121,14 +121,20 @@ def staircase_cells(ids_fine, q):
     return n, pid, occ
 
 
-def centroid_offsets(occ, q):
+def centroid_offsets(occ, q, chunk=1 << 18):
     """Offset of the centroid of the body sub-cells of each cell from its centre, in cells: [N, N, N, 3] (0 where a
-    cell has no body sub-cell)."""
-    occ_t = torch.as_tensor(occ).to(torch.float64)
+    cell has no body sub-cell). In blocks of cells: the full map in float64 needs 8 q^3 bytes per cell (13 GB at q 8,
+    N 148; audit B4)."""
+    occ_t = torch.as_tensor(occ)
+    shape = occ_t.shape[:-1]
+    occ_t = occ_t.reshape(-1, occ_t.shape[-1])
     aloc = torch.stack(torch.meshgrid(*(torch.arange(q, dtype=torch.float64),) * 3, indexing="ij"), -1).reshape(-1, 3)
-    pos = (aloc + 0.5) / q - 0.5                                     # sub-cell centres relative to the cell centre
-    n = occ_t.sum(-1, keepdim=True)
-    return (occ_t @ pos) / n.clamp(min=1.0)
+    pos = ((aloc + 0.5) / q - 0.5).to(occ_t.device)                  # sub-cell centres relative to the cell centre
+    d = torch.empty(occ_t.shape[0], 3, dtype=torch.float64, device=occ_t.device)
+    for i in range(0, occ_t.shape[0], chunk):
+        o = occ_t[i:i + chunk].to(torch.float64)
+        d[i:i + chunk] = (o @ pos) / o.sum(-1, keepdim=True).clamp(min=1.0)
+    return d.reshape(*shape, 3)
 
 
 def centroid_field(Nhat, v, d, m, shape=None):
@@ -201,7 +207,7 @@ class NearCorrection:
     the body part of its cell; centroid_field). The window then removes the coarse coupling
     v_j [K^c(r) + ((d_i - d_j) . D) K^c(r)] with the central difference D of the coarse kernel."""
 
-    def __init__(self, n, occ, q, p, periodic=True, batch=2048, centroid=False):
+    def __init__(self, n, occ, q, p, periodic=True, batch=2048, centroid=False, table_bytes=1e9):
         self.N = N = n.shape[0]
         self.q, self.p, self.periodic, self.centroid = q, p, periodic, centroid
         nq = q ** 3
@@ -226,24 +232,29 @@ class NearCorrection:
         Rf = (p + 1) * q - 1                                         # largest fine offset between cells in the window
         Kf = kernel_table(Rf)
         aloc = torch.stack(torch.meshgrid(*(torch.arange(q),) * 3, indexing="ij"), dim=-1).reshape(-1, 3)  # [q^3, 3]
-        occ_t = torch.as_tensor(occ.reshape(-1, nq))
-        base = q * D[:, None, None, :] + aloc[None, :, None, :] - aloc[None, None, :, :] + Rf   # [n_off, a, b, 3]
-        Kab = Kf[base[..., 0], base[..., 1], base[..., 2]]           # [n_off, a, b, 6]: K^f(q offset + a - b)
+        occ_t = torch.as_tensor(occ.reshape(-1, nq))               # bool; only gathered rows go to float64 (audit B4)
         # B[j, offset, 6] = L_{t, j}, target t = j + offset (zero if the target is not magnetic, or if the offset
-        # leaves the box in the open case); computed directly in blocks of source cells (bounded memory for any q)
+        # leaves the box in the open case); computed in blocks of offsets (the table K^f(q offset + a - b) of all
+        # offsets has 343 q^6 6 values: 4.3 GB at q 8) and in blocks of source cells (bounded memory for any q)
         M = len(self.J)
         self.B = torch.zeros(M, len(D), 6, dtype=torch.float64)
-        occ_f = occ_t.to(torch.float64)
-        batch = max(1, min(batch, int(2e8) // (len(D) * nq * 6 * 8)))
-        for s in range(0, M, batch):
-            sl = slice(s, min(s + batch, M))
-            S = torch.einsum("jb,dabc->jdac", occ_f[self.J[sl]], Kab)  # sum over the body sub-cells b of the source
-            t, ok = self._targets(self.jxyz[sl])                     # [b, n_off]
-            o_t = occ_f[t]                                           # [b, n_off, q^3]
-            L = torch.einsum("bda,bdac->bdc", o_t, S)
-            nt = self.n[t]
-            L = torch.where((ok & (nt > 0))[..., None], L / nt.clamp(min=1.0)[..., None], torch.zeros_like(L))
-            self.B[sl] = L
+        per_off = nq * nq * 6 * 8
+        n_chunk = max(1, min(len(D), int(table_bytes) // per_off))
+        t_all, ok_all = self._targets(self.jxyz)                     # [M, n_off]
+        for d0 in range(0, len(D), n_chunk):
+            dc = slice(d0, min(d0 + n_chunk, len(D)))
+            base = q * D[dc, None, None, :] + aloc[None, :, None, :] - aloc[None, None, :, :] + Rf   # [n_d, a, b, 3]
+            Kab = Kf[base[..., 0], base[..., 1], base[..., 2]]       # [n_d, a, b, 6]: K^f(q offset + a - b)
+            nb = max(1, min(batch, int(2e8) // ((dc.stop - dc.start) * nq * 6 * 8)))
+            for s in range(0, M, nb):
+                sl = slice(s, min(s + nb, M))
+                S = torch.einsum("jb,dabc->jdac", occ_t[self.J[sl]].to(torch.float64), Kab)  # sum over source b
+                t, ok = t_all[sl, dc], ok_all[sl, dc]                # [b, n_d]
+                L = torch.einsum("bda,bdac->bdc", occ_t[t].to(torch.float64), S)
+                nt = self.n[t]
+                L = torch.where((ok & (nt > 0))[..., None], L / nt.clamp(min=1.0)[..., None], torch.zeros_like(L))
+                self.B[sl, dc] = L
+            del Kab, base
         self._kloc = None
 
     def _targets(self, xyz):
