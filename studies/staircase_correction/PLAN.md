@@ -467,3 +467,8 @@ K4_0, K4_1; S1 and S3 use K1_2 (N 108) and K4_2 (N 156).
 - Box 8 (0.135 $/h) stays for the tests between the patches (go of Chris).
 - Cost (estimate): S3 about 0.5 … 0.7 V100-h for each of 8 patches, stage 4 about 6 … 8 V100-h; with the waiting time
   of box 8 during the build about 3 … 7 $ in total.
+
+**Decision of Chris (2026-10-22, about 08:00 UTC): B2 and B3 are not built.** Measured on box 8: B2 (3 × 3 block
+matrix, BSR) has 45 % less matrix memory but is not faster (0 … 16 % slower on the V100); B3 (FCC translation
+symmetry) saves only memory and depends on the geometry. With B4 and B5, q 8 fits a 16-GB GPU at both main geometries.
+Both are a later option for q 16 or larger boxes.
