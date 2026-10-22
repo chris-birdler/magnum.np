@@ -2052,3 +2052,98 @@ ended with a segmentation fault. All stack dumps (faulthandler, every 45 s) show
 15 … 17 on 8 cores from a job of another session (6 processes, not touched); the same kernel took 105 s before.
 Probable cause of the crash: the faulthandler watchdog reads the frames while torch computes (not proven). Decision
 of Chris: leave C3 for now. On a GPU box the same check takes seconds.
+
+### 3.37 Paper draft; the main-study estimate of 3.33 used DemagFieldPBC energies and an E_K model that does not describe the states (2026-10-22, night mandate)
+
+**Order of Chris (2026-10-21, about 23:50 local).** A paper of at most 10 pages on (1) true PBC with the Newell tensor
+and (2) the near-field correction after Donahue & McMichael: the method, verification and validation, limits and
+detection limits, literature, and the meaningful figures (above all the schematic of the five models). Finish it
+overnight. Answers of Chris before the night: author only Christoph Vogler (affiliation as a placeholder); the source of
+"Newell does not work" is Bruckner et al., Sci. Rep. 11, 9202 (2021); the error of DemagFieldPBC in full, with numbers;
+besides the statics: the dynamic loss tests, the main-study estimate and the effect of the steps of m (not the GPU cost,
+not the speed patch).
+
+**Draft.**
+- Location: local git repository ~/Documents/code/paper_pbc_staircase (no remote). NIGHT_DECISIONS.md there lists the
+  decisions of the night.
+- Form: REVTeX (AIP/JAP, two columns), 10 pages, 7 figures, 2 tables.
+- Numbers: scripts in scripts/ read the result files of the two studies and write each figure, table and number macro
+  (build.sh). A number that only a record gives has a comment with the section in the source text.
+- References: checked against Crossref and arXiv. Two DOIs from memory were wrong; the checked DOIs replaced them. The
+  quotation of Bruckner 2021 comes from the full text (Europe PMC, PMC8080822).
+- First context-free review: 34 findings (wrong or too strong statements, missing caveats, gaps, style). All findings of
+  classes A … C are applied; finding 2 below comes from it.
+- Second context-free review: it recomputed the main-study estimate and found no code error. Its 20 findings on wording
+  and caveats are applied (NIGHT_DECISIONS.md items 6 and 7).
+- Open for Chris: affiliation, acknowledgments and data availability (placeholders).
+
+**Terms of this section.** Δx: cell edge (3 l_ex); d: particle diameter; φ: packing fraction; K_d: μ0 Ms²/2; Q_eff:
+K_eff / K_d; r_p: stress anisotropy relative to K_eff; E_K: anisotropy energy of a state. Surface effect S(q): the
+energy of the voxel model minus the exact energy with the surface of q sub-cells, for the same coarse m. Surface error:
+the stray-field energy error of a model against the smooth spheres. All energies per box volume, in units of K_d.
+
+**Finding 1: the law of 3.33 was fitted on DemagFieldPBC energies.**
+- The law of the deck staircase_energy_map (error ≈ C (Δx/d)^p, p 1.23, from the block-averaged F states of the mesh
+  test B0b of the β(B_peak) record, cells of 0.75, 1.5 and 3 l_ex) uses results/mesh_energy_states.md of that study.
+  check_mesh_energy.py computes these energies with DemagFieldPBC.
+- Section 7.105 of the β(B_peak) record had said: "The law and R_K must be determined again with the reference solver."
+  Nobody did this before 3.33.
+- With the Newell energies of the same states (results/demag_solver.json, E_N4: 4 image shells; 4 seeds): error at
+  Δx 3 l_ex 0.00577 against 0.00303 (factor 1.9), order p 1.04 against 1.23. The order 1.04 agrees with the order 1.05
+  of the exact fine field X3 (3.27).
+- Inference: the law comes from block-averaged fine states, so it also contains the coarsening of m. The correction
+  removes only the stray-field part at a fixed coarse m.
+
+**Finding 2: the E_K model of 3.33 does not describe the states.** 3.33 took |E_K| ≈ A_K Q_eff (1 + r_p) with one
+A_K. The measured |E_K| / (Q_eff (1 + r_p)) is 0.19 (test geometry, r_p 0; stage B states D3_s941 … s944), 0.24 (K4_1,
+r_p 1.5) and 0.38 (K2_0, K2_1, r_p 3) (results/static_A_*.json and stageB_static_A_*.json, key runs → E_K; three
+geometries only). Thus the model gives a too small |E_K| at the points with stress anisotropy. The first review found
+this: a first revision of the estimate with this model gave 1.8 … 2.5 times the measured S(q 2) / |E_K| of the stage
+A states.
+
+**New estimate (paper/scripts/fig_mainstudy.py; an estimate).**
+- S(q 2) of the 7 voxel-relaxed static states (K2_0, K2_1, K4_1 at d/l_ex 300; D3_s941 … s944 at d/l_ex 92) follows
+  C_S φ (Δx/d)^1.05 within 2.2 % (C_S 0.093). The exponent comes from the X3 increments (3.27); the exponent 1 fits as
+  well.
+- The step r42 = S(q 4) / S(q 2) is 1.69 on the 1-µm states (1.84 in the test geometry). From q 2 on, the increments
+  are assumed to halve with each doubling of q, as for X3 up to q 8 (3.27). Anchored at the measured S(q 2) and
+  S(q 4), this gives the surface error (2 r42 − 1) S(q 2) without the correction and 4 (r42 − 1) S(q 2) / q with it
+  (q ≥ 2). The voxel model (q 1) is not on this line: a first-order law from q 1 on would give r42 1.5.
+- E_K: the anisotropy energy (cube and particle terms) of the prepared state of each main run, as run_loops builds the
+  model (paper/scripts/mainstudy_ek.py). Check: the sum of all energy terms equals the last relaxation record of each
+  run within 4·10⁻⁵ (relative). Points: the 96 Sobol points S000 … S095. The 8 replicates C0 … C7 of the centre point
+  are not used.
+- Main weak point: the design states were relaxed with DemagFieldPBC, and their surface effect is not measured. The
+  surface effect depends on the state: in the test geometry the start states of the dynamic test have 1.53 times the
+  S(q 2) of the voxel-relaxed D3 states (q_series.json against stageB_static_A_d96_phi0.55_q2_c.json), and the absolute
+  step S(q 4) − S(q 2) agrees within about 6 %. The direction of the resulting bias of the table is not determined.
+
+| 96 main points (estimate) | no correction | q 2 | q 4 | q 8 | q 16 |
+|---|---|---|---|---|---|
+| median (% of \|E_K\|) | 91 | 53 | 26 | 13 | 7 |
+| range (% of \|E_K\|) | 12 … 462 | 7 … 267 | 4 … 134 | 2 … 67 | 1 … 33 |
+| points below 10 % | 0 % | 7 % | 17 % | 36 % | 68 % |
+| test geometry (measured S(q 2) / \|E_K\| and r42) | 284 % | 178 % | 89 % | 44 % | 22 % |
+
+**Correction of 3.33 and 3.34** (the deck staircase_energy_map is not changed; decision of Chris):
+- 3.33, first table (exponent 1.23): already replaced inside 3.33; it stays void.
+- 3.33, second table, and 3.34: the main-study row (median 67 % without the correction; 32 / 16 / 8 / 4 % at q 2 / 4 / 8
+  / 16; ranges 14 … 306 %, 7 … 148 %, 3 … 72 %, 2 … 35 %, 1 … 17 %) and the row "points below 10 %" (0 / 8 / 29 / 59 /
+  91 %) carry both findings. The table above replaces them. 3.33 used 104 points, including the 8 replicates of the
+  centre point; the table above uses the 96 Sobol points.
+- 3.33: the rows of the corners K1 and K3 (with and without 1 + r_p) and the row of the test geometry (204 / 87 / 37 /
+  16 %) rest on the same law and E_K model. They are void. The new test-geometry row is in the table above.
+- 3.34, conclusion: "With the correction it falls about as q^−1.05: median 32 / 16 / 8 % at q 2 / 4 / 8" and "Thus the
+  correction is expected to remove most of the stray-field error" are replaced. New reading: without the correction the
+  surface error is about 0.9 |E_K| in the median; the correction lowers it to about 0.5 / 0.26 / 0.13 |E_K| at q 2 / 4 /
+  8 (estimate). The correction removes most of the surface error only from q 8 on.
+- 3.33, "Limits of the options" (memory of the set-up at q 8 and q 16): unchanged. The choice of q stays open (Chris);
+  the new values for q 4 (17 % of the points below 10 %) and q 8 (36 %) are an input for it.
+
+**Decisions under the night mandate** (details in NIGHT_DECISIONS.md of the paper folder):
+1. The paper is in its own local repository, not in this branch, because the GitHub remote of this branch is public.
+2. The main-study estimate of the paper uses the method above.
+3. Names in the paper: the effect m is Δ_m, total is Δ_tot, and the paired difference d is δ (m collides with the
+   magnetization, d with the diameter); N1, N3, Δ_c and Δ_g stay.
+4. The FE attempt (3.24, 3.25) is a negative result in the limits; the paper does not name the private FE code.
+5. The GPU cost and the speed patch stay out (scope of Chris); the paper says that the cost is not part of it.
