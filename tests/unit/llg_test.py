@@ -140,3 +140,23 @@ def test_stochastic():
         llg.step(state, 1e-11)
         logger << state
 
+
+
+@pytest.mark.parametrize("dtype, tol", [(torch.float64, 1e-12), (torch.float32, 1e-5)])
+@pytest.mark.parametrize("n_fields", [1, 3, 5])
+@pytest.mark.parametrize("alpha_field", [True, False])
+@pytest.mark.parametrize("no_precession", [False, True])
+def test_llg_rhs_sum_against_reference(dtype, tol, n_fields, alpha_field, no_precession):
+    """The fused right-hand side (field sum and cross products in one pass, audit item A1) gives the result of
+    accumulate_h and _llg_rhs within round-off (PLAN 11, S1)."""
+    from magnumnp.solvers.llg import _llg_rhs, _llg_rhs_sum
+    torch.set_default_dtype(dtype)
+    g = torch.Generator().manual_seed(2)
+    n = (6, 5, 4)
+    r = torch.randn(n + (3,), generator=g, dtype=torch.float64)
+    m = (r / r.norm(dim=-1, keepdim=True)).to(dtype)
+    hs = [(1e5 * torch.randn(n + (3,), generator=g, dtype=torch.float64)).to(dtype) for _ in range(n_fields)]
+    alpha = (0.05 + 0.1 * torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype) if alpha_field else 0.1
+    ref = _llg_rhs(m, accumulate_h(iter(hs)), alpha, no_precession)
+    new = _llg_rhs_sum(m, hs, alpha, no_precession)
+    assert float((new - ref).abs().max() / ref.abs().max()) < tol

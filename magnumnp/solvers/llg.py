@@ -32,6 +32,26 @@ def _llg_rhs(m, h, alpha, no_precession: bool):
     return dm
 
 
+@torch.compile
+def _llg_rhs_sum(m, hs: list, alpha, no_precession: bool):
+    """_llg_rhs for the sum of the fields hs, in one pass: the field sum (in the order of hs) and the cross products
+    are written out, so that torch.compile fuses them into one kernel (torch.linalg.cross is not fused)."""
+    h = hs[0]
+    for f in hs[1:]:
+        h = h + f
+    if torch.is_tensor(alpha) and alpha.dim() == m.dim():
+        alpha = alpha[...,0]
+    gamma_prime = constants.gamma / (1. + alpha**2)
+    mx, my, mz = m[...,0], m[...,1], m[...,2]
+    hx, hy, hz = h[...,0], h[...,1], h[...,2]
+    cx, cy, cz = my*hz - mz*hy, mz*hx - mx*hz, mx*hy - my*hx      # m x h
+    a = -alpha * gamma_prime
+    dx, dy, dz = a * (my*cz - mz*cy), a * (mz*cx - mx*cz), a * (mx*cy - my*cx)  # -alpha gamma' m x (m x h)
+    if not no_precession:
+        dx, dy, dz = dx - gamma_prime*cx, dy - gamma_prime*cy, dz - gamma_prime*cz
+    return torch.stack([dx, dy, dz], dim=-1)
+
+
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, no_precession = False, **kwargs):
         """
@@ -65,9 +85,8 @@ class LLGSolver(object):
         state.m = x
         alpha = alpha or state.material["alpha"]
 
-        h = accumulate_h(term.h(state) for term in self._terms)
-
-        return _llg_rhs(state.m, h, alpha, self._no_precession)
+        # all fields at once (one more full field per term than accumulate_h) for one fused pass
+        return _llg_rhs_sum(state.m, [term.h(state) for term in self._terms], alpha, self._no_precession)
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])
