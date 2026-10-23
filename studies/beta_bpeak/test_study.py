@@ -689,6 +689,45 @@ def test_hotspot_regions_periodic():
     assert abs(hot - 1.0) < 1e-12
 
 
+# --- eval_hotcores.py: vortex core or Bloch line, on synthetic states at dx 3 l_ex (sphere d 300, wall width 18) -----
+# Found (eval_hotcores.py --selftest, core width 1 / 3 / 9 l_ex, ripple 0 / 20 deg): ring of vortex cores 0.02 ... 0.27,
+# of Bloch lines 0.32 ... 0.98; Bloch lines of width 1 and 3 l_ex in the wall have the type wall in every snapshot;
+# the centre does not separate a vortex core of width 1 l_ex (0.16 ... 0.26) from a Bloch line (0.06 ... 0.31).
+
+@pytest.mark.parametrize("kind,core,ripple,expect", [
+    ("vortex", 1.0, 20.0, "vortex core"), ("vortex", 3.0, 0.0, "vortex core"), ("vortex", 9.0, 20.0, "vortex core"),
+    ("bloch_v", 3.0, 20.0, "wall or narrow Bloch line"), ("bloch_v", 9.0, 0.0, "Bloch line"),
+    ("bloch_h", 1.0, 0.0, "wall or narrow Bloch line"), ("bloch_h", 9.0, 20.0, "Bloch line")])
+def test_hotcores_class_synthetic(kind, core, ripple, expect):
+    import eval_hotcores as C
+    assert C.synthetic_structure(kind, core=core, ripple_deg=ripple)["class"] == expect
+
+
+def test_hotcores_thiele_synthetic():
+    """A vortex (core 3 l_ex) moved rigidly on a sine path of 24 l_ex peak to peak, in a sphere of d 120 l_ex: the
+    rigid estimate from the 16 phases and the found core path meets the true loss; the snapshots give the loss at f.
+    eval_hotcores.py --selftest (d 300, 4 paths, core 3 and 9 l_ex): true / rigid P 0.85 ... 1.16, q 0.53 ... 1.27;
+    true q / P 0.25 ... 0.63 although the path is a sine (kinematic: each cell sees a non-sinusoidal signal)."""
+    import eval_hotcores as C
+    res, tr = C.synthetic_thiele(core=3.0, amp=12.0, d=120.0)
+    cyc = res[0][2]
+    assert 0.8 < tr["P"] / cyc["P_rigid"] < 1.3
+    assert 0.7 < (tr["P"] - tr["f"]) / (cyc["P_rigid"] - cyc["f_rigid"]) < 1.4
+    assert abs(cyc["snap_k"][0] / tr["f"] - 1.0) < 0.02
+    assert (tr["P"] - tr["f"]) / tr["P"] > 0.2
+
+
+def test_hotcores_spectral():
+    """Spectral derivative and harmonic power of a sampled periodic series (16 phases)."""
+    import eval_hotcores as C
+    ph = 2 * np.pi * (np.arange(16) + 1) / 16
+    x = np.stack([np.sin(ph) + 0.5 * np.cos(3 * ph), np.zeros(16), np.zeros(16)], -1)
+    v = C.spectral_derivative(x, 2 * np.pi)
+    assert np.allclose(v[:, 0], 2 * np.pi * (np.cos(ph) - 1.5 * np.sin(3 * ph)), atol=1e-9)
+    p = C.harmonic_power(x[:, None, :])
+    assert np.allclose(p[[0, 2]], [0.5, 0.125]) and np.allclose(np.delete(p, [0, 2]), 0.0, atol=1e-20)
+
+
 def test_min_calm_stop_rule():
     """PLAN 4.5: the calm tail counts the calm cycles at the end of the measured cycles (from 2 on after a drive
     correction); it equals the number of cycles that analyze.steady_tail keeps. With --min_calm N > 0 a stage stops
