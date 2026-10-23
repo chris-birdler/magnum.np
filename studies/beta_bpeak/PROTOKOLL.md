@@ -8266,6 +8266,244 @@ run_loops.py.
 Results (study branch): results/k1_particles.md and .json, results/k1_particles_rep50/<run>_acc.json (4 files),
 results/k1_origin.md and .json.
 
+### 7.138 PLAN 4.15, phase 1 is complete: the second step of D1, K4 from n 6 to n 10 on a new instance, the corner result (2026-10-22/23)
+
+All times UTC. Terms as in 7.135 … 7.137. Run code: 8640e55 (the dispatcher checkout, no change). The run code of
+main 6e93f80 is the same (`git diff 8640e55 6e93f80 -- run_loops.py magnumnp/` is empty).
+
+**Decisions of Chris.**
+- 2026-10-22 08:29: K1_4 and K1_8 count as valid realisations of K1 ("Es gibt keinen Grund es nicht zu zählen.
+  Scheinbar eine möglich Realisierung."). All K1 runs stay in the corner means and in the pooled SD. This closes the
+  K1 question of 7.135.
+- 2026-10-22 about 10:20: keep the snapshots and the accumulators of K1_11, K1_12 and K4_5 for the hot spots (7.139).
+  10:26: go for the hot-spot method (eval_hotspots.py).
+- 2026-10-23: four more K4 seeds (K4 from n 6 to n 10). Keep their snapshots and accumulators as for K4_5. Reason: at
+  n 6 the half-width of the 95 % CI of K4 was 0.125 (target at most 0.10), and the 95 % CI of K4 − K1 was
+  −0.27 … −0.01.
+- 2026-10-23: a new instance. The old instance 53995473 was stopped (not by this session). It could not start again,
+  because another user had rented its GPUs.
+- 2026-10-23: only the evaluation outputs come to the local disk ("einmal auswerten und fertig"). The snapshots and the
+  accumulators stay on the instance; the destroy deletes them. Both instances are destroyed (go of Chris).
+
+**Second step of D1 (2026-10-21/22).** K2_4, K2_5, K4_4 and K4_5 (jobs/corners_sat_large_k45.txt), then K1_9 …
+K1_12. Each prepared state was free of BPs after at most 3 passes (K2_5: 3 passes). With these runs: K1 n 13, K2 n 6,
+K3 n 8, K4 n 6 (33 runs).
+
+**K4_6 … K4_9 (2026-10-23).**
+- jobs/corners_sat_large_k4_6_9.txt (main 583b9e5): the line of K4_5 with the seeds 2047 … 2050 (rule K4_k = 2041 + k).
+- Instance 57335263: 4 × V100-SXM2-32GB; 0.641 $/h for the GPUs, 0.655 $/h with the disk; torch 2.7.1+cu126 (pip
+  freeze in runs/box_20261023/). The old instance had V100-SXM2-16GB.
+- Equivalence check before the start: the arguments of K4_5 with its seed 2046 ran on the new instance up to half
+  cycle 1 of the AC preparation. The log is the same as the log of K4_5 digit for digit: relax_sat E/K_d and torque,
+  the sat_static alignment, the peak of |M_par| / M_s 0.5503 and 0.5502, Bloch points max 116 and 925, at the end
+  +60 −56 and +38 −40.
+- `vastai copy` copied the data of the old instance from the stopped instance to the new one: the hot-spot data of
+  K1_11, K1_12 and K4_5, the 4 replays of 7.136 and the run folder. Check: the hot-spot reports of the copies are the
+  same byte for byte; the floats of the JSON files differ by at most 1e-11 (relative; numpy version).
+- All 4 runs are free of BPs after pass 1. No stage has the flag B. Time per run: preparation 2.42 … 2.57 h, cycles
+  4.33 … 4.77 h. The runs ended at 14:11 … 14:30.
+- Cost of the new instance: about 10 h at 0.655 $/h, that is about 6.5 $. From 14:30 to the destroy (about 17:00) the
+  GPUs were idle while the CPUs did the evaluation: about 1.6 $ of the 6.5 $.
+
+**Corner result (eval_corners_sat.py; results/corners_sat_report.md; 37 runs, all with a value).** β over 9 … 150 mT,
+mean ± SE over the seeds; SD: the sample SD; CI: the 95 % CI (t distribution):
+
+| corner | d, l_ex | L_eff, l_ex | φ | r_p | n | β | SD | 95 % CI | half-width |
+|---|---|---|---|---|---|---|---|---|---|
+| K1 | 212 | 30 | 0.62 | 1.5 | 13 | 2.079 ± 0.031 | 0.112 | 2.011 … 2.146 | 0.068 |
+| K2 | 300 | 12 | 0.62 | 3.0 | 6 | 2.258 ± 0.022 | 0.054 | 2.201 … 2.314 | 0.056 |
+| K3 | 212 | 18 | 0.69 | 1.5 | 8 | 2.239 ± 0.025 | 0.072 | 2.178 … 2.299 | 0.060 |
+| K4 | 300 | 18 | 0.55 | 1.5 | 10 | 1.927 ± 0.034 | 0.106 | 1.851 … 2.003 | 0.076 |
+
+- The target of D1 (half-width at most 0.10) is met at all 4 corners.
+- Levers against K1, Welch t test, Holm correction over the 3 levers:
+
+| lever | Δβ ± SE | dof | p | p after Holm | 95 % CI |
+|---|---|---|---|---|---|
+| K2 − K1 | +0.179 ± 0.038 | 16.9 | 0.0002 | 0.0006 | +0.099 … +0.259 |
+| K3 − K1 | +0.160 ± 0.040 | 18.9 | 0.0008 | 0.0016 | +0.076 … +0.244 |
+| K4 − K1 | −0.152 ± 0.046 | 20.0 | 0.0034 | 0.0034 | −0.247 … −0.056 |
+
+- At n 6, K4 − K1 was −0.144 ± 0.058 (p 0.034). The 4 new seeds give 1.915 (SD 0.098), the first 6 gave 1.935
+  (SD 0.120); Welch p 0.78.
+- Windows (β, K1 / K2 / K3 / K4): 9 … 50 mT 2.049 / 2.222 / 2.056 / 1.935; 70 … 150 mT 2.237 / 2.349 / 3.204 / 1.774.
+- Pooled SD 0.096 (33 degrees of freedom). With it, n 7 per corner meets the target.
+- Flag B (a BP at one sample or more): 12 of 42 stages at K2 (all 6 runs), 4 of 70 at K4 (K4_5 only), 0 at K1 and
+  K3. Without the stages with flag B: K2 2.184 ± 0.035 (n 4), K4 1.930 ± 0.037 (n 9).
+- S9 flag (the cycles of a stage are not steady, PLAN 4.13). Runs with at least one stage with an S9 flag: K1 4 of 13
+  (K1_1, K1_4, K1_8, K1_12), K2 0 of 6, K3 5 of 8, K4 9 of 10 (all except K4_5). Stages with an S9 flag at K4: 22 of
+  70; 150 mT has the flag in all 9 flagged K4 runs. Without the stages with an S9 flag, β is known for K1 n 11, K2 n 6,
+  K3 n 6 and K4 n 2 (a run needs at least 6 amplitudes, 7.135). At K4 it cannot be read.
+
+### 7.139 Where the loss comes from at the corners: channels, location, particles, hot spots (2026-10-22/23)
+
+Descriptive: this entry claims no mechanism. The Thiele estimate below is a check of scale only. Code on main:
+3e54c9e (eval_corners_origin.py), 9e0ea7c (eval_k1_particles.py), 6e93f80 (eval_hotspots.py), e6d043c
+(eval_hotcores.py).
+
+**Channels and location per corner (eval_corners_origin.py; results/corners_origin.md; n 13 / 6 / 8 / 10).** Methods
+of 7.69, 7.70, 7.72 and 7.125. β = β_f + shift (7.71): β_f is the exponent of the loss at the drive frequency f; the
+shift is −d ln R1 / d ln B. c: loss share / volume share of a zone; core: r < 0.5, rim: r ≥ 0.8 (r: distance from the
+particle centre over the particle radius).
+
+| quantity (9 … 150 mT, or at 50 mT) | K1 | K2 | K3 | K4 |
+|---|---|---|---|---|
+| β_f | 2.006 ± 0.008 | 1.952 ± 0.028 | 2.010 ± 0.009 | 1.601 ± 0.040 |
+| shift | 0.072 ± 0.025 | 0.306 ± 0.017 | 0.228 ± 0.018 | 0.326 ± 0.019 |
+| R1 at 50 mT | 0.927 | 0.588 | 0.906 | 0.650 |
+| R_harm (2f … 7f) / R_rest at 50 mT | 0.050 / 0.023 | 0.222 / 0.190 | 0.073 / 0.022 | 0.166 / 0.184 |
+| c core / rim / texture top 10 % at 50 mT | 1.63 / 0.74 / 2.21 | 1.38 / 0.78 / 6.35 | 3.29 / 0.52 / 4.88 | 2.46 / 0.64 / 6.67 |
+| a_w at 50 mT, 10⁻³ / l_ex | 4.81 | 6.06 | 5.50 | 3.32 |
+| s_0 / s_1 at 50 mT, l_ex | 5.26 / 0.58 | 4.63 / 1.76 | 4.62 / 1.45 | 8.22 / 4.41 |
+
+- K2 − K1: β_f −0.054 ± 0.029 (over 70 … 150 mT −0.208 ± 0.058), shift +0.234 ± 0.030. Most of the lever of K2 is in
+  the shift.
+- K3 − K1: β_f +0.004 ± 0.012, shift +0.156 ± 0.031. Over 9 … 50 mT the shift of K3 is the same as at K1
+  (+0.015 ± 0.032); over 70 … 150 mT it is +0.838 ± 0.162. The lever of K3 is in the shift at high field.
+- K4 − K1: β_f −0.405 ± 0.041, shift +0.253 ± 0.031. β of K4 is lower because β_f is lower; the larger shift cancels
+  a part of it.
+- At K4, c of the core falls from 3.25 (9 mT) to 1.50 (150 mT), and c of the rim rises from 0.42 to 1.00. K4 has the
+  smallest wall area per box volume (a_w), and the largest s_0 and s_1 (s counts all changes of m, also rotation;
+  7.137).
+- The share of the dissipation in jumps is at most 0.05 at all corners and amplitudes.
+
+**Loss per particle (eval_k1_particles.py on the kept accumulators; results/k4_particles.md,
+results/k1_particles_step2.md).** D_p as in 7.137.
+- K4 (5 runs, K4_5 … K4_9): particles 0 and 3 (easy axis at 37° to the drive) carry 0.66 … 0.91 of the loss at 50 mT
+  and 0.65 … 0.87 at 150 mT. Particles 1 and 2 (easy axis at 79°) carry the remainder. This holds in all 5 runs, also
+  in K4_6, where the core m·e of particles 0 and 3 is −0.46 and −0.45.
+- In particles 0 and 3 of K4 the ranges overlap. D_p at 50 mT: 316 … 784 W/cm³ (median 719) for the 6 particles with
+  |core m·e| below 0.11; 372 … 455 W/cm³ (median 403) for the 4 particles with 0.45 … 0.52. 5 of the 6 are above all
+  4. Mann-Whitney two-sided p 0.11 (10 particles of 5 runs).
+- The prediction of 7.137 on new K1 runs. Additional loss: D_p at 50 mT of 100 W/cm³ or more (the count of 7.137).
+  Second state: a K1 run with the loss pattern of K1_4 and K1_8 (7.135; ln P at 50 mT 3.46 … 4.06 against
+  3.08 … 3.21). The core m·e of K1_9 … K1_12 was computed before the loss was looked at. Of the 16 new particles, 1 has
+  |core m·e| below 0.11 (K1_12 particle 0, 0.082, easy axis at 37°). It has D_0 101 W/cm³ at 50 mT (the other 15
+  particles 31 … 48), 4123 W/cm³ at 150 mT (the others 285 … 416), and already at 9 mT about 3 times the others. The
+  other 15 particles (|core m·e| 0.37 … 0.65) have no additional loss. Exact Fisher test on the 16 particles, one-sided:
+  p 0.0625. The test takes the particles as independent; they are not fully independent (they exchange energy through
+  the stray field, 7.137). One hit is not a proof. Correction of a statement to Chris on 2026-10-22: first
+  "12 particles, p about 0.08"; the same day I corrected it to 16 particles, p 0.06.
+- K1: 3 of 13 runs have the second state (K1_4, K1_8, K1_12; 95 % Clopper-Pearson interval 5 … 54 %). β of K1_12:
+  2.304.
+
+**Hot spots of the loss outside f (eval_hotspots.py; results/hotspots/).** 7 runs with snapshots: K1_11, K1_12,
+K4_5 … K4_9; stages 9, 50 and 150 mT. Method as agreed on 2026-10-22 (docstring of the script; thresholds from
+synthetic states before the run data). Main regions: the connected regions of the 1 % of the cells with the largest
+loss outside f that carry half of the loss of these cells.
+- The hot cells carry 0.13 … 0.66 of the loss outside f. 26 main regions: 20 of type line, 6 of type 3D (all at K4:
+  K4_6 at 9, 50 and 150 mT; 1 of 2 regions of K4_7, of K4_8 and of K4_9 at 150 mT); no wall.
+- A BP in 1 region (K4_5, 150 mT, particle 1, in 12 of 32 snapshots).
+- Range of the centroid of the structure: up to 54 l_ex. Its motion is smooth in 20 of 21 stages (K1_11 at 50 mT:
+  mixed) and repeats in the second cycle in 20 of 21 stages (not K4_9 at 150 mT). One region (K4_8, 150 mT,
+  particle 0) moves step-like and does not repeat.
+
+**Hot-spot follow-up (eval_hotcores.py; scope "C" of the follow-up, go of Chris 2026-10-23; results/hotcores/).** The
+7 runs above and the 4 replays of 7.136 (50 mT, 1 cycle of snapshots); 31 main regions. Terms:
+- Window: the bounding box of the region plus 4 cells, only the cells of its particle.
+- Vortex core: a line around which m turns once; m in the core is along the line. Bloch line: a line in a wall where
+  the turning sense of the wall changes; m in its centre is across the line.
+- Line direction t: the direction in which m does not change (smallest eigenvalue of the gradient tensor).
+- Core point: per slice of 1 cell across t, the |∇m|²-weighted centre of the cells near the cell with the largest
+  |∇m|². Core path: the range of the core point over a cycle, peak to peak.
+- Ring value: (max − min) / 2 of m·t on the cells 2 … 3 cells from the core point. Small for a vortex core (m turns
+  around t), large for a Bloch line (the ring crosses the wall and the domains on both sides).
+- Thiele estimate: the loss of the structure if it moves rigidly along its measured core path,
+  P_rigid = α μ0 M_s / γ · Σ |(v·∇) m|² over the window cells, with v from the core path. Ratio: the loss of the
+  window from the accumulators over P_rigid; the same for the loss outside f.
+- Jump share: the share of the slices whose core point moves more than 6 cells between 2 phases (the core point went
+  to another structure). These slices give no velocity.
+
+Method checks on synthetic states (sphere d 300 l_ex, dx 3 l_ex; `eval_hotcores.py --selftest`; test_study.py),
+before the run data:
+- The centre value |m·t| of the core cell does not separate the two types. A vortex core of width 1 l_ex gives
+  0.16 … 0.26; a Bloch line gives 0.06 … 0.31 (0.64 in one case with a wrong line direction). The core is smaller than
+  1 cell (section 4). Thus the class uses the ring value (vortex core 0.02 … 0.27, Bloch line 0.32 … 0.98; threshold
+  0.30) and the type per snapshot. The centre value is information only. This changes the agreed method; go of Chris
+  (2026-10-23).
+- A Bloch line of width 1 or 3 l_ex in a wall has the type wall in each snapshot. Only the Bloch line of width 9 l_ex
+  gets the class Bloch line. A vortex core gives a centre value of 0.78 … 0.98 at a width of 3 … 9 l_ex.
+- A vortex (core 3 and 9 l_ex) that moves rigidly on a sine path (core path 21 … 55 l_ex) and on a sine plus a third
+  harmonic: true loss / P_rigid 0.85 … 1.16, for the loss outside f 0.53 … 1.27 (core point radius 1.5 cells, as used;
+  2.5 cells gives up to 1.19 and 1.31). The 16 snapshot phases give the loss at f to 1 %. Also on a pure sine path,
+  25 … 63 % of the true loss is outside f: a narrow structure that moves far gives each cell a non-sinusoidal signal.
+- This test found 2 errors in my first version: it compared a band-limited rigid loss with the full loss, and core
+  points jumped by about 66 cells. I corrected both before the run data.
+
+Results:
+- Type per snapshot: 4 of the 6 regions of type 3D in eval_hotspots are lines in 62 … 88 % of the snapshots. The line
+  turns by up to 39 … 88° over the cycle; thus the tensor summed over the snapshots is 3D. K4_6 at 9 and 50 mT is 3D
+  in each snapshot (class "unclear").
+- Class: 25 of 31 regions are vortex cores (ring value 0.09 … 0.25; centre value median 0.95). The centre values match
+  the synthetic vortex cores of width 3 … 9 l_ex, not of width 1 l_ex: the cores on the grid behave like cores of about
+  1 cell. 4 regions have the Bloch-line class, all at K4 at 150 mT (K4_5 particle 1, the region with the BP; K4_6;
+  2 regions of K4_8). Limits of this class: their ring values are 0.33 … 0.62 (2 near the threshold), their jump share
+  is 0.52 … 0.86, and the synthetic test reads narrow Bloch lines as walls. 2 regions are unclear (K4_6). All regions
+  of K1 (2 runs, 3 replays) and of K3_0 are vortex cores. The 31 main regions carry 0.08 … 0.66 of the loss outside f
+  of their run.
+- Resolution of the snapshots: in 29 of 31 regions the loss of the window from the 16 phases is 0.93 … 1.08 of the
+  accumulator value at f and 0.95 … 1.18 at 2f … 7f; the 16 phases resolve the motion. Exceptions: K4_7 at 150 mT,
+  particle 3 (a core that does not move, core path 0.2 l_ex; 0.13 at f, 0.04 at 2f … 7f), and K4_8 at 150 mT,
+  particle 0 (0.58 at f).
+- Thiele ratio and core path: over the 19 regions with a jump share of at most 0.2 and a core path of at least 1 l_ex,
+  the ratio rises with the core path (Spearman ρ 0.84): on short paths the cell grid makes the measured velocity noisy
+  (its share at 2f … 7f is 0.59 … 0.86 there). Core paths of 3 … 17 l_ex give 0.05 … 0.67 (loss) and 0.01 … 0.53
+  (outside f). 3 regions have a core path below 1 l_ex (ratios 0.01, 0.05 and 95). I set the cut "at least 18 l_ex"
+  after I saw the data. The tested
+  range is 21 … 55 l_ex. In it, 3 regions at 50 mT (K4_5 particle 0, K4_8, K4_9; 3 runs) give measured / rigid 0.85,
+  1.05, 1.08 for the loss and 0.97, 1.07, 1.10 outside f, inside the synthetic range. The share outside f of the
+  measured loss (0.48, 0.56, 0.49) is near that of the rigid motion (0.42, 0.55, 0.48). K4_5 particle 3 (18.9 l_ex,
+  below the tested range) gives 1.24 and 1.27. The core velocity has 28 … 45 % of its mean square at 2f … 7f
+  (synthetic sine path: 4 … 24 %, from the cell grid); the paths are not pure sines.
+- Not readable: 150 mT (jump share 0.52 … 0.97 in all 7 regions with long paths), and at 50 mT K4_6 (class unclear)
+  and K4_7 (core path 14 l_ex). Open.
+
+**Reading.**
+- In the 7 runs and 4 replays, the main regions of the loss outside f (0.08 … 0.66 of it) are mostly vortex cores: in
+  K1, in K3_0 and in 4 of 5 K4 runs at 9 and 50 mT. At 150 mT, 3 of 5 K4 runs have regions of the Bloch-line class.
+- At 50 mT in 3 of 5 K4 runs (1 region each), the loss of the main region, also the part outside f, has the size of
+  the loss of the rigid motion of the vortex core along its measured path. For these regions, no additional loss in
+  the core is necessary at this scale. This analysis does not separate the part outside f that comes from a narrow
+  core on a long path from the part that comes from the harmonics of the path.
+- Not examined: K2 (no snapshots kept) and K3 at 70 … 150 mT, where the shift levers of K2 and K3 are. Thus the
+  structures of these levers are not known.
+- The vortex cores and Bloch lines are on the l_ex scale and are not resolved at dx 3 l_ex (section 4).
+
+### 7.140 Conclusion of the corner study (PLAN 4.15, phase 1) (2026-10-23)
+
+1. β over 9 … 150 mT: K1 2.08, K2 2.26, K3 2.24, K4 1.93 (SE 0.022 … 0.034, n 6 … 13 seeds). The target of D1 is met
+   at all 4 corners.
+2. Levers against K1: K2 +0.18, K3 +0.16, K4 −0.15. All 3 are significant after the Holm correction (p at most 0.0034).
+   Each corner differs from K1 in 2 or 3 factors; thus no lever belongs to one factor alone.
+3. Origin of the levers (β = β_f + shift):
+   - K2 (d 300, L_eff 12, r_p 3): mostly the shift, +0.23; β_f −0.05 ± 0.03 (−0.21 ± 0.06 at 70 … 150 mT). At 50 mT
+     only 59 % of the loss is at f.
+   - K3 (L_eff 18, φ 0.69): the shift at 70 … 150 mT (+0.84); at 9 … 50 mT, β of K3 − K1 is +0.007 ± 0.044.
+   - K4 (d 300, L_eff 18, φ 0.55): β_f is 0.41 lower; a larger shift (+0.25) cancels a part of it.
+4. In 7 runs and 4 replays (K1, K3_0 at 50 mT, K4), the main regions of the loss outside f are mostly vortex cores
+   that move smoothly and repeat each cycle. At 50 mT in 3 of 5 K4 runs, the loss of the main region has the size of
+   the rigid motion of the core (Thiele estimate). At 150 mT, regions of the Bloch-line class occur in K4; there the
+   estimate cannot be read. The structures behind the shift of K2, and of K3 at high field, were not examined.
+5. K1 has a second state in 3 of 13 runs, with additional loss in particles with the easy axis at 37° to the drive and
+   a core m·e near 0 in the prepared state. One prospective hit (Fisher p 0.06); not a proof. At K4, particles 0 and
+   3 (37°) always carry most of the loss; among them, a core m·e near 0 gives more loss in tendency, but the ranges
+   overlap (p 0.11, 10 particles).
+6. Limits:
+   - The structures that carry the loss outside f (vortex cores, Bloch lines) are not resolved at dx 3 l_ex
+     (section 4; a vortex core needs dx of about 0.5 l_ex or less). At the base point the loss at dx 3 was +21 … +43 %
+     above dx 1.5 in 3 of 4 seeds, not significant, and the direction to the converged value is not known (7.25,
+     7.28). A check at dx 1.5 can show whether the loss outside f and the shift change with the mesh. It cannot
+     resolve the core.
+   - The cycles of a stage are not steady (S9 flag) in 9 of 10 K4 runs (22 of 70 stages; 150 mT in all 9 runs).
+   - The stray-field and speed patches that are pending change the run code. A main study thus needs new runs with
+     the new code; the runs of this study are its reference.
+7. Data: the evaluation outputs are in results/ (study branch). The raw run data without snapshots, and the
+   checkpoints of the 37 corner runs, are local with md5 manifests (runs/MANIFEST_corners_sat_20261021.md5 and
+   runs/md5_corners_sat_*). The snapshots and the accumulators of the hot-spot runs were evaluated on the instance; the
+   destroy deleted them (decision of Chris).
+8. Open for Chris: a main study yes or no, after the stray-field and speed patches; D3; the mesh check of the loss
+   outside f; the Thiele estimate at 150 mT (only with new runs that keep snapshots).
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
@@ -8412,6 +8650,10 @@ plans (one-factor, factorial, 128 + 8) are replaced.
   cost). This is in the library, not changed.
 
 ## 12. Open points for Chris
+
+**Status 2026-10-23:** the corner study (PLAN 4.15, phase 1) is complete; conclusion in 7.140. Open for Chris: a
+main study yes or no, after the stray-field and speed patches; D3; the mesh check of the loss outside f (dx 1.5);
+the Thiele estimate at 150 mT. No instance of this study is running.
 
 **Status 2026-10-06:** all checks before the Sobol design are done
 (7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0 (audit 3 handled, 7.33);
