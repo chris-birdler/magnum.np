@@ -243,6 +243,14 @@ def main():
         out["unpaired"]["lever %s" % c] = {"old": lo, "sat": ls, "change": ch}
         L.append("| %s − K1 | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.1f | %.4f |" % (
             c, lo[0], lo[1], lo[3], ls[0], ls[1], ls[3], *ch))
+    L += ["", "### Change of the levers Ki − K1 from the paired runs, split (β 9 … 150 mT; n 3 per corner; Welch)", "",
+          "| lever | " + " | ".join(lab for _, _, lab in DIFFS) + " |", "|---|" + "---|" * len(DIFFS)]
+    D = diffs(name)
+    for c in CORNERS[1:]:
+        parts = {hi + "-" + lo: lincomb([D[hi + "-" + lo][c], D[hi + "-" + lo]["K1"]], [1, -1]) for hi, lo, _ in DIFFS}
+        out["unpaired"]["lever parts %s" % c] = parts
+        L.append("| %s − K1 | %s |" % (c, " | ".join("%+.3f ± %.3f (p %.3f)" % (parts[k][0], parts[k][1], parts[k][3])
+                                                     for k in parts)))
     L.append("")
 
     if a.json:
