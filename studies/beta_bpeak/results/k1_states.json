@@ -1,1 +1,2648 @@
-{"K1_0_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0028, 0.0003, 0.0009], "m_u_mean": -0.0017, "share_u_pos": 0.4926, "share_wall": 0.3729, "core_m_u_mean": -0.1914, "core_share_u_pos": 0.3864, "core_share_wall": 0.4658, "core_mx_mean": -0.3524}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0003, 0.0, 0.0004], "m_u_mean": -0.0003, "share_u_pos": 0.496, "share_wall": 0.3646, "core_m_u_mean": -0.1128, "core_share_u_pos": 0.4219, "core_share_wall": 0.48, "core_mx_mean": -0.5262}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, -0.0004, 0.0009], "m_u_mean": -0.0007, "share_u_pos": 0.5024, "share_wall": 0.367, "core_m_u_mean": 0.0686, "core_share_u_pos": 0.546, "core_share_wall": 0.4865, "core_mx_mean": -0.5241}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0002, 0.0, 0.0004], "m_u_mean": 0.0004, "share_u_pos": 0.4956, "share_wall": 0.4672, "core_m_u_mean": -0.4984, "core_share_u_pos": 0.1734, "core_share_wall": 0.4061, "core_mx_mean": 0.641}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0028, 0.0002, 0.0009], "m_u_mean": -0.0017, "share_u_pos": 0.4926, "share_wall": 0.373, "core_m_u_mean": -0.1914, "core_share_u_pos": 0.3868, "core_share_wall": 0.4659, "core_mx_mean": -0.3523}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0003, 0.0, 0.0004], "m_u_mean": -0.0003, "share_u_pos": 0.496, "share_wall": 0.3646, "core_m_u_mean": -0.1128, "core_share_u_pos": 0.4219, "core_share_wall": 0.48, "core_mx_mean": -0.5263}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0006, -0.0004, 0.0009], "m_u_mean": -0.0007, "share_u_pos": 0.5025, "share_wall": 0.367, "core_m_u_mean": 0.0685, "core_share_u_pos": 0.546, "core_share_wall": 0.4865, "core_mx_mean": -0.5241}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0002, -0.0, 0.0004], "m_u_mean": 0.0004, "share_u_pos": 0.4957, "share_wall": 0.4669, "core_m_u_mean": -0.4969, "core_share_u_pos": 0.1749, "core_share_wall": 0.4071, "core_mx_mean": 0.6403}]}, "K1_1_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0017, -0.0002, -0.0009], "m_u_mean": 0.0008, "share_u_pos": 0.5043, "share_wall": 0.4054, "core_m_u_mean": 0.3484, "core_share_u_pos": 0.7304, "core_share_wall": 0.4652, "core_mx_mean": 0.5007}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0001, 0.0002, 0.0001], "m_u_mean": -0.0003, "share_u_pos": 0.4969, "share_wall": 0.3674, "core_m_u_mean": -0.0852, "core_share_u_pos": 0.4432, "core_share_wall": 0.486, "core_mx_mean": -0.5217}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0002, -0.0001, -0.0002], "m_u_mean": -0.0, "share_u_pos": 0.5026, "share_wall": 0.365, "core_m_u_mean": 0.103, "core_share_u_pos": 0.5696, "core_share_wall": 0.4785, "core_mx_mean": -0.5138}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0013, -0.0007, 0.0007], "m_u_mean": -0.0005, "share_u_pos": 0.4962, "share_wall": 0.4026, "core_m_u_mean": -0.3482, "core_share_u_pos": 0.2651, "core_share_wall": 0.4585, "core_mx_mean": 0.5022}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0016, -0.0002, -0.0009], "m_u_mean": 0.0008, "share_u_pos": 0.5043, "share_wall": 0.4055, "core_m_u_mean": 0.3479, "core_share_u_pos": 0.7296, "core_share_wall": 0.4654, "core_mx_mean": 0.5003}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0001, 0.0002, 0.0001], "m_u_mean": -0.0003, "share_u_pos": 0.4969, "share_wall": 0.3674, "core_m_u_mean": -0.0852, "core_share_u_pos": 0.4432, "core_share_wall": 0.4861, "core_mx_mean": -0.5218}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0002, -0.0001, -0.0002], "m_u_mean": -0.0, "share_u_pos": 0.5026, "share_wall": 0.3649, "core_m_u_mean": 0.103, "core_share_u_pos": 0.5698, "core_share_wall": 0.4784, "core_mx_mean": -0.5139}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0013, -0.0007, 0.0007], "m_u_mean": -0.0005, "share_u_pos": 0.4962, "share_wall": 0.4026, "core_m_u_mean": -0.3482, "core_share_u_pos": 0.2651, "core_share_wall": 0.4586, "core_mx_mean": 0.5022}]}, "K1_2_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0016, 0.0001, 0.0004], "m_u_mean": -0.001, "share_u_pos": 0.4941, "share_wall": 0.4114, "core_m_u_mean": -0.3572, "core_share_u_pos": 0.2596, "core_share_wall": 0.4543, "core_mx_mean": -0.5058}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0003, 0.0004, 0.0002], "m_u_mean": -0.0005, "share_u_pos": 0.4963, "share_wall": 0.3639, "core_m_u_mean": -0.103, "core_share_u_pos": 0.4289, "core_share_wall": 0.4808, "core_mx_mean": -0.5236}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, 0.0001, 0.0003], "m_u_mean": 0.0, "share_u_pos": 0.5022, "share_wall": 0.3671, "core_m_u_mean": 0.0909, "core_share_u_pos": 0.56, "core_share_wall": 0.4907, "core_mx_mean": -0.5311}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0011, 0.0001, 0.0001], "m_u_mean": -0.0008, "share_u_pos": 0.4941, "share_wall": 0.424, "core_m_u_mean": -0.3885, "core_share_u_pos": 0.23, "core_share_wall": 0.4757, "core_mx_mean": 0.5245}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0016, 0.0001, 0.0004], "m_u_mean": -0.001, "share_u_pos": 0.4941, "share_wall": 0.4113, "core_m_u_mean": -0.3567, "core_share_u_pos": 0.2601, "core_share_wall": 0.4543, "core_mx_mean": -0.5056}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0003, 0.0004, 0.0002], "m_u_mean": -0.0005, "share_u_pos": 0.4962, "share_wall": 0.3639, "core_m_u_mean": -0.1031, "core_share_u_pos": 0.4288, "core_share_wall": 0.4809, "core_mx_mean": -0.5236}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, 0.0001, 0.0003], "m_u_mean": 0.0, "share_u_pos": 0.5022, "share_wall": 0.3671, "core_m_u_mean": 0.0909, "core_share_u_pos": 0.56, "core_share_wall": 0.4907, "core_mx_mean": -0.5311}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0011, 0.0001, 0.0001], "m_u_mean": -0.0008, "share_u_pos": 0.4941, "share_wall": 0.4241, "core_m_u_mean": -0.3885, "core_share_u_pos": 0.2297, "core_share_wall": 0.4757, "core_mx_mean": 0.5245}]}, "K1_3_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0021, 0.0006, -0.0001], "m_u_mean": -0.0016, "share_u_pos": 0.4947, "share_wall": 0.4182, "core_m_u_mean": -0.3883, "core_share_u_pos": 0.2305, "core_share_wall": 0.4689, "core_mx_mean": -0.528}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0017, 0.0002, -0.0006], "m_u_mean": -0.0001, "share_u_pos": 0.4965, "share_wall": 0.3659, "core_m_u_mean": -0.0846, "core_share_u_pos": 0.4401, "core_share_wall": 0.4897, "core_mx_mean": -0.5432}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0008, 0.0002, -0.0001], "m_u_mean": 0.0003, "share_u_pos": 0.5026, "share_wall": 0.3657, "core_m_u_mean": 0.1057, "core_share_u_pos": 0.5703, "core_share_wall": 0.485, "core_mx_mean": -0.5418}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0031, 0.0007, -0.001], "m_u_mean": 0.0017, "share_u_pos": 0.5059, "share_wall": 0.3685, "core_m_u_mean": 0.1763, "core_share_u_pos": 0.6007, "core_share_wall": 0.4561, "core_mx_mean": -0.3401}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0021, 0.0006, -0.0001], "m_u_mean": -0.0016, "share_u_pos": 0.4947, "share_wall": 0.4183, "core_m_u_mean": -0.3882, "core_share_u_pos": 0.231, "core_share_wall": 0.4688, "core_mx_mean": -0.5279}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0017, 0.0002, -0.0006], "m_u_mean": -0.0001, "share_u_pos": 0.4965, "share_wall": 0.366, "core_m_u_mean": -0.0846, "core_share_u_pos": 0.4401, "core_share_wall": 0.4897, "core_mx_mean": -0.5432}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0008, 0.0002, -0.0001], "m_u_mean": 0.0003, "share_u_pos": 0.5026, "share_wall": 0.3658, "core_m_u_mean": 0.1057, "core_share_u_pos": 0.5703, "core_share_wall": 0.4852, "core_mx_mean": -0.5418}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0031, 0.0007, -0.001], "m_u_mean": 0.0017, "share_u_pos": 0.506, "share_wall": 0.3686, "core_m_u_mean": 0.1768, "core_share_u_pos": 0.6014, "core_share_wall": 0.4561, "core_mx_mean": -0.3405}]}, "K1_4_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0004, 0.0004, -0.0015], "m_u_mean": -0.0011, "share_u_pos": 0.4983, "share_wall": 0.3776, "core_m_u_mean": -0.2543, "core_share_u_pos": 0.3441, "core_share_wall": 0.4512, "core_mx_mean": 0.0162}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, 0.0001, 0.0002], "m_u_mean": -0.0003, "share_u_pos": 0.4967, "share_wall": 0.3662, "core_m_u_mean": -0.0997, "core_share_u_pos": 0.4343, "core_share_wall": 0.4868, "core_mx_mean": -0.5293}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, -0.0, -0.0003], "m_u_mean": 0.0002, "share_u_pos": 0.5029, "share_wall": 0.3667, "core_m_u_mean": 0.0838, "core_share_u_pos": 0.5572, "core_share_wall": 0.4928, "core_mx_mean": -0.5356}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0004, 0.0003, 0.0014], "m_u_mean": 0.001, "share_u_pos": 0.5017, "share_wall": 0.3812, "core_m_u_mean": 0.248, "core_share_u_pos": 0.6545, "core_share_wall": 0.4656, "core_mx_mean": 0.0352}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0004, 0.0004, -0.0015], "m_u_mean": -0.0011, "share_u_pos": 0.4984, "share_wall": 0.3774, "core_m_u_mean": -0.2522, "core_share_u_pos": 0.3452, "core_share_wall": 0.4518, "core_mx_mean": 0.0176}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, 0.0001, 0.0002], "m_u_mean": -0.0003, "share_u_pos": 0.4967, "share_wall": 0.3662, "core_m_u_mean": -0.0999, "core_share_u_pos": 0.4342, "core_share_wall": 0.4867, "core_mx_mean": -0.5294}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, -0.0001, -0.0003], "m_u_mean": 0.0002, "share_u_pos": 0.5029, "share_wall": 0.3667, "core_m_u_mean": 0.0836, "core_share_u_pos": 0.5571, "core_share_wall": 0.4929, "core_mx_mean": -0.5356}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0004, 0.0002, 0.0014], "m_u_mean": 0.0011, "share_u_pos": 0.5018, "share_wall": 0.3813, "core_m_u_mean": 0.2484, "core_share_u_pos": 0.6546, "core_share_wall": 0.466, "core_mx_mean": 0.0355}]}, "K1_5_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0015, -0.0003, 0.0005], "m_u_mean": -0.001, "share_u_pos": 0.4945, "share_wall": 0.4059, "core_m_u_mean": -0.375, "core_share_u_pos": 0.2453, "core_share_wall": 0.4639, "core_mx_mean": -0.5202}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, 0.0003, 0.0007], "m_u_mean": -0.0007, "share_u_pos": 0.4956, "share_wall": 0.3672, "core_m_u_mean": -0.1007, "core_share_u_pos": 0.425, "core_share_wall": 0.4887, "core_mx_mean": -0.5337}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0006, 0.0002, 0.0004], "m_u_mean": 0.0, "share_u_pos": 0.5029, "share_wall": 0.3687, "core_m_u_mean": 0.0831, "core_share_u_pos": 0.5551, "core_share_wall": 0.4898, "core_mx_mean": -0.5418}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0009, -0.0003, 0.0004], "m_u_mean": -0.0004, "share_u_pos": 0.4949, "share_wall": 0.4073, "core_m_u_mean": -0.3473, "core_share_u_pos": 0.2641, "core_share_wall": 0.4662, "core_mx_mean": 0.4931}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0015, -0.0003, 0.0005], "m_u_mean": -0.001, "share_u_pos": 0.4945, "share_wall": 0.4059, "core_m_u_mean": -0.3748, "core_share_u_pos": 0.2454, "core_share_wall": 0.4637, "core_mx_mean": -0.5201}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, 0.0003, 0.0007], "m_u_mean": -0.0007, "share_u_pos": 0.4956, "share_wall": 0.3672, "core_m_u_mean": -0.1007, "core_share_u_pos": 0.425, "core_share_wall": 0.4888, "core_mx_mean": -0.5338}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0006, 0.0001, 0.0004], "m_u_mean": 0.0, "share_u_pos": 0.5029, "share_wall": 0.3687, "core_m_u_mean": 0.0832, "core_share_u_pos": 0.5552, "core_share_wall": 0.4898, "core_mx_mean": -0.5419}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0009, -0.0003, 0.0004], "m_u_mean": -0.0004, "share_u_pos": 0.495, "share_wall": 0.4072, "core_m_u_mean": -0.3465, "core_share_u_pos": 0.2645, "core_share_wall": 0.4668, "core_mx_mean": 0.4925}]}, "K1_6_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0018, -0.0001, 0.0002], "m_u_mean": -0.0013, "share_u_pos": 0.4949, "share_wall": 0.4063, "core_m_u_mean": -0.3342, "core_share_u_pos": 0.2772, "core_share_wall": 0.46, "core_mx_mean": -0.4896}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0001, -0.0002, 0.0005], "m_u_mean": -0.0001, "share_u_pos": 0.4977, "share_wall": 0.3634, "core_m_u_mean": -0.0741, "core_share_u_pos": 0.4494, "core_share_wall": 0.4822, "core_mx_mean": -0.53}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0006, -0.0003, 0.0002], "m_u_mean": -0.0003, "share_u_pos": 0.502, "share_wall": 0.3673, "core_m_u_mean": 0.0859, "core_share_u_pos": 0.5518, "core_share_wall": 0.4935, "core_mx_mean": -0.5489}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0011, 0.0, 0.0003], "m_u_mean": -0.0006, "share_u_pos": 0.495, "share_wall": 0.4068, "core_m_u_mean": -0.3621, "core_share_u_pos": 0.2585, "core_share_wall": 0.459, "core_mx_mean": 0.5133}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0018, -0.0001, 0.0002], "m_u_mean": -0.0013, "share_u_pos": 0.4949, "share_wall": 0.4063, "core_m_u_mean": -0.3337, "core_share_u_pos": 0.2776, "core_share_wall": 0.4605, "core_mx_mean": -0.4894}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0001, -0.0002, 0.0005], "m_u_mean": -0.0001, "share_u_pos": 0.4977, "share_wall": 0.3634, "core_m_u_mean": -0.0741, "core_share_u_pos": 0.4494, "core_share_wall": 0.4822, "core_mx_mean": -0.53}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0006, -0.0003, 0.0002], "m_u_mean": -0.0003, "share_u_pos": 0.502, "share_wall": 0.3672, "core_m_u_mean": 0.0859, "core_share_u_pos": 0.5518, "core_share_wall": 0.4934, "core_mx_mean": -0.549}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0011, 0.0, 0.0003], "m_u_mean": -0.0006, "share_u_pos": 0.495, "share_wall": 0.4068, "core_m_u_mean": -0.3625, "core_share_u_pos": 0.258, "core_share_wall": 0.4588, "core_mx_mean": 0.5135}]}, "K1_7_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.002, 0.0, 0.0002], "m_u_mean": -0.0014, "share_u_pos": 0.4943, "share_wall": 0.4252, "core_m_u_mean": -0.3979, "core_share_u_pos": 0.2264, "core_share_wall": 0.4643, "core_mx_mean": -0.5239}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0003, 0.0002, 0.0006], "m_u_mean": -0.0006, "share_u_pos": 0.4965, "share_wall": 0.3682, "core_m_u_mean": -0.1133, "core_share_u_pos": 0.4211, "core_share_wall": 0.4918, "core_mx_mean": -0.5408}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, -0.0003, 0.0005], "m_u_mean": -0.0004, "share_u_pos": 0.5019, "share_wall": 0.3641, "core_m_u_mean": 0.0889, "core_share_u_pos": 0.5573, "core_share_wall": 0.4786, "core_mx_mean": -0.5101}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0007, -0.0001, 0.0006], "m_u_mean": -0.0002, "share_u_pos": 0.4957, "share_wall": 0.4048, "core_m_u_mean": -0.3513, "core_share_u_pos": 0.2675, "core_share_wall": 0.4525, "core_mx_mean": 0.4991}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.002, -0.0, 0.0002], "m_u_mean": -0.0014, "share_u_pos": 0.4943, "share_wall": 0.4252, "core_m_u_mean": -0.3978, "core_share_u_pos": 0.2268, "core_share_wall": 0.4642, "core_mx_mean": -0.5239}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, 0.0002, 0.0006], "m_u_mean": -0.0006, "share_u_pos": 0.4965, "share_wall": 0.3682, "core_m_u_mean": -0.1132, "core_share_u_pos": 0.4211, "core_share_wall": 0.4917, "core_mx_mean": -0.5409}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0005, -0.0003, 0.0005], "m_u_mean": -0.0004, "share_u_pos": 0.5018, "share_wall": 0.364, "core_m_u_mean": 0.0888, "core_share_u_pos": 0.5572, "core_share_wall": 0.4785, "core_mx_mean": -0.5101}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0007, -0.0001, 0.0006], "m_u_mean": -0.0002, "share_u_pos": 0.4956, "share_wall": 0.4049, "core_m_u_mean": -0.3512, "core_share_u_pos": 0.2674, "core_share_wall": 0.4529, "core_mx_mean": 0.499}]}, "K1_8_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0001, -0.0001, -0.0021], "m_u_mean": -0.0012, "share_u_pos": 0.4976, "share_wall": 0.3525, "core_m_u_mean": -0.098, "core_share_u_pos": 0.4476, "core_share_wall": 0.4413, "core_mx_mean": 0.1012}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, -0.0001, 0.0002], "m_u_mean": -0.0001, "share_u_pos": 0.4975, "share_wall": 0.3653, "core_m_u_mean": -0.0882, "core_share_u_pos": 0.4407, "core_share_wall": 0.4829, "core_mx_mean": -0.5283}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0009, -0.0003, -0.0005], "m_u_mean": 0.0002, "share_u_pos": 0.4986, "share_wall": 0.3613, "core_m_u_mean": 0.073, "core_share_u_pos": 0.5452, "core_share_wall": 0.4821, "core_mx_mean": -0.454}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0015, -0.0002, 0.0007], "m_u_mean": -0.0008, "share_u_pos": 0.4949, "share_wall": 0.4061, "core_m_u_mean": -0.3346, "core_share_u_pos": 0.274, "core_share_wall": 0.477, "core_mx_mean": 0.4911}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0001, -0.0001, -0.0021], "m_u_mean": -0.0012, "share_u_pos": 0.4977, "share_wall": 0.3527, "core_m_u_mean": -0.0996, "core_share_u_pos": 0.4463, "core_share_wall": 0.4408, "core_mx_mean": 0.0991}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0004, -0.0, 0.0002], "m_u_mean": -0.0002, "share_u_pos": 0.4975, "share_wall": 0.3654, "core_m_u_mean": -0.0882, "core_share_u_pos": 0.4407, "core_share_wall": 0.4831, "core_mx_mean": -0.5283}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [-0.0009, -0.0003, -0.0005], "m_u_mean": 0.0002, "share_u_pos": 0.4986, "share_wall": 0.3613, "core_m_u_mean": 0.073, "core_share_u_pos": 0.5451, "core_share_wall": 0.4822, "core_mx_mean": -0.454}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0015, -0.0002, 0.0007], "m_u_mean": -0.0008, "share_u_pos": 0.4949, "share_wall": 0.406, "core_m_u_mean": -0.3353, "core_share_u_pos": 0.2734, "core_share_wall": 0.4769, "core_mx_mean": 0.4915}]}, "K3_0_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0001, 0.0008, 0.0026], "m_u_mean": 0.0016, "share_u_pos": 0.5016, "share_wall": 0.3259, "core_m_u_mean": 0.0828, "core_share_u_pos": 0.5451, "core_share_wall": 0.3673, "core_mx_mean": -0.0834}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.004, -0.0001, 0.001], "m_u_mean": 0.0003, "share_u_pos": 0.5006, "share_wall": 0.339, "core_m_u_mean": 0.0485, "core_share_u_pos": 0.5306, "core_share_wall": 0.3744, "core_mx_mean": 0.2632}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0031, 0.0005, 0.0008], "m_u_mean": -0.0007, "share_u_pos": 0.4993, "share_wall": 0.3364, "core_m_u_mean": -0.0205, "core_share_u_pos": 0.4876, "core_share_wall": 0.3729, "core_mx_mean": 0.2767}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.001, 0.0029, 0.0002], "m_u_mean": -0.0012, "share_u_pos": 0.4991, "share_wall": 0.3341, "core_m_u_mean": -0.0534, "core_share_u_pos": 0.4664, "core_share_wall": 0.3761, "core_mx_mean": 0.0155}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [-0.0001, 0.0006, 0.0025], "m_u_mean": 0.0015, "share_u_pos": 0.5014, "share_wall": 0.3261, "core_m_u_mean": 0.0835, "core_share_u_pos": 0.546, "core_share_wall": 0.3666, "core_mx_mean": -0.0827}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.004, -0.0002, 0.0011], "m_u_mean": 0.0003, "share_u_pos": 0.5006, "share_wall": 0.339, "core_m_u_mean": 0.0481, "core_share_u_pos": 0.5301, "core_share_wall": 0.3743, "core_mx_mean": 0.263}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0031, 0.0005, 0.0009], "m_u_mean": -0.0007, "share_u_pos": 0.4992, "share_wall": 0.3365, "core_m_u_mean": -0.0215, "core_share_u_pos": 0.4867, "core_share_wall": 0.3734, "core_mx_mean": 0.277}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.001, 0.0029, 0.0003], "m_u_mean": -0.0011, "share_u_pos": 0.4991, "share_wall": 0.334, "core_m_u_mean": -0.0512, "core_share_u_pos": 0.4678, "core_share_wall": 0.3758, "core_mx_mean": 0.0151}]}, "K3_1_sat": {"init.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0014, -0.0015, -0.0033], "m_u_mean": -0.0011, "share_u_pos": 0.4981, "share_wall": 0.3313, "core_m_u_mean": -0.0666, "core_share_u_pos": 0.4584, "core_share_wall": 0.392, "core_mx_mean": 0.0984}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0028, 0.0007, -0.0003], "m_u_mean": 0.0001, "share_u_pos": 0.5012, "share_wall": 0.3418, "core_m_u_mean": 0.1018, "core_share_u_pos": 0.5721, "core_share_wall": 0.4123, "core_mx_mean": 0.3686}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0034, 0.0003, -0.0018], "m_u_mean": 0.0007, "share_u_pos": 0.4998, "share_wall": 0.3363, "core_m_u_mean": -0.0833, "core_share_u_pos": 0.4451, "core_share_wall": 0.3928, "core_mx_mean": 0.3456}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0003, -0.0032, 0.0], "m_u_mean": 0.0003, "share_u_pos": 0.5001, "share_wall": 0.3339, "core_m_u_mean": 0.0503, "core_share_u_pos": 0.5293, "core_share_wall": 0.3759, "core_mx_mean": -0.0189}], "ckpt_00_amp00.pt": [{"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0014, -0.0014, -0.0033], "m_u_mean": -0.0011, "share_u_pos": 0.4982, "share_wall": 0.3315, "core_m_u_mean": -0.0667, "core_share_u_pos": 0.4581, "core_share_wall": 0.3921, "core_mx_mean": 0.0979}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0028, 0.0008, -0.0004], "m_u_mean": 0.0001, "share_u_pos": 0.5012, "share_wall": 0.3419, "core_m_u_mean": 0.1019, "core_share_u_pos": 0.5722, "core_share_wall": 0.4127, "core_mx_mean": 0.3686}, {"cos_axis_drive": 0.1875924740850799, "m_mean": [0.0034, 0.0003, -0.0019], "m_u_mean": 0.0007, "share_u_pos": 0.4999, "share_wall": 0.3362, "core_m_u_mean": -0.0832, "core_share_u_pos": 0.4455, "core_share_wall": 0.3926, "core_mx_mean": 0.3456}, {"cos_axis_drive": 0.7946544722917662, "m_mean": [0.0003, -0.0032, -0.0001], "m_u_mean": 0.0003, "share_u_pos": 0.4999, "share_wall": 0.3337, "core_m_u_mean": 0.0498, "core_share_u_pos": 0.5287, "core_share_wall": 0.375, "core_mx_mean": -0.0199}]}}
+{
+ "K1_0_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0028,
+     0.0003,
+     0.0009
+    ],
+    "m_u_mean": -0.0017,
+    "share_u_pos": 0.4926,
+    "share_wall": 0.3729,
+    "core_m_u_mean": -0.1914,
+    "core_share_u_pos": 0.3864,
+    "core_share_wall": 0.4658,
+    "core_mx_mean": -0.3524
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     0.0,
+     0.0004
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.496,
+    "share_wall": 0.3646,
+    "core_m_u_mean": -0.1128,
+    "core_share_u_pos": 0.4219,
+    "core_share_wall": 0.48,
+    "core_mx_mean": -0.5262
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     -0.0004,
+     0.0009
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.5024,
+    "share_wall": 0.367,
+    "core_m_u_mean": 0.0686,
+    "core_share_u_pos": 0.546,
+    "core_share_wall": 0.4865,
+    "core_mx_mean": -0.5241
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0002,
+     0.0,
+     0.0004
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.4956,
+    "share_wall": 0.4672,
+    "core_m_u_mean": -0.4984,
+    "core_share_u_pos": 0.1734,
+    "core_share_wall": 0.4061,
+    "core_mx_mean": 0.641
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0028,
+     0.0002,
+     0.0009
+    ],
+    "m_u_mean": -0.0017,
+    "share_u_pos": 0.4926,
+    "share_wall": 0.373,
+    "core_m_u_mean": -0.1914,
+    "core_share_u_pos": 0.3868,
+    "core_share_wall": 0.4659,
+    "core_mx_mean": -0.3523
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     0.0,
+     0.0004
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.496,
+    "share_wall": 0.3646,
+    "core_m_u_mean": -0.1128,
+    "core_share_u_pos": 0.4219,
+    "core_share_wall": 0.48,
+    "core_mx_mean": -0.5263
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     -0.0004,
+     0.0009
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.5025,
+    "share_wall": 0.367,
+    "core_m_u_mean": 0.0685,
+    "core_share_u_pos": 0.546,
+    "core_share_wall": 0.4865,
+    "core_mx_mean": -0.5241
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0002,
+     -0.0,
+     0.0004
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.4957,
+    "share_wall": 0.4669,
+    "core_m_u_mean": -0.4969,
+    "core_share_u_pos": 0.1749,
+    "core_share_wall": 0.4071,
+    "core_mx_mean": 0.6403
+   }
+  ]
+ },
+ "K1_1_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0017,
+     -0.0002,
+     -0.0009
+    ],
+    "m_u_mean": 0.0008,
+    "share_u_pos": 0.5043,
+    "share_wall": 0.4054,
+    "core_m_u_mean": 0.3484,
+    "core_share_u_pos": 0.7304,
+    "core_share_wall": 0.4652,
+    "core_mx_mean": 0.5007
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     0.0002,
+     0.0001
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4969,
+    "share_wall": 0.3674,
+    "core_m_u_mean": -0.0852,
+    "core_share_u_pos": 0.4432,
+    "core_share_wall": 0.486,
+    "core_mx_mean": -0.5217
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0002,
+     -0.0001,
+     -0.0002
+    ],
+    "m_u_mean": -0.0,
+    "share_u_pos": 0.5026,
+    "share_wall": 0.365,
+    "core_m_u_mean": 0.103,
+    "core_share_u_pos": 0.5696,
+    "core_share_wall": 0.4785,
+    "core_mx_mean": -0.5138
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0013,
+     -0.0007,
+     0.0007
+    ],
+    "m_u_mean": -0.0005,
+    "share_u_pos": 0.4962,
+    "share_wall": 0.4026,
+    "core_m_u_mean": -0.3482,
+    "core_share_u_pos": 0.2651,
+    "core_share_wall": 0.4585,
+    "core_mx_mean": 0.5022
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0016,
+     -0.0002,
+     -0.0009
+    ],
+    "m_u_mean": 0.0008,
+    "share_u_pos": 0.5043,
+    "share_wall": 0.4055,
+    "core_m_u_mean": 0.3479,
+    "core_share_u_pos": 0.7296,
+    "core_share_wall": 0.4654,
+    "core_mx_mean": 0.5003
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     0.0002,
+     0.0001
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4969,
+    "share_wall": 0.3674,
+    "core_m_u_mean": -0.0852,
+    "core_share_u_pos": 0.4432,
+    "core_share_wall": 0.4861,
+    "core_mx_mean": -0.5218
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0002,
+     -0.0001,
+     -0.0002
+    ],
+    "m_u_mean": -0.0,
+    "share_u_pos": 0.5026,
+    "share_wall": 0.3649,
+    "core_m_u_mean": 0.103,
+    "core_share_u_pos": 0.5698,
+    "core_share_wall": 0.4784,
+    "core_mx_mean": -0.5139
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0013,
+     -0.0007,
+     0.0007
+    ],
+    "m_u_mean": -0.0005,
+    "share_u_pos": 0.4962,
+    "share_wall": 0.4026,
+    "core_m_u_mean": -0.3482,
+    "core_share_u_pos": 0.2651,
+    "core_share_wall": 0.4586,
+    "core_mx_mean": 0.5022
+   }
+  ]
+ },
+ "K1_2_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0016,
+     0.0001,
+     0.0004
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4941,
+    "share_wall": 0.4114,
+    "core_m_u_mean": -0.3572,
+    "core_share_u_pos": 0.2596,
+    "core_share_wall": 0.4543,
+    "core_mx_mean": -0.5058
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     0.0004,
+     0.0002
+    ],
+    "m_u_mean": -0.0005,
+    "share_u_pos": 0.4963,
+    "share_wall": 0.3639,
+    "core_m_u_mean": -0.103,
+    "core_share_u_pos": 0.4289,
+    "core_share_wall": 0.4808,
+    "core_mx_mean": -0.5236
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     0.0001,
+     0.0003
+    ],
+    "m_u_mean": 0.0,
+    "share_u_pos": 0.5022,
+    "share_wall": 0.3671,
+    "core_m_u_mean": 0.0909,
+    "core_share_u_pos": 0.56,
+    "core_share_wall": 0.4907,
+    "core_mx_mean": -0.5311
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0011,
+     0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.0008,
+    "share_u_pos": 0.4941,
+    "share_wall": 0.424,
+    "core_m_u_mean": -0.3885,
+    "core_share_u_pos": 0.23,
+    "core_share_wall": 0.4757,
+    "core_mx_mean": 0.5245
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0016,
+     0.0001,
+     0.0004
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4941,
+    "share_wall": 0.4113,
+    "core_m_u_mean": -0.3567,
+    "core_share_u_pos": 0.2601,
+    "core_share_wall": 0.4543,
+    "core_mx_mean": -0.5056
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     0.0004,
+     0.0002
+    ],
+    "m_u_mean": -0.0005,
+    "share_u_pos": 0.4962,
+    "share_wall": 0.3639,
+    "core_m_u_mean": -0.1031,
+    "core_share_u_pos": 0.4288,
+    "core_share_wall": 0.4809,
+    "core_mx_mean": -0.5236
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     0.0001,
+     0.0003
+    ],
+    "m_u_mean": 0.0,
+    "share_u_pos": 0.5022,
+    "share_wall": 0.3671,
+    "core_m_u_mean": 0.0909,
+    "core_share_u_pos": 0.56,
+    "core_share_wall": 0.4907,
+    "core_mx_mean": -0.5311
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0011,
+     0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.0008,
+    "share_u_pos": 0.4941,
+    "share_wall": 0.4241,
+    "core_m_u_mean": -0.3885,
+    "core_share_u_pos": 0.2297,
+    "core_share_wall": 0.4757,
+    "core_mx_mean": 0.5245
+   }
+  ]
+ },
+ "K1_3_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0021,
+     0.0006,
+     -0.0001
+    ],
+    "m_u_mean": -0.0016,
+    "share_u_pos": 0.4947,
+    "share_wall": 0.4182,
+    "core_m_u_mean": -0.3883,
+    "core_share_u_pos": 0.2305,
+    "core_share_wall": 0.4689,
+    "core_mx_mean": -0.528
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0017,
+     0.0002,
+     -0.0006
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4965,
+    "share_wall": 0.3659,
+    "core_m_u_mean": -0.0846,
+    "core_share_u_pos": 0.4401,
+    "core_share_wall": 0.4897,
+    "core_mx_mean": -0.5432
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0008,
+     0.0002,
+     -0.0001
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5026,
+    "share_wall": 0.3657,
+    "core_m_u_mean": 0.1057,
+    "core_share_u_pos": 0.5703,
+    "core_share_wall": 0.485,
+    "core_mx_mean": -0.5418
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0031,
+     0.0007,
+     -0.001
+    ],
+    "m_u_mean": 0.0017,
+    "share_u_pos": 0.5059,
+    "share_wall": 0.3685,
+    "core_m_u_mean": 0.1763,
+    "core_share_u_pos": 0.6007,
+    "core_share_wall": 0.4561,
+    "core_mx_mean": -0.3401
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0021,
+     0.0006,
+     -0.0001
+    ],
+    "m_u_mean": -0.0016,
+    "share_u_pos": 0.4947,
+    "share_wall": 0.4183,
+    "core_m_u_mean": -0.3882,
+    "core_share_u_pos": 0.231,
+    "core_share_wall": 0.4688,
+    "core_mx_mean": -0.5279
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0017,
+     0.0002,
+     -0.0006
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4965,
+    "share_wall": 0.366,
+    "core_m_u_mean": -0.0846,
+    "core_share_u_pos": 0.4401,
+    "core_share_wall": 0.4897,
+    "core_mx_mean": -0.5432
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0008,
+     0.0002,
+     -0.0001
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5026,
+    "share_wall": 0.3658,
+    "core_m_u_mean": 0.1057,
+    "core_share_u_pos": 0.5703,
+    "core_share_wall": 0.4852,
+    "core_mx_mean": -0.5418
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0031,
+     0.0007,
+     -0.001
+    ],
+    "m_u_mean": 0.0017,
+    "share_u_pos": 0.506,
+    "share_wall": 0.3686,
+    "core_m_u_mean": 0.1768,
+    "core_share_u_pos": 0.6014,
+    "core_share_wall": 0.4561,
+    "core_mx_mean": -0.3405
+   }
+  ]
+ },
+ "K1_4_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0004,
+     -0.0015
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4983,
+    "share_wall": 0.3776,
+    "core_m_u_mean": -0.2543,
+    "core_share_u_pos": 0.3441,
+    "core_share_wall": 0.4512,
+    "core_mx_mean": 0.0162
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4967,
+    "share_wall": 0.3662,
+    "core_m_u_mean": -0.0997,
+    "core_share_u_pos": 0.4343,
+    "core_share_wall": 0.4868,
+    "core_mx_mean": -0.5293
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     -0.0,
+     -0.0003
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.5029,
+    "share_wall": 0.3667,
+    "core_m_u_mean": 0.0838,
+    "core_share_u_pos": 0.5572,
+    "core_share_wall": 0.4928,
+    "core_mx_mean": -0.5356
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0003,
+     0.0014
+    ],
+    "m_u_mean": 0.001,
+    "share_u_pos": 0.5017,
+    "share_wall": 0.3812,
+    "core_m_u_mean": 0.248,
+    "core_share_u_pos": 0.6545,
+    "core_share_wall": 0.4656,
+    "core_mx_mean": 0.0352
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0004,
+     -0.0015
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4984,
+    "share_wall": 0.3774,
+    "core_m_u_mean": -0.2522,
+    "core_share_u_pos": 0.3452,
+    "core_share_wall": 0.4518,
+    "core_mx_mean": 0.0176
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4967,
+    "share_wall": 0.3662,
+    "core_m_u_mean": -0.0999,
+    "core_share_u_pos": 0.4342,
+    "core_share_wall": 0.4867,
+    "core_mx_mean": -0.5294
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     -0.0001,
+     -0.0003
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.5029,
+    "share_wall": 0.3667,
+    "core_m_u_mean": 0.0836,
+    "core_share_u_pos": 0.5571,
+    "core_share_wall": 0.4929,
+    "core_mx_mean": -0.5356
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0002,
+     0.0014
+    ],
+    "m_u_mean": 0.0011,
+    "share_u_pos": 0.5018,
+    "share_wall": 0.3813,
+    "core_m_u_mean": 0.2484,
+    "core_share_u_pos": 0.6546,
+    "core_share_wall": 0.466,
+    "core_mx_mean": 0.0355
+   }
+  ]
+ },
+ "K1_5_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0015,
+     -0.0003,
+     0.0005
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4945,
+    "share_wall": 0.4059,
+    "core_m_u_mean": -0.375,
+    "core_share_u_pos": 0.2453,
+    "core_share_wall": 0.4639,
+    "core_mx_mean": -0.5202
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     0.0003,
+     0.0007
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.4956,
+    "share_wall": 0.3672,
+    "core_m_u_mean": -0.1007,
+    "core_share_u_pos": 0.425,
+    "core_share_wall": 0.4887,
+    "core_mx_mean": -0.5337
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     0.0002,
+     0.0004
+    ],
+    "m_u_mean": 0.0,
+    "share_u_pos": 0.5029,
+    "share_wall": 0.3687,
+    "core_m_u_mean": 0.0831,
+    "core_share_u_pos": 0.5551,
+    "core_share_wall": 0.4898,
+    "core_mx_mean": -0.5418
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0009,
+     -0.0003,
+     0.0004
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4949,
+    "share_wall": 0.4073,
+    "core_m_u_mean": -0.3473,
+    "core_share_u_pos": 0.2641,
+    "core_share_wall": 0.4662,
+    "core_mx_mean": 0.4931
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0015,
+     -0.0003,
+     0.0005
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4945,
+    "share_wall": 0.4059,
+    "core_m_u_mean": -0.3748,
+    "core_share_u_pos": 0.2454,
+    "core_share_wall": 0.4637,
+    "core_mx_mean": -0.5201
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     0.0003,
+     0.0007
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.4956,
+    "share_wall": 0.3672,
+    "core_m_u_mean": -0.1007,
+    "core_share_u_pos": 0.425,
+    "core_share_wall": 0.4888,
+    "core_mx_mean": -0.5338
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     0.0001,
+     0.0004
+    ],
+    "m_u_mean": 0.0,
+    "share_u_pos": 0.5029,
+    "share_wall": 0.3687,
+    "core_m_u_mean": 0.0832,
+    "core_share_u_pos": 0.5552,
+    "core_share_wall": 0.4898,
+    "core_mx_mean": -0.5419
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0009,
+     -0.0003,
+     0.0004
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.495,
+    "share_wall": 0.4072,
+    "core_m_u_mean": -0.3465,
+    "core_share_u_pos": 0.2645,
+    "core_share_wall": 0.4668,
+    "core_mx_mean": 0.4925
+   }
+  ]
+ },
+ "K1_6_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0018,
+     -0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0013,
+    "share_u_pos": 0.4949,
+    "share_wall": 0.4063,
+    "core_m_u_mean": -0.3342,
+    "core_share_u_pos": 0.2772,
+    "core_share_wall": 0.46,
+    "core_mx_mean": -0.4896
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     -0.0002,
+     0.0005
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4977,
+    "share_wall": 0.3634,
+    "core_m_u_mean": -0.0741,
+    "core_share_u_pos": 0.4494,
+    "core_share_wall": 0.4822,
+    "core_mx_mean": -0.53
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     -0.0003,
+     0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.502,
+    "share_wall": 0.3673,
+    "core_m_u_mean": 0.0859,
+    "core_share_u_pos": 0.5518,
+    "core_share_wall": 0.4935,
+    "core_mx_mean": -0.5489
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0011,
+     0.0,
+     0.0003
+    ],
+    "m_u_mean": -0.0006,
+    "share_u_pos": 0.495,
+    "share_wall": 0.4068,
+    "core_m_u_mean": -0.3621,
+    "core_share_u_pos": 0.2585,
+    "core_share_wall": 0.459,
+    "core_mx_mean": 0.5133
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0018,
+     -0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0013,
+    "share_u_pos": 0.4949,
+    "share_wall": 0.4063,
+    "core_m_u_mean": -0.3337,
+    "core_share_u_pos": 0.2776,
+    "core_share_wall": 0.4605,
+    "core_mx_mean": -0.4894
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     -0.0002,
+     0.0005
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4977,
+    "share_wall": 0.3634,
+    "core_m_u_mean": -0.0741,
+    "core_share_u_pos": 0.4494,
+    "core_share_wall": 0.4822,
+    "core_mx_mean": -0.53
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     -0.0003,
+     0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.502,
+    "share_wall": 0.3672,
+    "core_m_u_mean": 0.0859,
+    "core_share_u_pos": 0.5518,
+    "core_share_wall": 0.4934,
+    "core_mx_mean": -0.549
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0011,
+     0.0,
+     0.0003
+    ],
+    "m_u_mean": -0.0006,
+    "share_u_pos": 0.495,
+    "share_wall": 0.4068,
+    "core_m_u_mean": -0.3625,
+    "core_share_u_pos": 0.258,
+    "core_share_wall": 0.4588,
+    "core_mx_mean": 0.5135
+   }
+  ]
+ },
+ "K1_7_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.002,
+     0.0,
+     0.0002
+    ],
+    "m_u_mean": -0.0014,
+    "share_u_pos": 0.4943,
+    "share_wall": 0.4252,
+    "core_m_u_mean": -0.3979,
+    "core_share_u_pos": 0.2264,
+    "core_share_wall": 0.4643,
+    "core_mx_mean": -0.5239
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     0.0002,
+     0.0006
+    ],
+    "m_u_mean": -0.0006,
+    "share_u_pos": 0.4965,
+    "share_wall": 0.3682,
+    "core_m_u_mean": -0.1133,
+    "core_share_u_pos": 0.4211,
+    "core_share_wall": 0.4918,
+    "core_mx_mean": -0.5408
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     -0.0003,
+     0.0005
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.5019,
+    "share_wall": 0.3641,
+    "core_m_u_mean": 0.0889,
+    "core_share_u_pos": 0.5573,
+    "core_share_wall": 0.4786,
+    "core_mx_mean": -0.5101
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0007,
+     -0.0001,
+     0.0006
+    ],
+    "m_u_mean": -0.0002,
+    "share_u_pos": 0.4957,
+    "share_wall": 0.4048,
+    "core_m_u_mean": -0.3513,
+    "core_share_u_pos": 0.2675,
+    "core_share_wall": 0.4525,
+    "core_mx_mean": 0.4991
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.002,
+     -0.0,
+     0.0002
+    ],
+    "m_u_mean": -0.0014,
+    "share_u_pos": 0.4943,
+    "share_wall": 0.4252,
+    "core_m_u_mean": -0.3978,
+    "core_share_u_pos": 0.2268,
+    "core_share_wall": 0.4642,
+    "core_mx_mean": -0.5239
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     0.0002,
+     0.0006
+    ],
+    "m_u_mean": -0.0006,
+    "share_u_pos": 0.4965,
+    "share_wall": 0.3682,
+    "core_m_u_mean": -0.1132,
+    "core_share_u_pos": 0.4211,
+    "core_share_wall": 0.4917,
+    "core_mx_mean": -0.5409
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     -0.0003,
+     0.0005
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.5018,
+    "share_wall": 0.364,
+    "core_m_u_mean": 0.0888,
+    "core_share_u_pos": 0.5572,
+    "core_share_wall": 0.4785,
+    "core_mx_mean": -0.5101
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0007,
+     -0.0001,
+     0.0006
+    ],
+    "m_u_mean": -0.0002,
+    "share_u_pos": 0.4956,
+    "share_wall": 0.4049,
+    "core_m_u_mean": -0.3512,
+    "core_share_u_pos": 0.2674,
+    "core_share_wall": 0.4529,
+    "core_mx_mean": 0.499
+   }
+  ]
+ },
+ "K1_8_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0001,
+     -0.0001,
+     -0.0021
+    ],
+    "m_u_mean": -0.0012,
+    "share_u_pos": 0.4976,
+    "share_wall": 0.3525,
+    "core_m_u_mean": -0.098,
+    "core_share_u_pos": 0.4476,
+    "core_share_wall": 0.4413,
+    "core_mx_mean": 0.1012
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     -0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4975,
+    "share_wall": 0.3653,
+    "core_m_u_mean": -0.0882,
+    "core_share_u_pos": 0.4407,
+    "core_share_wall": 0.4829,
+    "core_mx_mean": -0.5283
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0009,
+     -0.0003,
+     -0.0005
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.4986,
+    "share_wall": 0.3613,
+    "core_m_u_mean": 0.073,
+    "core_share_u_pos": 0.5452,
+    "core_share_wall": 0.4821,
+    "core_mx_mean": -0.454
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0015,
+     -0.0002,
+     0.0007
+    ],
+    "m_u_mean": -0.0008,
+    "share_u_pos": 0.4949,
+    "share_wall": 0.4061,
+    "core_m_u_mean": -0.3346,
+    "core_share_u_pos": 0.274,
+    "core_share_wall": 0.477,
+    "core_mx_mean": 0.4911
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0001,
+     -0.0001,
+     -0.0021
+    ],
+    "m_u_mean": -0.0012,
+    "share_u_pos": 0.4977,
+    "share_wall": 0.3527,
+    "core_m_u_mean": -0.0996,
+    "core_share_u_pos": 0.4463,
+    "core_share_wall": 0.4408,
+    "core_mx_mean": 0.0991
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0004,
+     -0.0,
+     0.0002
+    ],
+    "m_u_mean": -0.0002,
+    "share_u_pos": 0.4975,
+    "share_wall": 0.3654,
+    "core_m_u_mean": -0.0882,
+    "core_share_u_pos": 0.4407,
+    "core_share_wall": 0.4831,
+    "core_mx_mean": -0.5283
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0009,
+     -0.0003,
+     -0.0005
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.4986,
+    "share_wall": 0.3613,
+    "core_m_u_mean": 0.073,
+    "core_share_u_pos": 0.5451,
+    "core_share_wall": 0.4822,
+    "core_mx_mean": -0.454
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0015,
+     -0.0002,
+     0.0007
+    ],
+    "m_u_mean": -0.0008,
+    "share_u_pos": 0.4949,
+    "share_wall": 0.406,
+    "core_m_u_mean": -0.3353,
+    "core_share_u_pos": 0.2734,
+    "core_share_wall": 0.4769,
+    "core_mx_mean": 0.4915
+   }
+  ]
+ },
+ "K3_0_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0001,
+     0.0008,
+     0.0026
+    ],
+    "m_u_mean": 0.0016,
+    "share_u_pos": 0.5016,
+    "share_wall": 0.3259,
+    "core_m_u_mean": 0.0828,
+    "core_share_u_pos": 0.5451,
+    "core_share_wall": 0.3673,
+    "core_mx_mean": -0.0834
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.004,
+     -0.0001,
+     0.001
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5006,
+    "share_wall": 0.339,
+    "core_m_u_mean": 0.0485,
+    "core_share_u_pos": 0.5306,
+    "core_share_wall": 0.3744,
+    "core_mx_mean": 0.2632
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0031,
+     0.0005,
+     0.0008
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.4993,
+    "share_wall": 0.3364,
+    "core_m_u_mean": -0.0205,
+    "core_share_u_pos": 0.4876,
+    "core_share_wall": 0.3729,
+    "core_mx_mean": 0.2767
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.001,
+     0.0029,
+     0.0002
+    ],
+    "m_u_mean": -0.0012,
+    "share_u_pos": 0.4991,
+    "share_wall": 0.3341,
+    "core_m_u_mean": -0.0534,
+    "core_share_u_pos": 0.4664,
+    "core_share_wall": 0.3761,
+    "core_mx_mean": 0.0155
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0001,
+     0.0006,
+     0.0025
+    ],
+    "m_u_mean": 0.0015,
+    "share_u_pos": 0.5014,
+    "share_wall": 0.3261,
+    "core_m_u_mean": 0.0835,
+    "core_share_u_pos": 0.546,
+    "core_share_wall": 0.3666,
+    "core_mx_mean": -0.0827
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.004,
+     -0.0002,
+     0.0011
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5006,
+    "share_wall": 0.339,
+    "core_m_u_mean": 0.0481,
+    "core_share_u_pos": 0.5301,
+    "core_share_wall": 0.3743,
+    "core_mx_mean": 0.263
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0031,
+     0.0005,
+     0.0009
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.4992,
+    "share_wall": 0.3365,
+    "core_m_u_mean": -0.0215,
+    "core_share_u_pos": 0.4867,
+    "core_share_wall": 0.3734,
+    "core_mx_mean": 0.277
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.001,
+     0.0029,
+     0.0003
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4991,
+    "share_wall": 0.334,
+    "core_m_u_mean": -0.0512,
+    "core_share_u_pos": 0.4678,
+    "core_share_wall": 0.3758,
+    "core_mx_mean": 0.0151
+   }
+  ]
+ },
+ "K3_1_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0014,
+     -0.0015,
+     -0.0033
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4981,
+    "share_wall": 0.3313,
+    "core_m_u_mean": -0.0666,
+    "core_share_u_pos": 0.4584,
+    "core_share_wall": 0.392,
+    "core_mx_mean": 0.0984
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0028,
+     0.0007,
+     -0.0003
+    ],
+    "m_u_mean": 0.0001,
+    "share_u_pos": 0.5012,
+    "share_wall": 0.3418,
+    "core_m_u_mean": 0.1018,
+    "core_share_u_pos": 0.5721,
+    "core_share_wall": 0.4123,
+    "core_mx_mean": 0.3686
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0034,
+     0.0003,
+     -0.0018
+    ],
+    "m_u_mean": 0.0007,
+    "share_u_pos": 0.4998,
+    "share_wall": 0.3363,
+    "core_m_u_mean": -0.0833,
+    "core_share_u_pos": 0.4451,
+    "core_share_wall": 0.3928,
+    "core_mx_mean": 0.3456
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0003,
+     -0.0032,
+     0.0
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5001,
+    "share_wall": 0.3339,
+    "core_m_u_mean": 0.0503,
+    "core_share_u_pos": 0.5293,
+    "core_share_wall": 0.3759,
+    "core_mx_mean": -0.0189
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0014,
+     -0.0014,
+     -0.0033
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4982,
+    "share_wall": 0.3315,
+    "core_m_u_mean": -0.0667,
+    "core_share_u_pos": 0.4581,
+    "core_share_wall": 0.3921,
+    "core_mx_mean": 0.0979
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0028,
+     0.0008,
+     -0.0004
+    ],
+    "m_u_mean": 0.0001,
+    "share_u_pos": 0.5012,
+    "share_wall": 0.3419,
+    "core_m_u_mean": 0.1019,
+    "core_share_u_pos": 0.5722,
+    "core_share_wall": 0.4127,
+    "core_mx_mean": 0.3686
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0034,
+     0.0003,
+     -0.0019
+    ],
+    "m_u_mean": 0.0007,
+    "share_u_pos": 0.4999,
+    "share_wall": 0.3362,
+    "core_m_u_mean": -0.0832,
+    "core_share_u_pos": 0.4455,
+    "core_share_wall": 0.3926,
+    "core_mx_mean": 0.3456
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0003,
+     -0.0032,
+     -0.0001
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.4999,
+    "share_wall": 0.3337,
+    "core_m_u_mean": 0.0498,
+    "core_share_u_pos": 0.5287,
+    "core_share_wall": 0.375,
+    "core_mx_mean": -0.0199
+   }
+  ]
+ },
+ "K1_9_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0009,
+     -0.0005,
+     -0.0
+    ],
+    "m_u_mean": 0.0006,
+    "share_u_pos": 0.5065,
+    "share_wall": 0.4224,
+    "core_m_u_mean": 0.3988,
+    "core_share_u_pos": 0.7789,
+    "core_share_wall": 0.477,
+    "core_mx_mean": 0.5376
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     -0.0005,
+     -0.0003
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.4972,
+    "share_wall": 0.3646,
+    "core_m_u_mean": -0.0715,
+    "core_share_u_pos": 0.451,
+    "core_share_wall": 0.4851,
+    "core_mx_mean": -0.5359
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": 0.0001,
+    "share_u_pos": 0.4984,
+    "share_wall": 0.3596,
+    "core_m_u_mean": 0.0331,
+    "core_share_u_pos": 0.5184,
+    "core_share_wall": 0.4654,
+    "core_mx_mean": -0.4289
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0008,
+     -0.0002,
+     0.0003
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4986,
+    "share_wall": 0.4948,
+    "core_m_u_mean": -0.5182,
+    "core_share_u_pos": 0.1581,
+    "core_share_wall": 0.4014,
+    "core_mx_mean": 0.653
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0009,
+     -0.0005,
+     -0.0001
+    ],
+    "m_u_mean": 0.0005,
+    "share_u_pos": 0.5065,
+    "share_wall": 0.4224,
+    "core_m_u_mean": 0.3984,
+    "core_share_u_pos": 0.7788,
+    "core_share_wall": 0.477,
+    "core_mx_mean": 0.5374
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0005,
+     -0.0004,
+     -0.0003
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.4972,
+    "share_wall": 0.3647,
+    "core_m_u_mean": -0.0716,
+    "core_share_u_pos": 0.4509,
+    "core_share_wall": 0.4852,
+    "core_mx_mean": -0.5359
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": 0.0001,
+    "share_u_pos": 0.4983,
+    "share_wall": 0.3597,
+    "core_m_u_mean": 0.0332,
+    "core_share_u_pos": 0.5182,
+    "core_share_wall": 0.4653,
+    "core_mx_mean": -0.429
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0007,
+     -0.0002,
+     0.0003
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4986,
+    "share_wall": 0.4948,
+    "core_m_u_mean": -0.518,
+    "core_share_u_pos": 0.1584,
+    "core_share_wall": 0.4016,
+    "core_mx_mean": 0.653
+   }
+  ]
+ },
+ "K1_10_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0025,
+     -0.0006,
+     -0.0006
+    ],
+    "m_u_mean": 0.0016,
+    "share_u_pos": 0.5099,
+    "share_wall": 0.395,
+    "core_m_u_mean": 0.2682,
+    "core_share_u_pos": 0.671,
+    "core_share_wall": 0.4948,
+    "core_mx_mean": 0.4008
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     -0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.0,
+    "share_u_pos": 0.4976,
+    "share_wall": 0.3684,
+    "core_m_u_mean": -0.0825,
+    "core_share_u_pos": 0.445,
+    "core_share_wall": 0.4895,
+    "core_mx_mean": -0.5301
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0003,
+     -0.0004,
+     -0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.5024,
+    "share_wall": 0.3675,
+    "core_m_u_mean": 0.0578,
+    "core_share_u_pos": 0.5378,
+    "core_share_wall": 0.4848,
+    "core_mx_mean": -0.5236
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0017,
+     -0.0005,
+     0.0002
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4935,
+    "share_wall": 0.4337,
+    "core_m_u_mean": -0.4012,
+    "core_share_u_pos": 0.2186,
+    "core_share_wall": 0.4709,
+    "core_mx_mean": 0.5489
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0025,
+     -0.0006,
+     -0.0006
+    ],
+    "m_u_mean": 0.0015,
+    "share_u_pos": 0.5099,
+    "share_wall": 0.395,
+    "core_m_u_mean": 0.2681,
+    "core_share_u_pos": 0.6708,
+    "core_share_wall": 0.4945,
+    "core_mx_mean": 0.4007
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     -0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.0,
+    "share_u_pos": 0.4976,
+    "share_wall": 0.3684,
+    "core_m_u_mean": -0.0825,
+    "core_share_u_pos": 0.445,
+    "core_share_wall": 0.4895,
+    "core_mx_mean": -0.5302
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0003,
+     -0.0004,
+     -0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.5024,
+    "share_wall": 0.3675,
+    "core_m_u_mean": 0.0579,
+    "core_share_u_pos": 0.5379,
+    "core_share_wall": 0.4848,
+    "core_mx_mean": -0.5237
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0017,
+     -0.0005,
+     0.0002
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4935,
+    "share_wall": 0.4336,
+    "core_m_u_mean": -0.4012,
+    "core_share_u_pos": 0.2187,
+    "core_share_wall": 0.4711,
+    "core_mx_mean": 0.5489
+   }
+  ]
+ },
+ "K2_5_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0117,
+     0.0009,
+     -0.0007
+    ],
+    "m_u_mean": 0.0091,
+    "share_u_pos": 0.4896,
+    "share_wall": 0.1486,
+    "core_m_u_mean": 0.4046,
+    "core_share_u_pos": 0.7078,
+    "core_share_wall": 0.1126,
+    "core_mx_mean": 0.3274
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.012,
+     -0.0062,
+     -0.0057
+    ],
+    "m_u_mean": 0.006,
+    "share_u_pos": 0.4857,
+    "share_wall": 0.1469,
+    "core_m_u_mean": 0.4126,
+    "core_share_u_pos": 0.7116,
+    "core_share_wall": 0.1073,
+    "core_mx_mean": -0.123
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.006,
+     -0.0044,
+     0.0041
+    ],
+    "m_u_mean": -0.007,
+    "share_u_pos": 0.4805,
+    "share_wall": 0.1504,
+    "core_m_u_mean": 0.3705,
+    "core_share_u_pos": 0.6906,
+    "core_share_wall": 0.1155,
+    "core_mx_mean": -0.0508
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0041,
+     0.0026,
+     0.0059
+    ],
+    "m_u_mean": 0.0062,
+    "share_u_pos": 0.4886,
+    "share_wall": 0.1505,
+    "core_m_u_mean": 0.3502,
+    "core_share_u_pos": 0.6787,
+    "core_share_wall": 0.1111,
+    "core_mx_mean": -0.1362
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0117,
+     0.0009,
+     -0.0008
+    ],
+    "m_u_mean": 0.009,
+    "share_u_pos": 0.4896,
+    "share_wall": 0.1485,
+    "core_m_u_mean": 0.4032,
+    "core_share_u_pos": 0.707,
+    "core_share_wall": 0.1125,
+    "core_mx_mean": 0.3258
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.012,
+     -0.0062,
+     -0.0058
+    ],
+    "m_u_mean": 0.006,
+    "share_u_pos": 0.4856,
+    "share_wall": 0.1469,
+    "core_m_u_mean": 0.4124,
+    "core_share_u_pos": 0.7115,
+    "core_share_wall": 0.1077,
+    "core_mx_mean": -0.1245
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0059,
+     -0.0044,
+     0.0041
+    ],
+    "m_u_mean": -0.007,
+    "share_u_pos": 0.4806,
+    "share_wall": 0.1502,
+    "core_m_u_mean": 0.3705,
+    "core_share_u_pos": 0.6907,
+    "core_share_wall": 0.1155,
+    "core_mx_mean": -0.0519
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0042,
+     0.0026,
+     0.0059
+    ],
+    "m_u_mean": 0.0062,
+    "share_u_pos": 0.4887,
+    "share_wall": 0.1506,
+    "core_m_u_mean": 0.3478,
+    "core_share_u_pos": 0.6775,
+    "core_share_wall": 0.1111,
+    "core_mx_mean": -0.1341
+   }
+  ]
+ },
+ "K1_11_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0028,
+     -0.0005,
+     0.0005
+    ],
+    "m_u_mean": -0.0021,
+    "share_u_pos": 0.4899,
+    "share_wall": 0.3938,
+    "core_m_u_mean": -0.2557,
+    "core_share_u_pos": 0.3347,
+    "core_share_wall": 0.5025,
+    "core_mx_mean": -0.4013
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0,
+     0.0003,
+     0.0004
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4978,
+    "share_wall": 0.3646,
+    "core_m_u_mean": -0.0871,
+    "core_share_u_pos": 0.4438,
+    "core_share_wall": 0.4825,
+    "core_mx_mean": -0.53
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0008,
+     0.0002,
+     0.0007
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.5028,
+    "share_wall": 0.368,
+    "core_m_u_mean": 0.08,
+    "core_share_u_pos": 0.5529,
+    "core_share_wall": 0.4937,
+    "core_mx_mean": -0.5415
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0006,
+     -0.0007,
+     0.0003
+    ],
+    "m_u_mean": -0.0002,
+    "share_u_pos": 0.4957,
+    "share_wall": 0.4126,
+    "core_m_u_mean": -0.3796,
+    "core_share_u_pos": 0.2392,
+    "core_share_wall": 0.4665,
+    "core_mx_mean": 0.5148
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0028,
+     -0.0006,
+     0.0005
+    ],
+    "m_u_mean": -0.0021,
+    "share_u_pos": 0.4899,
+    "share_wall": 0.3938,
+    "core_m_u_mean": -0.2554,
+    "core_share_u_pos": 0.3352,
+    "core_share_wall": 0.5027,
+    "core_mx_mean": -0.4012
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0,
+     0.0003,
+     0.0003
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4978,
+    "share_wall": 0.3646,
+    "core_m_u_mean": -0.0872,
+    "core_share_u_pos": 0.4437,
+    "core_share_wall": 0.4825,
+    "core_mx_mean": -0.5301
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0008,
+     0.0002,
+     0.0007
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.5028,
+    "share_wall": 0.368,
+    "core_m_u_mean": 0.08,
+    "core_share_u_pos": 0.5529,
+    "core_share_wall": 0.4936,
+    "core_mx_mean": -0.5416
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0006,
+     -0.0008,
+     0.0003
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4957,
+    "share_wall": 0.4127,
+    "core_m_u_mean": -0.3795,
+    "core_share_u_pos": 0.2395,
+    "core_share_wall": 0.4664,
+    "core_mx_mean": 0.5147
+   }
+  ]
+ },
+ "K1_12_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0005,
+     -0.0,
+     -0.0025
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4969,
+    "share_wall": 0.3563,
+    "core_m_u_mean": -0.1406,
+    "core_share_u_pos": 0.4186,
+    "core_share_wall": 0.4471,
+    "core_mx_mean": 0.0822
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0004,
+     0.0002,
+     0.0003
+    ],
+    "m_u_mean": -0.0002,
+    "share_u_pos": 0.4972,
+    "share_wall": 0.3674,
+    "core_m_u_mean": -0.1115,
+    "core_share_u_pos": 0.4244,
+    "core_share_wall": 0.4879,
+    "core_mx_mean": -0.5445
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     -0.0,
+     -0.0005
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5032,
+    "share_wall": 0.3659,
+    "core_m_u_mean": 0.083,
+    "core_share_u_pos": 0.5603,
+    "core_share_wall": 0.4884,
+    "core_mx_mean": -0.5392
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0024,
+     -0.0001,
+     0.0009
+    ],
+    "m_u_mean": -0.0014,
+    "share_u_pos": 0.493,
+    "share_wall": 0.3847,
+    "core_m_u_mean": -0.1998,
+    "core_share_u_pos": 0.3812,
+    "core_share_wall": 0.4922,
+    "core_mx_mean": 0.3659
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0005,
+     0.0001,
+     -0.0025
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4967,
+    "share_wall": 0.3564,
+    "core_m_u_mean": -0.1414,
+    "core_share_u_pos": 0.4175,
+    "core_share_wall": 0.447,
+    "core_mx_mean": 0.0809
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0004,
+     0.0002,
+     0.0003
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4971,
+    "share_wall": 0.3675,
+    "core_m_u_mean": -0.1115,
+    "core_share_u_pos": 0.4244,
+    "core_share_wall": 0.4881,
+    "core_mx_mean": -0.5445
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0001,
+     -0.0,
+     -0.0005
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5031,
+    "share_wall": 0.3659,
+    "core_m_u_mean": 0.0829,
+    "core_share_u_pos": 0.5603,
+    "core_share_wall": 0.4884,
+    "core_mx_mean": -0.5392
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0024,
+     -0.0001,
+     0.0009
+    ],
+    "m_u_mean": -0.0014,
+    "share_u_pos": 0.4929,
+    "share_wall": 0.3846,
+    "core_m_u_mean": -0.1991,
+    "core_share_u_pos": 0.3815,
+    "core_share_wall": 0.492,
+    "core_mx_mean": 0.3654
+   }
+  ]
+ },
+ "K4_5_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0002,
+     0.0017,
+     0.0007
+    ],
+    "m_u_mean": 0.0006,
+    "share_u_pos": 0.5016,
+    "share_wall": 0.3369,
+    "core_m_u_mean": 0.1442,
+    "core_share_u_pos": 0.6015,
+    "core_share_wall": 0.3659,
+    "core_mx_mean": 0.0734
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0005,
+     0.0013,
+     0.0023
+    ],
+    "m_u_mean": -0.0023,
+    "share_u_pos": 0.5044,
+    "share_wall": 0.2834,
+    "core_m_u_mean": -0.0776,
+    "core_share_u_pos": 0.471,
+    "core_share_wall": 0.1727,
+    "core_mx_mean": -0.1989
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0006,
+     0.0,
+     -0.0002
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5003,
+    "share_wall": 0.331,
+    "core_m_u_mean": 0.0302,
+    "core_share_u_pos": 0.5206,
+    "core_share_wall": 0.3415,
+    "core_mx_mean": -0.206
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0003,
+     0.0011,
+     0.0001
+    ],
+    "m_u_mean": 0.0001,
+    "share_u_pos": 0.5001,
+    "share_wall": 0.3334,
+    "core_m_u_mean": -0.0856,
+    "core_share_u_pos": 0.4432,
+    "core_share_wall": 0.3635,
+    "core_mx_mean": 0.0326
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0016,
+     0.0007
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.5016,
+    "share_wall": 0.3378,
+    "core_m_u_mean": 0.1256,
+    "core_share_u_pos": 0.5898,
+    "core_share_wall": 0.3704,
+    "core_mx_mean": 0.0544
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0005,
+     0.0013,
+     0.0022
+    ],
+    "m_u_mean": -0.0022,
+    "share_u_pos": 0.5041,
+    "share_wall": 0.2836,
+    "core_m_u_mean": -0.0583,
+    "core_share_u_pos": 0.4813,
+    "core_share_wall": 0.1734,
+    "core_mx_mean": -0.2001
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0007,
+     0.0001,
+     -0.0002
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5003,
+    "share_wall": 0.331,
+    "core_m_u_mean": 0.0359,
+    "core_share_u_pos": 0.5243,
+    "core_share_wall": 0.3415,
+    "core_mx_mean": -0.2073
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     0.0011,
+     0.0002
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.5001,
+    "share_wall": 0.334,
+    "core_m_u_mean": -0.0854,
+    "core_share_u_pos": 0.443,
+    "core_share_wall": 0.3651,
+    "core_mx_mean": 0.0348
+   }
+  ]
+ },
+ "K4_6_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0023,
+     0.0005,
+     -0.0002
+    ],
+    "m_u_mean": 0.0018,
+    "share_u_pos": 0.505,
+    "share_wall": 0.2908,
+    "core_m_u_mean": -0.6606,
+    "core_share_u_pos": 0.1104,
+    "core_share_wall": 0.1953,
+    "core_mx_mean": -0.4568
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0012,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.5004,
+    "share_wall": 0.329,
+    "core_m_u_mean": -0.0366,
+    "core_share_u_pos": 0.4767,
+    "core_share_wall": 0.3379,
+    "core_mx_mean": -0.2035
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0012,
+     0.0003,
+     -0.0004
+    ],
+    "m_u_mean": 0.0007,
+    "share_u_pos": 0.501,
+    "share_wall": 0.3224,
+    "core_m_u_mean": 0.0824,
+    "core_share_u_pos": 0.5544,
+    "core_share_wall": 0.3135,
+    "core_mx_mean": -0.2019
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0026,
+     0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.002,
+    "share_u_pos": 0.491,
+    "share_wall": 0.2836,
+    "core_m_u_mean": 0.7223,
+    "core_share_u_pos": 0.9147,
+    "core_share_wall": 0.1692,
+    "core_mx_mean": -0.4523
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0022,
+     0.0006,
+     -0.0002
+    ],
+    "m_u_mean": 0.0018,
+    "share_u_pos": 0.5048,
+    "share_wall": 0.2906,
+    "core_m_u_mean": -0.6654,
+    "core_share_u_pos": 0.1076,
+    "core_share_wall": 0.1934,
+    "core_mx_mean": -0.4661
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0012,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.5003,
+    "share_wall": 0.3287,
+    "core_m_u_mean": -0.0463,
+    "core_share_u_pos": 0.4703,
+    "core_share_wall": 0.3366,
+    "core_mx_mean": -0.206
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0012,
+     0.0003,
+     -0.0004
+    ],
+    "m_u_mean": 0.0007,
+    "share_u_pos": 0.5009,
+    "share_wall": 0.3224,
+    "core_m_u_mean": 0.0872,
+    "core_share_u_pos": 0.5575,
+    "core_share_wall": 0.3132,
+    "core_mx_mean": -0.2033
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0025,
+     0.0001,
+     0.0001
+    ],
+    "m_u_mean": -0.002,
+    "share_u_pos": 0.4913,
+    "share_wall": 0.2836,
+    "core_m_u_mean": 0.7284,
+    "core_share_u_pos": 0.9191,
+    "core_share_wall": 0.1676,
+    "core_mx_mean": -0.4608
+   }
+  ]
+ },
+ "K4_7_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0011,
+     -0.0004,
+     -0.0008
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.4988,
+    "share_wall": 0.3285,
+    "core_m_u_mean": -0.1223,
+    "core_share_u_pos": 0.4223,
+    "core_share_wall": 0.3533,
+    "core_mx_mean": 0.0141
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0009,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0003,
+    "share_u_pos": 0.4989,
+    "share_wall": 0.3312,
+    "core_m_u_mean": -0.0316,
+    "core_share_u_pos": 0.4783,
+    "core_share_wall": 0.3545,
+    "core_mx_mean": -0.1884
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0008,
+     0.0006,
+     -0.0004
+    ],
+    "m_u_mean": 0.0009,
+    "share_u_pos": 0.5014,
+    "share_wall": 0.3325,
+    "core_m_u_mean": 0.1925,
+    "core_share_u_pos": 0.6297,
+    "core_share_wall": 0.3567,
+    "core_mx_mean": -0.2937
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0017,
+     -0.0,
+     0.0004
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4921,
+    "share_wall": 0.2872,
+    "core_m_u_mean": 0.7201,
+    "core_share_u_pos": 0.915,
+    "core_share_wall": 0.1757,
+    "core_mx_mean": -0.4637
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.001,
+     -0.0004,
+     -0.0008
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.4987,
+    "share_wall": 0.3281,
+    "core_m_u_mean": -0.1424,
+    "core_share_u_pos": 0.4091,
+    "core_share_wall": 0.3519,
+    "core_mx_mean": -0.0027
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.001,
+     0.0001,
+     0.0002
+    ],
+    "m_u_mean": -0.0004,
+    "share_u_pos": 0.4989,
+    "share_wall": 0.3309,
+    "core_m_u_mean": -0.0367,
+    "core_share_u_pos": 0.475,
+    "core_share_wall": 0.3525,
+    "core_mx_mean": -0.1897
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0009,
+     0.0006,
+     -0.0004
+    ],
+    "m_u_mean": 0.0009,
+    "share_u_pos": 0.5014,
+    "share_wall": 0.3325,
+    "core_m_u_mean": 0.1939,
+    "core_share_u_pos": 0.6302,
+    "core_share_wall": 0.3562,
+    "core_mx_mean": -0.2942
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     0.0016,
+     -0.0001,
+     0.0003
+    ],
+    "m_u_mean": -0.0011,
+    "share_u_pos": 0.4923,
+    "share_wall": 0.2868,
+    "core_m_u_mean": 0.7244,
+    "core_share_u_pos": 0.9181,
+    "core_share_wall": 0.1723,
+    "core_mx_mean": -0.4707
+   }
+  ]
+ },
+ "K4_8_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0008,
+     -0.0015,
+     0.0
+    ],
+    "m_u_mean": -0.0009,
+    "share_u_pos": 0.4998,
+    "share_wall": 0.3312,
+    "core_m_u_mean": -0.001,
+    "core_share_u_pos": 0.4999,
+    "core_share_wall": 0.3433,
+    "core_mx_mean": 0.0207
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0001,
+     -0.0005,
+     -0.0003
+    ],
+    "m_u_mean": 0.0006,
+    "share_u_pos": 0.502,
+    "share_wall": 0.3352,
+    "core_m_u_mean": 0.1158,
+    "core_share_u_pos": 0.5818,
+    "core_share_wall": 0.3746,
+    "core_mx_mean": 0.2717
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0002,
+     -0.0003,
+     -0.0002
+    ],
+    "m_u_mean": -0.0,
+    "share_u_pos": 0.5019,
+    "share_wall": 0.3296,
+    "core_m_u_mean": 0.1074,
+    "core_share_u_pos": 0.5649,
+    "core_share_wall": 0.343,
+    "core_mx_mean": -0.2952
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0016,
+     -0.0013,
+     -0.0008
+    ],
+    "m_u_mean": 0.0011,
+    "share_u_pos": 0.505,
+    "share_wall": 0.2893,
+    "core_m_u_mean": -0.7132,
+    "core_share_u_pos": 0.0801,
+    "core_share_wall": 0.1771,
+    "core_mx_mean": 0.5231
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0009,
+     -0.0015,
+     -0.0001
+    ],
+    "m_u_mean": -0.001,
+    "share_u_pos": 0.4996,
+    "share_wall": 0.3316,
+    "core_m_u_mean": -0.021,
+    "core_share_u_pos": 0.4871,
+    "core_share_wall": 0.345,
+    "core_mx_mean": 0.0071
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     0.0001,
+     -0.0005,
+     -0.0004
+    ],
+    "m_u_mean": 0.0006,
+    "share_u_pos": 0.5021,
+    "share_wall": 0.3352,
+    "core_m_u_mean": 0.1153,
+    "core_share_u_pos": 0.5816,
+    "core_share_wall": 0.3744,
+    "core_mx_mean": 0.2712
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0003,
+     -0.0003,
+     -0.0003
+    ],
+    "m_u_mean": 0.0,
+    "share_u_pos": 0.5019,
+    "share_wall": 0.3294,
+    "core_m_u_mean": 0.1069,
+    "core_share_u_pos": 0.5644,
+    "core_share_wall": 0.342,
+    "core_mx_mean": -0.2952
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0016,
+     -0.0013,
+     -0.0008
+    ],
+    "m_u_mean": 0.0011,
+    "share_u_pos": 0.5053,
+    "share_wall": 0.2896,
+    "core_m_u_mean": -0.712,
+    "core_share_u_pos": 0.0816,
+    "core_share_wall": 0.1795,
+    "core_mx_mean": 0.5158
+   }
+  ]
+ },
+ "K4_9_sat": {
+  "init.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     -0.0012,
+     -0.0
+    ],
+    "m_u_mean": -0.0005,
+    "share_u_pos": 0.4986,
+    "share_wall": 0.3309,
+    "core_m_u_mean": -0.0959,
+    "core_share_u_pos": 0.4381,
+    "core_share_wall": 0.3426,
+    "core_mx_mean": -0.0776
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0016,
+     -0.0002,
+     -0.0002
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4995,
+    "share_wall": 0.3311,
+    "core_m_u_mean": -0.0966,
+    "core_share_u_pos": 0.438,
+    "core_share_wall": 0.3392,
+    "core_mx_mean": -0.2382
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0013,
+     -0.0002,
+     -0.0002
+    ],
+    "m_u_mean": 0.0002,
+    "share_u_pos": 0.5005,
+    "share_wall": 0.3312,
+    "core_m_u_mean": -0.0357,
+    "core_share_u_pos": 0.4767,
+    "core_share_wall": 0.3536,
+    "core_mx_mean": -0.1904
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0008,
+     -0.0004,
+     -0.0009
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.4998,
+    "share_wall": 0.3273,
+    "core_m_u_mean": -0.024,
+    "core_share_u_pos": 0.4856,
+    "core_share_wall": 0.3591,
+    "core_mx_mean": -0.0944
+   }
+  ],
+  "ckpt_00_amp00.pt": [
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.0004,
+     -0.0012,
+     -0.0002
+    ],
+    "m_u_mean": -0.0007,
+    "share_u_pos": 0.4985,
+    "share_wall": 0.3312,
+    "core_m_u_mean": -0.1083,
+    "core_share_u_pos": 0.4305,
+    "core_share_wall": 0.3444,
+    "core_mx_mean": -0.0852
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0017,
+     -0.0001,
+     -0.0002
+    ],
+    "m_u_mean": -0.0001,
+    "share_u_pos": 0.4996,
+    "share_wall": 0.3306,
+    "core_m_u_mean": -0.0955,
+    "core_share_u_pos": 0.4393,
+    "core_share_wall": 0.3368,
+    "core_mx_mean": -0.2379
+   },
+   {
+    "cos_axis_drive": 0.1875924740850799,
+    "m_mean": [
+     -0.0013,
+     -0.0001,
+     -0.0002
+    ],
+    "m_u_mean": 0.0003,
+    "share_u_pos": 0.5006,
+    "share_wall": 0.3307,
+    "core_m_u_mean": -0.0351,
+    "core_share_u_pos": 0.4775,
+    "core_share_wall": 0.3515,
+    "core_mx_mean": -0.1906
+   },
+   {
+    "cos_axis_drive": 0.7946544722917662,
+    "m_mean": [
+     -0.001,
+     -0.0004,
+     -0.0008
+    ],
+    "m_u_mean": 0.0004,
+    "share_u_pos": 0.5,
+    "share_wall": 0.3272,
+    "core_m_u_mean": 0.0072,
+    "core_share_u_pos": 0.5054,
+    "core_share_wall": 0.3597,
+    "core_mx_mean": -0.1187
+   }
+  ]
+ }
+}
