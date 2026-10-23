@@ -38,6 +38,12 @@ minscale, clamp at maxscale, clamp of r at 1, clamp at maxstep, retry 0: none, 1
 wrap only _try_step and the norm functions; the step control of the tree runs unchanged. The wrapper repeats the
 control logic of rkf45.py to name the branch and checks it against the tree (the next dt, the _dt after the call, the
 returned dt_opt); a difference counts in "mismatch" and makes the exit code 3.
+
+Outlier test (finding of the K1 pilot, PLAN 14a): --k1_reps R integrates each window of an arm R times from the same
+start state (m, t and _dt of the reference); the rows of the repetitions 1 ... R-1 go to win[k0]["reps"]. --k1_redo
+adds to each row the RMS of the scaled error, err / (atol + rtol |x|), and the flat index of its largest entry; it
+does each try with a norm above 1.1 once more with the same input (t, x, dt; _try_step has no side effects) and adds
+the norm, the RMS and the index of the second try. A transient fault gives a normal second try.
 """
 import argparse
 import inspect
@@ -48,6 +54,7 @@ import torch
 
 # branch tuple fields (see the docstring)
 BRANCH = ("accept", "a4_clamp", "past_end", "norm_class", "c_minscale", "c_maxscale", "c_one", "c_maxstep", "retry")
+REDO = ("err_rms", "imax", "redo_norm", "redo_err_rms", "redo_imax")
 OLD_NORM = "torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)"
 
 
@@ -80,10 +87,12 @@ class TryRecord:
         self.rk, self.on, self.n, self.probe_on, self.probe_dev = rk, False, 0, False, None
         self.rows, self.probe_m, self.mismatch, self.accepted = [], [], 0, 0
         self.remaining = self.dt_expect = None
+        self.redo, self.args = False, None
         self.has_a3 = hasattr(rk, "_error_norm")
         f_try, f_opt = rk.RKF45._try_step, rk.RKF45._optimal_stepsize
+        self.f_try = f_try
         if self.has_a3:
-            f_norm = rk._error_norm
+            f_norm = self.f_norm = rk._error_norm
 
             def error_norm(err, x, atol, rtol):
                 r = f_norm(err, x, atol, rtol)
@@ -105,6 +114,8 @@ class TryRecord:
                 rec.mismatch += 1
             x1, t1, err = f_try(solver, t, x, **kw)
             rec.pending = (dt, a4, x1)
+            if rec.redo:
+                rec.args = (solver, t, x, kw)
             return x1, t1, err
 
         def optimal_stepsize(solver, x, err, atol, rtol):
@@ -115,6 +126,8 @@ class TryRecord:
                 else:
                     norm = float(torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf))
                 rec.control(solver, norm, dt_opt)
+                if rec.redo:
+                    rec.redo_try(x, err, atol, rtol, norm)
             return dt_opt
 
         rk.RKF45._try_step = try_step
@@ -162,6 +175,25 @@ class TryRecord:
             self.dt_expect = min(dt_opt, rem)
         self.rows.append((self.n, dt, norm, dt_opt, rem, accept, a4, past, cls, c_min, c_max, c_one, c_step, retry))
 
+    def scaled(self, x, err, atol, rtol):
+        """Norm (as the tree computes it), RMS and flat index of the largest entry of err / (atol + rtol |x|)."""
+        e = (err / (atol + rtol * x.abs())).flatten()
+        a = e.abs()
+        norm = float(self.f_norm(err, x, atol, rtol)) if self.has_a3 else float(torch.linalg.norm(e, torch.inf))
+        return norm, float(e.square().mean().sqrt()), int(a.argmax())
+
+    def redo_try(self, x, err, atol, rtol, norm):
+        """--k1_redo: add (RMS, index of the largest entry, and for a norm above 1.1 the norm, RMS and index of a
+        second try with the same input) to the last row."""
+        _, rms, imax = self.scaled(x, err, atol, rtol)
+        n2 = r2 = float("nan")
+        i2 = -1
+        if norm > 1.1:
+            solver, t, x0, kw = self.args
+            _, _, err2 = self.f_try(solver, t, x0, **kw)
+            n2, r2, i2 = self.scaled(x0, err2, atol, rtol)
+        self.rows[-1] = self.rows[-1] + (rms, imax, n2, r2, i2)
+
 
 def k1_null(kind):
     """Null run: the field terms in the order of production, summed in the reverse order (kind "reverse") or in the
@@ -198,6 +230,7 @@ def k1_main(a, rl):
     if a.k1_null:
         k1_null(a.k1_null)
     rec = TryRecord()
+    rec.redo = bool(a.k1_redo)
     lh = {"hit": 0, "miss": 0}
     from magnumnp.field_terms.demag import DemagField
     if hasattr(DemagField, "last_h"):                     # B1: count the uses of the stored stray field
@@ -210,13 +243,13 @@ def k1_main(a, rl):
 
         DemagField.last_h = last_h
     out = {"mode": "arm" if ref else "ref", "argv": rl, "ck_list": list(ck), "span": span, "full": list(full),
-           "null": a.k1_null, "has_a3": rec.has_a3, "win": {}, "t_end": {}, "dt_end": {}}
+           "null": a.k1_null, "has_a3": rec.has_a3, "win": {}, "t_end": {}, "dt_end": {}, "reps": a.k1_reps}
     if ref:
         out["ref"] = str(a.k1_arm)
     else:
         out["ck"] = {}
     f_step = magnumnp.LLGSolver.step
-    st = {"n": 0}
+    st = {"n": 0, "call": {}}
 
     def window(n):
         for k0 in ck:
@@ -227,6 +260,7 @@ def k1_main(a, rl):
     def step(self, state, dt, **k):
         st["n"] += 1
         n = st["n"]
+        st["call"][n] = (dt, k)
         solver = self._solver
         if n == 1:
             if ref:
@@ -273,15 +307,41 @@ def k1_main(a, rl):
             w["t_end"][n], w["dt_end"][n] = t1, dt1
             if n - k0 in full:
                 w["m"][n - k0] = state.m.detach().cpu().clone()
+            if ref and n == k0 + span and a.k1_reps > 1:
+                repeat(self, state, k0, w)
         if not ref and n == a.k1_stop:
             finish()
         return r
+
+    def repeat(self, state, k0, w):
+        """--k1_reps: integrate the window again from the start state of the reference; record the rows of each
+        repetition and the largest |m - m| against the first integration at the end of the window."""
+        solver = self._solver
+        m_end = state.m.detach().clone()
+        c = ref["ck"][k0]
+        w["reps"] = []
+        for _ in range(1, a.k1_reps):
+            state.m.copy_(c["m"].to(device=state.m.device, dtype=state.m.dtype))
+            state.t = torch.tensor(c["t"], dtype=state.t.dtype, device=state.t.device)
+            solver._dt = c["dt"]
+            i_rep = len(rec.rows)
+            for nn in range(k0 + 1, k0 + span + 1):
+                dt, k = st["call"][nn]
+                rec.n, rec.on = nn, True
+                rec.remaining, rec.dt_expect = float(dt), solver._dt
+                acc0, step0 = rec.accepted, state._step
+                f_step(self, state, dt, **k)
+                rec.on = False
+                if solver._dt != rec.dt_expect or state._step - step0 != rec.accepted - acc0:
+                    rec.mismatch += 1
+            w["reps"].append({"rows": rec.rows[i_rep:], "t_end": float(state.t),
+                              "dm_end": float((state.m - m_end).abs().max())})
 
     def finish():
         n = st["n"]
         out["n_end"] = n
         out["rows"] = rec.rows if not ref else None
-        out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH
+        out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH + (REDO if a.k1_redo else ())
         out["mismatch"] = rec.mismatch
         out["last_h"] = dict(lh)
         for w in out["win"].values():
@@ -326,6 +386,8 @@ def main(argv):
     ap.add_argument("--k1_span", type=int, default=5, help="K1 window: sample intervals k0 + 1 ... k0 + span")
     ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
     ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")
+    ap.add_argument("--k1_reps", type=int, default=1, help="K1 arm: integrate each window this many times")
+    ap.add_argument("--k1_redo", action="store_true", help="K1: error RMS per try; do each try above 1.1 again")
     a = ap.parse_args(argv[:i])
     sys.path.insert(0, str(pathlib.Path(a.rl_dir).resolve()))
     if a.k1_ref or a.k1_arm:

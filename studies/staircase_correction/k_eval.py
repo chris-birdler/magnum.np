@@ -375,6 +375,10 @@ def t2(name, f_new, f_old, f_start, f_null, a):
     ks = sorted(R["new"]["states"])
 
     def rms(r, q, fld):
+        # a quantity of the B1 trees only (the correction without the stored stray field): in the other trees it is
+        # the correction itself
+        if q not in r["states"][ks[0]]["q"] and q.endswith("_noh1"):
+            q = q[:-len("_noh1")]
         v = [r["states"][k0]["q"][q].get(fld) for k0 in ks]
         return math.sqrt(sum(x * x for x in v) / len(v)) if all(x is not None for x in v) else None
 
@@ -442,6 +446,38 @@ def t6(old_dir, new_dir, a):
     return {"a_rms_cu": wr, "a_max_cu": wm, "pooled_cu": pooled, "pass": ok_a and ok_b}
 
 
+def g_check(old, new, a):
+    """G of PLAN 14a: traces of the speed runs (prof_step.py --trace), old against new, scaled by old against old."""
+    R = {"old": [json.load(open(f)) for f in old], "new": [json.load(open(f)) for f in new]}
+    tr = {k: [r["trace"] for r in v] for k, v in R.items()}
+    n = min(len(t) for v in tr.values() for t in v)
+    t_equal = all(abs(x[i][0] - tr["old"][0][i][0]) <= 1e-12 * abs(tr["old"][0][i][0]) + 1e-30
+                  for v in tr.values() for x in v for i in range(n))
+
+    def rms(a_, b_, j, diff):
+        if diff:   # tries per sample interval
+            da = [a_[i][j] - a_[i - 1][j] for i in range(1, n)]
+            db = [b_[i][j] - b_[i - 1][j] for i in range(1, n)]
+        else:
+            da = [a_[i][j] for i in range(n)]
+            db = [b_[i][j] for i in range(n)]
+        return math.sqrt(sum((x - y) ** 2 for x, y in zip(da, db)) / len(da))
+
+    out = {"samples": n, "t_equal": t_equal}
+    for nm, j, diff in (("tries", 1, True), ("Mx", 2, False)):
+        oo = [rms(tr["old"][i], tr["old"][k], j, diff) for i in range(len(old)) for k in range(i + 1, len(old))]
+        on = [rms(x, y, j, diff) for x in tr["old"] for y in tr["new"]]
+        s_oo = math.sqrt(sum(v * v for v in oo) / len(oo))
+        s_on = math.sqrt(sum(v * v for v in on) / len(on))
+        out[nm] = {"old_old": s_oo, "old_new": s_on, "pass": s_on <= a.g_factor * s_oo}
+    out["pass"] = t_equal and all(out[k]["pass"] for k in ("tries", "Mx"))
+    print("G: %d samples, t equal %s; tries per sample interval RMS old/new %.3g, old/old %.3g; <Ms m_x> RMS old/new "
+          "%.3g, old/old %.3g (bound %.0f x) -> %s" % (n, t_equal, out["tries"]["old_new"], out["tries"]["old_old"],
+                                                      out["Mx"]["old_new"], out["Mx"]["old_old"], a.g_factor,
+                                                      "PASS" if out["pass"] else "FAIL"))
+    return out
+
+
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--ref")
@@ -467,6 +503,9 @@ def main(argv):
     ap.add_argument("--t1_norm", type=float, default=1e-6)
     ap.add_argument("--t2", nargs="+", metavar="X", help="T2: NAME NEW OLD START [NULL] (files of s1_states --against)")
     ap.add_argument("--t6", nargs=2, metavar=("OLD_DIR", "NEW_DIR"), help="T6: double-precision folders (B1)")
+    ap.add_argument("--g_old", nargs="+", help="G: json files of prof_step.py --trace of the old code")
+    ap.add_argument("--g_new", nargs="+", help="G: json files of prof_step.py --trace of the new code")
+    ap.add_argument("--g_factor", type=float, default=3.0)
     ap.add_argument("--t6_band", type=float, nargs=2, default=[0.1, 10.0])
     ap.add_argument("--same", nargs=2)
     a = ap.parse_args(argv)
@@ -479,6 +518,8 @@ def main(argv):
         out["t1"] = t1(*a.t1, a)
     if a.t6:
         out["t6"] = t6(*a.t6, a)
+    if a.g_old:
+        out["g"] = g_check(a.g_old, a.g_new, a)
     if a.t2:
         out["t2"] = t2(a.t2[0], a.t2[1], a.t2[2], a.t2[3], a.t2[4] if len(a.t2) > 4 else None, a)
     if a.pair or a.pilot:
@@ -507,7 +548,7 @@ def main(argv):
     if "result" in out:
         r = out["result"]
         ok &= r["pass"] if "pass" in r else r["pilot"]["pass"]
-    for k in ("t1", "t2", "t6"):
+    for k in ("t1", "t2", "t6", "g"):
         if k in out:
             ok &= out[k]["pass"]
     sys.exit(0 if ok else 1)

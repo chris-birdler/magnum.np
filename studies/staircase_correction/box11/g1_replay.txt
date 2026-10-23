@@ -1,0 +1,5 @@
+# outlier replay (finding of the K1 pilot, PLAN 14a): base arms of the B4 tree (d538bde, as refB) and of the chain
+# start (c63e862, before PLAN 10, B5 and B4), each window integrated 10 times, each try above 1.1 done twice;
+# 2 runs at a time on the GPU as in the pilot
+G_d53 B_d53 G 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/G/G_d53.pt --k1_reps 10 --k1_redo
+G_c63 B_c63 G 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/G/G_c63.pt --k1_reps 10 --k1_redo

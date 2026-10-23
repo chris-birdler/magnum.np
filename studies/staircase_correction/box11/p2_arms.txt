@@ -1,0 +1,10 @@
+# phase 2: patch arms (after the pilot passed)
+A_31a A_31a A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_31a.pt
+A_a1f A_a1f A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_a1f.pt
+A_3d9 A_3d9 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_3d9.pt
+AB_off AB A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/AB_off.pt
+B_c63 B_c63 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_c63.pt
+B_01e B_01e B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_01e.pt
+B_c56 B_c56 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_c56.pt
+B_df0 B_df0 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_df0.pt
+AB_on AB B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/AB_on.pt
