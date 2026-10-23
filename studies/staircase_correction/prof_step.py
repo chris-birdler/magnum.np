@@ -165,6 +165,9 @@ def main(argv):
     ap.add_argument("--window", type=int, default=10, help="sample intervals of the profiled window")
     ap.add_argument("--json", default=None)
     ap.add_argument("--kcache", default=None, help="kernel cache folder (kcache.py; one for each geometry and precision)")
+    ap.add_argument("--trace", action="store_true",
+                    help="record t, the count of RKF45 tries and <Ms m_x> after each sample interval (check G of "
+                         "PLAN 14a; one reduction for each sample interval)")
     ap.add_argument("--rl_dir", default=".", help="folder of run_loops.py (default: the current folder)")
     A = ap.parse_args(argv[:i])
     rl = argv[i + 1:]
@@ -226,7 +229,10 @@ def main(argv):
                 r = f_step(self, state, dt, **k)
         else:
             r = f_step(self, state, dt, **k)
-        if n == A.skip + A.plain + A.window:
+        if A.trace:
+            Ms = state.material["Ms"]
+            res.setdefault("trace", []).append((float(state.t), ST["tries"], float((Ms * state.m[..., 0:1]).mean())))
+        if A.window and n == A.skip + A.plain + A.window:          # end of the profiled window (none with --window 0)
             sync()
             wall = time.perf_counter() - c["t"]
             n_dm, n_try = ST["dm"] - c["dm"], ST["tries"] - c["tries"]
