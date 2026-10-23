@@ -2809,8 +2809,9 @@ def test_eval_corners_sat_known_answer(tmp_path):
                  if p.exists()), None)
     if not (src / "K1_0_ad" / "summary.json").exists() or data is None:
         pytest.skip("local run folders of the corner runs not present")
-    for d in src.iterdir():
-        if d.is_dir() and (d.name.split("_")[0] in ES.CORNERS) and len(d.name.split("_")) >= 2:
+    for d in src.iterdir():                     # the real _sat runs stay out: the test makes its own _sat names
+        if d.is_dir() and (d.name.split("_")[0] in ES.CORNERS) and len(d.name.split("_")) >= 2 \
+                and not d.name.endswith("_sat"):
             (tmp_path / d.name).symlink_to(d)
     for c in ES.CORNERS:
         for k in range(3):
@@ -2828,6 +2829,63 @@ def test_eval_corners_sat_known_answer(tmp_path):
             n_cmp += 1
         assert abs(r["pairs"][n]["ad"][0]) < 1e-12
     assert n_cmp >= 9
+
+
+def test_eval_corners_compare_stats():
+    """eval_corners_compare (Chris 2026-10-23): lincomb of 2 groups is the Welch test of scipy; a sum of 4 groups has
+    the SE from the 4 SEs; mse is mean ± SE with the t test against 0."""
+    import math
+    from scipy import stats
+    import eval_corners_compare as EC
+    a, b = [1.0, 2.0, 4.0, 3.5], [0.2, 0.9, 0.4]
+    v, se, dof, p = EC.lincomb([a, b], [1, -1])
+    w = stats.ttest_ind(a, b, equal_var=False)
+    assert abs(v - (np.mean(a) - np.mean(b))) < 1e-12 and abs(p - w.pvalue) < 1e-12
+    assert abs(dof - w.df) < 1e-9
+    g = [[1.0, 2.0, 3.0], [2.0, 4.0], [0.0, 1.0, 5.0], [7.0, 8.0, 9.0, 10.0]]
+    v, se, _, _ = EC.lincomb(g, [1, -1, -1, 1])
+    assert abs(v - (2.0 - 3.0 - 2.0 + 8.5)) < 1e-12
+    assert abs(se - math.sqrt(sum(np.var(x, ddof=1) / len(x) for x in g))) < 1e-12
+    m = EC.mse([1.0, 2.0, 6.0, float("nan"), None])
+    assert m[0] == 3.0 and m[2] == 3 and abs(m[1] - math.sqrt(7.0 / 3.0)) < 1e-12
+    assert abs(m[3] - stats.ttest_1samp([1.0, 2.0, 6.0], 0.0).pvalue) < 1e-12
+    assert EC.mse([1.0]) is None
+
+
+def test_eval_corners_compare_known_answer(tmp_path, monkeypatch):
+    """eval_corners_compare on the local corner runs: β of the old arm equals results/corners_ad_data.json, Δβ sat − old
+    equals the pairs of results/corners_sat_data.json, the sat levers equal the Welch tests of PROTOKOLL 7.138, and the
+    paired total is the sum of the code part and the preparation part. Needs the local run folders (BETA_RUNS)."""
+    import json
+    import os
+    import sys
+    from scipy import stats
+    import eval_corners_compare as EC
+    here = pathlib.Path(__file__).resolve().parent
+    src = pathlib.Path(os.environ.get("BETA_RUNS", str(here / "runs")))
+    res = next((p for p in (here / "results", src.parent / "results") if (p / "corners_sat_data.json").exists()), None)
+    if not (src / "K1_0_sat" / "acc.json").exists() or res is None:
+        pytest.skip("local run folders of the corner runs not present")
+    out = tmp_path / "out.json"
+    monkeypatch.setattr(sys, "argv", ["eval_corners_compare.py", "--runs", str(src), "--json", str(out)])
+    EC.main()
+    r = json.loads(out.read_text())
+    ad = json.loads((res / "corners_ad_data.json").read_text())
+    sat = json.loads((res / "corners_sat_data.json").read_text())
+    for c in EC.CORNERS:
+        assert abs(r["unpaired"]["beta full %s" % c]["old"][0] - ad["corner_beta"]["full"][c]["old"][0]) < 1e-9
+        for k in EC.K_PAIRED:
+            run = r["runs_paired"][c][str(k)]
+            d = run["sat"]["beta full"] - run["old"]["beta full"]
+            assert abs(d - sat["pairs"]["%s_%d_sat" % (c, k)]["old"][0]) < 1e-9
+        tot = r["paired"]["beta full"]["sat-old"][c][0]
+        parts = r["paired"]["beta full"]["sat-nx"][c][0] + r["paired"]["beta full"]["nx-old"][c][0]
+        assert abs(tot - parts) < 1e-12
+    by = {c: [v["beta_all"] for n, v in sat["runs"].items() if n.startswith(c + "_") and n in sat["valid"]]
+          for c in EC.CORNERS}
+    for c in EC.CORNERS[1:]:
+        p = stats.ttest_ind(by[c], by["K1"], equal_var=False).pvalue
+        assert abs(r["unpaired"]["lever %s" % c]["sat"][3] - p) < 1e-9
 
 
 def test_crep_lines():
