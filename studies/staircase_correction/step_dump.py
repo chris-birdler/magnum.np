@@ -27,7 +27,9 @@ record (below), m in the probe cells after each accepted step, the full m after 
 and _dt after each interval. The reference records the tries of the full cycle (count of the A4 case, PLAN 14).
 --k1_null sums the field terms in the reverse order (null run; only trees without A1, where LLGSolver.dm sums with
 accumulate_h); the terms are evaluated in the order of production. --k1_null rotate sums them in the order rotated by
-one (a second null run, for the scatter between two null runs).
+one (a second null run, for the scatter between two null runs). --k1_null kernel multiplies the Newell kernel by
+(1 + 2^-52) (a coherent null run). In trees with B1 the run counts the calls of DemagField.last_h with and without the
+stored field.
 
 Try record, for each RKF45 try: the sample interval, dt, the error norm as the tree computes it (_error_norm of A3, else
 the expression of _optimal_stepsize), dt_opt, and the branch tuple of rkf45.py: (decision, A4 clamp of dt to the rest
@@ -163,7 +165,18 @@ class TryRecord:
 
 def k1_null(kind):
     """Null run: the field terms in the order of production, summed in the reverse order (kind "reverse") or in the
-    order rotated by one, h1 + h2 + ... + h0 (kind "rotate"; a second null run of another order)."""
+    order rotated by one, h1 + h2 + ... + h0 (kind "rotate"; a second null run of another order); or the Newell kernel
+    times (1 + 2^-52) (kind "kernel": a coherent change at the round-off level of a fixed operator, as a set-up patch
+    such as A2 makes)."""
+    if kind == "kernel":
+        from magnumnp.field_terms.demag import DemagField
+        f_init_N = DemagField._init_N
+
+        def init_N(self, state):
+            return [[K * (1.0 + 2.0 ** -52) for K in row] for row in f_init_N(self, state)]
+
+        DemagField._init_N = init_N
+        return
     import magnumnp.solvers.llg as llg
     if hasattr(llg, "_llg_rhs_sum") or "accumulate_h(term.h(state)" not in inspect.getsource(llg.LLGSolver.dm):
         raise SystemExit("step_dump: --k1_null needs a tree without A1 (LLGSolver.dm with accumulate_h)")
@@ -185,6 +198,17 @@ def k1_main(a, rl):
     if a.k1_null:
         k1_null(a.k1_null)
     rec = TryRecord()
+    lh = {"hit": 0, "miss": 0}
+    from magnumnp.field_terms.demag import DemagField
+    if hasattr(DemagField, "last_h"):                     # B1: count the uses of the stored stray field
+        f_last = DemagField.last_h
+
+        def last_h(self, state):
+            r = f_last(self, state)
+            lh["hit" if r is not None else "miss"] += 1
+            return r
+
+        DemagField.last_h = last_h
     out = {"mode": "arm" if ref else "ref", "argv": rl, "ck_list": list(ck), "span": span, "full": list(full),
            "null": a.k1_null, "has_a3": rec.has_a3, "win": {}, "t_end": {}, "dt_end": {}}
     if ref:
@@ -218,8 +242,6 @@ def k1_main(a, rl):
         if ref and k0 is None:
             # outside the windows: no integration, t of the reference at the end of the interval
             state.t = torch.tensor(ref["t_end"][n], dtype=state.t.dtype, device=state.t.device)
-            if n == ref["n_end"]:
-                finish()
             return None
         if k0 is not None and n == k0 + 1:
             if ref:
@@ -249,7 +271,7 @@ def k1_main(a, rl):
             w["t_end"][n], w["dt_end"][n] = t1, dt1
             if n - k0 in full:
                 w["m"][n - k0] = state.m.detach().cpu().clone()
-        if n == (ref["n_end"] if ref else a.k1_stop):
+        if not ref and n == a.k1_stop:
             finish()
         return r
 
@@ -259,12 +281,15 @@ def k1_main(a, rl):
         out["rows"] = rec.rows if not ref else None
         out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH
         out["mismatch"] = rec.mismatch
+        out["last_h"] = dict(lh)
         for w in out["win"].values():
             w["probe_m"] = torch.stack(w["probe_m"]) if w.get("probe_m") else None
         torch.save(out, a.k1_out if ref else a.k1_ref)
-        print("[step_dump] K1 %s: %d sample intervals, %d windows, %d tries recorded, mismatch %d; saved to %s"
+        print("[step_dump] K1 %s: %d sample intervals, %d windows, %d tries recorded, mismatch %d, stored stray field "
+              "(B1) used %d, not used %d; saved to %s"
               % (out["mode"], n, len(out["win"]), sum(len(w.get("rows", [])) for w in out["win"].values())
-                 if ref else len(rec.rows), rec.mismatch, a.k1_out if ref else a.k1_ref), flush=True)
+                 if ref else len(rec.rows), rec.mismatch, lh["hit"], lh["miss"], a.k1_out if ref else a.k1_ref),
+              flush=True)
         raise SystemExit(3 if rec.mismatch else 0)
 
     magnumnp.LLGSolver.step = step
@@ -272,8 +297,8 @@ def k1_main(a, rl):
     if st["n"] < (ref["n_end"] if ref else (a.k1_stop or 0)):
         print("[step_dump] K1: the run ended after %d sample intervals" % st["n"], flush=True)
         sys.exit(2)
-    if not ref and a.k1_stop is None:
-        finish()
+    if ref or a.k1_stop is None:
+        finish()                                  # after the end of the cycle: the sample rows are written
 
 
 def main(argv):
@@ -291,9 +316,11 @@ def main(argv):
     ap.add_argument("--k1_ref", help="K1 reference run: write the checkpoints and windows to this file")
     ap.add_argument("--k1_arm", help="K1 arm: the file of the reference run")
     ap.add_argument("--k1_out", help="K1 arm: output file")
-    ap.add_argument("--k1_null", nargs="?", const="reverse", choices=["reverse", "rotate"],
-                    help="K1 null run: sum the field terms in the reverse (default) or rotated order")
-    ap.add_argument("--k1_ck", type=int, nargs="+", default=list(range(0, 256, 16)), help="K1 checkpoints k0")
+    ap.add_argument("--k1_null", nargs="?", const="reverse", choices=["reverse", "rotate", "kernel"],
+                    help="K1 null run: sum the field terms in the reverse (default) or rotated order, or the kernel "
+                         "times (1 + 2^-52)")
+    ap.add_argument("--k1_ck", type=int, nargs="+", default=[0, 8] + list(range(16, 256, 16)),
+                    help="K1 checkpoints k0 (PLAN 14a: 0, 8, 16, 32, ..., 240)")
     ap.add_argument("--k1_span", type=int, default=5, help="K1 window: sample intervals k0 + 1 ... k0 + span")
     ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
     ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")

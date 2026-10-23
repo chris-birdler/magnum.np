@@ -762,3 +762,169 @@ production; K2 covers the single-precision kernels on 16 states.
 **Changes to section 13.** Section 14 replaces the criteria of section 13 for the patches without a model change. For
 B1 the bound of section 13 stays, and K3 replaces its rule on the step sequence. The data of section 13 stay as
 information.
+
+### 14a. Amendment after the local tests (2026-10-23; mandate of Chris)
+
+**Mandate.** Chris (2026-10-23, after the report of the local tests): "Ich will, dass du einfach sicher gehst,
+konservativ, dass alle Änderungen, die den Speed hier jetzt betreffen, keine Physikänderungen machen. Welche Kriterien
+du nimmst, ist mir egal. Arbeite das eigenständig aus und sag mir am Ende, welche Tests wirklich verwendet wurden und
+warum das hinreichend und notwendig ist." This section fixes the criteria before any data of a patch arm exists on the
+geometries of the test. In K1 only the null runs, the control and the old code were evaluated (local, below). The only
+patch data seen: the local K2 test of 3d9de71 against 9b15ea9 on two states of the test geometry T3_s941 (below).
+
+**Local test that led to the amendment** (T3_s941, N 48, double precision, CPU, tree 9b15ea9; full cycle; arms:
+reference, control, null run in the reverse order, second null run in the rotated order h1 + h2 + ... + h0):
+- The resync works: the arm of the reference tree is bitwise equal to the windows of the reference (tries, m, t, dt);
+  two equal arms give 0; the try record repeats the step control of the tree in all 4939 tries (mismatch 0).
+- Criterion 1 (m), null run / control: windows 16 … 240 at most 9.2e-5 (at the first point of a window at most
+  1.5e-6); window 0: 9.2e-4 … 3.7e-2.
+- Criterion 2 (error norm), null run / control: 1.5e-5 … 4.9 in the windows 16 … 240; 0.6 in window 0.
+- Second null run / first null run, over the 47 determined points: geometric mean 1.09 … 1.11 for the four measures,
+  standard deviation of log10 0.40 … 0.48 (SE of the mean 0.06 … 0.07), largest single factor 23.
+- Causes: (i) window 0 contains the start of the RKF45 step control (dt from 1e-15; the cycle solver is made once for
+  each run, run_loops.py, so this start occurs once for each run): there the error norm is at the round-off level and
+  sets dt through r = 0.9 / norm^0.2, and the drive and thus the control are near 0. (ii) The error estimate is a
+  difference of two nearly equal solutions; round-off changes the norm by about 1e-8 relative, the control by only
+  1e-7 … 1e-6. Thus the error norm cannot be compared with the control. (iii) Within a window, the null runs grow from
+  the first to the last point, because the time grids drift apart with the round-off of the norm.
+- K2 test (A tree 9b15ea9 against 3d9de71, two states): at k0 0 (dt 1e-15) the try quantities in single precision are
+  pure quantization (e up to 1e7); at k0 4 the errors of 3d9de71 are 0.98 … 1.15 times those of 9b15ea9, the error
+  norm 1.61 times (single state).
+
+**Reviews.** Two context-free reviews of drafts of this section gave 11 and 12 findings (the first: the pilot rule
+would stop on round-off, the null runs model only the round-off of the field sum, a pooled statistic dilutes a fault in
+one window, the A4 rule was not decidable, branches, output path and parts of K2 were not covered; the second: the
+script defaults, a sliver dt at a checkpoint, the error estimate and the energies were not in T1, a coherent null run,
+the B1 cache, the A4 windows, fp32 dynamics over many steps, a list of data-dependent branches). The test set below
+contains them.
+
+**Principle.** A speed patch makes no physics change if (i) every operator that the time integration and the output
+use (each field term, the effective field, the energies, the LLG right-hand side, the RKF45 stages, the increment, the
+error estimate and norm) gives the same values as the old code within round-off, on the states of production, in
+double precision; (ii) the step control makes the same decisions with the same dt; (iii) the single-precision kernels
+of production are not less accurate than before; (iv) the integrated dynamics confirm (i) and (ii) end to end, also in
+the output rows; (v) a long single-precision run of production shows no gross change. T1 … T5 and G test (i) … (v).
+T1 is the sharp test: a difference is measured as an equivalent field in control units, and round-off is about 6
+orders below one control unit.
+
+**Terms.** Control unit (cu): 1e-6 × H_amp = 7.5e-10 Ms (Ms of the full material; about 8.9e-4 A/m). Energy unit:
+E_cu = μ0 Ms cu V (V: volume of the mesh). Equivalent field of a difference Δf of the LLG right-hand side (and of a
+stage value f_i; not k_i = dt f_i): |Δf| / γ', with γ' = γ / (1 + α²) (a field change Δh changes f by at most
+(1 + α) γ' |Δh|). Equivalent field of a difference of the increment x1 − x or of the error estimate: |Δ| / (dt γ').
+States: the 16 checkpoint states k0 = 8, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240 of the K1
+reference of each geometry (k0 0 is left out: there dt is 1e-15). Try dt: the median dt of the accepted tries in
+interval k0 + 1 of the reference, without the tries clamped to the rest of the interval (the dt saved at a checkpoint
+can be a sliver; the error estimate scales as dt^5, its round-off as dt). Chain start: 9b15ea9 (A), c63e862 (B).
+
+**T1: operators in double precision (s1_states.py; k_eval.py --t1).** Each tree evaluates on the 16 states (input
+m32.double(), t of the reference, the try dt): the field of each term, the effective field, the energy of each term
+(on one m, in the order of production, as term_energies of run_loops), the LLG right-hand side, one RKF45 try (six
+stage values f_i, increment, error estimate, error norm).
+- Pairs: A2, A1, A3, AB off (A states); PLAN 10, B5, B4 (B states, chain c63e862 → … → d538bde); A4 (df0f811 → BA4);
+  AB on (BA4 → AB) (B states). B1: T6.
+- Criterion for each pair, state and quantity: RMS over the cells of the equivalent field difference at most 1e-3 cu,
+  and its largest value over the cells at most 0.1 cu; energies: |ΔE| at most 1e-3 E_cu; error norm: |Δnorm| / norm at
+  most 1e-6 and the same norm class. The fp64 null runs of the chain starts (field sum in the reverse order) are
+  evaluated as well and reported (expected round-off about 1e-7 … 1e-5 cu, estimate). A fault of 1e-9 in a coefficient
+  gives about 1 cu.
+
+**T2: single-precision kernels (K2; s1_states.py --against; k_eval.py --t2).** Each tree in single precision on the
+production path, 3 repetitions (median), against its own double-precision output of T1. For each quantity q (as in T1):
+e and b as in section 14. A field with RMS of the reference below 1 cu (the drive near a zero crossing) uses the absolute
+RMS difference in cu (at most 1e-3 cu more than the old tree). Criterion for each pair: the RMS over the 16 states of e
+of the new tree is at most 2 × that of the old tree and at most 2 × that of the chain start; the same for |b|, with the
+floor 2^-24 for the old value. The error estimate, its RMS and the error norm (cancellation noise in single precision
+also in the old code; e 0.2 … 1 in the local test): bound 2 × the larger of the old tree and a single-precision null run
+of the chain start (field sum in the reverse order); b not used.
+
+**T3: step control, table test (t3_step_control.py; local CPU, exact).** The RKF45 classes of 9e0ea7c (old), 9b15ea9
+(A4) and 3d9de71 (A3): (a) _optimal_stepsize and the error norm on error arrays with set norms (0, 1e-12, the maxscale
+switch 0.09^5, 0.5, 1.1, the minscale switch (0.9/0.2)^4, 1e6, each with neighbours of 2 ulp) and dt from 1e-15 to
+maxstep: dt_opt and norm bitwise equal; (b) step() on 4 test ODEs (smooth with a start dt of 1e-15, a pulse, a slow ODE
+that reaches maxstep, a field jump by 3000 that gives norms above the minscale switch): old and A4 bitwise equal up to
+the first interval with an A4 case; A3 and A4 the same branches, dt within 1e-6 and x within 1e-12. rkf45.py is byte
+for byte the same in BA4 and 9b15ea9 and in AB and 3d9de71, so T3 covers all trees that run. Local result (2026-10-23):
+PASS; 114 table cases bitwise; all branches occur (the minscale clamp 88 times, the maxstep clamp 224 times); 14 A4
+cases in the field-jump test, old and A4 bitwise equal before them.
+
+**T4: K1, end to end (double precision, windows; step_dump.py, k_eval.py).**
+- Checkpoints k0 = 0, 8, 16, 32, …, 240 (17 windows). Each comparison has a base arm (the code of its control and null
+  runs; for A4 the base is BA4, the new arm, on purpose: BA4 is the base of AB on), a control and three null runs of the
+  base: reverse order of the field sum, rotated order, and the Newell kernel times (1 + 2^-52) (a coherent round-off
+  change of a fixed operator, as A2 makes). Bases: 9b15ea9 (A2, A1, A3, AB off), d538bde (PLAN 10, B5, B4, B1), BA4
+  (AB on, A4). Each run has its own torch compile cache (TORCHINDUCTOR_CACHE_DIR; see the finding below).
+- Determined point: all arms of the comparison have the same sample interval and the same branch tuple (with the
+  accept or reject decision) in all tries up to it, and the same number of tries. One set of points for D, C1, C2.
+- D: each window has at least one determined point.
+- C1 (physical scale): at each determined point of the windows k0 ≥ 8, ρ_all, ρ_part and Δ_max of the pair are each at
+  most 1e-2 × the control (a relative drive change of 1e-8). Also the output rows of the runs at these points (M_par,
+  Mx, My, Mz, p_dis): |Δ| of the pair at most 1e-2 × |Δ| of the control, with a tolerance of 2 units in the 10th digit
+  of the CSV. Local null runs: at most 1.2e-4.
+- C2 (round-off scale): N = the larger of the RMS of null runs 1 and 2 and of null run 3, at least 2.2e-16. The
+  geometric mean of pair / N over the values (4 measures: ρ_all, ρ_part, Δ_max, the RMS of the relative difference of
+  the error norms) of each window is at most 30, over all windows at most 10. A pair value of 0 is a pass and is not in
+  the means. Calibration (local, null runs 1 and 2, 16 windows): per window the geometric mean of null 2 / null 1 is
+  0.23 … 3.4, over all windows 1.1.
+- B1 cache: in the arms with B1 the stored stray field must be used in each call of the correction (count of the calls
+  without it: 0).
+- Pilot (references, base arms, controls, null runs; before any patch arm). Stop and new plan if: a null run leaves a
+  window without a determined point; null / control above 1e-3 at a point with k0 ≥ 8; the geometric mean of null 2 /
+  null 1 outside 0.5 … 2 over all windows or outside 0.1 … 10 in a window; the base arm of the A geometry is not bitwise
+  equal to the windows of its reference (the B code is not reproducible on the GPU, so for B the base arm is the
+  measured old arm).
+- A4 (old df0f811, new BA4; the tries past the end are left out of all arms, and the A4 clamp and the past-end flag are
+  not compared). A4 case: a try past the end with dt_opt below the rest of the interval (the old code then retries
+  with dt_opt instead of the rest: "retry branch 1"). In a window with an A4 case the points before the case are judged,
+  the points after it are not. Verdict, fixed now: A4 passes if T3 holds, at least 12 of the 17 windows have judged
+  points, and D, C1, C2 hold at all judged points. The A4 cases (count in the windows and over the full cycle of the
+  d538bde reference) are reported: in such a case the old code takes a shorter step than A4, and both steps are
+  accepted by the same error control, so the difference is within the accuracy of the integrator.
+- B1: D and C1 as information.
+
+**T5: output path.** By value: the energies in T1, the output rows in C1 of T4. Code: config.json of AB equal to that
+of 3d9de71 (A arguments) and of df0f811 (B arguments) except git_commit; git diff of run_loops.py between AB and its
+parents: only NEW_KEYS, INIT_KEYS (merge) and the lines of the staircase options.
+
+**G: gross check over many steps (single precision, production).** From the runs of the speed measurement (old and AB,
+3 runs each, 126 sample intervals): t at each sample equal; the RKF45 tries per sample interval and the trace of M_par:
+the RMS difference between old and AB at most 3 × that between the old runs (the B code is not reproducible, so old
+against old gives the scale of the round-off over many steps).
+
+**T6: B1 (approved model change; k_eval.py --t6).** From T1 (d538bde and df0f811 in double precision): (a) the
+correction of df0f811 with the stored stray field switched off (DemagField.last_h returns None) equals the correction
+of d538bde within the T1 bounds: B1 changes nothing else; (b) Δh of the effective field in control units: in the cut
+cells, the RMS pooled over the 16 states in the band 0.1 … 10 cu (hypothesis of section 14); in the full and void cells
+at most 1e-3 cu. Outside the band the explanation is false: B1 stops, and I report. B1 must also pass T2, T5 and the
+B1 cache count of T4. The bound of section 13 (ρ 0.013 ρ_null, met) stays.
+
+**Pass.** A speed patch passes if T1, T2, T4 and T5 hold, and T3 for A3 and A4; the bundle AB also G. B1 passes T2,
+T5, T6 and the cache count. A fail stops the work for that patch; I find the cause and report.
+
+**Limits.** T1 and T2 sample 16 states of one state of each geometry, so a branch that depends on the data and that
+these states do not reach is not tested; the final report lists the data-dependent branches of each patch and the test
+that runs each. The q 8 set-up of B4 and B5 is compared with the old code only at N 48 (S1; the old code does not fit
+the GPU at production N); at production N, q 8 runs with the new code only (speed measurement).
+
+**Finding of the local tests (2026-10-23).** A norm-injection arm that ran at the same time as a field-injection arm
+and the AB unit tests differed from the reference from the first try in all windows (Δm 1.7e-3), also before the
+injection started. The same arm alone was bitwise equal to the reference before the injection. The cause is not
+known; the shared torch compile cache is a suspect. Therefore each run on the box gets its own compile cache, and the
+pilot checks a base arm bitwise against its reference.
+
+**Changes to section 14 (under the mandate of Chris).** Criteria 1 and 2 and the pass rule of K1 → T4 (decision 1: the
+bound of C1 is now 1e-2 × the control, and C2 is new); the pilot rule → T4 pilot (decision 5); K2 → T2 (each tree
+against its own double-precision output; decision 2 kept, with the null for the noise quantities); the A4 rule → T4
+(decision 4); K3 → T6 (decision 3 kept, with the identity test and the full and void cells); T1, T3, T5 and G are new;
+17 windows instead of 16 and three null runs for each base. The speed measurement is unchanged.
+
+**Cost (estimate, update).** Box: T1 13 set-ups in double precision and 2 nulls, about 1.5 h; T2 15 set-ups × 3
+repetitions and 2 nulls, about 1.5 h; T4 pilot about 2 h (A: reference and 5 arms; B: reference and 11 arms), patch arms
+about 1.5 h (10 arms); kernels and transfer runs about 1 h; speed measurement about 4 h. Sum about 12 … 14 h, about
+2 $ at 0.15 $/h, with reserve 3 $. Disk: K1 about 1.5 GB per arm (28 arms, about 42 GB) and T1 about 7 GB per tree (at
+most 3 trees at a time, about 21 GB); about 70 GB free necessary. Local work: about 3 h more. Wall clock: about 2.5
+days.
+
+**Test hygiene found by the merge AB:** the A2 test test_fused_h_against_reference (31aa455) sets the default dtype and
+does not restore it; the following llg_test.py::test_step[ScipyODE, ScipyOdeint] then fails (the SciPy solvers give m
+in float64). On main the demag tests end with float64, so the fault did not show. Fix: the test restores the default
+dtype (as the A1 test in 3d9de71).
