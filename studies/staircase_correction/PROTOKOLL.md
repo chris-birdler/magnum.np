@@ -2364,3 +2364,43 @@ the other session (53995473, 57335263; not touched).
 control for criteria 1 and 2; K2 factor 2 and bias floor 2^-24; B1 band 0.1 … 10 control units; the A4 rule (the
 number of cases goes to Chris); the stop rule of the pilot (margin 10); a new box (box 8 is destroyed). Local work
 starts first; the box is rented only after the local tests pass.
+
+**Trees.** AB: branch perf/speed-all, merge of perf/staircase-speed (df0f811) into perf/timestep (3d9de71), 7f755a0
+(conflicts in demag.py and run_loops.py resolved as in PLAN 14). BA4: perf/staircase-ba4 b750b1d (df0f811 with A4).
+A1 with its fix as the tree of section 13 (A_a1f of box 8): perf/a1-fixed a47492b (c0da045 with 3d9de71 picked; its
+llg.py is equal to that of A_fix on box 8). rkf45.py is the same byte for byte in BA4 and 9b15ea9 and in AB and 3d9de71.
+Tests of AB (torch 2.7.1, CPU): 223 passed; the 6 that fail also fail on perf/timestep alone (statsmodels is not in the
+local environment; three tests read job files relative to the study folder and pass from there).
+
+**Test hygiene (finding, fixed).** In AB, llg_test.py::test_step[ScipyODE, ScipyOdeint] failed after demag_test.py.
+Cause: the A2 test test_fused_h_against_reference (31aa455) set the default dtype and did not restore it (it ended
+with float32); the SciPy solvers give m in float64. Without the fix the order demag test → step test fails (2 of 14),
+with it all 14 pass. Fix c02f40b on perf/timestep (merged into AB).
+
+**Local tests of K1 and the criteria (T3_s941, N 48, double precision, CPU).** The resync is exact (arm of the reference
+tree bitwise equal to the reference windows; two equal arms give 0; the try record repeats the step control in all 4939
+tries of a cycle). With the criteria of section 14 the null runs fail (criterion 2, error norm, null / control 1.5e-5 …
+4.9; criterion 1 in window 0 up to 3.7e-2): the error estimate is a difference of nearly equal solutions and carries
+round-off of about 1e-8 relative, more than 1e-3 of the control; window 0 holds the start of the step control (dt from
+1e-15). Reported to Chris. Chris (2026-10-23): "Ich will, dass du einfach sicher gehst, konservativ, dass alle
+Änderungen, die den Speed hier jetzt betreffen, keine Physikänderungen machen. Welche Kriterien du nimmst, ist mir
+egal. Arbeite das eigenständig aus und sag mir am Ende, welche Tests wirklich verwendet wurden und warum das hinreichend
+und notwendig ist." Under this mandate I fixed the final test set T1 … T6 and G (PLAN 14a) after two context-free
+reviews (11 and 12 findings, all built in), before any patch arm. Calibration data: two null runs (reverse and rotated
+order of the field sum) differ by a geometric mean of 1.1 over all windows and 0.23 … 3.4 per window; null / control in
+C1 at most 1.2e-4 (windows k0 ≥ 16). Injection tests: an anisotropy field × (1 + 1e-12) from window 64 on passes C1
+(at most 5e-4 × control; physically negligible) and is found by C2 (pair / N up to 1.4e2 in the windows from 64 on, 0
+before); an error estimate × (1 + 1e-6) changes decisions (windows not determined) and fails C1 by 1e4.
+T3 (step-control table test): PASS (114 table cases bitwise; 4 test ODEs; all branches; 14 A4 cases in the field-jump
+test, old and A4 bitwise equal before them).
+
+**Finding (open).** A norm-injection arm that ran at the same time as a field-injection arm and the AB unit tests
+differed from the reference from the first try in all windows (Δm 1.7e-3), also before the injection; the same arm
+alone was bitwise equal before the injection. Cause unknown (suspect: the shared torch compile cache). Measure: each
+run on the box has its own TORCHINDUCTOR_CACHE_DIR, and the pilot checks a base arm bitwise against its reference.
+
+**Boxes.** Box 9 (57390297, V100S) hung in the image pull for 53 min: stopped, no data. Box 10 (57396530) got no GPU:
+stopped, no data. Both wait for the go of Chris to destroy. Box 11 (57396637, Tesla V100-SXM2 16 GB, Texas, 0.162 $/h
+with 120 GB disk; the GPU type of production and of boxes 7 and 8): upload of the bundle, the scripts and the states
+with md5 check (13 files equal); set-up done. Phase 1 (K1 references A and B, then 15 pilot arms) started 16:35 UTC
+(scripts box11/).

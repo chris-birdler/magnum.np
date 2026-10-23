@@ -1,0 +1,16 @@
+# phase 1b: pilot arms (base arms, controls, three null runs of each base)
+A_base A_9b1 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_base.pt
+A_ctrl A_9b1 A 0.006000006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_ctrl.pt
+A_n1 A_9b1 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_n1.pt --k1_null reverse
+A_n2 A_9b1 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_n2.pt --k1_null rotate
+A_n3 A_9b1 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_n3.pt --k1_null kernel
+B_base B_d53 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_base.pt
+B_ctrl B_d53 B 0.006000006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_ctrl.pt
+B_n1 B_d53 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_n1.pt --k1_null reverse
+B_n2 B_d53 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_n2.pt --k1_null rotate
+B_n3 B_d53 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/B_n3.pt --k1_null kernel
+BA4_base BA4 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4_base.pt
+BA4_ctrl BA4 B 0.006000006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4_ctrl.pt
+BA4_n1 BA4 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4_n1.pt --k1_null reverse
+BA4_n2 BA4 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4_n2.pt --k1_null rotate
+BA4_n3 BA4 B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4_n3.pt --k1_null kernel

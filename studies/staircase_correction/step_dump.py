@@ -240,8 +240,10 @@ def k1_main(a, rl):
             rec.probe_dev = probe.to(state.m.device)
         k0 = window(n)
         if ref and k0 is None:
-            # outside the windows: no integration, t of the reference at the end of the interval
-            state.t = torch.tensor(ref["t_end"][n], dtype=state.t.dtype, device=state.t.device)
+            # outside the windows: no integration, t of the reference at the end of the interval (after the end of
+            # a shortened reference, --k1_stop: t + dt)
+            t1 = ref["t_end"][n] if n in ref["t_end"] else float(state.t) + float(dt)
+            state.t = torch.tensor(t1, dtype=state.t.dtype, device=state.t.device)
             return None
         if k0 is not None and n == k0 + 1:
             if ref:
