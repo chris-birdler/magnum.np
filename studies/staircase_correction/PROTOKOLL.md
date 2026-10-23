@@ -2340,3 +2340,14 @@ Observations (one run pair for each patch; no fp64 null run):
   1.0 … 1.1 ρ_null, except A2 with 5.2 ρ_null).
 
 A new criterion is a decision of Chris (reported 2026-10-22, about 15:30 UTC).
+
+**Data of box 8 secured (2026-10-23, about 11:00 UTC, go of Chris).** Box 8 (57159233) was stopped; a start was not
+possible (the GPU of the host is rented; "required resources are currently unavailable"). `vastai copy` reads the disk
+of the stopped instance. Downloaded to remote_20261023_box8/root/ (not in git): the start state of the B geometry
+bs3/prep/init.pt (only on box 8; PLAN 14 uses it for K1, K2 and the speed test at q 4), the perturbed null start states
+bs3/null1 … 3/init.pt and s3_a2/null1 … 3/init_src/init.pt, and all logs, scripts, json and txt files outside the code
+trees: 519 files, 108 MB. A checksum comparison with rsync (-c, dry run) against the box showed no difference; local
+manifest box8.md5 (511 files without the md5 files). Not downloaded: the m.pt files of the precision test (12 × 285 MB),
+of S2 and of S3 (raw data; the results are in git), the kernel cache (recomputable), the code trees and bundles (in
+git), and the uploaded states (local copies). The queued start was cancelled (vastai stop); box 8 stays stopped with
+its disk.
