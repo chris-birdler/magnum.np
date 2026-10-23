@@ -5,3 +5,5 @@
 
 experiments/
 *.egg-info/
+studies/staircase_correction/remote_*/
+studies/staircase_correction/fe_data/

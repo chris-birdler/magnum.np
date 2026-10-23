@@ -21,7 +21,7 @@ Rules that this module enforces:
 import math
 import numpy as np
 
-__all__ = ["fcc_box", "phi_from", "a_from", "FCC_SITES"]
+__all__ = ["fcc_box", "fcc_subcells", "phi_from", "a_from", "FCC_SITES"]
 
 FCC_SITES = np.array([[0.0, 0.0, 0.0],
                       [0.0, 0.5, 0.5],
@@ -111,6 +111,61 @@ def fcc_box(N, d, dx, sub=0):
             "gap_nom": gap,
             "d_cells": d / dx,
             "frac": frac}
+
+
+def fcc_subcells(N, d, dx, q, chunk=1 << 22):
+    """
+    The sub-cells of the staircase correction without the fine mesh: the result of
+    demag_staircase.staircase_cells(fcc_box(q N, d, dx / q)["ids"], q), that is (n [N,N,N] int64, pid [N,N,N] int64,
+    occ [N,N,N,q^3] bool, sub-cell order (a, b, c)). Only the coarse cells near a sphere surface test their q^3
+    sub-cell centres; each test uses the arithmetic of fcc_box on the fine mesh, so the result is bitwise the same.
+    The fine mesh of fcc_box needs about 3 (q N)^3 float64 values (40 GB at q 8, N 148; PROTOKOLL 3.35, audit B5).
+    """
+    Nf, dxf = q * N, dx / q
+    a = Nf * dxf                                               # as fcc_box(q N, d, dx / q)
+    if a / math.sqrt(2.0) - d <= 0.0:
+        raise ValueError("Spheres overlap: d = %.4g m >= a/sqrt(2) = %.4g m" % (d, a / math.sqrt(2.0)))
+    xf = (np.arange(Nf) + 0.5) * dxf                           # fine cell centres, as in fcc_box
+    R = 0.5 * d
+    r2 = R ** 2
+    xc = (np.arange(N) + 0.5) * dx                             # coarse cell centres (only to find the candidates)
+    Xc, Yc, Zc = np.meshgrid(xc, xc, xc, indexing="ij")
+    half = 0.5 * math.sqrt(3.0) * dx * (1.0 + 1e-9) + 1e-9 * dx   # with a margin for the rounding
+    occ = np.zeros((N, N, N, q ** 3), dtype=bool)
+    owner = -np.ones((N, N, N), dtype=np.int64)                # particle of the cells with a body sub-cell
+    loc = np.stack(np.meshgrid(*(np.arange(q),) * 3, indexing="ij"), -1).reshape(-1, 3)   # (a, b, c)
+    for p, s in enumerate(FCC_SITES * a):
+        dc = [Xc - s[0], Yc - s[1], Zc - s[2]]
+        for k in range(3):
+            dc[k] -= a * np.round(dc[k] / a)
+        r = np.sqrt(dc[0] ** 2 + dc[1] ** 2 + dc[2] ** 2)
+        full = r <= R - half
+        cand = np.argwhere(np.abs(r - R) < half)               # cut candidates: test the sub-cell centres
+        cells = np.argwhere(full)
+        if np.any(owner[full] >= 0):
+            raise ValueError("Voxelized spheres overlap (particle %d)." % p)
+        owner[full] = p
+        occ[full] = True
+        step = max(1, chunk // q ** 3)
+        for c0 in range(0, len(cand), step):
+            cc = cand[c0:c0 + step]
+            f = q * cc[:, None, :] + loc[None, :, :]           # fine indices [n_cand, q^3, 3]
+            dd = []
+            for k in range(3):
+                v = xf[f[..., k]] - s[k]
+                v -= a * np.round(v / a)
+                dd.append(v)
+            inside = dd[0] ** 2 + dd[1] ** 2 + dd[2] ** 2 <= r2
+            hit = inside.any(-1)
+            ci = cc[hit]
+            if np.any(owner[ci[:, 0], ci[:, 1], ci[:, 2]] >= 0):
+                raise ValueError("Voxelized spheres overlap (particle %d)." % p)
+            owner[ci[:, 0], ci[:, 1], ci[:, 2]] = p
+            occ[ci[:, 0], ci[:, 1], ci[:, 2]] = inside[hit]
+        del cells
+    n = occ.sum(-1).astype(np.int64)
+    pid = np.where(n > 0, owner, -1).astype(np.int64)
+    return n, pid, occ
 
 
 def _check_no_contact(ids):

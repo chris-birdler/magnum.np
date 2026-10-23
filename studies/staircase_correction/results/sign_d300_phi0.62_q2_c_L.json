@@ -1,0 +1,18 @@
+{
+ "d300_phi0.62_q2_L3": {
+  "lmin_ritz": -0.00219207976309425,
+  "lmax_ritz": 0.9997058244089571,
+  "ratio": -0.0021927248092109943,
+  "resid_min": 1.982629153742453e-05,
+  "resid_max": 0.00039759754881841153,
+  "converged": true,
+  "reading": "not usable",
+  "matvecs": 300,
+  "time_s": 345.174019575119,
+  "setting": [
+   "newell_ext",
+   4
+  ],
+  "method": "Lanczos 300 steps"
+ }
+}

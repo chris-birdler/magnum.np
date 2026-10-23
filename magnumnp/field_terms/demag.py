@@ -311,6 +311,7 @@ class DemagField(LinearFieldTerm):
         h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                          hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
                          hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+        self._last = (state.m, state.m._version, h)
         return h
 
     def _kernel_h(self, state, s):
@@ -326,6 +327,14 @@ class DemagField(LinearFieldTerm):
                 N[c] = N[c].clone()
                 N[c][(0,)*N[c].dim()] += N_block[i]
         return [(K / n).to(self._N[0][0].dtype).unsqueeze(-1) for K in N]
+
+    def last_h(self, state):
+        """The field of the last call of h() if that call was for this m (the same tensor, not changed in place
+        since), else None. DemagStaircaseCorrection takes K * (v m) for its centroid term from it."""
+        last = getattr(self, "_last", None)
+        if last is not None and last[0] is state.m and last[1] == state.m._version:
+            return last[2]
+        return None
 
     def E(self, state, domain = Ellipsis): # TODO: remove as soon as @compile works for DemagField
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes
