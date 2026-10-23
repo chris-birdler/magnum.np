@@ -243,6 +243,14 @@ def main():
         out["unpaired"]["lever %s" % c] = {"old": lo, "sat": ls, "change": ch}
         L.append("| %s − K1 | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.1f | %.4f |" % (
             c, lo[0], lo[1], lo[3], ls[0], ls[1], ls[3], *ch))
+    # K3 and K4 differ only in d/l_ex and φ (PLAN 4.0 corners)
+    lo = lincomb([G[(name, "K3", "old")], G[(name, "K4", "old")]], [1, -1])
+    ls = lincomb([G[(name, "K3", "sat")], G[(name, "K4", "sat")]], [1, -1])
+    ch = lincomb([G[(name, "K3", "sat")], G[(name, "K4", "sat")], G[(name, "K3", "old")], G[(name, "K4", "old")]],
+                 [1, -1, -1, 1])
+    out["unpaired"]["K3 - K4"] = {"old": lo, "sat": ls, "change": ch}
+    L.append("| K3 − K4 | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.4f | %+.3f ± %.3f | %.1f | %.4f |" % (
+        lo[0], lo[1], lo[3], ls[0], ls[1], ls[3], *ch))
     L += ["", "### Change of the levers Ki − K1 from the paired runs, split (β 9 … 150 mT; n 3 per corner; Welch)", "",
           "| lever | " + " | ".join(lab for _, _, lab in DIFFS) + " |", "|---|" + "---|" * len(DIFFS)]
     D = diffs(name)
