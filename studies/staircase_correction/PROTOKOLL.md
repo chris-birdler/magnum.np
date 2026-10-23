@@ -2351,3 +2351,9 @@ manifest box8.md5 (511 files without the md5 files). Not downloaded: the m.pt fi
 of S2 and of S3 (raw data; the results are in git), the kernel cache (recomputable), the code trees and bundles (in
 git), and the uploaded states (local copies). The queued start was cancelled (vastai stop); box 8 stays stopped with
 its disk.
+Check before the destroy: in the code trees on box 8, only A_fix had files changed after the checkout; its llg.py is
+equal to commit 3d9de71, its llg_test.py is an earlier draft of the test in 3d9de71 (both files in
+remote_20261023_box8/root/A_fix_changed/). **Box 8 destroyed** (2026-10-23, go of Chris: "Dann kannst du die box die
+nicht mehr startet ganz löschen"). Lost with the box (not needed for PLAN 14; the results are in git): the m.pt files of
+the precision test, S2 and S3 (about 4.2 GB raw data) and the kernel cache. The account now has only the 2 instances of
+the other session (53995473, 57335263; not touched).
