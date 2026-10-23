@@ -12,12 +12,41 @@ operations must give the same files as the old code.
 
 --trace (precision test, PLAN 13) also saves after each call: the counts of RKF45 tries and of accepted steps, t,
 and m in 2048 probe cells (magnetic cells, fixed choice with seed 0; the same cells in all arms of one geometry).
+
+K1 of PLAN 14 (windows over the cycle, resync):
+
+    CUDA_DEVICE=0 python step_dump.py --k1_ref ref.pt -- <run_loops arguments with --max_cycles 1>
+    CUDA_DEVICE=0 python step_dump.py --k1_arm ref.pt --k1_out arm.pt [--k1_null] -- <run_loops arguments>
+
+--k1_ref integrates the full cycle. Before sample interval k0 + 1 of each checkpoint k0 (--k1_ck) it saves m, t and
+the RKF45 time step _dt; after each sample interval it saves t and _dt. --k1_arm reads that file: before interval
+k0 + 1 it sets m (copy_ into state.m, so that the stray-field cache of B1, keyed by the tensor and its version, becomes
+invalid), t and _dt to the values of the reference; it integrates only the windows k0 + 1 ... k0 + --k1_span and
+outside them sets t to the value of the reference at the end of the interval. Both record in each window: the try
+record (below), m in the probe cells after each accepted step, the full m after the intervals k0 + --k1_full, and t
+and _dt after each interval. The reference records the tries of the full cycle (count of the A4 case, PLAN 14).
+--k1_null sums the field terms in the reverse order (null run; only trees without A1, where LLGSolver.dm sums with
+accumulate_h); the terms are evaluated in the order of production. --k1_null rotate sums them in the order rotated by
+one (a second null run, for the scatter between two null runs).
+
+Try record, for each RKF45 try: the sample interval, dt, the error norm as the tree computes it (_error_norm of A3, else
+the expression of _optimal_stepsize), dt_opt, and the branch tuple of rkf45.py: (decision, A4 clamp of dt to the rest
+of the interval before the try, try past the end, norm class 0: below 0.5, 1: 0.5 ... 1.1, 2: above 1.1, clamp at
+minscale, clamp at maxscale, clamp of r at 1, clamp at maxstep, retry 0: none, 1: dt_opt, 2: the rest). The wrappers
+wrap only _try_step and the norm functions; the step control of the tree runs unchanged. The wrapper repeats the
+control logic of rkf45.py to name the branch and checks it against the tree (the next dt, the _dt after the call, the
+returned dt_opt); a difference counts in "mismatch" and makes the exit code 3.
 """
 import argparse
+import inspect
 import pathlib
 import sys
 
 import torch
+
+# branch tuple fields (see the docstring)
+BRANCH = ("accept", "a4_clamp", "past_end", "norm_class", "c_minscale", "c_maxscale", "c_one", "c_maxstep", "retry")
+OLD_NORM = "torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)"
 
 
 def compare(a, b):
@@ -33,6 +62,220 @@ def compare(a, b):
     return ok
 
 
+def probe_cells(m):
+    """2048 magnetic cells, fixed choice with seed 0 (the cells of section 13)."""
+    mag = (m.detach().norm(dim=-1) > 0).reshape(-1).cpu().nonzero().squeeze(1)
+    g = torch.Generator().manual_seed(0)
+    # device: magnum.np sets the default device to cuda on the GPU, the generator is on the CPU
+    return mag[torch.randperm(len(mag), generator=g, device="cpu")[:2048]].sort().values
+
+
+class TryRecord:
+    """Try record of RKF45 (PLAN 14). on: record the tries of the current LLGSolver.step call."""
+
+    def __init__(self):
+        import magnumnp.solvers.ode_solvers.rkf45 as rk
+        self.rk, self.on, self.n, self.probe_on, self.probe_dev = rk, False, 0, False, None
+        self.rows, self.probe_m, self.mismatch, self.accepted = [], [], 0, 0
+        self.remaining = self.dt_expect = None
+        self.has_a3 = hasattr(rk, "_error_norm")
+        f_try, f_opt = rk.RKF45._try_step, rk.RKF45._optimal_stepsize
+        if self.has_a3:
+            f_norm = rk._error_norm
+
+            def error_norm(err, x, atol, rtol):
+                r = f_norm(err, x, atol, rtol)
+                if self.on:
+                    self.norm = float(r)
+                return r
+
+            rk._error_norm = error_norm
+        elif OLD_NORM not in inspect.getsource(f_opt):
+            raise SystemExit("step_dump: unknown error norm in RKF45._optimal_stepsize")
+        rec = self
+
+        def try_step(solver, t, x, **kw):
+            if not rec.on:
+                return f_try(solver, t, x, **kw)
+            dt = solver._dt
+            a4 = dt != rec.dt_expect
+            if a4 and not (rec.dt_expect > rec.remaining and dt == rec.remaining):
+                rec.mismatch += 1
+            x1, t1, err = f_try(solver, t, x, **kw)
+            rec.pending = (dt, a4, x1)
+            return x1, t1, err
+
+        def optimal_stepsize(solver, x, err, atol, rtol):
+            dt_opt = f_opt(solver, x, err, atol, rtol)
+            if rec.on:
+                if rec.has_a3:
+                    norm = rec.norm
+                else:
+                    norm = float(torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf))
+                rec.control(solver, norm, dt_opt)
+            return dt_opt
+
+        rk.RKF45._try_step = try_step
+        rk.RKF45._optimal_stepsize = optimal_stepsize
+
+    def control(self, s, norm, dt_opt):
+        """Repeat the step control of rkf45.py for one try; name its branch; check it against the tree."""
+        dt, a4, x1 = self.pending
+        rem = self.remaining
+        c_min = c_max = c_one = False
+        if norm > 1.1:
+            cls = 2
+            r = s._headroom / norm**(1.0/s._order)
+            if r < s._minscale:
+                r, c_min = s._minscale, True
+        elif norm < 0.5:
+            cls = 0
+            if norm > 0.:
+                r = s._headroom / norm**(1.0/(s._order+1.0))
+            else:
+                r = s._maxscale
+            if r > s._maxscale:
+                r, c_max = s._maxscale, True
+            if r < 1.:
+                r, c_one = 1., True
+        else:
+            cls, r = 1, 1.
+        opt = s._dt * r
+        c_step = opt > s._maxstep
+        if c_step:
+            opt = s._maxstep
+        if opt != dt_opt:
+            self.mismatch += 1
+        past = dt > rem
+        accept = not (dt > dt_opt or dt > rem)
+        if accept:
+            retry = 0
+            self.remaining = rem - dt
+            self.dt_expect = dt_opt
+            self.accepted += 1
+            if self.probe_on:
+                self.probe_m.append(x1.detach().reshape(-1, 3)[self.probe_dev].cpu().clone())
+        else:
+            retry = 1 if dt_opt < rem else 2
+            self.dt_expect = min(dt_opt, rem)
+        self.rows.append((self.n, dt, norm, dt_opt, rem, accept, a4, past, cls, c_min, c_max, c_one, c_step, retry))
+
+
+def k1_null(kind):
+    """Null run: the field terms in the order of production, summed in the reverse order (kind "reverse") or in the
+    order rotated by one, h1 + h2 + ... + h0 (kind "rotate"; a second null run of another order)."""
+    import magnumnp.solvers.llg as llg
+    if hasattr(llg, "_llg_rhs_sum") or "accumulate_h(term.h(state)" not in inspect.getsource(llg.LLGSolver.dm):
+        raise SystemExit("step_dump: --k1_null needs a tree without A1 (LLGSolver.dm with accumulate_h)")
+    f_acc = llg.accumulate_h
+
+    def accumulate_reordered(fields):
+        hs = list(fields)
+        return f_acc(hs[::-1] if kind == "reverse" else hs[1:] + hs[:1])
+
+    llg.accumulate_h = accumulate_reordered
+
+
+def k1_main(a, rl):
+    import magnumnp
+    import run_loops
+    ref = torch.load(a.k1_arm, map_location="cpu") if a.k1_arm else None
+    ck = tuple(ref["ck_list"]) if ref else tuple(a.k1_ck)
+    span, full = (ref["span"], tuple(ref["full"])) if ref else (a.k1_span, tuple(a.k1_full))
+    if a.k1_null:
+        k1_null(a.k1_null)
+    rec = TryRecord()
+    out = {"mode": "arm" if ref else "ref", "argv": rl, "ck_list": list(ck), "span": span, "full": list(full),
+           "null": a.k1_null, "has_a3": rec.has_a3, "win": {}, "t_end": {}, "dt_end": {}}
+    if ref:
+        out["ref"] = str(a.k1_arm)
+    else:
+        out["ck"] = {}
+    f_step = magnumnp.LLGSolver.step
+    st = {"n": 0}
+
+    def window(n):
+        for k0 in ck:
+            if k0 < n <= k0 + span:
+                return k0
+        return None
+
+    def step(self, state, dt, **k):
+        st["n"] += 1
+        n = st["n"]
+        solver = self._solver
+        if n == 1:
+            if ref:
+                probe = ref["probe_idx"]
+            else:
+                probe = out["probe_idx"] = probe_cells(state.m)
+                Ms = state.material["Ms"]
+                Ms = torch.broadcast_to(Ms, state.m.shape[:3] + (1,)) if torch.is_tensor(Ms) else None
+                out["particle"] = None if Ms is None else (Ms[..., 0] > Ms.max() * 1e-6).cpu()
+                out["t_end"][0], out["dt_end"][0] = float(state.t), float(solver._dt)
+            rec.probe_dev = probe.to(state.m.device)
+        k0 = window(n)
+        if ref and k0 is None:
+            # outside the windows: no integration, t of the reference at the end of the interval
+            state.t = torch.tensor(ref["t_end"][n], dtype=state.t.dtype, device=state.t.device)
+            if n == ref["n_end"]:
+                finish()
+            return None
+        if k0 is not None and n == k0 + 1:
+            if ref:
+                c = ref["ck"][k0]
+                state.m.copy_(c["m"].to(device=state.m.device, dtype=state.m.dtype))
+                state.t = torch.tensor(c["t"], dtype=state.t.dtype, device=state.t.device)
+                solver._dt = c["dt"]
+            else:
+                out["ck"][k0] = {"m": state.m.detach().cpu().clone(), "t": float(state.t), "dt": float(solver._dt)}
+            out["win"][k0] = {"m": {}, "t_end": {}, "dt_end": {}}
+        rec.n, rec.on = n, True
+        rec.remaining, rec.dt_expect = float(dt), solver._dt
+        i0, p0, acc0, step0 = len(rec.rows), len(rec.probe_m), rec.accepted, state._step
+        rec.probe_on = k0 is not None
+        r = f_step(self, state, dt, **k)
+        rec.on = rec.probe_on = False
+        if solver._dt != rec.dt_expect or state._step - step0 != rec.accepted - acc0:
+            rec.mismatch += 1
+        t1, dt1 = float(state.t), float(solver._dt)
+        if not ref:
+            out["t_end"][n], out["dt_end"][n] = t1, dt1
+        if k0 is not None:
+            w = out["win"][k0]
+            w.setdefault("rows", []).extend(rec.rows[i0:])
+            w.setdefault("probe_m", []).extend(rec.probe_m[p0:])
+            del rec.probe_m[p0:]
+            w["t_end"][n], w["dt_end"][n] = t1, dt1
+            if n - k0 in full:
+                w["m"][n - k0] = state.m.detach().cpu().clone()
+        if n == (ref["n_end"] if ref else a.k1_stop):
+            finish()
+        return r
+
+    def finish():
+        n = st["n"]
+        out["n_end"] = n
+        out["rows"] = rec.rows if not ref else None
+        out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH
+        out["mismatch"] = rec.mismatch
+        for w in out["win"].values():
+            w["probe_m"] = torch.stack(w["probe_m"]) if w.get("probe_m") else None
+        torch.save(out, a.k1_out if ref else a.k1_ref)
+        print("[step_dump] K1 %s: %d sample intervals, %d windows, %d tries recorded, mismatch %d; saved to %s"
+              % (out["mode"], n, len(out["win"]), sum(len(w.get("rows", [])) for w in out["win"].values())
+                 if ref else len(rec.rows), rec.mismatch, a.k1_out if ref else a.k1_ref), flush=True)
+        raise SystemExit(3 if rec.mismatch else 0)
+
+    magnumnp.LLGSolver.step = step
+    run_loops.main(rl)
+    if st["n"] < (ref["n_end"] if ref else (a.k1_stop or 0)):
+        print("[step_dump] K1: the run ended after %d sample intervals" % st["n"], flush=True)
+        sys.exit(2)
+    if not ref and a.k1_stop is None:
+        finish()
+
+
 def main(argv):
     if argv[:1] == ["--compare"]:
         sys.exit(0 if compare(argv[1], argv[2]) else 1)
@@ -40,13 +283,28 @@ def main(argv):
         raise SystemExit("usage: step_dump.py --at K ... --save FILE [--rl_dir DIR] -- <run_loops arguments>")
     i = argv.index("--")
     ap = argparse.ArgumentParser()
-    ap.add_argument("--at", type=int, nargs="+", required=True)
-    ap.add_argument("--save", required=True)
+    ap.add_argument("--at", type=int, nargs="+")
+    ap.add_argument("--save")
     ap.add_argument("--go_on", action="store_true", help="do not stop after the last --at (the run ends by itself)")
     ap.add_argument("--rl_dir", default=".", help="folder of run_loops.py (default: the current folder)")
     ap.add_argument("--trace", action="store_true", help="tries, accepted steps, t and probe cells after each call")
+    ap.add_argument("--k1_ref", help="K1 reference run: write the checkpoints and windows to this file")
+    ap.add_argument("--k1_arm", help="K1 arm: the file of the reference run")
+    ap.add_argument("--k1_out", help="K1 arm: output file")
+    ap.add_argument("--k1_null", nargs="?", const="reverse", choices=["reverse", "rotate"],
+                    help="K1 null run: sum the field terms in the reverse (default) or rotated order")
+    ap.add_argument("--k1_ck", type=int, nargs="+", default=list(range(0, 256, 16)), help="K1 checkpoints k0")
+    ap.add_argument("--k1_span", type=int, default=5, help="K1 window: sample intervals k0 + 1 ... k0 + span")
+    ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
+    ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")
     a = ap.parse_args(argv[:i])
     sys.path.insert(0, str(pathlib.Path(a.rl_dir).resolve()))
+    if a.k1_ref or a.k1_arm:
+        if bool(a.k1_arm) != bool(a.k1_out) or (a.k1_ref and a.k1_arm):
+            raise SystemExit("step_dump: --k1_ref FILE, or --k1_arm REF --k1_out FILE")
+        return k1_main(a, argv[i + 1:])
+    if not a.at or not a.save:
+        raise SystemExit("step_dump: --at and --save are necessary")
     import magnumnp
     import run_loops
     f_step = magnumnp.LLGSolver.step
@@ -68,10 +326,7 @@ def main(argv):
         n[0] += 1
         if a.trace:
             if "probe_idx" not in res:
-                mag = (state.m.detach().norm(dim=-1) > 0).reshape(-1).cpu().nonzero().squeeze(1)
-                g = torch.Generator().manual_seed(0)
-                # device: magnum.np sets the default device to cuda on the GPU, the generator is on the CPU
-                res["probe_idx"] = mag[torch.randperm(len(mag), generator=g, device="cpu")[:2048]].sort().values
+                res["probe_idx"] = probe_cells(state.m)
             tr = res["trace"]
             tr["tries"].append(tries[0])
             tr["accepted"].append(int(state._step))

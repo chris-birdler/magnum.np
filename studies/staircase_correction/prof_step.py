@@ -10,6 +10,11 @@ record_function label: the GPU time of the kernels is split into the terms, the 
 right-hand side) and the rest of the step (RKF45 combination, error norm, step control). Then the run stops.
 
     CUDA_DEVICE=0 python prof_step.py --skip 300 --plain 40 --window 10 --json out.json -- <run_loops arguments>
+    CUDA_DEVICE=0 python prof_step.py --skip 30 --plain 96 --window 0 --kcache DIR --json out.json -- <arguments>
+
+Speed measurement of PLAN 14 (--window 0, no profiler): ms per sample interval, per RKF45 stage and tries per sample
+interval of the plain window and of its two halves, the set-up time (start of this script to the first sample
+interval, with the kernel build if the cache --kcache does not have the kernel) and the peak GPU memory.
 
 GPU busy share = GPU time per stage (profiled window) / wall time per stage (plain window). Near 1: the GPU limits the
 stage. Well below 1: the CPU side limits it.
@@ -25,6 +30,7 @@ from torch.autograd import DeviceType
 from torch.profiler import ProfilerActivity, profile, record_function
 
 ST = {"steps": 0, "dm": 0, "tries": 0, "phase": "warm", "wrapped": set()}
+T0 = time.perf_counter()
 A = None
 
 
@@ -100,6 +106,25 @@ def analyse(prof, wall, n_dm, n_try, n_steps):
             "top_cpu_self": [list(r) for r in cpu_ops]}
 
 
+def report_plain(res):
+    p = res["plain"]
+    for k, v in [("all", p)] + list(zip(("first half", "second half"), p["halves"])):
+        v["ms_per_sample"] = 1e3 * v["wall_s"] / v["sample_intervals"]
+        v["ms_per_stage"] = 1e3 * v["wall_s"] / v["stages"]
+        v["tries_per_sample"] = v["tries"] / v["sample_intervals"]
+        print("[prof_step] plain %-11s: %3d sample intervals, %6d stages, %5d tries, %8.2f s: %8.2f ms per sample "
+              "interval, %.4f ms per stage, %.2f tries per sample interval"
+              % (k, v["sample_intervals"], v["stages"], v["tries"], v["wall_s"], v["ms_per_sample"],
+                 v["ms_per_stage"], v["tries_per_sample"]), flush=True)
+    h = p["halves"]
+    res["halves_rel_diff"] = abs(h[1]["ms_per_stage"] / h[0]["ms_per_stage"] - 1.0)
+    print("[prof_step] set-up %.1f s; peak GPU memory %.2f GiB allocated, %.2f GiB reserved; ms per stage of the two "
+          "halves differ by %.1f %%" % (res["setup_s"], res["peak_alloc_GiB"], res["peak_reserved_GiB"],
+                                        100 * res["halves_rel_diff"]), flush=True)
+    if A.json:
+        pathlib.Path(A.json).write_text(json.dumps(res, indent=1))
+
+
 def report(res):
     p, w = res["plain"], res["window"]
     ms_stage = 1e3 * p["wall_s"] / p["stages"]
@@ -139,6 +164,7 @@ def main(argv):
     ap.add_argument("--plain", type=int, default=40, help="sample intervals of the wall-clock window")
     ap.add_argument("--window", type=int, default=10, help="sample intervals of the profiled window")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--kcache", default=None, help="kernel cache folder (kcache.py; one for each geometry and precision)")
     ap.add_argument("--rl_dir", default=".", help="folder of run_loops.py (default: the current folder)")
     A = ap.parse_args(argv[:i])
     rl = argv[i + 1:]
@@ -146,6 +172,10 @@ def main(argv):
     import magnumnp
     from magnumnp.solvers.ode_solvers.rkf45 import RKF45
     import run_loops
+    if A.kcache:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import kcache
+        kcache.use(A.kcache)
     res = {"argv": rl, "skip": A.skip, "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
            "torch": torch.__version__}
     labelled(magnumnp.LLGSolver, "dm", "L:stage (LLGSolver.dm)", count="dm")
@@ -159,14 +189,34 @@ def main(argv):
                 labelled(type(term), "h", "L:h " + type(term).__name__)
         ST["steps"] += 1
         n = ST["steps"]
+        if n == 1:
+            sync()
+            res["setup_s"] = time.perf_counter() - T0
         if n == A.skip + 1:
             sync()
             c.update(t=time.perf_counter(), dm=ST["dm"], tries=ST["tries"])
+            c["t0"], c["dm0"], c["tries0"] = c["t"], c["dm"], c["tries"]
             ST["phase"] = "plain"
+        elif n == A.skip + A.plain // 2 + 1:
+            sync()
+            c["half"] = {"wall_s": time.perf_counter() - c["t0"], "stages": ST["dm"] - c["dm0"],
+                         "tries": ST["tries"] - c["tries0"], "sample_intervals": A.plain // 2}
+            c.update(t1=time.perf_counter(), dm1=ST["dm"], tries1=ST["tries"])
         elif n == A.skip + A.plain + 1:
             sync()
             res["plain"] = {"wall_s": time.perf_counter() - c["t"], "stages": ST["dm"] - c["dm"],
                             "tries": ST["tries"] - c["tries"], "sample_intervals": A.plain}
+            res["plain"]["halves"] = [c["half"], {"wall_s": time.perf_counter() - c["t1"], "stages": ST["dm"] - c["dm1"],
+                                                  "tries": ST["tries"] - c["tries1"],
+                                                  "sample_intervals": A.plain - A.plain // 2}]
+            if torch.cuda.is_available():
+                res["peak_alloc_GiB"] = torch.cuda.max_memory_allocated() / 2**30
+                res["peak_reserved_GiB"] = torch.cuda.max_memory_reserved() / 2**30
+            else:
+                res["peak_alloc_GiB"] = res["peak_reserved_GiB"] = float("nan")
+            if A.window == 0:
+                report_plain(res)
+                raise SystemExit(0)
             c["prof"] = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA])
             c["prof"].__enter__()
             c.update(t=time.perf_counter(), dm=ST["dm"], tries=ST["tries"])
