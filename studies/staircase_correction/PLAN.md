@@ -563,7 +563,7 @@ estimate. The scripts s4_a.sh and s4_eval.py stay as a record; they did not run.
 **Decision of Chris (2026-10-22, about 11:00 UTC).** Section 13 approved as written, with the B1 criterion 0.1 ρ_null
 ("Ok").
 
-## 14. Verification over the full cycle and final speed measurement (decision of Chris 2026-10-23: option 2; criteria to be approved by Chris)
+## 14. Verification over the full cycle and final speed measurement (decision of Chris 2026-10-23: option 2; approved by Chris 2026-10-23 with the decisions 1 … 6 as proposed)
 
 **Reason.** Section 13 gave "not determined" for all 7 pairs (PROTOKOLL 3.39). In double precision, the RKF45 step
 control also makes a different decision after 8 … 43 of 256 sample intervals. After that, ρ grows to a level that does
@@ -731,8 +731,8 @@ production; K2 covers the single-precision kernels on 16 states.
    windows determined and gives a small ratio to the control; an injected change of a field shows in the window where
    it starts; an injected change of the error norm shows in criterion 2; the try record of an A4 tree and an old tree
    align by accepted step.
-3. GPU: start box 8 again (needs credit; a new box, if its GPU is gone, needs a go of Chris). Check the free disk (about
-   60 GB are necessary). Short checks on the production path (N 48; one window at N 108).
+3. GPU: rent a new box (box 8 was destroyed on 2026-10-23 after the download of its data; decision 6). Check the free
+   disk (about 60 GB are necessary). Short checks on the production path (N 48; one window at N 108).
 4. Kernel builds (one folder for each geometry and precision) and the 3 transfer runs; they run beside steps 5 and 6.
 5. K1 pilot; stop rule above; report.
 6. K1 arms, K2, K3. Report. A fail or a window that is not determined stops the work for that patch until Chris
@@ -750,7 +750,7 @@ production; K2 covers the single-precision kernels on 16 states.
 - Tokens: about 3 … 5 million.
 - Wall clock: about 2 days, with the long GPU phases overnight.
 
-**Decisions of Chris for this section.**
+**Decisions of Chris for this section** (all approved as proposed, 2026-10-23: "Go").
 1. K1: the bound 1e-3 × the control for criteria 1 and 2 (a relative drive change of 1e-9; a new yardstick, not 1e-3
    ρ_null).
 2. K2: the factor 2, and the floor 2^-24 of the bias.

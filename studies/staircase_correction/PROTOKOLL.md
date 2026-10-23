@@ -2357,3 +2357,10 @@ remote_20261023_box8/root/A_fix_changed/). **Box 8 destroyed** (2026-10-23, go o
 nicht mehr startet ganz löschen"). Lost with the box (not needed for PLAN 14; the results are in git): the m.pt files of
 the precision test, S2 and S3 (about 4.2 GB raw data) and the kernel cache. The account now has only the 2 instances of
 the other session (53995473, 57335263; not touched).
+
+### 3.40 PLAN 14: verification over the full cycle and final speed measurement (2026-10-23, from about 11:30 UTC; in progress)
+
+**Decision.** Chris approved PLAN 14 with the decisions 1 … 6 as proposed ("Go", 2026-10-23): K1 bound 1e-3 × the
+control for criteria 1 and 2; K2 factor 2 and bias floor 2^-24; B1 band 0.1 … 10 control units; the A4 rule (the
+number of cases goes to Chris); the stop rule of the pilot (margin 10); a new box (box 8 is destroyed). Local work
+starts first; the box is rented only after the local tests pass.
