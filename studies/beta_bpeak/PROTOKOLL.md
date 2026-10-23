@@ -11,6 +11,20 @@ and wait. Engineering fixes (bugs, logging, speed) need no decision, but tell hi
 
 ## 0. Current state (2026-10-12)
 
+**Status 2026-10-23 (7.105, 7.113, 7.140, 7.141).** The results of this section come from the old setup: the
+stray-field solver DemagFieldPBC, a random start state, atol 1e-5. DemagFieldPBC has an error at edges and corners
+(7.105). The corner study with the new setup (PLAN 4.15: new solver, tight tolerances, preparation by static
+saturation) gives at the 4 corners of the design (mean ± SE; new: n 13 / 6 / 8 / 10 seeds; old: n 3 seeds):
+- β 9 … 150 mT: K1 2.08 ± 0.03, K2 2.26 ± 0.02, K3 2.24 ± 0.03, K4 1.93 ± 0.03 (old 2.45 ± 0.07, 2.21 ± 0.07,
+  2.38 ± 0.05, 1.86 ± 0.07);
+- levers against K1: K2 +0.18, K3 +0.16, K4 −0.15 (old −0.24, −0.08, −0.59); each change is significant (Welch,
+  p 0.006 … 0.046, no correction);
+- P, new / old for the same microstructure (n 3): K1 × 0.10 … 0.32, K3 × 0.29 … 0.59, K2 × 0.49 … 0.93, K4 × 0.88 …
+  1.18.
+The new setup does not confirm the levers, β and P at K1, and P at K3. At K2 and K4 β agrees within 0.07. Thus the numbers below are results of the old setup
+only. New values for the whole design need new runs (a main study; decision of Chris after the stray-field and speed
+patches).
+
 Only the latest valid results. Sources: 7.65 (main result, conditioning
 test), 7.66 and audit_20261012/REPORT.md (independent audit), 7.63 / 7.64
 (mesh), PLAN 4.6 (running).
@@ -8504,6 +8518,194 @@ Results:
 8. Open for Chris: a main study yes or no, after the stray-field and speed patches; D3; the mesh check of the loss
    outside f; the Thiele estimate at 150 mT (only with new runs that keep snapshots).
 
+### 7.141 Corner study against the old main study: β, levers, loss density and the origin of the change; the setup changes (2026-10-23, request of Chris)
+
+All times UTC. Terms as in 7.119, 7.135, 7.138 and 7.139 (β_f: the exponent of the loss at the drive frequency f;
+shift = β − β_f; R1: the share of the loss at f; c: the loss share of a region divided by its volume share; calm
+tail, event cycle, BP, flag B, S9 flag; second state of K1). P is in W/cm³. New terms:
+- Arms. The 3 runs k = 0 … 2 of each corner have the same seed, thus the same microstructure, in 3 arms:
+  - old: the corner run of the old main study (as 7.119; the _mc2 rerun for K1_0, K4_0 and K4_1);
+  - nx: the setup of PLAN 4.13 (the new code) with a relaxed random start, the start protocol of old (7.112);
+  - sat: the setup of PLAN 4.15, that is the new code and the preparation by static saturation (7.132).
+- Code part: nx − old. Preparation part: sat − nx. Total: sat − old, the sum of the two parts.
+- First state of K1: the K1 runs without the second state of 7.139 (all K1 runs except K1_4, K1_8 and K1_12).
+- Texture of a cell: |∇m| of the cycle-mean m, smoothed over 0.5 L_eff (acc_reduce.py, as phase_extra.py).
+
+What the two parts contain:
+- The code part contains all changes from old to nx: the stray-field solver, the tolerances, the stop threshold of
+  the relaxation with fp64 sums, the online stop, the second drive correction and the accumulator rule. The
+  relaxation is part of it. Thus nx and old start from different relaxed
+  states, and the code part also contains this change of the start state. Only 7.112 (K1, 150 mT, n 3) and 7.113
+  (n 1 per corner) link a part of it to the solver alone.
+- The preparation part has the same cycle code in both arms: from nx (e5998f5) to sat (8640e55) magnumnp is
+  unchanged, and run_loops.py changes only the preparation, the BP count at each sample and the input checks (git
+  diff, checked 2026-10-23).
+- The split depends on the order of the steps. No arm has the old code with the new preparation. Thus an interaction
+  of the two parts cannot be seen.
+
+Tool: eval_corners_compare.py (main ef66845, 3d94226, 4c6b7fe). Tests: test_eval_corners_compare_stats and
+test_eval_corners_compare_known_answer (β old equals 7.119, sat − old equals results/corners_sat_data.json, the sat
+levers equal 7.138). Report: results/corners_compare.md; numbers: results/corners_compare.json. The evaluation is
+descriptive: I fixed no reading rule before it. The p values have no correction for multiple tests. Earlier sections
+on the same question: 7.112 and 7.113 (old against nx; the solver test and the solver scan) and 7.119 (old, nx and
+option C). New in this section: the final corners (sat), the split into a code part and a preparation part, and the
+loss density P.
+
+**Setup changes from the old main study to the corner study** (config.json of the runs; PLAN 4.13 parts 2 and 3,
+PLAN 4.15):
+
+| Item | Old main study | Corner study | Can it change the state or the loss? |
+|---|---|---|---|
+| code commit | 2da32a8 (_mc2 reruns: bb7bb15) | nx e5998f5; sat 8640e55 | – |
+| stray-field solver | DemagFieldPBC | DemagField with true periodic boundaries, extrapolated Newell kernel, 4 image shells | yes. DemagFieldPBC has an error at edges and corners and null modes on the cell scale (7.105). From the same state at K1, 150 mT it gives 1.77 times the loss (7.112, n 3) |
+| tolerance of the drive cycles | atol 1e-5, rtol 1e-5 (default) | atol 1e-7, rtol 1e-6 | small. From the same state the same P (7.110, n 2, 9 mT); β changes by at most 0.005 (7.102); ε at 9 mT is smaller |
+| relaxation | atol 1e-5; stop threshold 10⁻⁶ \|E\| per chunk, fp32 sums | atol 1e-6; stop threshold 3·10⁻¹⁰ K_d V per chunk, fp64 sums; the relaxation in the static field of sat: 10⁻⁶ \|E\| per chunk | yes, the start state |
+| preparation (start state) | random state on blocks of 6 l_ex, then the relaxation | nx: as old. sat: m uniform along the drive; static field 2 M_s and the relaxation in it; an AC field that decays by × 0.8 per half cycle; the relaxation without a field; a new pass if a BP remains (at most 3) | yes, the start state |
+| cycles per stage | 7. A run with a stage with a calm tail of fewer than 2 cycles ran again with up to 15 cycles (_mc2) | at least 7, then until the calm tail has 2 cycles; at most 15 (16 after a second drive correction) | no: the same steady-tail rule |
+| drive correction | once, after cycle 0 | a second one if B of cycle 1 deviates by more than 1 % | small: P at the target B |
+| accumulators (R1, location) | all cycles from cycle 2 | only calm cycles; harmonics 1 … 7 | the evaluation only |
+| precision | fp32 | fp32, the energy terms summed in fp64 | no ("fp32 sufficient", 7.112) |
+| seeds per corner | 3 | 6 … 13 (k = 0 … 2: the old seeds) | the statistics only |
+| flags | event rule | in addition flag B, S9 flag, energy-terms check | the evaluation only |
+
+Not changed: model, mesh dx 3 l_ex, α 0.1, 30 MHz, the 7 amplitudes 9 … 150 mT, the steady-tail rule, the
+definition of β (slope of ln P over ln B at the nominal amplitudes).
+
+**β 9 … 150 mT, paired runs** (n 3 per corner; mean ± SE; p: paired t test against 0, 2 degrees of freedom):
+
+| corner | old | nx | sat | code part | preparation part | total |
+|---|---|---|---|---|---|---|
+| K1 | 2.454 ± 0.067 | 2.214 ± 0.095 | 2.028 ± 0.007 | −0.240 ± 0.101 (p 0.14) | −0.187 ± 0.088 (p 0.17) | −0.426 ± 0.063 (p 0.021) |
+| K2 | 2.211 ± 0.069 | 2.258 ± 0.083 | 2.268 ± 0.045 | +0.047 ± 0.086 (p 0.64) | +0.010 ± 0.092 (p 0.92) | +0.057 ± 0.029 (p 0.19) |
+| K3 | 2.379 ± 0.049 | 2.050 ± 0.161 | 2.174 ± 0.049 | −0.328 ± 0.193 (p 0.23) | +0.124 ± 0.168 (p 0.54) | −0.204 ± 0.094 (p 0.16) |
+| K4 | 1.860 ± 0.067 | 2.069 ± 0.080 | 1.915 ± 0.069 | +0.208 ± 0.030 (p 0.021) | −0.154 ± 0.024 (p 0.024) | +0.055 ± 0.006 (p 0.013) |
+
+- All sat runs against the 3 old runs per corner (Welch, 2.4 … 3.2 degrees of freedom; sat n 13 / 6 / 8 / 10): K1
+  −0.375 ± 0.073 (p 0.015); K2 +0.047 ± 0.072 (p 0.57); K3 −0.140 ± 0.055 (p 0.081); K4 +0.067 ± 0.075 (p 0.44).
+- Thus β changes much at K1. At K3 the point estimate is lower, but the change is not significant. At K2 and K4 β
+  changes little.
+- At K4 both parts exceed 2 SE (uncorrected p 0.02), with opposite signs (+0.21 and −0.15). Their sum is small
+  (+0.05).
+
+**Levers β(Ki) − β(K1), 9 … 150 mT** (unpaired; old: n 3 per corner; sat: all runs; Welch; the change is a sum of 4
+corner means, with the SE from the 4 SEs and the Welch-Satterthwaite degrees of freedom, 5.3 … 6.0):
+
+| lever | old | sat | change sat − old |
+|---|---|---|---|
+| K2 − K1 | −0.243 ± 0.096 (p 0.064) | +0.179 ± 0.038 (p 0.0002) | +0.423 ± 0.103 (p 0.008) |
+| K3 − K1 | −0.076 ± 0.083 (p 0.42) | +0.160 ± 0.040 (p 0.0008) | +0.236 ± 0.092 (p 0.046) |
+| K4 − K1 | −0.594 ± 0.094 (p 0.003) | −0.152 ± 0.046 (p 0.003) | +0.442 ± 0.105 (p 0.006) |
+
+- The change of K1 alone (−0.375) is the largest part of each lever change. K2 − K1 changes its sign.
+- Levers of the paired means (n 3 per corner), old → nx → sat: K2 − K1 −0.24 → +0.04 → +0.24; K3 − K1 −0.08 →
+  −0.16 → +0.15; K4 − K1 −0.59 → −0.15 → −0.11. Thus the code change alone removes most of the old levers K2 − K1
+  and K4 − K1. The preparation then lowers K1 (−0.19 ± 0.09, p 0.17), raises K2 − K1 and makes K3 − K1 positive.
+- Split of the lever change with the paired runs (n 3 per corner; Welch, 2.0 … 4.0 degrees of freedom):
+
+| lever | code part | preparation part | total |
+|---|---|---|---|
+| K2 − K1 | +0.29 ± 0.13 (p 0.10) | +0.20 ± 0.13 (p 0.20) | +0.48 ± 0.07 (p 0.007) |
+| K3 − K1 | −0.09 ± 0.22 (p 0.71) | +0.31 ± 0.19 (p 0.20) | +0.22 ± 0.11 (p 0.13) |
+| K4 − K1 | +0.45 ± 0.11 (p 0.038) | +0.03 ± 0.09 (p 0.75) | +0.48 ± 0.06 (p 0.016) |
+
+  For K4 − K1 the code part carries the change. For K2 − K1 and K3 − K1 the single parts are not significant. Their
+  point estimates give a part to both.
+- K3 and K4 differ only in d/l_ex (212 against 300) and φ (0.69 against 0.55). K3 − K4: old +0.518 ± 0.083 (p
+  0.004), sat +0.312 ± 0.042 (p 2·10⁻⁶). The change, −0.21 ± 0.09 (p 0.071, 5.7 degrees of freedom), is not
+  significant.
+
+**Origin of the change: β = β_f + shift** (paired runs, 9 … 150 mT; total sat − old; p as in the β table):
+
+| corner | β_f old / nx / sat | total Δβ_f | shift old / nx / sat | total Δshift |
+|---|---|---|---|---|
+| K1 | 2.08 / 2.02 / 2.00 | −0.08 ± 0.08 (p 0.43) | 0.38 / 0.19 / 0.03 | −0.35 ± 0.02 (p 0.005) |
+| K2 | 2.06 / 1.97 / 1.99 | −0.06 ± 0.12 (p 0.67) | 0.16 / 0.29 / 0.27 | +0.12 ± 0.10 (p 0.34) |
+| K3 | 2.02 / 1.89 / 2.00 | −0.02 ± 0.07 (p 0.76) | 0.36 / 0.16 / 0.18 | −0.18 ± 0.02 (p 0.016) |
+| K4 | 1.80 / 1.76 / 1.61 | −0.18 ± 0.19 (p 0.45) | 0.06 / 0.30 / 0.30 | +0.24 ± 0.20 (p 0.35) |
+
+- At K1 and K3 the change of β is in the shift, thus in the loss outside f. In the old and the sat arm, β_f of K1 and
+  K3 is 2.0 within its SE.
+- K1, R1 at 9 → 150 mT (mean of the 3 paired runs, no SE): old 0.97 → 0.37, nx 0.81 → 0.41, sat 1.00 → 0.93. Thus
+  in the sat runs of K1 nearly all loss is at f at all amplitudes. The 3 paired sat runs of K1 have the first state.
+- K1, location (mean of the 3 paired runs, no SE). The 10 % of the cells with the largest loss have c 2.7 … 2.9 in
+  the sat arm and 5.3 … 7.1 in the old arm. The 10 % of the cells with the largest texture have c 1.4 … 1.7 (sat)
+  and 4.6 … 6.5 (old). Thus in the sat runs of K1 the loss is spread more evenly. It is less concentrated where m is
+  most non-uniform.
+- K3, R1 (mean of the 3 paired runs, no SE): at 70 mT old 0.49, sat 0.91; at 150 mT old 0.39, sat 0.51. Thus at K3
+  the loss outside f starts at a higher amplitude in the sat runs (7.140, point 3: the shift of K3 is at 70 … 150 mT).
+- K2 and K4: no significant change of β_f or of the shift (n 3).
+- K1, split of the change of the shift: code part −0.18 ± 0.10 (p 0.21), preparation part −0.16 ± 0.08 (p 0.16).
+- K1 per window (information; the 70 … 150 mT window has 1 degree of freedom per fit, 7.119):
+  - 9 … 50 mT: the code part lowers β by 0.47 ± 0.03 (p 0.003) and the shift by 0.40 ± 0.08 (p 0.035). The
+    preparation part raises β by 0.11 ± 0.01 (p 0.016).
+  - 70 … 150 mT: the shift of the nx runs is larger than old (+0.40 ± 0.06, p 0.020). The preparation removes it
+    (−0.77 ± 0.09, p 0.014).
+- The old accumulators include event cycles (PLAN 4.13 S3; sum over the 3 old runs of each corner): K1 4, K2 6, K3 0
+  and K4 16 cycles.
+  - K2: 4 of the 6 are in the 20 mT stage (R1 of old K2 at 20 mT: 0.31).
+  - K4: 9 of the 16 are in the 35 mT stage (R1 of old K4 at 35 mT: 0.27).
+  - Thus R1, the location, β_f and the shift (β_f comes from ln (R1 P)) of old K2 and old K4 include such cycles. The
+    values of K1 and K3 are nearly free of them.
+
+**Loss density P** (factor sat / old = exp of the mean paired Δ ln P; SE of Δ ln P in brackets; n 3; all 7
+amplitudes in the report):
+
+| corner | 9 mT | 50 mT | 150 mT |
+|---|---|---|---|
+| K1 | × 0.32 (0.12) | × 0.18 (0.14) | × 0.10 (0.03) |
+| K2 | × 0.80 (0.12) | × 0.93 (0.15) | × 0.76 (0.01) |
+| K3 | × 0.58 (0.15) | × 0.46 (0.08) | × 0.46 (0.28) |
+| K4 | × 1.07 (0.08) | × 1.09 (0.17) | × 1.06 (0.09) |
+
+- K1 changes most: × 0.10 … 0.32 at the 7 amplitudes. Both parts contribute: code × 0.40 … 0.98, preparation
+  × 0.17 … 0.38. The code part at 150 mT (× 0.56, SE 0.04) has the size of the solver effect of 7.112 (1 / 1.77,
+  from the same state). 7.112 found this agreement first with the same runs. Thus it is not an independent check.
+- K2: × 0.49 … 0.93. K3: × 0.29 … 0.59.
+- K4: no change of P is detectable (× 0.88 … 1.18). The point estimates of the two parts have opposite signs: code
+  × 0.73 at 9 mT and × 1.19 … 1.26 at 70 … 150 mT; preparation × 1.45 at 9 mT and × 0.89 … 1.16 at 20 … 150 mT.
+
+**Bloch points.**
+- old: BPs in the start state of K2_0 (14), K2_1 (15), K2_2 (7), K3_1 (1) and K4_0 (3).
+- nx: BPs in 9 of the 12 runs, at least one run at each corner (K1_2 in stages 0 and 1).
+- sat: no BP in the prepared states. In the 12 paired sat runs, flag B occurs only at K2 (K2_0 at 150 mT; K2_1 and
+  K2_2 at 50 … 150 mT). In all sat runs, flag B also occurs in 4 of 70 K4 stages (K4_5, 7.138).
+- Thus the code part compares start states with BPs at all 4 corners. The preparation removes the BPs from the start
+  state. At K2 BPs come back during the drive.
+
+**What this changes in earlier statements.**
+- 7.113 (solver scan, 1 seed per corner) found that the levers of the old main study come mainly from the error of
+  DemagFieldPBC. The paired data (n 3) agree in part: the code change alone removes most of the old levers K2 − K1 and
+  K4 − K1. But the code change is not the solver alone (see above). The new positive levers K2 − K1 and K3 − K1 come
+  with the preparation, mostly through the lower β of K1 (point estimates, not significant).
+- Correction of my chat answer of 2026-10-23 to Chris ("the cause is open"): 7.113 found the solver as the likely
+  main cause (n 1 per corner). This section gives the split with n 3.
+
+**Consequence for the old main study (section 0).**
+- The 4 corners are 12 of the 116 design runs (4 corner points × 3 seeds).
+- At the corners the new setup gives:
+  - K1: a lower β (−0.43 ± 0.06) and a lower P (× 0.10 … 0.32);
+  - K3: a lower β in the point estimate (not significant) and a lower P (× 0.29 … 0.59);
+  - K2 and K4: β differs by at most 0.07 (unpaired within 1 SE; paired K4 +0.055 ± 0.006, p 0.013), and P is
+    × 0.49 … 1.18.
+- The levers against K1 change significantly (above). These corners differ in 2 or 3 factors each (7.140). Thus
+  they cannot give a new value of a single lever.
+- In the old main study, the size lever (A 10 → 20 pJ/m at d = 1 µm, that is d/l_ex 300 → 212) was the largest
+  lever (+0.57). At low K_eff, near K1, it was +0.93. The corners K3 and K4 differ only in d/l_ex and φ. Their
+  difference is still clear in the sat arm (+0.31), but smaller than in the old arm (+0.52; change not significant).
+- Thus the numbers of section 0 (β 2.12, the levers, the P levels and crossings, the location of the loss) are results
+  of the old setup. The new setup does not confirm the levers, β and P at K1, and P at K3. At K2 and K4 β agrees
+  within 0.07. New values for the whole design need new runs (main study, decision of Chris, 7.140 point 8).
+
+**Limits.**
+- n 3 per corner in the paired comparison. The paired t tests have 2 degrees of freedom, the Welch tests 2.0 … 20.
+  No p value has a correction for the 4 corners, the 3 comparisons, the 3 windows and the 3 measures.
+- The code part includes the change of the relaxed start state. All 4 corners have nx runs with BPs.
+- The split depends on the order of the steps (see above).
+- The old accumulators include event cycles (above). The new ones do not.
+- The cycles of a stage are not steady (S9 flag) in 9 of 10 sat K4 runs (7.140, point 6). This holds for all K4
+  statements.
+- All arms use dx 3 l_ex. The mesh limit of 7.140 (point 6) holds for all arms.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
@@ -8651,9 +8853,10 @@ plans (one-factor, factorial, 128 + 8) are replaced.
 
 ## 12. Open points for Chris
 
-**Status 2026-10-23:** the corner study (PLAN 4.15, phase 1) is complete; conclusion in 7.140. Open for Chris: a
-main study yes or no, after the stray-field and speed patches; D3; the mesh check of the loss outside f (dx 1.5);
-the Thiele estimate at 150 mT. No instance of this study is running.
+**Status 2026-10-23:** the corner study (PLAN 4.15, phase 1) is complete; conclusion in 7.140; comparison with the
+old main study in 7.141 (the new setup does not confirm the levers of section 0, β and P at K1, and P at K3). Open for
+Chris: a main study yes or no, after the stray-field and speed patches; D3 of PLAN 4.15; the mesh check of the loss
+outside f (dx 1.5); the Thiele estimate at 150 mT. No instance of this study runs.
 
 **Status 2026-10-06:** all checks before the Sobol design are done
 (7.25 … 7.29). Open: (1) Chris's go for PLAN 4.0 (audit 3 handled, 7.33);
