@@ -385,7 +385,15 @@ def _h_reference(dem, state):
 def test_fused_h_against_reference(dtype, tol, pbc, kw):
     """The fused kernel product (1/n and the block term of true_pbc in the kernel) gives the field of the loop over
     the components within round-off (PLAN 11, S1): random m, a varying Ms with a void, periodic and open."""
+    default = torch.get_default_dtype()
     torch.set_default_dtype(dtype)
+    try:
+        _check_fused_h(dtype, tol, pbc, kw)
+    finally:
+        torch.set_default_dtype(default)
+
+
+def _check_fused_h(dtype, tol, pbc, kw):
     n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
     g = torch.Generator().manual_seed(1)
     state = State(Mesh(n, dx, pbc=pbc))
