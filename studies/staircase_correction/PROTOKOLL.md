@@ -2485,6 +2485,25 @@ box.
   the same number of tries; c63e862 ran alone on the GPU for the last 75 min) and 3.9 times longer in stress test 2.
   Neither model is excluded. The ECC counters of the GPU stay 0 (corrected and uncorrected, volatile and aggregate).
 - Condition: all observed outliers occurred with 2 or 3 processes on the GPU. A single process is not tested.
+- Decision (2026-10-24, about 02:00 UTC, night rule). Options to Chris: (1) do each try twice in the real dynamics,
+  (2) accept with the bound above, (3) run the B arms of K1 with that test. Applied: option 1. Reason: the stress
+  design is exhausted; only the real dynamics keeps the sequence of production. Option 2 leaves the cause open, and
+  option 3 mixes the diagnosis with the decision test.
+- Tool: step_dump --k1_redo all (commit 6d1e19c). It does each try twice and compares the error estimate (threshold
+  1e-6 tolerance units) and x1 (threshold 1e-12). The output of each field term in each stage of the first try goes
+  into a fixed buffer. At an event, the run records the difference of each term in each stage. The first stage and
+  term with a difference names the part with the fault.
+- Local test (CPU, geometry B at d_lex 96, 2 windows, 85 tries, 1 thread per process). The rows and m of 2 runs with
+  --k1_redo and 2 runs with --k1_redo all are bitwise equal: the tool does not change the code path. A fault injected
+  into one call of the correction (1e-3 of the largest value, one entry) gave 1 event. The event names the correction
+  in stage 3, with the relative difference 1.000e-3 at the injected entry; stages 0 … 2 and the other terms of stage 3
+  are 0.
+- Observation (open, outside production): with 2 threads per process on the CPU, two runs differ (error norm of the
+  first try of window k0 4: 0.7917 and 0.8009); with 1 thread, all 4 runs are bitwise equal. Within one process,
+  repeated evaluations of the right-hand side on the CPU are bitwise equal (local stress test). Not examined.
+- Outlier test 3 (box 11, from 02:17 UTC): d538bde 20 repetitions and c63e862 10 repetitions of the 17 windows with
+  --k1_redo all, in parallel (2 processes, as in all observed outliers). Expected: about 37 700 tries of d538bde,
+  about 3 events at the observed rate. Expected end about 08:00 UTC. Result follows.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
