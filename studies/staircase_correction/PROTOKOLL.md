@@ -2503,7 +2503,8 @@ box.
   repeated evaluations of the right-hand side on the CPU are bitwise equal (local stress test). Not examined.
 - Outlier test 3 (box 11, from 02:17 UTC): d538bde 20 repetitions and c63e862 10 repetitions of the 17 windows with
   --k1_redo all, in parallel (2 processes, as in all observed outliers). Expected: about 37 700 tries of d538bde,
-  about 3 events at the observed rate. Expected end about 08:00 UTC. Result follows.
+  about 3 events at the observed rate. Expected end about 08:00 UTC. Result: see the entries of 08:19 UTC (d538bde)
+  and 09:56 UTC (c63e862) below.
 - Outlier test 3, first event (02:57 UTC, d538bde, sample interval 12, dt 5.04e-12). The first try had the norm 1.406
   (rejected as usual), the second try 94.97. Stages 0 … 2: all terms are equal within rounding (at most 2.5e-15
   relative). Stage 3: the correction (DemagStaircaseCorrection) differs by 1.81e3 A/m (5.98e-3 of its largest value)
@@ -2636,6 +2637,16 @@ box.
   of the GPU: cause (b) is improbable. The same call with the same input is correct in most calls, thus the fault is
   transient (a race or a dependency on the timing); in the first hour of stress test 3 (products back to back,
   second process on the GPU) it did not occur.
+- Outlier test 3, result of c63e862 (H_c63, end 09:56 UTC; files local with md5): 10 repetitions of 17 windows,
+  18 960 tries, each done twice (37 920 try evaluations). 0 events; largest difference of the error estimate
+  2.9e-9 tolerance units, of x1 1.3e-15. All 153 window ends agree with repetition 0 within 1.8e-11 in m. Pooled
+  with the tries before: 0 in 61 760 (95 % upper bound 6.0e-5 per try evaluation). Against d538bde (8 in 116 690):
+  under the same rate per try evaluation, 0 of 8 events in c63e862 has the probability 0.033; under the same rate
+  per GPU time (a try of c63e862 takes about 2 times longer), 0.003. The main evidence stays the localization: all 5
+  events of test 3 are in the correction, the 4 events of the refined tool in the cuSPARSE product, which c63e862
+  does not use.
+- The second process of stress test 3 started at 09:56 UTC (after_h2.sh). Expected end of both: about 11:25 and
+  13:00 UTC.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
