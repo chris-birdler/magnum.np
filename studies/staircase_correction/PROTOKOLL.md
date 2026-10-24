@@ -2670,6 +2670,10 @@ box.
   (B_01e, B_c56, B_df0, AB_on) must be repeated after a patch or are not needed without PLAN 10; (3) no run. Applied:
   (1), started 13:07 UTC (p2b_c63.txt, about 10 min). After it, the GPU has no work that does not depend on the patch
   decision of Chris; box 11 then stays rented without load (0.162 $/h) until his decision. Destroying it needs his go.
+- K1 arm B_c63 complete (13:07 … 13:21 UTC, exit 0): 256 sample intervals, 17 windows, 1896 tries, mismatch 0;
+  /root/k1/B/B_c63.pt (1.6 GB, stays on the box). Its pair (PLAN 10) needs the arm of the patched product, so there is
+  no evaluation yet. Log local in remote_20261023_box11/K1B/ (manifest box_B_c63.md5 with the md5 of the .pt). The GPU
+  has had no load since 13:21 UTC.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
