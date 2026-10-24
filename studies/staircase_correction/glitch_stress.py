@@ -14,6 +14,7 @@ Parts: try (one RKF45 try, RKF45._try_step of the tree: six stages, increment, e
 median dt of the accepted tries in the interval k0 + 1 of the reference that are not clamped to the rest of the
 interval), corr (DemagStaircaseCorrection.h), spmv (the sparse product of the correction, only with the attribute _A),
 centroid (centroid_field of the correction), demag (DemagField.h), dm (LLGSolver.dm, all terms).
+A part can be given more than once (for example spmv:3600 spmv:3600): each run has its own result.
 Differences: field parts largest |h_r - h_0| / largest |h_0| (threshold --thr); try: the error estimate in units of
 the tolerance, largest |err_r - err_0| / (atol + rtol |x|) (threshold --thr_err), and the increment, largest
 |x1_r - x1_0| (threshold --thr_x1).
@@ -162,7 +163,7 @@ def main(argv):
                 res["median_dx1"] = float(d1.median()) if r else 0.0
                 for e, x in zip(ev[:200], res["events"]):
                     x["dx1"] = float(d1[e])
-            out["parts"][nm] = res
+            out["parts"][nm if nm not in out["parts"] else "%s_%d" % (nm, len(out["parts"]))] = res
             print("[stress] %-8s %s: %d evaluations on %d states in %.0f s, nonzero %d, events %d (threshold %.0e%s), "
                   "largest difference %.3e, median %.3e%s" % (
                       nm, state.m.dtype, r, S, wall, res["n_nonzero"], res["n_events"], thr,

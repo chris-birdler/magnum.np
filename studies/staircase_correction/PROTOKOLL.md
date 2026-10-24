@@ -2525,7 +2525,11 @@ box.
 - Outlier test 3, second event (found at 04:32 UTC; H2_d53, refined tool; d538bde, sample interval 37, dt 9.22e-12).
   The first try had the norm 0.2805 (accepted), the second try 838.5. Stage 0: all parts are equal within rounding;
   the sparse product differs by 2.2e-16 relative with a bitwise equal input (thus the product is not bitwise
-  reproducible; torch 2.7.1+cu126 calls cusparseSpMV with CUSPARSE_SPMV_ALG_DEFAULT, cuSPARSE 12.5.4.2). Stage 1: the
+  reproducible). The source of addmv_out_sparse_csr in torch 2.7.1 calls cusparseSpMV with CUSPARSE_SPMV_ALG_DEFAULT
+  (the dispatch of CSR @ 1-D dense to it is not verified on the box; box: torch 2.7.1+cu126, cuSPARSE 12.5.4.2). The
+  cuSPARSE 12.5 documentation: CSR_ALG1 is the default for CSR and "may produce slightly different results during
+  different runs with the same input parameters"; CSR_ALG2 "provides deterministic (bit-wise) results for each run".
+  torch does not expose the choice. Stage 1: the
   sparse product differs in 1 entry by 3.14e-4 (1.27e-3 of its largest value) at the flat index 3 060 786 (cell
   1 020 262 = (87, 50, 94), x component); the correction differs in the same single entry by 374.5 A/m (1.14e-3); the
   centroid field and all other terms are equal within 1e-15 relative. From stage 2 on, all parts differ (the input m
@@ -2535,14 +2539,27 @@ box.
   different cell (replay 504 660, first event 544 723).
 - Reading (n 2 events, both in the correction, 1 shown in the sparse product): a linear product cannot change one
   entry by 1e-3 when its input differs only by rounding. Thus one call gave one wrong entry. Two causes stay open:
-  (a) a fault of the cuSPARSE product (software), (b) a transient fault of the arithmetic of this one GPU (all 6
-  observed faults are on box 11; ECC protects the memory, not the arithmetic). A random fault of the hardware hits
+  (a) a fault of the cuSPARSE product (software), (b) a transient fault of the arithmetic of this one GPU (box 11 is
+  the only box with an outlier test, so all 6 observed faults are on it; ECC protects the memory, not the
+  arithmetic). Under --k1_redo all, 2 of 2 events were in the second try; the 4 faults before (pilot 3, replay 1)
+  were in normal tries. A random fault of the hardware hits
   each kernel in proportion to its run time; the sparse product has only a part of the run time of a try (not
   measured for geometry B in double precision), and c63e862 had 0 events. Thus (a) is more probable, but n 2 does not
   exclude (b). A search found no published cuSPARSE or PyTorch report with this sign (single wrong entry, transient).
 - Decision (night rule, 04:40 UTC): outlier test 3 runs to its end (about 08:00 UTC) without change. Reason: more
   events give the count of events in the sparse product (an effect needs at least 3), the count of accepted faults
   and the rates. No fix without the go of Chris; options for him: see the report of the morning.
+- Stress test 3 (night rule, prepared 05:00 UTC; box11/stress3.sh, after_h.sh starts it on the box when both runs of
+  outlier test 3 have ended): only the sparse product, 2 states in turn, 2 processes with the same job, 3 parts of
+  1 h each. The stress tests before had at most 84 800 products in one part. Rate per product (6 per try): 4 in
+  about 290 000 products of all tries with an outlier test (about 1.4e-5), 4 in about 177 000 of the real dynamics
+  only (about 2.3e-5). At 1.4e-5, 84 800 products give about 1.2 expected events: the stress tests before do not
+  exclude a fault of the single call. Stress test 3 gives about 1.5 million products per process (7 ms per product
+  with 2 processes in stress test 2), about 3 million in total: about 40 expected events at 1.4e-5, about 11 at the
+  lower bound of the rate per try (2.2e-5 / 6). Events: the fault is a fault of the single call and can be studied in
+  short tests (1 process, other settings). No event: the fault needs the context of the dynamics. --idx gives the row
+  length and the volume fraction of the 3 known event cells and of the cell of the normal maximum. Cost: about 0.5 $
+  (3 h at 0.162 $/h).
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
