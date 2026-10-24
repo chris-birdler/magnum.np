@@ -2464,8 +2464,25 @@ box.
   result.
 - Stress test 2 (two states, k0 8 and k0 144, in turn; the production RKF45 try as the main part, compared with the
   first try of the same state: the error estimate in tolerance units, threshold 1e-6, and x1, threshold 1e-12; then
-  the correction and the sparse product): d538bde from 00:09 UTC, c63e862 from 00:17 UTC (the second process on the
-  GPU, as in all observed outliers). Result follows.
+  the correction and the sparse product; both trees in parallel, 2 processes on the GPU, as in all observed outliers;
+  00:09 … 01:44 UTC): 0 events in both trees. d538bde: 18 960 tries, 46 800 evaluations of the correction, 84 800 of
+  the sparse product. c63e862: 4 880 tries, 10 800 evaluations of the correction. Largest difference of the error
+  estimate 1.0e-9 (d538bde) and 1.2e-9 (c63e862) tolerance units, of x1 8.9e-16 and 9.4e-16; of the correction
+  3.7e-16 and 1.3e-15 relative, of the sparse product 2.6e-16 (rounding noise of the sum order). Expected at the rate
+  of the real dynamics (4 in 29 464 tries): 2.6 events in the tries of d538bde, probability of 0 events about 0.08. If
+  the fault sat in the correction, its 231 000 evaluations in stress tests 1 and 2 (alone and 6 in each try) would give
+  about 5 events at that rate, probability of 0 events about 0.006. Thus the fault needs the sequence of the real
+  dynamics (an accepted step changes m, dt changes, the output path runs between the tries), or its rate is lower than
+  observed (the rate has a wide interval, see below).
+- Position of the 4 outliers in the step sequence: each follows an accepted try (fraction of all tries 0.885,
+  probability of 4 of 4 about 0.6); dt was equal to the dt before in 2 and larger in 2 (fraction of a larger dt 0.2);
+  one (B base, k0 0, try 70) was a try past the end of the sample interval, as in the other arms at the same try. No
+  pattern.
+- Count of all tries with an outlier test (pilot, replay, stress test 2): d538bde code 4 in 48 424 (8.3e-5 per try;
+  Poisson 95 % interval 2.2e-5 … 2.1e-4); c63e862 0 in 23 840 (95 % upper bound 1.3e-4). Under the same rate per try,
+  the probability of this split is about 0.2: the trees are not separated. Under the same rate per GPU time (a try of
+  c63e862 takes about 3.9 times longer, stress test 2), it is about 0.014: a fault of the GPU at a constant rate in
+  time is improbable. The ECC counters of the GPU stay 0 (corrected and uncorrected, volatile and aggregate).
 - Condition: all observed outliers occurred with 2 or 3 processes on the GPU. A single process is not tested.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
