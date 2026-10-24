@@ -88,9 +88,10 @@ def redo_all(a, stem, wins, d):
         first = next((t for t in ev["terms"] if t["scale"] > 0 and t["dev"] > a.term_rel * t["scale"]), None)
         print("   event n %d dt %.4g: norm %.6g, second try %.6g; difference %.3e tolerance units at %d, x1 %.3e; "
               "first differing term: %s" % (ev["n"], ev["dt"], ev["norm"], ev["redo_norm"], ev["derr"], ev["dimax"],
-                                            ev["dx1"], "none" if first is None else "stage %d %s (relative %.3e at %d)"
+                                            ev["dx1"], "none" if first is None else "stage %d %s (relative %.3e at %d%s)"
                                             % (first["stage"], first["term"], first["dev"] / first["scale"],
-                                               first["index"])))
+                                               first["index"], "" if "count" not in first else
+                                               ", %d entries above the noise" % first["count"])))
 
 
 def group(a, names, wins, fld, src):

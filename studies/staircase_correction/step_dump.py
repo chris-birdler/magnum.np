@@ -47,8 +47,10 @@ the norm, the RMS and the index of the second try. A transient fault gives a nor
 each try once more and compares the second try with the first: the error estimate in tolerance units (largest
 difference and its flat index) and x1 (largest difference). The output of each field term in each stage of the first
 try is copied into a fixed buffer; at a difference above THR_ERR tolerance units or THR_X1 in x1 (an event), the run
-records for each stage and term the largest difference of the second try to the first. The first stage and term with
-a difference above the rounding noise names the part with the fault (later stages differ because their input differs).
+records for each stage and term the largest difference of the second try to the first and the count of entries above
+TERM_NOISE of the largest value. The first stage and term with a difference above the rounding noise names the part
+with the fault (later stages differ because their input differs). In the correction (DemagStaircaseCorrection), the
+sparse product (_A @ m) and centroid_field are recorded as the parts "spmv" and "centroid" as well.
 """
 import argparse
 import inspect
@@ -62,6 +64,20 @@ BRANCH = ("accept", "a4_clamp", "past_end", "norm_class", "c_minscale", "c_maxsc
 REDO = ("err_rms", "imax", "redo_norm", "redo_err_rms", "redo_imax")
 REDO_ALL = ("redo_derr", "redo_dx1", "redo_dimax")
 THR_ERR, THR_X1 = 1e-6, 1e-12          # event thresholds of --k1_redo all (as glitch_stress.py)
+TERM_NOISE = 1e-9                      # --k1_redo all: count of entries above this fraction of the largest value
+
+
+class SparsePart:
+    """--k1_redo all: stands in for the sparse matrix of the correction; A @ x is recorded as the part "spmv"."""
+
+    def __init__(self, A, rec, j):
+        self.A, self.rec, self.j = A, rec, j
+
+    def __matmul__(self, x):
+        return self.rec.record(self.j, self.A @ x)
+
+    def __getattr__(self, k):
+        return getattr(self.A, k)
 OLD_NORM = "torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)"
 
 
@@ -193,29 +209,48 @@ class TryRecord:
         norm = float(self.f_norm(err, x, atol, rtol)) if self.has_a3 else float(torch.linalg.norm(e, torch.inf))
         return norm, float(e.square().mean().sqrt()), int(a.argmax())
 
+    def record(self, j, r):
+        """--k1_redo all, output r of term or part j. Store: copy r into the buffer of (stage, j). Compare: record the
+        largest difference to that buffer, its flat index, the largest value of the buffer and the count of entries
+        above TERM_NOISE of it."""
+        if self.cap is not None:
+            s = self.calls[j]
+            self.calls[j] += 1
+            b = self.buf.get((s, j))
+            if self.cap == "store":
+                if b is None or b.shape != r.shape or b.dtype != r.dtype:
+                    b = self.buf[(s, j)] = torch.empty_like(r)
+                b.copy_(r)
+            elif b is not None:
+                d = (r - b).abs()
+                bmax = b.abs().max()
+                self.cmp.append((s, j, d.max(), d.argmax(), bmax, (d > TERM_NOISE * bmax).sum()))
+        return r
+
     def wrap_terms(self, terms):
-        """--k1_redo all: wrap h of each field term. Store: copy the output into the buffer of (stage, term). Compare:
-        record the largest difference to that buffer, its flat index and the largest value of the buffer."""
+        """--k1_redo all: wrap h of each field term, and the parts spmv and centroid of the correction."""
         self.names = [type(t).__name__ for t in terms]
         rec = self
         for j, term in enumerate(terms):
             def wrap(f, j):
                 def h(state):
-                    r = f(state)
-                    if rec.cap is not None:
-                        s = rec.calls[j]
-                        rec.calls[j] += 1
-                        b = rec.buf.get((s, j))
-                        if rec.cap == "store":
-                            if b is None or b.shape != r.shape or b.dtype != r.dtype:
-                                b = rec.buf[(s, j)] = torch.empty_like(r)
-                            b.copy_(r)
-                        elif b is not None:
-                            d = (r - b).abs()
-                            rec.cmp.append((s, j, d.max(), d.argmax(), b.abs().max()))
-                    return r
+                    return rec.record(j, f(state))
                 return h
             term.h = wrap(term.h, j)
+        corr = [t for t in terms if type(t).__name__ == "DemagStaircaseCorrection"]
+        if corr:
+            corr, mod = corr[0], sys.modules[type(corr[0]).__module__]
+            if getattr(corr, "_A", None) is not None:
+                self.names.append("spmv")
+                corr._A = SparsePart(corr._A, self, len(self.names) - 1)
+            if hasattr(mod, "centroid_field"):
+                self.names.append("centroid")
+                f_cent, j_cent = mod.centroid_field, len(self.names) - 1
+
+                def centroid_field(*args, **kw):
+                    return rec.record(j_cent, f_cent(*args, **kw))
+
+                mod.centroid_field = centroid_field
 
     def redo_try(self, x, err, atol, rtol, norm):
         """--k1_redo: add (RMS, index of the largest entry, and for a norm above 1.1 the norm, RMS and index of a
@@ -235,9 +270,10 @@ class TryRecord:
             de = ((err2 - err).abs() / (atol + rtol * x0.abs())).flatten()
             derr, dimax, dx1 = float(de.max()), int(de.argmax()), float((x12 - x1).abs().max())
             if derr > THR_ERR or dx1 > THR_X1:
-                c = torch.stack([torch.stack([d.double(), i.double(), b.double()]) for _, _, d, i, b in self.cmp]).cpu()
+                c = torch.stack([torch.stack([d.double(), i.double(), b.double(), n.double()])
+                                 for _, _, d, i, b, n in self.cmp]).cpu()
                 terms = [{"stage": s, "term": self.names[j], "dev": float(c[k, 0]), "index": int(c[k, 1]),
-                          "scale": float(c[k, 2])} for k, (s, j, _, _, _) in enumerate(self.cmp)]
+                          "scale": float(c[k, 2]), "count": int(c[k, 3])} for k, (s, j, *_) in enumerate(self.cmp)]
                 ev = {"row": len(self.rows) - 1, "n": self.n, "dt": self.pending[0], "norm": norm, "redo_norm": n2,
                       "derr": derr, "dimax": dimax, "dx1": dx1, "imax": imax, "redo_imax": i2, "terms": terms}
                 self.events.append(ev)
@@ -245,9 +281,9 @@ class TryRecord:
                       "%.3e tolerance units at %d, x1 difference %.3e" % (self.n, ev["dt"], norm, n2, derr, dimax, dx1),
                       flush=True)
                 for tr in terms:
-                    print("   stage %d %-26s largest difference %.3e (relative %.3e) at %d" % (
+                    print("   stage %d %-26s largest difference %.3e (relative %.3e) at %d, %d entries above %.0e" % (
                         tr["stage"], tr["term"], tr["dev"], tr["dev"] / tr["scale"] if tr["scale"] > 0 else float("nan"),
-                        tr["index"]), flush=True)
+                        tr["index"], tr["count"], TERM_NOISE), flush=True)
             self.rows[-1] = self.rows[-1] + (rms, imax, n2, r2, i2, derr, dx1, dimax)
             return
         if norm > 1.1:
