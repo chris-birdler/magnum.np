@@ -2720,3 +2720,19 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   cuSPARSE fault occurs also in single precision, the precision of production, and here in products back to back with
   a second process on the GPU (the second process ran other kernels). The tool records only the largest difference,
   so the count of such products in the 20 000 is not known.
+- D1b (18:32 … 18:36 UTC; T1 of B_d53 against B_d53P on the 16 states of refB.pt, double precision; local copy
+  remote_20261024_box11/D1b/, md5 verified): PASS. The correction differs by RMS 1.1e-8 cu, at most 3.7e-7 cu; the
+  other field terms and the energies of the other terms are bitwise equal; worst quantity over all states and stages
+  RMS 8.2e-7 cu, largest value 8.5e-6 cu (bounds 1e-3 and 0.1 cu); error norm 2.6e-10 relative (bound 1e-6); the same
+  branches. Thus the layout of PairBlocks builds the same operator as the CSR matrix on production data.
+- D3 (18:36 … 18:43 UTC, 2 processes; local copy remote_20261024_box11/D3/, md5 verified): PASS.
+  - D3a (B_d53P, injection 1e-3 in the product calls 100, 700, 1300 and 2000 inside the tries; windows 8 and 144; 259
+    tries done twice): 4 tries with a difference, the 4 injections (matched by dt: 7.750e-12, 7.656e-12, 2.306e-12,
+    7.916e-12); first part "spmv" in stage 3, 3, 3 and 1 (the products 4, 4, 4 and 2 of the try invocations 17, 117, 217
+    and 334; 3 in a first try, 1 in a second try), relative difference 9.99e-4 … 1.00e-3 at the injected entry, 1 entry
+    above the noise. No other difference; exit code 0.
+  - D3b (ABP, the cycle in single precision; windows 8 and 144, 2 repetitions; 504 tries done twice, 1008 try
+    evaluations): 0 differences at the threshold 0, the window ends of the 2 repetitions bitwise equal, mismatch 0,
+    the stored stray field used in all 6306 calls; exit code 0.
+- D4 started 18:44 UTC (d4.sh): H3_d53P_a (B_d53P, --k1_thr 0 0) and H3_d53 (B_d53, rate control) in parallel; then
+  H3_d53P_b and fillers of the rate control. Expected end about 05:00 … 06:00 UTC (estimate).
