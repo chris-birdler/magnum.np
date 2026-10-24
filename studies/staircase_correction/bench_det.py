@@ -16,6 +16,7 @@ and the peak of the added GPU memory of one product.
     CUDA_DEVICE=0 python bench_det.py --ref refB.pt --k0 8 144 --json out.json -- <run_loops arguments>
 """
 import argparse
+import hashlib
 import json
 import pathlib
 import statistics
@@ -97,7 +98,7 @@ def main(argv):
                 for r in range(a.reps):
                     s = r % len(M)
                     d = (f(M[s].clone().reshape(-1)) - first[s]).abs()
-                    n_neq += (d.max() > 0).long()
+                    n_neq += ((d.max() > 0) | ~torch.isfinite(d).all()).long()     # a NaN is not equal
                     d_max = torch.maximum(d_max, d.max().double())
                 torch.cuda.synchronize()
                 wall = time.time() - t0
@@ -109,7 +110,8 @@ def main(argv):
                     e1.record()
                 torch.cuda.synchronize()
                 ms = statistics.median(e0.elapsed_time(e1) for e0, e1 in ev)
-                res[nm] = {"rel_diff_to_csr": d_csr, "reps": a.reps, "not_bitwise_equal": int(n_neq),
+                md5 = [hashlib.md5(h.cpu().numpy().tobytes()).hexdigest() for h in first]  # across processes
+                res[nm] = {"rel_diff_to_csr": d_csr, "reps": a.reps, "not_bitwise_equal": int(n_neq), "md5_first": md5,
                            "largest_repeat_diff": float(d_max), "ms_per_product": ms, "peak_extra_MiB": peak / 2 ** 20,
                            "wall_s_reps": wall}
                 print("[bench] %s %-8s: relative difference to csr %.3e; %d of %d repeats not bitwise equal (largest "

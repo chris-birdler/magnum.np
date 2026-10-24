@@ -967,99 +967,146 @@ verified). "Point p" of a window k0 is the end of the sample interval k0 + p (po
 (no cuSPARSE) 0 in 61 760. Decision of Chris: option 1, an own sum per row in a fixed order, without cuSPARSE and
 without atomic additions. Mandate of Chris (2026-10-24, about 17:05 UTC): do all necessary steps, choose conservative
 criteria, and report at the end which verification was necessary and the measured speed gain. This section fixes the
-criteria before any GPU data of the patch exists.
+criteria before any GPU data of the patch exists, except the D1 measurement of the product alone (the review of the
+first version came during D1; its changes to D1 are marked).
 
 **Patch.** Commit e7ce6ca on perf/staircase-det (from df0f811): PairBlocks in demag_staircase.py. The merged blocks of
 each block row (the same merge as pair_matrix) are cut into chunks of C = 16 blocks; the last chunk of a row is padded
-with blocks of zero coefficients. Stage 1 sums the C blocks of each chunk, stage 2 the chunks of each row (padded table
-T); the result goes to unique rows with index_copy_. The operations are index_select, element-wise products, sums over
-a fixed axis and index_copy_ to unique indices: no cuSPARSE and no atomic additions. The interface `_A @ x` stays, so
-the tools see the product as the part "spmv". Local: test_staircase.py 34 of 34 pass (torch 2.7.1, CPU, exit code 0);
-4 new tests: against the pair sum with index_add_ and against the CSR product within 1e-12 of the largest value,
-bitwise repetition, the layout, float32, the build on the CPU with another default device.
+with blocks of zero coefficients and the source cell 0. Stage 1 sums the C blocks of each chunk, stage 2 the chunks of
+each row (padded table T); the result goes to unique rows with index_copy_. The operations are index_select,
+element-wise products, sums over a fixed axis and index_copy_ to unique indices: no cuSPARSE and no atomic additions.
+The interface `_A @ x` stays, so the tools see the product as the part "spmv". Local: test_staircase.py 34 of 34 pass
+(torch 2.7.1, CPU, exit code 0); 4 new tests: against the pair sum with index_add_ and against the CSR product within
+1e-12 of the largest value, bitwise repetition, the layout, float32, the build on the CPU with another default device.
 
-**Terms.** Event: a try of step_dump --k1_redo all whose second evaluation differs from the first by more than 1e-6
-tolerance units in the error estimate or by more than 1e-12 in x1 (the thresholds of outlier test 3). Try evaluation:
-one evaluation of a try (a try done twice gives 2). Redo difference: the largest difference of the second evaluation
-to the first in the error estimate and in x1. P tree: a code tree with the patch (name with the suffix P).
+**Terms.**
+- Event (of outlier test 3): a try of step_dump --k1_redo all whose second evaluation differs from the first by more
+  than 1e-6 tolerance units in the error estimate or by more than 1e-12 in x1, or by a non-finite value.
+- Difference: the same with the thresholds 0 (--k1_thr 0 0): any second evaluation that is not bitwise equal to the
+  first, or a non-finite value. step_dump records the table of the field terms for each difference.
+- Try evaluation: one evaluation of a try (a try done twice gives 2). Exposure: the try evaluations of the complete
+  runs of an arm (a run that ends with exit code 0).
+- First part: the first stage and record (field term, or the parts "spmv" and "centroid" of the correction) whose
+  output differs by more than --term_rel of its largest value (glitch_count; 1e-9 as in outlier test 3, 0 for the
+  P arms).
+- P tree: a code tree with the patch (name with the suffix P). Rate control (D4): the tree d538bde without the patch.
+  Detector control (D3): an injected fault. Control (D5): the drive control of section 14.
 
 **D1: the product on the GPU (bench_det.py, box 11).** Tree B_det (e7ce6ca); states k0 8 and 144 of refB.pt; float64
-and float32; modes csr (pair_matrix of the same merged blocks), eager (PairBlocks @ m) and compiled (torch.compile of
-block_sum); 20 000 products per mode and precision; 2 processes at the same time, each with its own compile cache (as
-stress test 3).
-- Pass of a mode: in both processes, 0 of 20 000 products differ bitwise from the first product on the same state; in
-  float64, the largest difference to csr is at most 1e-11 of the largest value of csr. (The local tests use 1e-12 with
-  rows of at most about 100 terms; production rows have up to 720 terms. 1e-11 of the largest value is about 3e-3 cu
-  at the largest entry, estimate; the bound of T1 is 0.1 cu; the smallest observed fault was 5.2e-5.) Float32: the
-  difference to csr is information; T2 tests the single-precision accuracy.
-- Choice: compiled if it passes, agrees with eager in float64 within 1e-11 of the largest value, and its median time
-  per product in float32 is at most 2/3 of eager in both processes; else eager. If neither passes: stop and report.
+and float32; modes csr (pair_matrix of the merged blocks, read back from the PairBlocks layout), eager (PairBlocks @ m)
+and compiled (torch.compile of block_sum); 20 000 products per mode and precision; 2 processes at the same time, each
+with its own compile cache (as stress test 3).
+- Pass of the mode eager or compiled: in both processes, 0 of 20 000 products differ bitwise from the first product on
+  the same state; in float64, the largest difference to csr is at most 1e-11 of the largest value of csr. (The local
+  tests use 1e-12 with rows of at most about 100 terms; production rows have up to 720 terms. 1e-11 of the largest
+  value is about 3e-3 cu at the largest entry, estimate; the bound of T1 is 0.1 cu; the smallest observed fault was
+  5.2e-5.) csr itself is information (the cuSPARSE product is not bitwise reproducible). Float32: the difference to
+  csr is information; T2 tests the single-precision accuracy.
+- Choice (changed after the review): if both modes pass, compiled if it agrees with eager in float64 within 1e-11 of
+  the largest value and its median time per product in float32 is at most 2/3 of eager in both processes, else eager;
+  if one mode passes, that mode; if none passes: stop and report.
+- Limit: the csr reference is read back from the layout, so D1 does not test the build of the layout. D1b does.
 - If compiled is chosen: block_sum gets @torch.compile (as _kernel_product in demag.py of AB) in a new commit on
-  perf/staircase-det; test_staircase.py again. D3 and D4 then test the shipped code.
+  perf/staircase-det; test_staircase.py again; D3, D4 and D5 then test the shipped code. bench_det records the md5 of
+  the first products from this version on (bitwise equality between processes, information).
+
+**D1b: the operator on production data before D4 (T1, B_d53 → B_d53P).** t12p.sh functions r64 and cmp1 on the 16
+states of refB.pt, double precision. Pass: the T1 criteria of 14a (RMS of the equivalent field difference at most
+1e-3 cu, largest value at most 0.1 cu, energies, error norm). Fail: stop and report. This tests the build of the
+layout and the full correction against the CSR code on production states.
 
 **D2: ports (local, beside D1).** The patch (and the commit of D1, if any) by cherry-pick, on its own branch for each
 tree with the CSR product: perf/staircase-det-01e (from 01ed90c), perf/staircase-det-c56 (c56c0a5),
 perf/staircase-det-d53 (d538bde), perf/staircase-det-ba4 (b750b1d), perf/speed-all-det (7f755a0). Checks: the git diff
 of each port against its parent changes only demag_staircase.py and test_staircase.py, with the same changed lines as
 perf/staircase-det; test_staircase.py passes in each port (torch 2.7.1, CPU; the only tests that use the changed
-module). Box trees: B_01eP, B_c56P, B_d53P, B_df0P (= B_det), BA4P, ABP.
+module). A failed check: stop, find the cause, report. Box trees: B_01eP, B_c56P, B_d53P, B_df0P (= B_det), BA4P, ABP.
 
-**D3: detector control and GPU smoke (B_d53P; k1_inject.py --spmv).** One arm with --k1_redo all, --k1_reps 1 and the
-windows k0 8 and 144 (--k1_ck 8 144). In 4 chosen calls of the product inside tries, the largest entry of the product
-is changed by the relative amount 1e-3. Pass: the field-term names of step_dump contain "spmv"; each injected call
-gives one event whose first differing part is "spmv" in the stage of the injection; no other event; the redo
-difference is exactly 0 in all other tries. This shows that the tool sees a fault of the new product, and that the
-patched code repeats bitwise in the dynamics.
+**D3: detector control and GPU smoke.**
+- D3a (B_d53P; k1_inject.py --spmv): one arm with --k1_redo all, --k1_thr 0 0, --k1_reps 1 and the windows k0 8 and
+  144 (--k1_ck 8 144). In 4 chosen product calls inside tries (100, 700, 1300, 2000), the largest entry of the product is
+  changed by the relative amount 1e-3; k1_inject logs the try invocation, t, dt and the product number of each
+  injection. Pass: the field-term names of step_dump contain "spmv"; each injection gives one difference whose first
+  part (--term_rel 0) is "spmv" in the stage of the injection (matched by t and dt); there is no other difference;
+  exit code 0. This shows that the tool sees a fault of the new product and that the patched code repeats bitwise in
+  the dynamics.
+- D3b (ABP, the production precision: the B arguments without --precision_cycles double, so the cycle runs in single
+  precision with the compiled kernels of AB): one arm with --k1_redo all, --k1_thr 0 0, --k1_reps 2, windows k0 8 and
+  144. Pass: 0 differences and exit code 0. A difference: stop and report with its first part (Chris decides). If the
+  tool cannot run this arm in single precision: a limit that I report.
 
-**D4: outlier test 3 on the patched tree.** Arms H3_d53P (B_d53P) and H3_d53 (B_d53, the control without the patch),
-each with the job of H2_d53 (refB.pt, the 17 windows, --k1_reps 18, --k1_redo all), in parallel: 2 processes on the GPU
-all the time (the condition of all observed faults), no other process on the GPU. If one arm ends first, it starts
-again with a new output file until the other arm ends; the try evaluations and events of the repeat count for its arm.
-- Pass: (i) H3_d53P has 0 events in at least 68 266 try evaluations (the count of H2_d53); (ii) in H3_d53P the redo
-  difference is exactly 0 in every try; (iii) H3_d53 has at least 3 events (the test has the sensitivity of outlier
-  test 3).
-- At the pooled rate of d538bde (6.9e-5 per try evaluation), 68 266 try evaluations give 4.7 expected events. If the
-  patch did not change the rate, 0 events in H3_d53P has the probability of about 0.009.
-- If (iii) fails: both arms run the same job again (new output files), at most 2 times; the counts add. If the control
-  then has fewer than 3 events: stop and report (not determined).
-- An event in H3_d53P: stop and report. Its first differing part "spmv" or the correction: the patch fails. Another
-  part: a finding (the faults are then not only in the cuSPARSE path). A redo difference above 0 but without an event:
-  the patch fails if its first differing part is "spmv" or the correction; else a finding that I report with its
-  numbers (the patch does not touch that term).
+**D4: outlier test 3 on the patched tree (changed after the review).** P arm H3_d53P (B_d53P, --k1_thr 0 0) and rate
+control H3_d53 (B_d53, the thresholds of outlier test 3), each with the job of H2_d53 (refB.pt, the 17 windows,
+--k1_reps 18, --k1_redo all). The P arm runs the job twice, one run after the other (H3_d53P_a, H3_d53P_b). 2 processes
+on the GPU all the time (the condition of all observed faults), no other process. An arm whose main runs end first
+runs fillers of 2 repetitions (new output files) until the main runs of the other arm have ended; the filler that runs
+then is stopped by its PID: its log is read for events and differences, its exposure is not counted.
+- Test, fixed now: under the hypothesis that the patch did not change the rate per try evaluation, and given n_C events
+  of the rate control and 0 in the P arm, the probability that all events fall into the rate control is
+  p = (E_C / (E_C + E_P))^n_C. E_P: exposure of the P arm. E_C: exposure of the rate control, with H2_d53 pooled
+  (68 266 try evaluations, 4 events; the same code, job, box and condition). n_C: events of the complete rate-control
+  runs (H2_d53 and H3_d53) whose first part (--term_rel 1e-9) is "spmv".
+- Pass: (i) no difference in any run of the P arm (complete runs and stopped fillers), no non-finite value, all P runs
+  with exit code 0; (ii) p at most 0.01.
+- Expected (estimate): E_P about 136 500, E_C about 68 300 + 136 500; at the pooled old rate (6.9e-5) n_C about 4 + 9.4;
+  p about 0.6^13 = 0.001. p at most 0.01 needs n_C of at least 10. If the patch had the old rate, the P arm would have
+  about 9.4 expected events (probability of 0 about 8e-5).
+- p above 0.01 with (i) true: one extension (both arms the same again: P one more job of 18 repetitions, the rate
+  control fillers); then p again. If p is still above 0.01: stop and report (not determined).
+- A difference in the P arm, a non-finite value or a P run with an exit code other than 0: D4 is not passed; stop and
+  report with the first part (Chris decides). (A first part other than "spmv" means that the fault or the
+  non-reproducibility is not only in the cuSPARSE path.) A rate-control run with an exit code other than 0: its
+  exposure and events are not counted; I report it.
 
 **D5: K1 (T4) of the B side with the P trees.** The reference refB.pt stays: all arms start from its checkpoints, T1 and
 T2 use its states, and the arm B_c63 (no sparse product) stays valid. New arms (k1.sh, 2 at a time, each with its own
 compile cache): B_d53P base, a repetition of the B_d53P base, its control and 3 null runs; B_01eP, B_c56P, B_df0P;
-BA4P base, its control and 3 null runs; ABP (AB on). 14 arms.
-- Pilot (base arms, controls, null runs): the rules of the T4 pilot of 14a. New: the two base arms of B_d53P must be
-  bitwise equal in all windows (m, t, dt, try records), because the P code has no known source of non-reproducibility.
-  If they are not: a finding that I report; the pilot then uses the rules of 14a only.
-- BA4 window 48: in the old pilot it had no determined point (the outlier in the CSR product). With BA4P each window
-  must have a determined point (rule D). If not: stop and report.
+BA4P base, its control and 3 null runs; ABP (AB on). 15 arms.
+- Pilot (base arms, controls, null runs): the rules of the T4 pilot of 14a. Information: the two base arms of B_d53P
+  are expected to be bitwise equal in all windows (m, t, dt, try records), because D3 and D4 show no source of
+  non-reproducibility in one process; if they are not, I report it as a finding, and the pilot uses the rules of 14a.
+- BA4 window 48: in the old pilot it had no determined point (the outlier in the CSR product). With BA4P, each window
+  must have a determined point (rule D of the pilot). If not: stop and report.
 - Pairs: PLAN 10 (B_c63 → B_01eP), B5 (B_01eP → B_c56P), B4 (B_c56P → B_d53P), B1 (B_d53P → B_df0P; D and C1 as
-  information, the B1 cache count), A4 (B_df0P → BA4P), AB on (BA4P → ABP). Criteria: those of 14a T4 (D, C1, C2, the A4
-  rule).
+  information, the B1 cache count), A4 (B_df0P → BA4P), AB on (BA4P → ABP). Criteria: those of 14a T4 (D, C1, C2; the
+  A4 rule with at least 12 of 17 windows with judged points).
 
-**D6: T1, T2 and T6 with the P trees.** t12.sh, the B chain with the P trees: c63e862 → B_01eP → B_c56P → B_d53P →
+**D6: T1, T2 and T6 with the P trees.** t12p.sh, the B chain with the P trees: c63e862 → B_01eP → B_c56P → B_d53P →
 B_df0P (T6) → BA4P → ABP; the states of refB.pt; the criteria of 14a.
 
 **D7: T5, the speed measurement and G.** T5 for ABP: config.json as for AB, and the git diff of ABP against AB changes
 only the patch. The speed measurement of section 14 with ABP as the new code (old: 9e0ea7c with the correction off,
 c63e862 with the correction on); G from these runs.
 
-**Pass of the patch.** D1, D3 and D4 pass, and the pairs pass D5, D6 and T5. Then PLAN 10, B5, B4, B1, A4 and AB on pass
-with the patch as section 14a defines.
+**Pass of the patch.** D1, D1b, D3, D4 pass, the pairs pass D5, D6 and T5, and ABP passes G. Then PLAN 10, B5, B4, B1,
+A4 and AB on pass with the patch as section 14a defines.
 
-**Tools.** glitch_stress.py --idx and csr_hist.py read `_A.crow_indices()` and stop with an error on a P tree; they are
-not used on P trees. step_dump.py stops with an error if a correction of the pair form has no `_A` (before, the part
-"spmv" was left out without a message).
+**Tools.** step_dump --k1_thr (event thresholds; a non-finite difference is an event); glitch_count reports the tries
+with a difference above 0, the non-finite values and the events above the thresholds of outlier test 3, and writes them
+to a json file; bench_det counts a non-finite product as not equal. glitch_stress.py --idx and csr_hist.py read
+`_A.crow_indices()` and stop with an error on a P tree; they are not used on P trees. step_dump.py stops with an error
+if a correction of the pair form has no `_A` (before, the part "spmv" was left out without a message).
 
-**Limits.** D4 tests one tree (B_d53P). The other P trees have the same lines of PairBlocks (checked in D2); their
-dynamics are tested by the K1 windows, with fewer tries.
+**Limits.**
+- D4 tests one tree (B_d53P) in double precision. The other P trees have the same lines of PairBlocks (checked in D2);
+  their dynamics are tested by the K1 windows, with fewer tries. The single-precision path of production is tested by
+  D1 (the product alone, back to back: stress test 3 showed that this condition did not show the old fault), D3b (a
+  short arm of ABP), T2 and G.
+- The padding gathers m of the source cell 0 with zero coefficients. A non-finite value in m of cell 0 goes into all
+  padded rows (in the CSR product only into the rows with that column). This changes only a run that is already
+  invalid (a non-finite m); it does not change a finite result.
+- No rule limits the peak GPU memory; the speed measurement reports it.
 
-**Order.** D1, with D2 locally at the same time → D3 → D4 → D5 → D6 → D7 → report → download with md5 → destroy box 11
-(standing go of Chris, 2026-10-24).
+**Order.** D1, with D2 locally at the same time → D1b → D3 → D4 → D5 → D6 → D7 → report → download with md5 → destroy
+box 11 (standing go of Chris, 2026-10-24).
 
-**Cost (estimate).** D1 about 0.5 h, D3 about 0.5 h, D4 about 5 … 6 h (each repeat about 5 … 6 h more), D5 about 2 h,
-D6 about 1.5 h, D7 about 4 h: about 14 h of box 11, about 2.3 $ at 0.162 $/h (with 2 repeats of D4 about 26 h,
-4.2 $). Credit 13.52 $ (2026-10-24, about 17:06 UTC).
+**Cost (estimate).** D1 about 0.5 h, D1b about 0.3 h, D3 about 0.7 h, D4 about 10 … 11 h (an extension about 5 … 6 h
+more), D5 about 2 h, D6 about 1.5 h, D7 about 4 h: about 19 h of box 11, about 3.1 $ at 0.162 $/h (with the extension
+about 25 h, 4.0 $). Credit 13.52 $ (2026-10-24, about 17:06 UTC).
+
+**Review.** A context-free review of the first version of this section (2026-10-24, during D1) gave 9 points; all are
+in this version: the counting of D4 with stopped fillers and crashed runs; a real test level for D4 (the first rule, 0
+events and at least 3 in the rate control, had only p 0.125); differences below the event thresholds and their first
+part; non-finite values in the tools; the D1 reference read back from the layout (D1b), the gap in the choice rule, the
+md5 between processes; the single-precision coverage (D3b); the logging of D3; the wording (three kinds of control,
+15 arms, G in the pass rule).

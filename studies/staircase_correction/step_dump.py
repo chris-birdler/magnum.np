@@ -46,7 +46,8 @@ does each try with a norm above 1.1 once more with the same input (t, x, dt; _tr
 the norm, the RMS and the index of the second try. A transient fault gives a normal second try. --k1_redo all does
 each try once more and compares the second try with the first: the error estimate in tolerance units (largest
 difference and its flat index) and x1 (largest difference). The output of each field term in each stage of the first
-try is copied into a fixed buffer; at a difference above THR_ERR tolerance units or THR_X1 in x1 (an event), the run
+try is copied into a fixed buffer; at a difference above THR_ERR tolerance units or THR_X1 in x1 (an event; the
+thresholds are set by --k1_thr; a non-finite difference is an event too), the run
 records for each stage and term the largest difference of the second try to the first and the count of entries above
 TERM_NOISE of the largest value. The first stage and term with a difference above the rounding noise names the part
 with the fault (later stages differ because their input differs). In the correction (DemagStaircaseCorrection), the
@@ -272,7 +273,7 @@ class TryRecord:
             n2, r2, i2 = self.scaled(x0, err2, atol, rtol)
             de = ((err2 - err).abs() / (atol + rtol * x0.abs())).flatten()
             derr, dimax, dx1 = float(de.max()), int(de.argmax()), float((x12 - x1).abs().max())
-            if derr > THR_ERR or dx1 > THR_X1:
+            if not (derr <= self.thr[0] and dx1 <= self.thr[1]):       # a non-finite difference is an event too
                 c = torch.stack([torch.stack([d.double(), i.double(), b.double(), n.double()])
                                  for _, _, d, i, b, n in self.cmp]).cpu()
                 terms = [{"stage": s, "term": self.names[j], "dev": float(c[k, 0]), "index": int(c[k, 1]),
@@ -334,6 +335,7 @@ def k1_main(a, rl):
         k1_null(a.k1_null)
     rec = TryRecord()
     rec.redo = a.k1_redo or False
+    rec.thr = tuple(a.k1_thr)
     lh = {"hit": 0, "miss": 0}
     from magnumnp.field_terms.demag import DemagField
     if hasattr(DemagField, "last_h"):                     # B1: count the uses of the stored stray field
@@ -450,7 +452,7 @@ def k1_main(a, rl):
         out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH + (REDO if a.k1_redo else ()) + (
             REDO_ALL if a.k1_redo == "all" else ())
         if a.k1_redo == "all":
-            out["redo_events"], out["redo_thr"] = rec.events, (THR_ERR, THR_X1)
+            out["redo_events"], out["redo_thr"] = rec.events, rec.thr
         out["mismatch"] = rec.mismatch
         out["last_h"] = dict(lh)
         for w in out["win"].values():
@@ -463,7 +465,7 @@ def k1_main(a, rl):
               flush=True)
         if a.k1_redo == "all":
             print("[step_dump] --k1_redo all: %d events (error estimate above %.0e tolerance units or x1 above %.0e)"
-                  % (len(rec.events), THR_ERR, THR_X1), flush=True)
+                  % (len(rec.events), rec.thr[0], rec.thr[1]), flush=True)
         raise SystemExit(3 if rec.mismatch else 0)
 
     magnumnp.LLGSolver.step = step
@@ -500,6 +502,9 @@ def main(argv):
     ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
     ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")
     ap.add_argument("--k1_reps", type=int, default=1, help="K1 arm: integrate each window this many times")
+    ap.add_argument("--k1_thr", type=float, nargs=2, default=[THR_ERR, THR_X1], metavar=("ERR", "X1"),
+                    help="--k1_redo all: event thresholds (error estimate in tolerance units, x1); 0 0 records each "
+                         "try with a difference (PLAN 14b, P arms)")
     ap.add_argument("--k1_redo", nargs="?", const="rejected", choices=["rejected", "all"],
                     help="K1: error RMS per try; do each try above 1.1 again (all: each try, with the field terms)")
     a = ap.parse_args(argv[:i])

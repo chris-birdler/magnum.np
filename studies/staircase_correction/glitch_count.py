@@ -15,10 +15,13 @@ field term whose output differs by more than --term_rel (relative to its largest
 """
 import argparse
 import json
+import math
 import pathlib
 import statistics
 
 import torch
+
+THR3 = (1e-6, 1e-12)   # event thresholds of outlier test 3 (step_dump THR_ERR, THR_X1)
 
 
 def main():
@@ -80,18 +83,40 @@ def redo_all(a, stem, wins, d):
     i_de, i_dx = fld.index("redo_derr"), fld.index("redo_dx1")
     rows = [row for w in wins for rs in w.values() for row in rs]
     thr_err, thr_x1 = d["redo_thr"]
-    print("%s: %d tries done twice; largest difference of the error estimate %.3e tolerance units, of x1 %.3e; "
-          "%d events (above %.0e tolerance units or %.0e in x1)"
-          % (stem, len(rows), max(r[i_de] for r in rows), max(r[i_dx] for r in rows), len(d["redo_events"]),
-             thr_err, thr_x1))
+    vals = [(r[i_de], r[i_dx]) for r in rows]
+    finite = [v for v in vals if math.isfinite(v[0]) and math.isfinite(v[1])]
+    n_bad = len(vals) - len(finite)                                   # a NaN would hide in max()
+    n_diff = sum(1 for v in vals if not (v[0] == 0 and v[1] == 0))   # non-finite included
+    e3 = [ev for ev in d["redo_events"] if not (ev["derr"] <= THR3[0] and ev["dx1"] <= THR3[1])]
+    print("%s: %d tries done twice (%d try evaluations); largest difference of the error estimate %.3e tolerance "
+          "units, of x1 %.3e; %d tries with a difference above 0, %d with a non-finite difference; %d events (above "
+          "%.0e tolerance units or %.0e in x1), %d of them above the thresholds of outlier test 3"
+          % (stem, len(rows), 2 * len(rows), max((v[0] for v in finite), default=0.0),
+             max((v[1] for v in finite), default=0.0), n_diff, n_bad, len(d["redo_events"]), thr_err, thr_x1, len(e3)))
+    if a.json:
+        p = pathlib.Path(a.json)
+        p.with_name(p.stem + "_redo_" + stem + p.suffix).write_text(json.dumps(
+            {"file": stem, "tries": len(rows), "try_evaluations": 2 * len(rows), "tries_with_difference": n_diff,
+             "non_finite": n_bad, "events": len(d["redo_events"]), "events_test3": len(e3), "thr": [thr_err, thr_x1],
+             "event_list": [{k: v for k, v in ev.items() if k != "terms"} | {"first": first_term(ev, a.term_rel)}
+                            for ev in d["redo_events"]]}, indent=1, default=str))
     for ev in d["redo_events"]:
-        first = next((t for t in ev["terms"] if t["scale"] > 0 and t["dev"] > a.term_rel * t["scale"]), None)
+        first = first_term(ev, a.term_rel)
         print("   event n %d dt %.4g: norm %.6g, second try %.6g; difference %.3e tolerance units at %d, x1 %.3e; "
               "first differing term: %s" % (ev["n"], ev["dt"], ev["norm"], ev["redo_norm"], ev["derr"], ev["dimax"],
                                             ev["dx1"], "none" if first is None else "stage %d %s (relative %.3e at %d%s)"
-                                            % (first["stage"], first["term"], first["dev"] / first["scale"],
+                                            % (first["stage"], first["term"], first["dev"] / first["scale"]
+                                               if first["scale"] > 0 else float("nan"),
                                                first["index"], "" if "count" not in first else
                                                ", %d entries above the noise" % first["count"])))
+
+
+def first_term(ev, rel):
+    """The first stage and term of an event whose output differs by more than rel of its largest value (rel 0: any
+    difference; a non-finite difference counts)."""
+    return next((t for t in ev["terms"]
+                 if not math.isfinite(t["dev"]) or (t["scale"] > 0 and t["dev"] > rel * t["scale"])
+                 or (rel == 0 and t["dev"] > 0)), None)
 
 
 def group(a, names, wins, fld, src):

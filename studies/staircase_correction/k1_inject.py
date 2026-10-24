@@ -64,10 +64,12 @@ def main(argv):
         if not hasattr(ds, "PairBlocks"):
             raise SystemExit("k1_inject: --spmv needs a tree with PairBlocks")
         f_mm, f_try_s = ds.PairBlocks.__matmul__, RKF45._try_step
-        st, calls = {"in_try": 0, "n": 0}, set(a.calls)
+        st, calls = {"in_try": 0, "n": 0, "inv": 0, "stage": 0, "t": None, "dt": None}, set(a.calls)
 
         def try_step_s(self, t, x, **k):
             st["in_try"] += 1
+            st["inv"] += 1                    # invocations of the try (step_dump --k1_redo all: first, second, ...)
+            st["stage"], st["t"], st["dt"] = 0, float(t), float(self._dt)
             try:
                 return f_try_s(self, t, x, **k)
             finally:
@@ -77,12 +79,14 @@ def main(argv):
             r = f_mm(self, x)
             if st["in_try"]:
                 st["n"] += 1
+                st["stage"] += 1
                 if st["n"] in calls:
                     j = int(r.abs().argmax())
                     r = r.clone()
                     r[j] = r[j] * (1.0 + a.spmv)
-                    print("[k1_inject] product call %d inside the tries: entry %d times (1 + %g)" % (st["n"], j, a.spmv),
-                          flush=True)
+                    print("[k1_inject] product call %d inside the tries: try invocation %d (t %.17g, dt %.6g), product %d "
+                          "of the invocation; entry %d times (1 + %g)" % (st["n"], st["inv"], st["t"], st["dt"],
+                                                                        st["stage"], j, a.spmv), flush=True)
             return r
 
         RKF45._try_step = try_step_s
