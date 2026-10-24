@@ -39,7 +39,7 @@ from magnumnp.field_terms.field_terms import LinearFieldTerm
 from magnumnp.field_terms.demag import demag_f, demag_g
 
 __all__ = ["DemagStaircaseCorrection", "DemagStaircaseFine", "NearCorrection", "staircase_cells", "centroid_offsets",
-           "centroid_field", "centroid_field_fourier", "pair_matrix"]
+           "centroid_field", "centroid_field_fourier", "pair_matrix", "pair_blocks", "PairBlocks"]
 
 NEWELL_P = 20          # Newell radius of DemagField (in cell diagonals), the same on both meshes
 SYM = ((0, 1, 2), (1, 3, 4), (2, 4, 5))   # 3x3 index -> component of (xx, xy, xz, yy, yz, zz)
@@ -72,7 +72,8 @@ def pair_matrix(tgt, src, cf, n_cells, dtype=None):
         return _pair_matrix_cpu(tgt, src, cf, n_cells, dtype)
 
 
-def _pair_matrix_cpu(tgt, src, cf, n_cells, dtype):
+def _merge_pairs(tgt, src, cf, n_cells, dtype):
+    """The pairs sorted by (t, s); the coefficients of pairs with the same (t, s) summed (CPU)."""
     tgt, src = tgt.cpu().long(), src.cpu().long()
     cf = cf.cpu()
     key, order = torch.sort(tgt * n_cells + src)
@@ -81,8 +82,12 @@ def _pair_matrix_cpu(tgt, src, cf, n_cells, dtype):
     if len(key) < len(inv):
         cf = torch.zeros(len(key), 6, dtype=cf.dtype).index_add_(0, inv, cf)
     cf = cf.to(dtype if dtype is not None else cf.dtype)
-    t, s = key // n_cells, key % n_cells
-    nb = len(key)
+    return key // n_cells, key % n_cells, cf
+
+
+def _pair_matrix_cpu(tgt, src, cf, n_cells, dtype):
+    t, s, cf = _merge_pairs(tgt, src, cf, n_cells, dtype)
+    nb = len(t)
     if 9 * nb >= 2 ** 31:
         raise ValueError("pair_matrix: %d entries do not fit int32 indices" % (9 * nb))
     K = torch.bincount(t, minlength=n_cells)                         # blocks per block row
@@ -97,6 +102,64 @@ def _pair_matrix_cpu(tgt, src, cf, n_cells, dtype):
         col[pos] = (3 * s[:, None] + c3).reshape(-1).to(torch.int32)
         val[pos] = cf[:, list(SYM[a])].reshape(-1)
     return torch.sparse_csr_tensor(crow.to(torch.int32), col, val, size=(3 * n_cells, 3 * n_cells))
+
+
+def pair_blocks(tgt, src, cf, n_cells, dtype=None, chunk=16):
+    """The pair sum of pair_matrix as PairBlocks: the same merged pairs, summed in a fixed order. Built on the CPU,
+    also when magnum.np set the default device to a GPU."""
+    with torch.device("cpu"):
+        return _pair_blocks_cpu(tgt, src, cf, n_cells, dtype, chunk)
+
+
+def _pair_blocks_cpu(tgt, src, cf, n_cells, dtype, C):
+    t, s, cf = _merge_pairs(tgt, src, cf, n_cells, dtype)
+    rows, K = torch.unique_consecutive(t, return_counts=True)       # block rows with blocks, blocks per row
+    if len(torch.unique(rows)) != len(rows):
+        raise ValueError("pair_blocks: a block row occurs twice")  # the write h[rows] must not accumulate
+    nch = (K + C - 1) // C                                           # chunks per row
+    n_chunk, n_rows = int(nch.sum()), len(rows)
+    if (n_chunk + 1) * C >= 2 ** 31:
+        raise ValueError("pair_blocks: %d blocks do not fit int32 indices" % ((n_chunk + 1) * C))
+    r = torch.repeat_interleave(torch.arange(n_rows), K)             # row of each block
+    j = torch.arange(len(t)) - (torch.cumsum(K, 0) - K)[r]           # place of each block in its row
+    c0 = torch.cumsum(nch, 0) - nch                                  # first chunk of each row
+    slot = (c0[r] + j // C) * C + j % C
+    S = torch.zeros((n_chunk + 1) * C, dtype=torch.int32)            # padding: source cell 0 with zero coefficients
+    V = torch.zeros(6, (n_chunk + 1) * C, dtype=cf.dtype)            # chunk n_chunk: zeros only (padding of T)
+    S[slot] = s.to(torch.int32)
+    V[:, slot] = cf.T
+    k = torch.arange(n_chunk) - torch.repeat_interleave(c0, nch)     # place of each chunk in its row
+    T = torch.full((n_rows, int(nch.max()) if n_rows else 1), n_chunk, dtype=torch.int32)
+    T[torch.repeat_interleave(torch.arange(n_rows), nch), k] = torch.arange(n_chunk, dtype=torch.int32)
+    return PairBlocks(V.reshape(6, n_chunk + 1, C), S.reshape(n_chunk + 1, C), T, rows, n_cells)
+
+
+def block_sum(V, S, T, m):
+    """The two stages of PairBlocks. V [6, n_chunk + 1, C] coefficients, S [n_chunk + 1, C] source cells, T [n_rows, L]
+    chunks of each row, m [n_cells, 3] -> h [n_rows, 3]."""
+    g = m.index_select(0, S.reshape(-1)).reshape(S.shape + (3,))
+    p = sym_matvec(V.movedim(0, -1), g).sum(-2)                     # stage 1: sum over the blocks of each chunk
+    return p.index_select(0, T.reshape(-1)).reshape(T.shape + (3,)).sum(-2)   # stage 2: over the chunks of each row
+
+
+class PairBlocks:
+    """The pair sum h_t = sum_s C_ts m_s of pair_matrix, summed in a fixed order, without cuSPARSE and without atomic
+    additions (PLAN 14b; the cuSPARSE product had transient faults, PROTOKOLL 3.40). The merged blocks of each block
+    row t (target cell) are cut into chunks of C blocks; the last chunk of a row is padded with blocks of zero
+    coefficients. Stage 1 sums the blocks of each chunk, stage 2 the chunks of each row (T is padded with one added
+    chunk of zeros). Only gather, element-wise operations and sums over a fixed axis, and a write to unique rows: the
+    result is bitwise the same on repetition. A @ x as for the matrix (x and the result flat, size 3 n_cells), so the
+    tools that wrap the product of the correction (step_dump.SparsePart) see this product."""
+
+    def __init__(self, V, S, T, rows, n_cells):
+        self.V, self.S, self.T, self.rows, self.n_cells = V, S, T, rows, n_cells
+
+    def to(self, device):
+        return PairBlocks(self.V.to(device), self.S.to(device), self.T.to(device), self.rows.to(device), self.n_cells)
+
+    def __matmul__(self, x):
+        m = x.reshape(-1, 3)
+        return torch.zeros_like(m).index_copy_(0, self.rows, block_sum(self.V, self.S, self.T, m)).reshape(-1)
 
 
 def blocks(fine, q):
@@ -373,7 +436,7 @@ class DemagStaircaseCorrection(LinearFieldTerm):
                 tg += [t[a], nc.J[b]]
                 sr += [nc.J[a], t[b]]
                 cf += [CA[a], CB[b]]
-            self._A = pair_matrix(torch.cat(tg), torch.cat(sr), torch.cat(cf), nc.N ** 3, dtype=dt).to(dev)
+            self._A = pair_blocks(torch.cat(tg), torch.cat(sr), torch.cat(cf), nc.N ** 3, dtype=dt).to(dev)
             del tg, sr, cf
         self._shape = tuple(state.mesh.n)
         self._ready = True
