@@ -2513,6 +2513,15 @@ box.
   sparse product (a fault of one FFT would spread over the grid); not yet shown. The fault was in the second try; the
   run uses the first try, so this event did not change the trajectory. The cell differs from the cell of the replay
   outlier (504 660 = (43, 28, 84)).
+- Refined tool (commit 3777c96, night rule): the sparse product (_A @ m) and centroid_field are recorded as the parts
+  "spmv" and "centroid" of the correction, and each row of the event table gives the count of entries above 1e-9 of
+  the largest value. Local test (as above): the clean run is bitwise equal to the run with --k1_redo (rows and m); a
+  fault injected into the sparse product (stage 3) gives first "spmv" in stage 3 with 1 entry, then the correction
+  with 1 entry, and "centroid" 0; a fault injected into centroid_field (stage 2) gives first "centroid" in stage 2 with
+  1 entry, then the correction with 1 entry, and "spmv" 0.
+- Swap of the d538bde arm: H_d53 stopped by PID at 03:11 UTC (54 min, 1 event; its try count is not saved, the event
+  is in H_d53.log). H2_d53 (refined tool, 18 repetitions) started at 03:12 UTC. H_c63 runs on with the first tool
+  version (the table of the terms is the same), so that 2 runs are on the GPU all the time.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
