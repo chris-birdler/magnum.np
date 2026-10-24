@@ -8,7 +8,8 @@ given time, in turn on each state (a new tensor of m each time, as in the stages
 that reads data of the evaluation before (a stale buffer) gives a large difference; with one state it does not.
 Each result is compared with the first result on the same state. An event is a result with a difference above the
 threshold. For each event: the cell of the largest difference, its volume fraction (material Ms / largest Ms) and
-whether the sparse matrix of the correction has a row for the cell. Then stop.
+whether the sparse matrix of the correction has a row for the cell (row_nnz: entries of the 3 rows of the
+cell; row_start and row_len: position and length of the row of the index in the CSR arrays). Then stop.
 
 Parts: try (one RKF45 try, RKF45._try_step of the tree: six stages, increment, error estimate; the try dt is the
 median dt of the accepted tries in the interval k0 + 1 of the reference that are not clamped to the rest of the
@@ -74,9 +75,10 @@ def main(argv):
         mod = sys.modules[type(corr).__module__]
         Ms = state.material["Ms"].reshape(-1).expand(state.m[..., 0].numel())
         frac = (Ms / Ms.max()).cpu()
-        rows = None
+        rows = crow = None
         if hasattr(corr, "_A"):
-            rows = (corr._A.crow_indices()[1:] - corr._A.crow_indices()[:-1]).reshape(-1, 3).sum(-1).cpu()
+            crow = corr._A.crow_indices().cpu()
+            rows = (crow[1:] - crow[:-1]).reshape(-1, 3).sum(-1)
         n_cut = int(((frac > 0) & (frac < 1)).sum())
         print("[stress] %s: %d cells, %d cut cells (0 < fraction < 1), %s cells with a row of the sparse matrix; "
               "states k0 %s, try dt %s" % (state.m.dtype, frac.numel(), n_cut,
@@ -86,7 +88,9 @@ def main(argv):
         def where(j):
             cell = j // 3
             return {"index": j, "cell": cell, "comp": j % 3, "fraction": float(frac[cell]),
-                    "row_nnz": None if rows is None else int(rows[cell])}
+                    "row_nnz": None if rows is None else int(rows[cell]),
+                "row_start": None if crow is None else int(crow[j]),
+                "row_len": None if crow is None else int(crow[j + 1] - crow[j])}
 
         for j in a.idx:
             out["cells"][j] = where(j)

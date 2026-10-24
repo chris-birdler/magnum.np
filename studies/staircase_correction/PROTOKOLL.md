@@ -2587,6 +2587,18 @@ box.
   fault below about 1e-5 in a late stage of a try with a normal norm stays below 1.1 and is accepted, with an error
   of about 1e-6 in m (10 times atol) at one cell. Thus the rejection of RKF45 does not give a reliable protection; an
   accepted fault is possible, though none was seen.
+- Outlier test 3, fifth event (found at 07:05 UTC; H2_d53; sample interval 180, dt 7.79e-12): first try norm 0.781
+  (equal to the reference, window 176 row 61: 0.781440), second try 6.42 (faulty, rejected). Stages 0 … 3: all
+  parts equal within rounding. Stage 4: the sparse product differs in 1 entry by 2.07e-5 (9.3e-5 of its largest
+  value) at the flat index 2 605 404 (cell 868 468 = (74, 49, 40), x component).
+- Observation (not used for a conclusion): the event cells are (43, 28, 84) (replay; index of the largest error, y
+  component), (46, 75, 79), (87, 50, 94), (103, 33, 94), (103, 87, 40) and (74, 49, 40). k 94 and k 40 occur twice
+  each, and the 4 entries that the refined tool names directly are all x components (flat index divisible by 3).
+  Under a uniform distribution, all 4 in one component has the probability 3/81 (about 0.04); the k coincidences are
+  of a similar order (estimate; the cut cells are not uniform in k). A pattern of the CSR row position would point to
+  the partition of the work in the cuSPARSE kernel and not to a random fault of the hardware. Stress test 3 (commit
+  of this entry) adds the 3 new event cells to --idx and gives for each index the start and the length of its row
+  in the CSR arrays.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
