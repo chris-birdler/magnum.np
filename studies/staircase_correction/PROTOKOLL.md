@@ -2654,6 +2654,11 @@ box.
   needs a condition of the dynamics (other kernels of the same process between the products, new inputs). This does
   not change the cause (the cuSPARSE path, row pattern above); it means that a test of a patch needs the dynamics
   (outlier test 3 on the patched tree), not stress test 3.
+- Stress test 3, process a complete (end 11:27 UTC, exit 0): 3 parts of 1 h, 423 000 + 460 800 + 416 200 =
+  1 300 000 products, 0 events; largest difference 2.6e-16 in all parts. First hour of process b (parallel on the
+  same GPU): 415 800 products, 0 events. Sum to 11:29 UTC: 1 715 800 products, 0 events. Expected at the pooled rate
+  per product of the dynamics (1.1e-5): 18.9 events, probability of 0 about 6e-9; at its lower bound (4.9e-6):
+  8.4 events, probability of 0 about 2e-4. This confirms the reading of 10:27 UTC. GPU ECC counters stay 0.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
