@@ -2624,6 +2624,18 @@ box.
   row start in the CSR arrays and the row index show no pattern modulo 32 … 1024. The share of the rows with the
   length 513 in geometry B decides whether this is a pattern: csr_hist.py (box11/csr_hist.sh, on the CPU of the box
   beside the GPU runs, from 09:32 UTC) gives the histogram of the row lengths.
+- Result of csr_hist (09:38 UTC; log local in remote_20261023_box11/csr with md5): 3 779 136 rows, 980 160 with
+  entries, 215 042 976 entries; row length 3 … 720, median 153. Rows of length 513: 4 607 (0.0047 of the rows with
+  entries, 0.011 of the entries); rows longer than 512: 0.204. If a fault hits a random row, 3 or more of 5 rows of
+  length 513 have the probability 1.0e-6 (each row with the same weight) or 1.3e-5 (weight by the entries). If any
+  length that occurs 3 times counted (the value 513 was found after the data), the probability is at most 0.014
+  (rows) or 0.004 (entries) (bound from the largest share of one length, 0.037 and 0.020). The 3 cells have the
+  same volume fraction 5/64, thus the same local geometry; this is one pattern, not two.
+- Reading: the faults depend on the structure of the matrix (row length 513 = 2^9 + 1), so they are faults of the
+  software path (cusparseSpMV with CUSPARSE_SPMV_ALG_DEFAULT, called by torch), not random faults of the arithmetic
+  of the GPU: cause (b) is improbable. The same call with the same input is correct in most calls, thus the fault is
+  transient (a race or a dependency on the timing); in the first hour of stress test 3 (products back to back,
+  second process on the GPU) it did not occur.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
