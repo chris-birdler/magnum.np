@@ -2560,6 +2560,18 @@ box.
   short tests (1 process, other settings). No event: the fault needs the context of the dynamics. --idx gives the row
   length and the volume fraction of the 3 known event cells and of the cell of the normal maximum. Cost: about 0.5 $
   (3 h at 0.162 $/h).
+- Outlier test 3, third event (found at 05:58 UTC; H2_d53; d538bde, sample interval 113, dt 7.62e-12). This time the
+  first try was the faulty one: norm 4197 (rejected), second try 0.687. Stage 0 (bitwise equal input in both tries):
+  the sparse product differs in 2 entries, the largest by 5.75e-2 (0.256 of its largest value) at the flat index
+  3 615 150 (cell 1 205 050 = (103, 33, 94), x component); the correction differs in the same 2 entries; all other
+  terms of stage 0 are equal. From stage 1 on, all parts differ. Thus one call of the sparse product with the same
+  input as the other call gave 2 wrong entries. The fault was in the try that the run uses; the run rejected it,
+  thus the step sequence changed (smaller dt), but no faulty try was accepted. The cell is the fourth different cell;
+  two of the four cells have k 94 (probability of such a coincidence among 4 cells about 0.05; not used).
+- State of outlier test 3 at 06:00 UTC: d538bde 3 events (H_d53 1, H2_d53 2), all in the correction; the 2 events
+  with the refined tool name the sparse product as the first part, in stage 1 (1 entry) and in stage 0 (2 entries).
+  Faulty try: 2 in the second try, 1 in the first try, so the comparison pass of the tool does not make the fault.
+  Accepted faults: 0. c63e862: 0 events.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
