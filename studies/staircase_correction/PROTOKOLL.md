@@ -2599,6 +2599,20 @@ box.
   the partition of the work in the cuSPARSE kernel and not to a random fault of the hardware. Stress test 3 (commit
   of this entry) adds the 3 new event cells to --idx and gives for each index the start and the length of its row
   in the CSR arrays.
+- Outlier test 3, result of d538bde (H2_d53, end 08:19 UTC; glitch_count --reps; files local in
+  remote_20261023_box11/H with md5): 18 repetitions of 17 windows, 34 133 tries, each done twice (68 266 try
+  evaluations, 409 596 sparse products). 4 events, all with the sparse product as the first differing part (sizes
+  above). Rate per try evaluation 5.9e-5 (Poisson 95 % interval 1.6e-5 … 1.5e-4), per sparse product 9.8e-6. Pooled
+  with the tries before (4 in 48 424): 8 in 116 690, 6.9e-5 (3.0e-5 … 1.35e-4), per sparse product 1.1e-5. H_d53
+  (1 event, try count not saved) is not in the rate. Faulty try (from the reference, all 5 events of test 3): 4 in the
+  second try, 1 in the first. Accepted faults: 0 of 5.
+- Window ends of H2_d53 against repetition 0: 288 of 289 agree within 2.6e-11 in m (rounding noise). Window 112,
+  repetition 16 differs by 1.5e-7: there the first try was faulty (event at interval 113), the run rejected it and
+  went on with a smaller dt, thus with another step sequence. Thus also a rejected fault changes the trajectory, at
+  the level of the tolerance of the integrator (atol 1e-7), as in the replay (3.7e-8).
+- Change of plan (night rule, 08:22 UTC): H_c63 runs longer than estimated (still running at 08:22). The first
+  process of stress test 3 started at once beside H_c63 (2 processes on the GPU, as planned); after_h.sh was stopped
+  by PID and after_h2.sh starts the second process when H_c63 has ended.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
