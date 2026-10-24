@@ -2572,6 +2572,21 @@ box.
   with the refined tool name the sparse product as the first part, in stage 1 (1 entry) and in stage 0 (2 entries).
   Faulty try: 2 in the second try, 1 in the first try, so the comparison pass of the tool does not make the fault.
   Accepted faults: 0. c63e862: 0 events.
+- Outlier test 3, fourth event (found at 06:17 UTC; H2_d53; d538bde, sample interval 130, dt 7.57e-12): first try
+  norm 0.794 (accepted), second try 1.272, difference of the error estimate 1.27 tolerance units, x1 difference
+  4.1e-6. Stages 0 … 3: all parts equal within rounding. Stage 4: the sparse product differs in 1 entry by 1.36e-5
+  (5.2e-5 of its largest value) at the flat index 3 632 484 (cell 1 210 828 = (103, 87, 40), x component); the
+  centroid field and the other terms are equal within 1e-14. Stage 5: all parts differ.
+- Which try was faulty: the same try in the K1 reference (refB.pt) gives the normal norm, for all 4 events: interval
+  12, window 8 row 78: 1.405876 (equal to the first try; second faulty); interval 37, window 32 row 112: 0.280502
+  (first; second faulty); interval 113, window 112 row 16: 0.686737 (second; first faulty); interval 130, window 128
+  row 22: 0.794266 (first; second faulty). Thus 3 faults in the second try and 1 in the first, and the accepted first
+  try of the fourth event is the normal one. Accepted faults: 0.
+- Size of the faults (relative to the largest value of the part): 5.2e-5, 1.3e-3, 6.0e-3 (correction, first event)
+  and 0.26. The fourth event raised the norm only from 0.79 to 1.27. Estimate (linear scaling of this event): a
+  fault below about 1e-5 in a late stage of a try with a normal norm stays below 1.1 and is accepted, with an error
+  of about 1e-6 in m (10 times atol) at one cell. Thus the rejection of RKF45 does not give a reliable protection; an
+  accepted fault is possible, though none was seen.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
