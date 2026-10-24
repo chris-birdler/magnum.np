@@ -243,6 +243,9 @@ class TryRecord:
             if getattr(corr, "_A", None) is not None:
                 self.names.append("spmv")
                 corr._A = SparsePart(corr._A, self, len(self.names) - 1)
+            elif getattr(corr, "_form", None) == "pair" and (hasattr(mod, "pair_matrix") or hasattr(mod, "pair_blocks")):
+                raise SystemExit("[step_dump] --k1_redo all: the correction of this tree has a pair product, but no _A; "
+                                 "the part spmv cannot be recorded")
             if hasattr(mod, "centroid_field"):
                 self.names.append("centroid")
                 f_cent, j_cent = mod.centroid_field, len(self.names) - 1
@@ -323,7 +326,9 @@ def k1_main(a, rl):
     import magnumnp
     import run_loops
     ref = torch.load(a.k1_arm, map_location="cpu") if a.k1_arm else None
-    ck = tuple(ref["ck_list"]) if ref else tuple(a.k1_ck)
+    if ref and not set(a.k1_ck) <= set(ref["ck_list"]):
+        raise SystemExit("step_dump: --k1_ck %s is not a part of the checkpoints of the reference" % a.k1_ck)
+    ck = tuple(k for k in ref["ck_list"] if k in a.k1_ck) if ref else tuple(a.k1_ck)
     span, full = (ref["span"], tuple(ref["full"])) if ref else (a.k1_span, tuple(a.k1_full))
     if a.k1_null:
         k1_null(a.k1_null)
@@ -489,7 +494,8 @@ def main(argv):
                     help="K1 null run: sum the field terms in the reverse (default) or rotated order, or the kernel "
                          "times (1 + 2^-52)")
     ap.add_argument("--k1_ck", type=int, nargs="+", default=[0, 8] + list(range(16, 256, 16)),
-                    help="K1 checkpoints k0 (PLAN 14a: 0, 8, 16, 32, ..., 240)")
+                    help="K1 checkpoints k0 (PLAN 14a: 0, 8, 16, 32, ..., 240); an arm uses the checkpoints of the "
+                         "reference that are in this list")
     ap.add_argument("--k1_span", type=int, default=5, help="K1 window: sample intervals k0 + 1 ... k0 + span")
     ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
     ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")

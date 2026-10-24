@@ -52,15 +52,17 @@ def main(argv):
         B = corr._A
         if not isinstance(B, getattr(mod, "PairBlocks", ())):
             raise SystemExit("bench_det: the correction of this tree has no PairBlocks (%s)" % type(B).__name__)
-        # the merged blocks back from the layout (slots of real chunks with a nonzero coefficient), for pair_matrix
+        # the merged blocks back from the layout (slots of real chunks with a nonzero coefficient), for pair_matrix;
+        # on the CPU (magnum.np sets the default device to the GPU)
         n_chunk, C = B.S.shape[0] - 1, B.S.shape[1]
-        T, rows = B.T.cpu().long(), B.rows.cpu().long()
-        row_of_chunk = torch.full((n_chunk + 1,), -1, dtype=torch.long)
-        ok = T < n_chunk
-        row_of_chunk[T[ok]] = rows[:, None].expand_as(T)[ok]
-        Vc, Sc = B.V.cpu().reshape(6, -1), B.S.cpu().reshape(-1).long()
-        slot = torch.nonzero((row_of_chunk.repeat_interleave(C) >= 0) & (Vc != 0).any(0)).reshape(-1)
-        tgt, src, cf = row_of_chunk.repeat_interleave(C)[slot], Sc[slot], Vc[:, slot].T.contiguous()
+        with torch.device("cpu"):
+            T, rows = B.T.cpu().long(), B.rows.cpu().long()
+            row_of_chunk = torch.full((n_chunk + 1,), -1, dtype=torch.long)
+            ok = T < n_chunk
+            row_of_chunk[T[ok]] = rows[:, None].expand_as(T)[ok]
+            Vc, Sc = B.V.cpu().reshape(6, -1), B.S.cpu().reshape(-1).long()
+            slot = torch.nonzero((row_of_chunk.repeat_interleave(C) >= 0) & (Vc != 0).any(0)).reshape(-1)
+            tgt, src, cf = row_of_chunk.repeat_interleave(C)[slot], Sc[slot], Vc[:, slot].T.contiguous()
         out["blocks"] = {"n_rows": len(rows), "n_chunk": n_chunk, "chunk": C, "L": int(T.shape[1]),
                          "n_blocks": len(slot), "slots": (n_chunk + 1) * C}
         print("[bench] %d rows, %d blocks, %d chunks of %d (%d slots), at most %d chunks per row" % (
