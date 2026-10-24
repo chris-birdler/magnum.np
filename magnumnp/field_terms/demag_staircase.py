@@ -134,9 +134,11 @@ def _pair_blocks_cpu(tgt, src, cf, n_cells, dtype, C):
     return PairBlocks(V.reshape(6, n_chunk + 1, C), S.reshape(n_chunk + 1, C), T, rows, n_cells)
 
 
+@torch.compile
 def block_sum(V, S, T, m):
-    """The two stages of PairBlocks. V [6, n_chunk + 1, C] coefficients, S [n_chunk + 1, C] source cells, T [n_rows, L]
-    chunks of each row, m [n_cells, 3] -> h [n_rows, 3]."""
+    """The two stages of PairBlocks (compiled: in eager mode the products of sym_matvec make about 15 temporary arrays
+    of the size of the blocks; 60 against 9 ms per product, float64, geometry B, PLAN 14b D1). V [6, n_chunk + 1, C]
+    coefficients, S [n_chunk + 1, C] source cells, T [n_rows, L] chunks of each row, m [n_cells, 3] -> h [n_rows, 3]."""
     g = m.index_select(0, S.reshape(-1)).reshape(S.shape + (3,))
     p = sym_matvec(V.movedim(0, -1), g).sum(-2)                     # stage 1: sum over the blocks of each chunk
     return p.index_select(0, T.reshape(-1)).reshape(T.shape + (3,)).sum(-2)   # stage 2: over the chunks of each row
