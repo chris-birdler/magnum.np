@@ -2647,6 +2647,13 @@ box.
   does not use.
 - The second process of stress test 3 started at 09:56 UTC (after_h2.sh). Expected end of both: about 11:25 and
   13:00 UTC.
+- Stress test 3, second hour of process a (to 10:27 UTC): 460 800 products, 0 events. Sum of process a: 883 800
+  products, 0 events. Expected at the pooled rate per product of the dynamics (1.1e-5): 10 events, probability of 0
+  about 4e-5; at its lower bound (4.9e-6): 4.3 events, probability of 0 about 0.013. Thus products back to back (2
+  fixed inputs in turn, a second process on the GPU) fail much more rarely than products in the dynamics: the fault
+  needs a condition of the dynamics (other kernels of the same process between the products, new inputs). This does
+  not change the cause (the cuSPARSE path, row pattern above); it means that a test of a patch needs the dynamics
+  (outlier test 3 on the patched tree), not stress test 3.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
