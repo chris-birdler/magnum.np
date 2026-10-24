@@ -2522,6 +2522,27 @@ box.
 - Swap of the d538bde arm: H_d53 stopped by PID at 03:11 UTC (54 min, 1 event; its try count is not saved, the event
   is in H_d53.log). H2_d53 (refined tool, 18 repetitions) started at 03:12 UTC. H_c63 runs on with the first tool
   version (the table of the terms is the same), so that 2 runs are on the GPU all the time.
+- Outlier test 3, second event (found at 04:32 UTC; H2_d53, refined tool; d538bde, sample interval 37, dt 9.22e-12).
+  The first try had the norm 0.2805 (accepted), the second try 838.5. Stage 0: all parts are equal within rounding;
+  the sparse product differs by 2.2e-16 relative with a bitwise equal input (thus the product is not bitwise
+  reproducible; torch 2.7.1+cu126 calls cusparseSpMV with CUSPARSE_SPMV_ALG_DEFAULT, cuSPARSE 12.5.4.2). Stage 1: the
+  sparse product differs in 1 entry by 3.14e-4 (1.27e-3 of its largest value) at the flat index 3 060 786 (cell
+  1 020 262 = (87, 50, 94), x component); the correction differs in the same single entry by 374.5 A/m (1.14e-3); the
+  centroid field and all other terms are equal within 1e-15 relative. From stage 2 on, all parts differ (the input m
+  of stage 2 differs). Thus the fault of this event is in the sparse product of PLAN 10 (01ed90c), not in the centroid
+  field. The first event (02:57 UTC, first tool) is in the correction with one cell, in agreement. The fault was again
+  in the second try; the run uses the first try, so this event did not change the trajectory. The cell is the third
+  different cell (replay 504 660, first event 544 723).
+- Reading (n 2 events, both in the correction, 1 shown in the sparse product): a linear product cannot change one
+  entry by 1e-3 when its input differs only by rounding. Thus one call gave one wrong entry. Two causes stay open:
+  (a) a fault of the cuSPARSE product (software), (b) a transient fault of the arithmetic of this one GPU (all 6
+  observed faults are on box 11; ECC protects the memory, not the arithmetic). A random fault of the hardware hits
+  each kernel in proportion to its run time; the sparse product has only a part of the run time of a try (not
+  measured for geometry B in double precision), and c63e862 had 0 events. Thus (a) is more probable, but n 2 does not
+  exclude (b). A search found no published cuSPARSE or PyTorch report with this sign (single wrong entry, transient).
+- Decision (night rule, 04:40 UTC): outlier test 3 runs to its end (about 08:00 UTC) without change. Reason: more
+  events give the count of events in the sparse product (an effect needs at least 3), the count of accepted faults
+  and the rates. No fix without the go of Chris; options for him: see the report of the morning.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
