@@ -2480,9 +2480,10 @@ box.
   pattern.
 - Count of all tries with an outlier test (pilot, replay, stress test 2): d538bde code 4 in 48 424 (8.3e-5 per try;
   Poisson 95 % interval 2.2e-5 … 2.1e-4); c63e862 0 in 23 840 (95 % upper bound 1.3e-4). Under the same rate per try,
-  the probability of this split is about 0.2: the trees are not separated. Under the same rate per GPU time (a try of
-  c63e862 takes about 3.9 times longer, stress test 2), it is about 0.014: a fault of the GPU at a constant rate in
-  time is improbable. The ECC counters of the GPU stay 0 (corrected and uncorrected, volatile and aggregate).
+  the probability of this split is about 0.2: the trees are not separated. Under the same rate per GPU time, it is
+  about 0.07 … 0.014: a try of c63e862 takes about 2 times longer in the replay (wall time 156 min against 80 min for
+  the same number of tries; c63e862 ran alone on the GPU for the last 75 min) and 3.9 times longer in stress test 2.
+  Neither model is excluded. The ECC counters of the GPU stay 0 (corrected and uncorrected, volatile and aggregate).
 - Condition: all observed outliers occurred with 2 or 3 processes on the GPU. A single process is not tested.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
