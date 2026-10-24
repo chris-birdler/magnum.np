@@ -2,22 +2,29 @@
 """
 Finding of the K1 pilot and of the replay (PLAN 14a, box 11): single RKF45 tries of the B code gave an error norm 4 ...
 2700 times the norm of the same try in other runs; a second try with the same input gave the normal norm (transient
-fault). Stress test of the parts of the field on one fixed state, in the production path: run run_loops.main with the
-given arguments; at the first call of LLGSolver.step set m to a checkpoint state of the K1 reference, then evaluate
-each part again and again for the given time (a new tensor of m each time, as in the stages) and compare each result
-with the first one: d = largest |h_r - h_0| / largest |h_0|. An event is a result with d above --thr. For each event:
-the cell of the largest difference, its volume fraction (material Ms / largest Ms) and whether the sparse matrix of
-the correction has a row for the cell. Then stop.
+fault). Stress test in the production path: run run_loops.main with the given arguments; at the first call of
+LLGSolver.step take the checkpoint states --k0 of the K1 reference, then evaluate each part again and again for the
+given time, in turn on each state (a new tensor of m each time, as in the stages). With two or more states, a part
+that reads data of the evaluation before (a stale buffer) gives a large difference; with one state it does not.
+Each result is compared with the first result on the same state. An event is a result with a difference above the
+threshold. For each event: the cell of the largest difference, its volume fraction (material Ms / largest Ms) and
+whether the sparse matrix of the correction has a row for the cell. Then stop.
 
-Parts: corr (DemagStaircaseCorrection.h), spmv (the sparse product of the correction, only with the attribute _A),
+Parts: try (one RKF45 try, RKF45._try_step of the tree: six stages, increment, error estimate; the try dt is the
+median dt of the accepted tries in the interval k0 + 1 of the reference that are not clamped to the rest of the
+interval), corr (DemagStaircaseCorrection.h), spmv (the sparse product of the correction, only with the attribute _A),
 centroid (centroid_field of the correction), demag (DemagField.h), dm (LLGSolver.dm, all terms).
+Differences: field parts largest |h_r - h_0| / largest |h_0| (threshold --thr); try: the error estimate in units of
+the tolerance, largest |err_r - err_0| / (atol + rtol |x|) (threshold --thr_err), and the increment, largest
+|x1_r - x1_0| (threshold --thr_x1).
 
-    CUDA_DEVICE=0 python glitch_stress.py --ref refB.pt --k0 8 --parts corr:1800 dm:900 --idx 1513981 876667 \
+    CUDA_DEVICE=0 python glitch_stress.py --ref refB.pt --k0 8 144 --parts try:3600 corr:1200 --idx 1513981 \
         --json out.json -- <run_loops arguments>
 """
 import argparse
 import json
 import pathlib
+import statistics
 import sys
 import time
 
@@ -28,26 +35,40 @@ def main(argv):
     i = argv.index("--")
     ap = argparse.ArgumentParser()
     ap.add_argument("--ref", required=True)
-    ap.add_argument("--k0", type=int, default=8)
+    ap.add_argument("--k0", type=int, nargs="+", default=[8])
     ap.add_argument("--parts", nargs="+", default=["corr:1800", "dm:900"])
     ap.add_argument("--thr", type=float, default=1e-9)
+    ap.add_argument("--thr_err", type=float, default=1e-6)
+    ap.add_argument("--thr_x1", type=float, default=1e-12)
     ap.add_argument("--idx", type=int, nargs="*", default=[])
     ap.add_argument("--json")
     a = ap.parse_args(argv[:i])
     sys.path.insert(0, str(pathlib.Path(".").resolve()))
     import magnumnp
     import run_loops
-    ref = torch.load(a.ref, map_location="cpu")
-    out = {"argv": argv[i + 1:], "k0": a.k0, "thr": a.thr, "parts": {}, "cells": {}}
+    ref = torch.load(a.ref, map_location="cpu", weights_only=False)
+    out = {"argv": argv[i + 1:], "k0": a.k0, "thr": a.thr, "thr_err": a.thr_err, "thr_x1": a.thr_x1, "parts": {},
+           "cells": {}, "try_dt": {}}
+
+    def try_dt(k0):
+        f = ref["fields"]
+        i_n, i_dt, i_acc, i_rem = f.index("n"), f.index("dt"), f.index("accept"), f.index("remaining")
+        v = [r[i_dt] for r in ref["win"][k0]["rows"] if r[i_n] == k0 + 1 and r[i_acc] and r[i_dt] < 0.999 * r[i_rem]]
+        return statistics.median(v) if v else ref["ck"][k0]["dt"]
 
     def step(self, state, dt, **k):
-        c = ref["ck"][a.k0]
-        m0 = c["m"].to(device=state.m.device, dtype=state.m.dtype)
-        state.t = torch.tensor(c["t"], dtype=torch.float64, device=state.m.device)
+        dev, dt_ = state.m.device, state.m.dtype
+        M = [ref["ck"][k0]["m"].to(device=dev, dtype=dt_) for k0 in a.k0]
+        T = [torch.tensor(ref["ck"][k0]["t"], dtype=torch.float64, device=dev) for k0 in a.k0]
+        DT = [try_dt(k0) for k0 in a.k0]
+        out["try_dt"] = dict(zip(a.k0, DT))
+        S = len(M)
+        state.t = T[0]
         names = [type(t).__name__ for t in self._terms]
         corr = self._terms[names.index("DemagStaircaseCorrection")]
         dem = self._terms[names.index("DemagField")]
-        state.m = m0.clone()
+        solver = self._solver
+        state.m = M[0].clone()
         corr.h(state)  # set-up
         mod = sys.modules[type(corr).__module__]
         Ms = state.material["Ms"].reshape(-1).expand(state.m[..., 0].numel())
@@ -56,8 +77,10 @@ def main(argv):
         if hasattr(corr, "_A"):
             rows = (corr._A.crow_indices()[1:] - corr._A.crow_indices()[:-1]).reshape(-1, 3).sum(-1).cpu()
         n_cut = int(((frac > 0) & (frac < 1)).sum())
-        print("[stress] %s: %d cells, %d cut cells (0 < fraction < 1), %s cells with a row of the sparse matrix" % (
-            state.m.dtype, frac.numel(), n_cut, "-" if rows is None else int((rows > 0).sum())), flush=True)
+        print("[stress] %s: %d cells, %d cut cells (0 < fraction < 1), %s cells with a row of the sparse matrix; "
+              "states k0 %s, try dt %s" % (state.m.dtype, frac.numel(), n_cut,
+                                           "-" if rows is None else int((rows > 0).sum()), a.k0,
+                                           " ".join("%.4g" % x for x in DT)), flush=True)
 
         def where(j):
             cell = j // 3
@@ -68,60 +91,86 @@ def main(argv):
             out["cells"][j] = where(j)
             print("[stress] index %d: %s" % (j, out["cells"][j]), flush=True)
 
-        def f_corr():
-            state.m = m0.clone()
+        def f_corr(s):
+            state.t, state.m = T[s], M[s].clone()
             return corr.h(state)
 
-        def f_spmv():
-            return corr._A @ m0.clone().reshape(-1)
+        def f_spmv(s):
+            return corr._A @ M[s].clone().reshape(-1)
 
-        def f_centroid():
+        def f_centroid(s):
             if not hasattr(dem, "_N"):
                 dem._N = dem._init_N(state)
-            return mod.centroid_field(dem._N, corr._v, corr._d, m0.clone(), shape=tuple(dem._shape(state)))
+            return mod.centroid_field(dem._N, corr._v, corr._d, M[s].clone(), shape=tuple(dem._shape(state)))
 
-        def f_demag():
-            state.m = m0.clone()
+        def f_demag(s):
+            state.t, state.m = T[s], M[s].clone()
             return dem.h(state)
 
-        def f_dm():
-            state.m = m0.clone()
-            return self.dm(state.t, state.m, state=state)
+        def f_dm(s):
+            state.t, state.m = T[s], M[s].clone()
+            return self.dm(T[s], state.m, state=state)
+
+        def f_try(s):
+            solver._dt = DT[s]
+            x1, _, err = solver._try_step(T[s], M[s].clone(), state=state)
+            return x1, err
 
         fs = {"corr": f_corr, "spmv": f_spmv, "centroid": f_centroid, "demag": f_demag, "dm": f_dm}
+        cap = 1 << 22
         for p in a.parts:
             nm, sec = p.split(":")
             if nm == "spmv" and not hasattr(corr, "_A"):
                 continue
-            f = fs[nm]
-            h0 = f().clone()
-            s0 = float(h0.abs().max())
-            cap = 1 << 22
-            dev = torch.zeros(cap, dtype=torch.float64, device=h0.device)
-            arg = torch.zeros(cap, dtype=torch.int64, device=h0.device)
+            dev_ = torch.zeros(cap, dtype=torch.float64, device=dev)
+            arg = torch.zeros(cap, dtype=torch.int64, device=dev)
+            dx1 = torch.zeros(cap, dtype=torch.float64, device=dev)
+            if nm == "try":
+                first = [tuple(y.clone() for y in f_try(s)) for s in range(S)]
+                w = [1.0 / (solver._atol + solver._rtol * M[s].abs()) for s in range(S)]
+            else:
+                first = [fs[nm](s).clone() for s in range(S)]
+                scale = [float(h.abs().max()) for h in first]
             r, t0 = 0, time.time()
             while r < cap:
-                d = (f() - h0).abs().reshape(-1)
-                dev[r], arg[r] = d.max(), d.argmax()
+                s = r % S
+                if nm == "try":
+                    x1, err = f_try(s)
+                    d = ((err - first[s][1]).abs() * w[s]).reshape(-1)
+                    dx1[r] = (x1 - first[s][0]).abs().max()
+                    dev_[r], arg[r] = d.max(), d.argmax()
+                else:
+                    d = (fs[nm](s) - first[s]).abs().reshape(-1)
+                    dev_[r], arg[r] = d.max() / scale[s], d.argmax()
                 r += 1
-                if r % 200 == 0 and time.time() - t0 > float(sec):
+                if r % (20 if nm == "try" else 200) == 0 and time.time() - t0 > float(sec):
                     break
-            if h0.is_cuda:
+            if dev.type == "cuda":
                 torch.cuda.synchronize()
             wall = time.time() - t0
-            dv = (dev[:r] / s0).cpu()
-            ag = arg[:r].cpu()
-            ev = torch.nonzero(dv > a.thr).reshape(-1)
-            res = {"evaluations": r, "wall_s": wall, "scale": s0, "n_nonzero": int((dv > 0).sum()),
+            dv, ag, d1 = dev_[:r].cpu(), arg[:r].cpu(), dx1[:r].cpu()
+            thr = a.thr_err if nm == "try" else a.thr
+            hit = (dv > thr) | (d1 > a.thr_x1) if nm == "try" else dv > thr
+            ev = torch.nonzero(hit).reshape(-1)
+            res = {"evaluations": r, "states": S, "wall_s": wall, "n_nonzero": int((dv > 0).sum()),
                    "n_events": int(ev.numel()), "max_dev": float(dv.max()) if r else 0.0,
                    "median_dev": float(dv.median()) if r else 0.0,
-                   "events": [dict(rep=int(e), dev=float(dv[e]), **where(int(ag[e]))) for e in ev[:200]]}
+                   "events": [dict(rep=int(e), state=a.k0[int(e) % S], dev=float(dv[e]), **where(int(ag[e])))
+                              for e in ev[:200]]}
+            if nm == "try":
+                res["max_dx1"] = float(d1.max()) if r else 0.0
+                res["median_dx1"] = float(d1.median()) if r else 0.0
+                for e, x in zip(ev[:200], res["events"]):
+                    x["dx1"] = float(d1[e])
             out["parts"][nm] = res
-            print("[stress] %-8s %s: %d evaluations in %.0f s, nonzero %d, events (d > %.0e) %d, largest d %.3e, "
-                  "median d %.3e" % (nm, state.m.dtype, r, wall, res["n_nonzero"], a.thr, res["n_events"],
-                                     res["max_dev"], res["median_dev"]), flush=True)
+            print("[stress] %-8s %s: %d evaluations on %d states in %.0f s, nonzero %d, events %d (threshold %.0e%s), "
+                  "largest difference %.3e, median %.3e%s" % (
+                      nm, state.m.dtype, r, S, wall, res["n_nonzero"], res["n_events"], thr,
+                      " or x1 %.0e" % a.thr_x1 if nm == "try" else "", res["max_dev"], res["median_dev"],
+                      "; x1 largest %.3e, median %.3e" % (res["max_dx1"], res["median_dx1"]) if nm == "try" else ""),
+                  flush=True)
             if res["n_events"] > r // 2:
-                print("[stress] %s: more than half of the results are events: the first result is an outlier" % nm)
+                print("[stress] %s: more than half of the results are events: a first result is an outlier" % nm)
             for e in res["events"][:20]:
                 print("   event %s" % e, flush=True)
             if a.json:
