@@ -959,3 +959,107 @@ verified). "Point p" of a window k0 is the end of the sample interval k0 + p (po
   that the B code does not always repeat (PROTOKOLL 3.40). A4 and AB on have the base BA4: they wait. The patch arms of
   the base 9b15ea9 can continue. I decide on BA4 and on the verdict for PLAN 10, B5 and B4 (base d538bde) when I know
   the cause of the outlier.
+
+### 14b. The pair sum of the correction in a fixed order (patch option 1 of Chris, 2026-10-24; mandate of Chris)
+
+**Reason.** Outlier test 3 (PROTOKOLL 3.40) found transient faults in the cuSPARSE CSR product of the correction (PLAN
+10): the 4 events with the refined tool are all in this product; d538bde 8 events in 116 690 try evaluations, c63e862
+(no cuSPARSE) 0 in 61 760. Decision of Chris: option 1, an own sum per row in a fixed order, without cuSPARSE and
+without atomic additions. Mandate of Chris (2026-10-24, about 17:05 UTC): do all necessary steps, choose conservative
+criteria, and report at the end which verification was necessary and the measured speed gain. This section fixes the
+criteria before any GPU data of the patch exists.
+
+**Patch.** Commit e7ce6ca on perf/staircase-det (from df0f811): PairBlocks in demag_staircase.py. The merged blocks of
+each block row (the same merge as pair_matrix) are cut into chunks of C = 16 blocks; the last chunk of a row is padded
+with blocks of zero coefficients. Stage 1 sums the C blocks of each chunk, stage 2 the chunks of each row (padded table
+T); the result goes to unique rows with index_copy_. The operations are index_select, element-wise products, sums over
+a fixed axis and index_copy_ to unique indices: no cuSPARSE and no atomic additions. The interface `_A @ x` stays, so
+the tools see the product as the part "spmv". Local: test_staircase.py 34 of 34 pass (torch 2.7.1, CPU, exit code 0);
+4 new tests: against the pair sum with index_add_ and against the CSR product within 1e-12 of the largest value,
+bitwise repetition, the layout, float32, the build on the CPU with another default device.
+
+**Terms.** Event: a try of step_dump --k1_redo all whose second evaluation differs from the first by more than 1e-6
+tolerance units in the error estimate or by more than 1e-12 in x1 (the thresholds of outlier test 3). Try evaluation:
+one evaluation of a try (a try done twice gives 2). Redo difference: the largest difference of the second evaluation
+to the first in the error estimate and in x1. P tree: a code tree with the patch (name with the suffix P).
+
+**D1: the product on the GPU (bench_det.py, box 11).** Tree B_det (e7ce6ca); states k0 8 and 144 of refB.pt; float64
+and float32; modes csr (pair_matrix of the same merged blocks), eager (PairBlocks @ m) and compiled (torch.compile of
+block_sum); 20 000 products per mode and precision; 2 processes at the same time, each with its own compile cache (as
+stress test 3).
+- Pass of a mode: in both processes, 0 of 20 000 products differ bitwise from the first product on the same state; in
+  float64, the largest difference to csr is at most 1e-11 of the largest value of csr. (The local tests use 1e-12 with
+  rows of at most about 100 terms; production rows have up to 720 terms. 1e-11 of the largest value is about 3e-3 cu
+  at the largest entry, estimate; the bound of T1 is 0.1 cu; the smallest observed fault was 5.2e-5.) Float32: the
+  difference to csr is information; T2 tests the single-precision accuracy.
+- Choice: compiled if it passes, agrees with eager in float64 within 1e-11 of the largest value, and its median time
+  per product in float32 is at most 2/3 of eager in both processes; else eager. If neither passes: stop and report.
+- If compiled is chosen: block_sum gets @torch.compile (as _kernel_product in demag.py of AB) in a new commit on
+  perf/staircase-det; test_staircase.py again. D3 and D4 then test the shipped code.
+
+**D2: ports (local, beside D1).** The patch (and the commit of D1, if any) by cherry-pick, on its own branch for each
+tree with the CSR product: perf/staircase-det-01e (from 01ed90c), perf/staircase-det-c56 (c56c0a5),
+perf/staircase-det-d53 (d538bde), perf/staircase-det-ba4 (b750b1d), perf/speed-all-det (7f755a0). Checks: the git diff
+of each port against its parent changes only demag_staircase.py and test_staircase.py, with the same changed lines as
+perf/staircase-det; test_staircase.py passes in each port (torch 2.7.1, CPU; the only tests that use the changed
+module). Box trees: B_01eP, B_c56P, B_d53P, B_df0P (= B_det), BA4P, ABP.
+
+**D3: detector control and GPU smoke (B_d53P; k1_inject.py --spmv).** One arm with --k1_redo all, --k1_reps 1 and the
+windows k0 8 and 144 (--k1_ck 8 144). In 4 chosen calls of the product inside tries, the largest entry of the product
+is changed by the relative amount 1e-3. Pass: the field-term names of step_dump contain "spmv"; each injected call
+gives one event whose first differing part is "spmv" in the stage of the injection; no other event; the redo
+difference is exactly 0 in all other tries. This shows that the tool sees a fault of the new product, and that the
+patched code repeats bitwise in the dynamics.
+
+**D4: outlier test 3 on the patched tree.** Arms H3_d53P (B_d53P) and H3_d53 (B_d53, the control without the patch),
+each with the job of H2_d53 (refB.pt, the 17 windows, --k1_reps 18, --k1_redo all), in parallel: 2 processes on the GPU
+all the time (the condition of all observed faults), no other process on the GPU. If one arm ends first, it starts
+again with a new output file until the other arm ends; the try evaluations and events of the repeat count for its arm.
+- Pass: (i) H3_d53P has 0 events in at least 68 266 try evaluations (the count of H2_d53); (ii) in H3_d53P the redo
+  difference is exactly 0 in every try; (iii) H3_d53 has at least 3 events (the test has the sensitivity of outlier
+  test 3).
+- At the pooled rate of d538bde (6.9e-5 per try evaluation), 68 266 try evaluations give 4.7 expected events. If the
+  patch did not change the rate, 0 events in H3_d53P has the probability of about 0.009.
+- If (iii) fails: both arms run the same job again (new output files), at most 2 times; the counts add. If the control
+  then has fewer than 3 events: stop and report (not determined).
+- An event in H3_d53P: stop and report. Its first differing part "spmv" or the correction: the patch fails. Another
+  part: a finding (the faults are then not only in the cuSPARSE path). A redo difference above 0 but without an event:
+  the patch fails if its first differing part is "spmv" or the correction; else a finding that I report with its
+  numbers (the patch does not touch that term).
+
+**D5: K1 (T4) of the B side with the P trees.** The reference refB.pt stays: all arms start from its checkpoints, T1 and
+T2 use its states, and the arm B_c63 (no sparse product) stays valid. New arms (k1.sh, 2 at a time, each with its own
+compile cache): B_d53P base, a repetition of the B_d53P base, its control and 3 null runs; B_01eP, B_c56P, B_df0P;
+BA4P base, its control and 3 null runs; ABP (AB on). 14 arms.
+- Pilot (base arms, controls, null runs): the rules of the T4 pilot of 14a. New: the two base arms of B_d53P must be
+  bitwise equal in all windows (m, t, dt, try records), because the P code has no known source of non-reproducibility.
+  If they are not: a finding that I report; the pilot then uses the rules of 14a only.
+- BA4 window 48: in the old pilot it had no determined point (the outlier in the CSR product). With BA4P each window
+  must have a determined point (rule D). If not: stop and report.
+- Pairs: PLAN 10 (B_c63 → B_01eP), B5 (B_01eP → B_c56P), B4 (B_c56P → B_d53P), B1 (B_d53P → B_df0P; D and C1 as
+  information, the B1 cache count), A4 (B_df0P → BA4P), AB on (BA4P → ABP). Criteria: those of 14a T4 (D, C1, C2, the A4
+  rule).
+
+**D6: T1, T2 and T6 with the P trees.** t12.sh, the B chain with the P trees: c63e862 → B_01eP → B_c56P → B_d53P →
+B_df0P (T6) → BA4P → ABP; the states of refB.pt; the criteria of 14a.
+
+**D7: T5, the speed measurement and G.** T5 for ABP: config.json as for AB, and the git diff of ABP against AB changes
+only the patch. The speed measurement of section 14 with ABP as the new code (old: 9e0ea7c with the correction off,
+c63e862 with the correction on); G from these runs.
+
+**Pass of the patch.** D1, D3 and D4 pass, and the pairs pass D5, D6 and T5. Then PLAN 10, B5, B4, B1, A4 and AB on pass
+with the patch as section 14a defines.
+
+**Tools.** glitch_stress.py --idx and csr_hist.py read `_A.crow_indices()` and stop with an error on a P tree; they are
+not used on P trees. step_dump.py stops with an error if a correction of the pair form has no `_A` (before, the part
+"spmv" was left out without a message).
+
+**Limits.** D4 tests one tree (B_d53P). The other P trees have the same lines of PairBlocks (checked in D2); their
+dynamics are tested by the K1 windows, with fewer tries.
+
+**Order.** D1, with D2 locally at the same time → D3 → D4 → D5 → D6 → D7 → report → download with md5 → destroy box 11
+(standing go of Chris, 2026-10-24).
+
+**Cost (estimate).** D1 about 0.5 h, D3 about 0.5 h, D4 about 5 … 6 h (each repeat about 5 … 6 h more), D5 about 2 h,
+D6 about 1.5 h, D7 about 4 h: about 14 h of box 11, about 2.3 $ at 0.162 $/h (with 2 repeats of D4 about 26 h,
+4.2 $). Credit 13.52 $ (2026-10-24, about 17:06 UTC).
