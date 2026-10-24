@@ -2659,6 +2659,17 @@ box.
   same GPU): 415 800 products, 0 events. Sum to 11:29 UTC: 1 715 800 products, 0 events. Expected at the pooled rate
   per product of the dynamics (1.1e-5): 18.9 events, probability of 0 about 6e-9; at its lower bound (4.9e-6):
   8.4 events, probability of 0 about 2e-4. This confirms the reading of 10:27 UTC. GPU ECC counters stay 0.
+- Stress test 3 complete (process b end 13:01 UTC, exit 0). Process b: 415 800 + 726 200 + 966 200 = 2 108 200
+  products (more per hour after the end of process a: the GPU was then free). Total of both processes: 3 408 200
+  products, 0 events, largest difference 2.6e-16 in all 6 parts. Expected at the pooled rate per product of the
+  dynamics (1.1e-5): 37 events; at its lower bound (4.9e-6): 17 events, probability of 0 about 6e-8. Logs and JSON
+  local in remote_20261023_box11/stress3/ (manifest stress3.md5, all OK).
+- Night decision (Chris away; recommendation applied). Options for the free GPU: (1) the K1 arm of c63e862 (B_c63),
+  the only open B arm without the cuSPARSE product; its result is needed for each patch option (old side of the PLAN
+  10 pair; start of the chain without CSR if PLAN 10 goes out); (2) all open B arms; the 4 arms with the CSR product
+  (B_01e, B_c56, B_df0, AB_on) must be repeated after a patch or are not needed without PLAN 10; (3) no run. Applied:
+  (1), started 13:07 UTC (p2b_c63.txt, about 10 min). After it, the GPU has no work that does not depend on the patch
+  decision of Chris; box 11 then stays rented without load (0.162 $/h) until his decision. Destroying it needs his go.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
