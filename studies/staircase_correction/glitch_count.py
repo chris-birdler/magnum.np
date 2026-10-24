@@ -6,7 +6,9 @@ take the median of the error norms over the files. An outlier is a try whose nor
 than the factor --factor. The count stops in a window at the first try where the files do not agree in n or dt.
 With --pair: each arm against the reference alone (the count of an arm stops at its own first difference of n or dt).
 With --reps: the repetitions of the windows in each arm file (step_dump --k1_reps) take the place of the files. Rows
-with a second try (step_dump --k1_redo) are listed when the two norms differ by more than --redo_rel.
+with a second try (step_dump --k1_redo) are listed when the two norms differ by more than --redo_rel. With
+step_dump --k1_redo all: the largest differences of the second tries and the events, each with the first stage and
+field term whose output differs by more than --term_rel (relative to its largest value).
 
     python glitch_count.py REF.pt ARM1.pt [ARM2.pt ...] [--pair] [--factor 2] [--json out.json]
     python glitch_count.py --reps ARM.pt [ARM2.pt ...] [--json out.json]
@@ -27,6 +29,7 @@ def main():
     ap.add_argument("--pair", action="store_true")
     ap.add_argument("--reps", action="store_true")
     ap.add_argument("--redo_rel", type=float, default=1e-6)
+    ap.add_argument("--term_rel", type=float, default=1e-9)
     ap.add_argument("--json")
     a = ap.parse_args()
     if a.reps:
@@ -42,6 +45,8 @@ def main():
                   % (stem, len(d["win"]), R, max(dm, default=0.0)))
             if "redo_norm" in d["fields"]:
                 redo(a, stem, wins, d["fields"])
+            if "redo_derr" in d["fields"]:
+                redo_all(a, stem, wins, d)
     else:
         pairs = [[a.files[0], f] for f in a.files[1:]] if a.pair else [a.files]
         for files in pairs:
@@ -62,11 +67,30 @@ def redo(a, stem, wins, fld):
                     q = row[i_no] / row[i_rn] if row[i_rn] > 0 else float("inf")
                     if abs(q - 1) > a.redo_rel:
                         diff.append((r, k0, i, row[i_no], row[i_rn], row[i_im], row[i_ri]))
-    print("%s: %d tries with a second try (norm above 1.1); %d with a different norm (relative %.0e)"
+    print("%s: %d tries with a second try; %d with a different norm (relative %.0e)"
           % (stem, n_redo, len(diff), a.redo_rel))
     for r, k0, i, n1, n2, i1, i2 in diff:
         print("   rep %d k0 %3d try %4d: norm %.6g, second try %.6g; largest entry at %d, second try at %d"
               % (r, k0, i, n1, n2, i1, i2))
+
+
+def redo_all(a, stem, wins, d):
+    """step_dump --k1_redo all: largest differences of the second tries; events with the first differing term."""
+    fld = d["fields"]
+    i_de, i_dx = fld.index("redo_derr"), fld.index("redo_dx1")
+    rows = [row for w in wins for rs in w.values() for row in rs]
+    thr_err, thr_x1 = d["redo_thr"]
+    print("%s: %d tries done twice; largest difference of the error estimate %.3e tolerance units, of x1 %.3e; "
+          "%d events (above %.0e tolerance units or %.0e in x1)"
+          % (stem, len(rows), max(r[i_de] for r in rows), max(r[i_dx] for r in rows), len(d["redo_events"]),
+             thr_err, thr_x1))
+    for ev in d["redo_events"]:
+        first = next((t for t in ev["terms"] if t["scale"] > 0 and t["dev"] > a.term_rel * t["scale"]), None)
+        print("   event n %d dt %.4g: norm %.6g, second try %.6g; difference %.3e tolerance units at %d, x1 %.3e; "
+              "first differing term: %s" % (ev["n"], ev["dt"], ev["norm"], ev["redo_norm"], ev["derr"], ev["dimax"],
+                                            ev["dx1"], "none" if first is None else "stage %d %s (relative %.3e at %d)"
+                                            % (first["stage"], first["term"], first["dev"] / first["scale"],
+                                               first["index"])))
 
 
 def group(a, names, wins, fld, src):

@@ -43,7 +43,12 @@ Outlier test (finding of the K1 pilot, PLAN 14a): --k1_reps R integrates each wi
 start state (m, t and _dt of the reference); the rows of the repetitions 1 ... R-1 go to win[k0]["reps"]. --k1_redo
 adds to each row the RMS of the scaled error, err / (atol + rtol |x|), and the flat index of its largest entry; it
 does each try with a norm above 1.1 once more with the same input (t, x, dt; _try_step has no side effects) and adds
-the norm, the RMS and the index of the second try. A transient fault gives a normal second try.
+the norm, the RMS and the index of the second try. A transient fault gives a normal second try. --k1_redo all does
+each try once more and compares the second try with the first: the error estimate in tolerance units (largest
+difference and its flat index) and x1 (largest difference). The output of each field term in each stage of the first
+try is copied into a fixed buffer; at a difference above THR_ERR tolerance units or THR_X1 in x1 (an event), the run
+records for each stage and term the largest difference of the second try to the first. The first stage and term with
+a difference above the rounding noise names the part with the fault (later stages differ because their input differs).
 """
 import argparse
 import inspect
@@ -55,6 +60,8 @@ import torch
 # branch tuple fields (see the docstring)
 BRANCH = ("accept", "a4_clamp", "past_end", "norm_class", "c_minscale", "c_maxscale", "c_one", "c_maxstep", "retry")
 REDO = ("err_rms", "imax", "redo_norm", "redo_err_rms", "redo_imax")
+REDO_ALL = ("redo_derr", "redo_dx1", "redo_dimax")
+THR_ERR, THR_X1 = 1e-6, 1e-12          # event thresholds of --k1_redo all (as glitch_stress.py)
 OLD_NORM = "torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf)"
 
 
@@ -88,6 +95,7 @@ class TryRecord:
         self.rows, self.probe_m, self.mismatch, self.accepted = [], [], 0, 0
         self.remaining = self.dt_expect = None
         self.redo, self.args = False, None
+        self.cap, self.calls, self.buf, self.cmp, self.events, self.names = None, [], {}, [], [], []
         self.has_a3 = hasattr(rk, "_error_norm")
         f_try, f_opt = rk.RKF45._try_step, rk.RKF45._optimal_stepsize
         self.f_try = f_try
@@ -112,7 +120,10 @@ class TryRecord:
             a4 = dt != rec.dt_expect
             if a4 and not (rec.dt_expect > rec.remaining and dt == rec.remaining):
                 rec.mismatch += 1
+            if rec.redo == "all":
+                rec.cap, rec.calls = "store", [0] * len(rec.names)
             x1, t1, err = f_try(solver, t, x, **kw)
+            rec.cap = None
             rec.pending = (dt, a4, x1)
             if rec.redo:
                 rec.args = (solver, t, x, kw)
@@ -182,12 +193,63 @@ class TryRecord:
         norm = float(self.f_norm(err, x, atol, rtol)) if self.has_a3 else float(torch.linalg.norm(e, torch.inf))
         return norm, float(e.square().mean().sqrt()), int(a.argmax())
 
+    def wrap_terms(self, terms):
+        """--k1_redo all: wrap h of each field term. Store: copy the output into the buffer of (stage, term). Compare:
+        record the largest difference to that buffer, its flat index and the largest value of the buffer."""
+        self.names = [type(t).__name__ for t in terms]
+        rec = self
+        for j, term in enumerate(terms):
+            def wrap(f, j):
+                def h(state):
+                    r = f(state)
+                    if rec.cap is not None:
+                        s = rec.calls[j]
+                        rec.calls[j] += 1
+                        b = rec.buf.get((s, j))
+                        if rec.cap == "store":
+                            if b is None or b.shape != r.shape or b.dtype != r.dtype:
+                                b = rec.buf[(s, j)] = torch.empty_like(r)
+                            b.copy_(r)
+                        elif b is not None:
+                            d = (r - b).abs()
+                            rec.cmp.append((s, j, d.max(), d.argmax(), b.abs().max()))
+                    return r
+                return h
+            term.h = wrap(term.h, j)
+
     def redo_try(self, x, err, atol, rtol, norm):
         """--k1_redo: add (RMS, index of the largest entry, and for a norm above 1.1 the norm, RMS and index of a
-        second try with the same input) to the last row."""
+        second try with the same input) to the last row. --k1_redo all: a second try for each try; add also the
+        largest difference of the error estimate in tolerance units, of x1, and the flat index of the first; record an
+        event with the differences of each field term in each stage."""
         _, rms, imax = self.scaled(x, err, atol, rtol)
         n2 = r2 = float("nan")
         i2 = -1
+        if self.redo == "all":
+            solver, t, x0, kw = self.args
+            x1 = self.pending[2]
+            self.cap, self.calls, self.cmp = "compare", [0] * len(self.names), []
+            x12, _, err2 = self.f_try(solver, t, x0, **kw)
+            self.cap = None
+            n2, r2, i2 = self.scaled(x0, err2, atol, rtol)
+            de = ((err2 - err).abs() / (atol + rtol * x0.abs())).flatten()
+            derr, dimax, dx1 = float(de.max()), int(de.argmax()), float((x12 - x1).abs().max())
+            if derr > THR_ERR or dx1 > THR_X1:
+                c = torch.stack([torch.stack([d.double(), i.double(), b.double()]) for _, _, d, i, b in self.cmp]).cpu()
+                terms = [{"stage": s, "term": self.names[j], "dev": float(c[k, 0]), "index": int(c[k, 1]),
+                          "scale": float(c[k, 2])} for k, (s, j, _, _, _) in enumerate(self.cmp)]
+                ev = {"row": len(self.rows) - 1, "n": self.n, "dt": self.pending[0], "norm": norm, "redo_norm": n2,
+                      "derr": derr, "dimax": dimax, "dx1": dx1, "imax": imax, "redo_imax": i2, "terms": terms}
+                self.events.append(ev)
+                print("[step_dump] redo event: n %d dt %.4g norm %.6g, second try %.6g; error estimate difference "
+                      "%.3e tolerance units at %d, x1 difference %.3e" % (self.n, ev["dt"], norm, n2, derr, dimax, dx1),
+                      flush=True)
+                for tr in terms:
+                    print("   stage %d %-26s largest difference %.3e (relative %.3e) at %d" % (
+                        tr["stage"], tr["term"], tr["dev"], tr["dev"] / tr["scale"] if tr["scale"] > 0 else float("nan"),
+                        tr["index"]), flush=True)
+            self.rows[-1] = self.rows[-1] + (rms, imax, n2, r2, i2, derr, dx1, dimax)
+            return
         if norm > 1.1:
             solver, t, x0, kw = self.args
             _, _, err2 = self.f_try(solver, t, x0, **kw)
@@ -230,7 +292,7 @@ def k1_main(a, rl):
     if a.k1_null:
         k1_null(a.k1_null)
     rec = TryRecord()
-    rec.redo = bool(a.k1_redo)
+    rec.redo = a.k1_redo or False
     lh = {"hit": 0, "miss": 0}
     from magnumnp.field_terms.demag import DemagField
     if hasattr(DemagField, "last_h"):                     # B1: count the uses of the stored stray field
@@ -272,6 +334,9 @@ def k1_main(a, rl):
                 out["particle"] = None if Ms is None else (Ms[..., 0] > Ms.max() * 1e-6).cpu()
                 out["t_end"][0], out["dt_end"][0] = float(state.t), float(solver._dt)
             rec.probe_dev = probe.to(state.m.device)
+            if rec.redo == "all":
+                rec.wrap_terms(self._terms)
+                print("[step_dump] --k1_redo all: field terms %s" % rec.names, flush=True)
         k0 = window(n)
         if ref and k0 is None:
             # outside the windows: no integration, t of the reference at the end of the interval (after the end of
@@ -341,7 +406,10 @@ def k1_main(a, rl):
         n = st["n"]
         out["n_end"] = n
         out["rows"] = rec.rows if not ref else None
-        out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH + (REDO if a.k1_redo else ())
+        out["fields"] = ("n", "dt", "norm", "dt_opt", "remaining") + BRANCH + (REDO if a.k1_redo else ()) + (
+            REDO_ALL if a.k1_redo == "all" else ())
+        if a.k1_redo == "all":
+            out["redo_events"], out["redo_thr"] = rec.events, (THR_ERR, THR_X1)
         out["mismatch"] = rec.mismatch
         out["last_h"] = dict(lh)
         for w in out["win"].values():
@@ -352,6 +420,9 @@ def k1_main(a, rl):
               % (out["mode"], n, len(out["win"]), sum(len(w.get("rows", [])) for w in out["win"].values())
                  if ref else len(rec.rows), rec.mismatch, lh["hit"], lh["miss"], a.k1_out if ref else a.k1_ref),
               flush=True)
+        if a.k1_redo == "all":
+            print("[step_dump] --k1_redo all: %d events (error estimate above %.0e tolerance units or x1 above %.0e)"
+                  % (len(rec.events), THR_ERR, THR_X1), flush=True)
         raise SystemExit(3 if rec.mismatch else 0)
 
     magnumnp.LLGSolver.step = step
@@ -387,7 +458,8 @@ def main(argv):
     ap.add_argument("--k1_full", type=int, nargs="+", default=[1, 2, 4], help="K1: full m after k0 + these")
     ap.add_argument("--k1_stop", type=int, default=None, help="K1 reference: stop after this sample interval")
     ap.add_argument("--k1_reps", type=int, default=1, help="K1 arm: integrate each window this many times")
-    ap.add_argument("--k1_redo", action="store_true", help="K1: error RMS per try; do each try above 1.1 again")
+    ap.add_argument("--k1_redo", nargs="?", const="rejected", choices=["rejected", "all"],
+                    help="K1: error RMS per try; do each try above 1.1 again (all: each try, with the field terms)")
     a = ap.parse_args(argv[:i])
     sys.path.insert(0, str(pathlib.Path(a.rl_dir).resolve()))
     if a.k1_ref or a.k1_arm:

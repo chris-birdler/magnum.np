@@ -1,0 +1,6 @@
+# outlier test 3 (finding of the K1 pilot, PLAN 14a; decision 2026-10-24 ~02:30 UTC, night rule): each try done twice
+# in the real dynamics (step_dump --k1_redo all); at an event the output of each field term in each stage is compared,
+# the first differing stage and term names the part with the fault. d538bde 20 repetitions, c63e862 10 (about the
+# same wall time, so that 2 runs are on the GPU all the time, as in all observed outliers)
+H_c63 B_c63 H 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/H/H_c63.pt --k1_reps 10 --k1_redo all
+H_d53 B_d53 H 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/H/H_d53.pt --k1_reps 20 --k1_redo all
