@@ -17,7 +17,7 @@ set_precision("double")
 
 from geometry import fcc_box  # noqa: E402
 from nearfield import NearCorrection, FFTField, v1_cells, fine_owner_m, coarse_mean, centroid_offsets, centroid_field  # noqa: E402
-from magnumnp.field_terms.demag_staircase import centroid_field_fourier, pair_matrix, sym_matvec  # noqa: E402
+from magnumnp.field_terms.demag_staircase import centroid_field_fourier, pair_matrix, pair_blocks, sym_matvec  # noqa: E402
 
 
 def one_sphere(N, q, r, centre):
@@ -107,7 +107,7 @@ def test_uniform_m_cubic_body_exact_energy():
 
 @pytest.mark.parametrize("form,periodic", [("pair", True), ("pair", False), ("local", True)])
 def test_field_term_equals_correction(form, periodic):
-    """DemagStaircaseCorrection (the field term of magnum.np; the pair form as one sparse matrix, PROTOKOLL 3.36) gives
+    """DemagStaircaseCorrection (the field term of magnum.np; the pair form as PairBlocks, PLAN 14b) gives
     M_s times the correction of NearCorrection (gather and index_add per offset)."""
     from magnumnp import Mesh, State, DemagStaircaseCorrection
     N, q, Ms = 16, 2, 8e5
@@ -280,6 +280,81 @@ def test_pair_matrix_builds_on_the_cpu_with_another_default_device():
         torch.set_default_device("cpu")
     assert A.device.type == "cpu"
     assert float(((A @ m.reshape(-1)).reshape(-1, 3) - ref).abs().max()) == 0.0
+
+
+def random_pairs(seed, n_cells=60, n_rows=50, P=3000):
+    """Random pairs with repeated (target, source) pairs, block rows of 0 ... about 2 x 16 blocks after the merge and
+    cells without a block row (targets only in the first n_rows cells)."""
+    g = torch.Generator().manual_seed(seed)
+    tgt = torch.randint(0, n_rows, (P,), generator=g)
+    src = torch.randint(0, n_cells, (P,), generator=g)
+    cf = torch.randn(P, 6, generator=g, dtype=torch.float64)
+    m = torch.randn(n_cells, 3, generator=g, dtype=torch.float64)
+    return tgt, src, cf, m
+
+
+@pytest.mark.parametrize("chunk", [1, 3, 16, 64])
+def test_pair_blocks_equal_index_add_and_pair_matrix(chunk):
+    """PairBlocks (fixed-order sum, PLAN 14b) gives the pair sum of gather, sym_matvec and index_add and the product of
+    pair_matrix to round-off, also with repeated pairs, rows longer than a chunk and cells without a row; the result is
+    bitwise the same on repetition."""
+    tgt, src, cf, m = random_pairs(21)
+    n_cells = len(m)
+    ref = torch.zeros_like(m).index_add_(0, tgt, sym_matvec(cf, m[src]))
+    csr = (pair_matrix(tgt, src, cf, n_cells) @ m.reshape(-1)).reshape(-1, 3)
+    B = pair_blocks(tgt, src, cf, n_cells, chunk=chunk)
+    new = (B @ m.reshape(-1)).reshape(-1, 3)
+    scale = float(ref.abs().max())
+    assert float((new - ref).abs().max()) <= 1e-12 * scale
+    assert float((new - csr).abs().max()) <= 1e-12 * scale
+    assert float(new[50:].abs().max()) == 0.0                                  # cells without a block row
+    k_max = max(len(set(src[tgt == t].tolist())) for t in range(50))           # merged blocks of the longest row
+    assert int(B.T.shape[1]) == (k_max + chunk - 1) // chunk
+    for _ in range(3):
+        assert torch.equal((B @ m.reshape(-1)), new.reshape(-1))
+
+
+def test_pair_blocks_layout():
+    """Each merged block is in exactly one slot of its own row; the padding has zero coefficients; T points to the
+    chunks of its row in order and to the chunk of zeros after them."""
+    tgt, src, cf, m = random_pairs(22)
+    C = 16
+    B = pair_blocks(tgt, src, cf, len(m), chunk=C)
+    n_chunk = B.S.shape[0] - 1
+    assert float(B.V[:, n_chunk].abs().max()) == 0.0
+    used = torch.zeros(n_chunk + 1, dtype=torch.long)
+    for i, row in enumerate(B.rows.tolist()):
+        ch = [int(c) for c in B.T[i] if int(c) != n_chunk]
+        assert ch == list(range(ch[0], ch[0] + len(ch)))                     # consecutive chunks
+        assert all(int(c) == n_chunk for c in B.T[i, len(ch):])               # padding at the end
+        used[ch] += 1
+        sel = tgt == row
+        assert int((B.V[0, ch] != 0).sum()) == len(set(src[sel].tolist()))   # one slot per merged block
+    assert int(used[:n_chunk].min()) == 1 and int(used[:n_chunk].max()) == 1   # each chunk in one row
+
+
+def test_pair_blocks_single_precision():
+    """In single precision (production), PairBlocks agrees with the float64 pair sum within float32 round-off."""
+    tgt, src, cf, m = random_pairs(23)
+    ref = torch.zeros_like(m).index_add_(0, tgt, sym_matvec(cf, m[src]))
+    B = pair_blocks(tgt, src, cf, len(m), dtype=torch.float32)
+    assert B.V.dtype == torch.float32
+    new = (B @ m.to(torch.float32).reshape(-1)).reshape(-1, 3)
+    assert new.dtype == torch.float32
+    assert float((new.double() - ref).abs().max()) <= 1e-5 * float(ref.abs().max())
+
+
+def test_pair_blocks_build_on_the_cpu_with_another_default_device():
+    """As pair_matrix: the build stays on the CPU when the default device is another one (meta stands for the GPU)."""
+    tgt, src, cf, m = random_pairs(24)
+    ref = pair_blocks(tgt, src, cf, len(m)) @ m.reshape(-1)
+    torch.set_default_device("meta")
+    try:
+        B = pair_blocks(tgt, src, cf, len(m))
+    finally:
+        torch.set_default_device("cpu")
+    assert B.V.device.type == "cpu" and B.S.device.type == "cpu" and B.T.device.type == "cpu"
+    assert torch.equal(B @ m.reshape(-1), ref)
 
 
 @pytest.mark.parametrize("N, d_lex, q", [(48, 92.214, 2), (48, 92.214, 4), (48, 92.214, 8), (40, 80.0, 3)])
