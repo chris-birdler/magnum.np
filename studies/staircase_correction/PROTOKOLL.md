@@ -2687,3 +2687,36 @@ box.
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
 the partial outputs to /root/k1/A/dup_20261024 (not deleted) and started one chain again.
+
+### 3.41 PLAN 14b: the pair sum of the correction in a fixed order (2026-10-24, from about 17:25 UTC; in progress)
+
+Work on the mini PC after the move (HANDOVER.md). Mandate of Chris (2026-10-24, about 17:05 UTC): do all necessary
+steps of PLAN 14 to the end, choose conservative criteria, report once at the end.
+
+- Patch (option 1 of Chris): e7ce6ca on perf/staircase-det (from df0f811), PairBlocks (PLAN 14b). Local:
+  test_staircase.py 34 of 34 pass (torch 2.7.1, CPU, exit code 0).
+- PLAN 14b written before the GPU data (0197af2). A context-free review gave 9 points (among them: the first rule of D4,
+  0 events in the P arm and at least 3 in the rate control, gives only p 0.125, not 0.009; the D1 reference is read
+  back from the layout; non-finite values were not counted as events). All points are in the new version (4ad601a),
+  written during D1 and before any data of the dynamics with the patch.
+- D1 (box 11, 17:41 … 18:29 UTC, 2 processes, 20 000 products per mode, precision and process; states k0 8 and 144 of
+  refB.pt; local copy remote_20261024_box11/D1/, md5 verified). Layout: 326 720 block rows, 23 893 664 blocks,
+  1 667 616 chunks of 16 (26 681 872 slots, 12 % padding), at most 15 chunks per row.
+
+  | mode | float64 ms per product (a / b) | float32 ms (a / b) | repeats not bitwise equal | difference to csr (float64) | added peak memory |
+  |---|---|---|---|---|---|
+  | csr (cuSPARSE) | 8.56 / 8.58 | 4.88 / 4.89 | 20 000 of 20 000 (all) | 2.6e-16 / 2.3e-16 | 89 MiB (float32 46) |
+  | eager | 60.1 / 60.2 | 37.2 / 37.2 | 0 | 1.03e-15 | 1920 MiB (959) |
+  | compiled | 9.04 / 8.98 | 2.21 / 4.79 | 0 | 1.03e-15 | 735 MiB (368) |
+
+  Compiled against eager: 7.7e-16 (float64), 5.5e-7 (float32). Pass: eager and compiled (bound 1e-11). Choice by the
+  rule: compiled (it agrees with eager, and in float32 it takes at most 2/3 of the time of eager in both processes).
+  Process a measured its compiled float32 time after process b had ended (GPU alone): 2.2 ms; with 2 processes
+  4.8 ms, as csr. Commit 3f1faf7 (block_sum with @torch.compile), ported to the 5 trees; test_staircase.py passes in
+  all 6 trees (26 … 34 tests, exit code 0). Branches: perf/staircase-det 3f1faf7, -01e 5a93c68, -c56 391a358, -d53
+  09dd2a1, -ba4 161d2e4, perf/speed-all-det 15e5909.
+- Finding in D1 (information): in process a, one float32 csr product differed from the first product on the same state
+  by 2.63e-2 (absolute; about 0.1 of the largest value), while the rounding scatter is 3e-8 (process b). Thus the
+  cuSPARSE fault occurs also in single precision, the precision of production, and here in products back to back with
+  a second process on the GPU (the second process ran other kernels). The tool records only the largest difference,
+  so the count of such products in the 20 000 is not known.
