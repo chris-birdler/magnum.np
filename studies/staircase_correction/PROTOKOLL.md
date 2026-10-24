@@ -2613,6 +2613,17 @@ box.
 - Change of plan (night rule, 08:22 UTC): H_c63 runs longer than estimated (still running at 08:22). The first
   process of stress test 3 started at once beside H_c63 (2 processes on the GPU, as planned); after_h.sh was stopped
   by PID and after_h2.sh starts the second process when H_c63 has ended.
+- Stress test 3, first hour of process a (beside H_c63, 08:22 … 09:27 UTC): 423 000 sparse products (8.5 ms each),
+  0 events, largest difference 2.6e-16 relative (rounding). Expected at the pooled rate per product (1.1e-5): 4.8
+  events, probability of 0 about 0.008; at the lower bound of the pooled rate (4.9e-6): 2.1 events, probability of 0
+  about 0.12.
+- Rows of the event cells in the CSR matrix (stress test 3, --idx): event 1 (index 1 634 169) row length 501,
+  fraction 0.031; event 2 (3 060 786) 528, 0.156; events 3, 4, 5 (3 615 150, 3 632 484, 2 605 404) each 513, 0.078
+  (5/64); replay outlier (1 513 981, index of the largest error, not of the product) 558, 0.203; cell of the normal
+  maximum (876 667) 519, 0.047. Thus 3 of the 5 rows that the tools name directly have the length 513 (2^9 + 1). The
+  row start in the CSR arrays and the row index show no pattern modulo 32 … 1024. The share of the rows with the
+  length 513 in geometry B decides whether this is a pattern: csr_hist.py (box11/csr_hist.sh, on the CPU of the box
+  beside the GPU runs, from 09:32 UTC) gives the histogram of the row lengths.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
