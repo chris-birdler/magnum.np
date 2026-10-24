@@ -2674,6 +2674,15 @@ box.
   /root/k1/B/B_c63.pt (1.6 GB, stays on the box). Its pair (PLAN 10) needs the arm of the patched product, so there is
   no evaluation yet. Log local in remote_20261023_box11/K1B/ (manifest box_B_c63.md5 with the md5 of the .pt). The GPU
   has had no load since 13:21 UTC.
+- Decision of Chris (2026-10-24, between 13:21 and 14:00 UTC, "go" to the recommended options). Options for the fault:
+  (1) patch: replace the cuSPARSE product with an own sum per row in a fixed order, without cuSPARSE and without atomic
+  additions; verify it with outlier test 3 on the patched tree, then K1; (2) take PLAN 10 out of the final state (B5,
+  B4 and B1 stay; the gain of the pair sum, 20.8 → 2.2 ms at N 104, q 4, is lost); (3) accept with a bound (not
+  recommended under the mandate). Options for box 11: keep it rented without load until the patch is tested, or
+  download and destroy it. Approved: patch option 1 and keep box 11. Nothing is built yet; the design, the patched
+  trees, the repeated tests and the pass rule of the outlier test go to Chris before the box runs.
+- 14:20 UTC: Chris stopped the session to continue on another computer. State and next step for the new session:
+  HANDOVER.md in this folder.
 
 **Operation.** The chain of the A arms started twice: a first start command with nested quotes ran, but my check used a
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
