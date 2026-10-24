@@ -2504,7 +2504,7 @@ box.
 - Outlier test 3 (box 11, from 02:17 UTC): d538bde 20 repetitions and c63e862 10 repetitions of the 17 windows with
   --k1_redo all, in parallel (2 processes, as in all observed outliers). Expected: about 37 700 tries of d538bde,
   about 3 events at the observed rate. Expected end about 08:00 UTC. Result follows.
-- Outlier test 3, first event (02:59 UTC, d538bde, sample interval 12, dt 5.04e-12). The first try had the norm 1.406
+- Outlier test 3, first event (02:57 UTC, d538bde, sample interval 12, dt 5.04e-12). The first try had the norm 1.406
   (rejected as usual), the second try 94.97. Stages 0 … 2: all terms are equal within rounding (at most 2.5e-15
   relative). Stage 3: the correction (DemagStaircaseCorrection) differs by 1.81e3 A/m (5.98e-3 of its largest value)
   at the flat index 1 634 169 (cell 544 723 = (46, 75, 79), x component); all other terms of stage 3 are equal within
