@@ -2846,5 +2846,59 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
     0.403 … 0.428 against 0.772 … 0.856.
 - T5, config part of D6: config.json of the T1 run of ABP_on against that of AB_on (B_AB_on, 7f755a0) differs only in
   out, magnumnp_path and git_commit. The config part of D7 (ABP off against 9e0ea7c off) follows with D7.
-- D7 started 06:19 UTC (d7chain.sh: d7t.sh, transfer states T_q4_156, T_q8_108, T_q8_156, all exit code 0 at 07:41
-  UTC; then d7.sh).
+- D7 (06:19 … 12:18 UTC, d7chain.sh: d7t.sh, the transfer states T_q4_156, T_q8_108 and T_q8_156; then d7.sh: 6
+  kernel builds, 30 measurement runs, 8 null runs; all 47 steps exit code 0; evaluation d7_eval.sh; local copy
+  remote_20261024_box11/D7/D7.tgz, md5 93e43b14… verified).
+  - Speed (single precision, V100 16 GB, one run on the GPU at a time; 30 sample intervals of warm-up, 96 measured;
+    mean ± SE, n 3 runs for each arm; the halves rule: no run of the 30 above 10 %, largest 1.8 % in q4_108 new r2):
+
+    | conf | old (tree) | old ms per sample interval | new (ABP) ms per sample interval | gain per sample interval | gain per stage | s per cycle old → new |
+    |---|---|---|---|---|---|---|
+    | off108 | 9e0ea7c | 323.2 ± 0.2 | 339.0 ± 17.4 | 0.95 ± 0.05 | 0.92 ± 0.05 | 83 → 87 |
+    | off156 | 9e0ea7c | 1004.1 ± 0.6 | 913.8 ± 2.3 | 1.10 ± 0.00 | 1.06 ± 0.00 | 257 → 234 |
+    | q4_108 | c63e862 | 4079.2 ± 9.2 | 1023.6 ± 4.1 | 3.99 ± 0.02 | 3.82 ± 0.02 | 1044 → 262 |
+    | q4_156 | c63e862 | 9709.9 ± 40.1 | 2628.0 ± 6.3 | 3.69 ± 0.02 | 3.56 ± 0.01 | 2486 → 673 |
+    | q8_108 | — | — | 1044.4 ± 4.6 | — | — | — → 267 |
+    | q8_156 | — | — | 3098.7 ± 3.0 | — | — | — → 793 |
+
+    Tries per sample interval old → new: off108 21.81 → 21.05, off156 22.08 → 21.21, q4_108 23.24 → 22.27, q4_156
+    22.23 → 21.40 (A4: no try past the end of the interval). Set-up old → new: q4_108 35.7 → 20.2 s, q4_156 75.8 →
+    26.9 s; q8_108 59.1 s, q8_156 103.1 s. Peak GPU memory allocated old → new: q4_108 4.97 → 4.46 GiB, q4_156 9.90 →
+    8.94 GiB, off108 0.33 → 0.39 GiB, off156 0.98 → 1.14 GiB; q8_108 5.17 GiB, q8_156 10.37 GiB (13.06 GiB reserved).
+  - off108: the run new r2 has 373.7 ms per sample interval, r1 and r3 323.1 and 320.2 ms (old 322.9 … 323.6 ms);
+    its halves differ by 0.2 %, thus the slow rate is constant in the run. The result of the plan is the mean of the 3
+    runs (0.95 ± 0.05). Without the correction ABP has no gain at N 108: 3 % more time per stage (2.535 … 2.558
+    against 2.467 … 2.473 ms in r1 and r3), and 3.5 % fewer tries.
+  - T5, config part of D7: config.json of the old run against the new run differs in out, magnumnp_path and
+    git_commit, and in the keys that the merge adds with their default values (off: staircase none, staircase_q 2,
+    staircase_p 3, staircase_centroid false; q4: sat_static, sat_check, prep_only false). With D6 (ABP against AB:
+    only out, magnumnp_path, git_commit) T5 passes.
+  - G (D7 amendment; scale S as in item 3; bound 3 S for the RMS and 3 × the largest interval of the scale source):
+
+    | conf | steps: old-new RMS / largest (scale) | <Ms m_x>: old-new RMS / largest in A/m (scale) | result |
+    |---|---|---|---|
+    | off108 | 1.37 / 4 (old-null 1.33 / 4) | 0.00667 / 0.0215 (old-null 0.00568 / 0.0181) | PASS |
+    | off156 | 1.48 / 5 (old-null 1.51 / 7) | 0.00764 / 0.0188 (old-null 0.00464 / 0.0114) | PASS |
+    | q4_108 | 1.47 / 7 (old-old 1.46 / 6) | 0.0298 / 0.207 (old-old 0.00495 / 0.0149) | FAIL |
+    | q4_156 | 1.37 / 5 (old-old 1.32 / 5) | 0.0133 / 0.0516 (old-old 0.00563 / 0.0190) | PASS |
+
+    Result: ABP does not pass G. In q4_108 the <Ms m_x> measure fails: RMS 6.0 S (bound 3 S), largest interval 13.9
+    times that of the scale source (bound 3). q4_156 passes with a small margin on the largest interval (0.0516
+    against the bound 0.057). The stop checks of item 5 pass in all 6 configurations (126 samples, t equal, arguments
+    equal, steps do not decrease). New against new is 0 in all 6 configurations (all runs of a configuration chose the
+    same kernel configuration); old against old is 0 in off108 and off156 (scale from the null runs). Tries, old minus
+    new per sample interval: 0.80, 0.82, 1.01, 0.86 (information).
+  - Where the difference sits (q4_108): the old-new difference of <Ms m_x> is above 0.04 A/m only in the sample
+    intervals 12, 27 … 29 and 99 … 102 (largest 0.207 A/m in interval 29, at <Ms m_x> 2290 A/m: 9e-5 relative; the
+    amplitude of <Ms m_x> is 3938 A/m). After these intervals the traces of old and new agree again at the scale of
+    old against old. The intervals 27 … 29 and 99 … 102 lie at about the same <Ms m_x> on the rising and the falling
+    branch. q4_156 has one such interval (115: 0.052 A/m against 0.004 A/m of old against old and null); off108 and
+    off156 have none above 0.04 A/m. Hypothesis (not tested yet): an event at a threshold of the field (for example a
+    jump in one particle) comes a little earlier or later in the new code; the one systematic change of the field in
+    the chain is B1 (T6 b: 1.39 cu in the cut cells).
+- Cause check of the G fail (d7c.sh, from 12:25 UTC; amendment item 7). A try record of step_dump.py needs the state
+  at the start of interval 27 of the q4_108 run, and the runs of D7 do not keep states. Thus the check puts the trees of
+  the chain in place of ABP, with the same arguments and the same demag kernel (the kernel files of all trees have the
+  same md5): B_d53P (PLAN 10, B5, B4 with the pair sum; no B1, no A), B_det (= B_df0P: adds B1) and BA4P (adds A4). Each
+  tree is judged by G against the old and the null runs of q4_108. If B_d53P passes and B_det fails, the cause is B1.
+  Information: two more runs of ABP in off108 (method check of r2; not used for the result of the plan).
