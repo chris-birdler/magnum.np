@@ -2798,4 +2798,30 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   Note on the time: 3.8 ms per float64 product here against 9.0 ms in D1. In D1 the two processes did their 20 000
   repeats at the same time (the float32 time of D1 alone against with 2 processes: 2.2 against 4.8 ms, a factor 2.2);
   here the 20 timed products ran without such load (estimate). D7 measures the speed in production.
-- D5 arms started 05:07 UTC (k1.sh p3_arms.txt 2: B_01eP, B_c56P, B_df0P, ABP_on).
+- D5 arms (05:07 … 05:28 UTC, k1.sh p3_arms.txt 2: B_01eP, B_c56P, B_df0P, ABP_on; all exit code 0, mismatch 0) and
+  pairs (k1_eval_p.sh pairs; local copy remote_20261024_box11/D5/, md5 verified): PASS by the rules of 14a.
+
+  | pair | old → new | D | C1 largest (bound 1e-2) | C2 GM all (bound 10) | C2 largest window (bound 30) | result |
+  |---|---|---|---|---|---|---|
+  | PLAN10 | B_c63 → B_01eP | yes | 5.0e-5 | 0.80 | 1.47 | PASS |
+  | B5 | B_01eP → B_c56P | yes | 3.7e-5 | 0.77 | 1.59 | PASS |
+  | B4 | B_c56P → B_d53P | yes | 3.7e-5 | 0.77 | 1.59 | PASS |
+  | B1 | B_d53P → B_df0P | yes | 3.3 | 7.5e4 | 2.3e5 | information (rule of 14a) |
+  | A4 | B_df0P → BA4P | yes | 3.1e-5 | 0.56 | 1.03 | PASS |
+  | AB on | BA4P → ABP | yes | 3.4e-5 | 1.13 | 1.87 | PASS |
+
+  Each pair: all 17 windows have determined points, no A4 case, the output rows checked (220 or 235 per pair) pass
+  (B1: 144 of 220 above the bound, information). B1 cache: the stored stray field is used in all calls of the
+  correction (B_df0P 11 634, ABP_on 11 124; not used 0).
+- B5 and B4 have the same values because B_01eP is bitwise equal to B_d53P (BP_base) in all 17 windows (k_eval
+  --same). Both chose XBLOCK 128 and 8 warps for stage 1; B_c56P chose XBLOCK 32 and 4 warps. Thus B5 and B4 (set-up
+  changes, bitwise equal by design, c56c0a5 and d538bde) together change no bit of the 17 windows; the differences of
+  the pairs B5 and B4 are the rounding difference of the configuration only. Configurations of the other arms: B_df0P
+  and ABP_on XBLOCK 32 and 4 warps.
+- B1 (approved model change, PLAN 11 … 13): C1 0.055 … 3.3 control units over the points (C1 is formed for k0 ≥ 8:
+  16 windows; in 15 of them at most 0.33; window 128: 3.3, 1.7 and 0.89 at the points 1, 2 and 4). This is the first K1 measurement of B1 on the B side (the
+  B pairs of 14a waited for the outlier). The gate of B1 is T6 (D6) and the cache count.
+- T5, code part: the git diff of ABP (15e5909) against AB (7f755a0) changes only demag_staircase.py and
+  test_staircase.py, and its changed lines in magnumnp/ are the same as those of the patch (df0f811 → 3f1faf7). The
+  config.json part follows with the runs of D6 and D7.
+- D6 started 05:28 UTC (d6chain.sh: t12p.sh after the D5 arms).
