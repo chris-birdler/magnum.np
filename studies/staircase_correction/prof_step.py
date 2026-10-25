@@ -15,6 +15,9 @@ right-hand side) and the rest of the step (RKF45 combination, error norm, step c
 Speed measurement of PLAN 14 (--window 0, no profiler): ms per sample interval, per RKF45 stage and tries per sample
 interval of the plain window and of its two halves, the set-up time (start of this script to the first sample
 interval, with the kernel build if the cache --kcache does not have the kernel) and the peak GPU memory.
+--trace records after each sample interval t, the count of RKF45 tries, <Ms m_x> and the count of accepted steps
+(state._step), for check G of PLAN 14a/14b. --null reverse|rotate makes a null run as step_dump.py --k1_null (the
+field terms summed in the reverse or in the rotated order): the scale of the rounding for G.
 
 GPU busy share = GPU time per stage (profiled window) / wall time per stage (plain window). Near 1: the GPU limits the
 stage. Well below 1: the CPU side limits it.
@@ -168,6 +171,9 @@ def main(argv):
     ap.add_argument("--trace", action="store_true",
                     help="record t, the count of RKF45 tries and <Ms m_x> after each sample interval (check G of "
                          "PLAN 14a; one reduction for each sample interval)")
+    ap.add_argument("--null", choices=["reverse", "rotate"], default=None,
+                    help="null run as step_dump.py --k1_null (scale of the rounding for check G; not the kernel null "
+                         "run: 1 + 2^-52 rounds to 1 in single precision)")
     ap.add_argument("--rl_dir", default=".", help="folder of run_loops.py (default: the current folder)")
     A = ap.parse_args(argv[:i])
     rl = argv[i + 1:]
@@ -179,8 +185,13 @@ def main(argv):
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
         import kcache
         kcache.use(A.kcache)
+    if A.null:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        from step_dump import k1_null
+        k1_null(A.null)
+        print("[prof_step] null run: %s" % A.null, flush=True)
     res = {"argv": rl, "skip": A.skip, "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
-           "torch": torch.__version__}
+           "torch": torch.__version__, "null": A.null}
     labelled(magnumnp.LLGSolver, "dm", "L:stage (LLGSolver.dm)", count="dm")
     labelled(RKF45, "_try_step", "L:RKF45 try", count="tries")
     f_step = magnumnp.LLGSolver.step
@@ -231,7 +242,8 @@ def main(argv):
             r = f_step(self, state, dt, **k)
         if A.trace:
             Ms = state.material["Ms"]
-            res.setdefault("trace", []).append((float(state.t), ST["tries"], float((Ms * state.m[..., 0:1]).mean())))
+            res.setdefault("trace", []).append((float(state.t), ST["tries"], float((Ms * state.m[..., 0:1]).mean()),
+                                                int(state._step)))
         if A.window and n == A.skip + A.plain + A.window:          # end of the profiled window (none with --window 0)
             sync()
             wall = time.perf_counter() - c["t"]

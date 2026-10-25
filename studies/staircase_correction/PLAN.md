@@ -1078,6 +1078,48 @@ B_df0P (T6) → BA4P → ABP; the states of refB.pt; the criteria of 14a.
 only the patch. The speed measurement of section 14 with ABP as the new code (old: 9e0ea7c with the correction off,
 c63e862 with the correction on); G from these runs.
 
+**D7 amendment (2026-10-25, about 07:00 UTC, before the speed data; mandate).** A context-free review of a first draft
+gave 8 points; this text includes them.
+1. Tools. d7.sh had no --trace, and G needs the traces. The box had a prof_step.py without the fix of a0ad2b0 (with
+   --window 0 the run stopped one sample interval early). Now prof_step.py --trace records after each sample interval
+   t, the count of RKF45 tries, <Ms m_x> and the count of accepted steps (state._step); --null reverse|rotate makes a
+   null run of the old code, as the null runs 1 and 2 of T4. Before the start, the md5 of each file on the box is
+   checked against the commit.
+2. The tries measure of G is biased by design. The old trees (9e0ea7c, c63e862) try a step past the end of the sample
+   interval and reject it; A4 sets dt to the rest of the interval before the try. Thus old minus new is about 1 try in
+   each sample interval. G judges the accepted steps per sample interval in place of the tries (these are equal in both
+   codes, except in A4 cases and after a divergence of the step decisions). The tries are information: the mean of old
+   minus new per sample interval is reported.
+3. Scale. The old code without the correction can be bitwise repeatable (the A code gave bitwise-equal T4 windows in
+   separate processes). Then old against old is 0, and the bound 3 × 0 cannot separate a change of the rounding (A1 …
+   A4 are on the path without the correction) from a gross change. Thus d7.sh adds 2 null runs of the old code for
+   each configuration with an old arm (the field terms summed in the reverse and in the rotated order; 9e0ea7c for
+   off108 and off156, c63e862 for q4_108 and q4_156: the accepted steps of the c63e862 runs can be equal while m
+   differs). Cost: 8 runs, about 1 h of GPU (estimate). The scale S of a measure in a
+   configuration is the RMS of old against old if it is above 0, else the RMS of old against the null runs. New against
+   new is never a scale. If new against new is above 0 where old against old is 0, k_eval prints it, and I report it
+   as a finding (X1: each run chooses its own kernel configuration).
+4. Pass of a measure (accepted steps per sample interval, <Ms m_x>): the RMS of old against new is at most 3 S, and
+   the largest difference in one sample interval of old against new is at most 3 times that of the scale source. If S
+   is 0, the measure is "not determined"; this is not a pass, and the patch waits for Chris. ABP passes G if both
+   measures pass in all 4 configurations with an old arm (off108, off156, q4_108, q4_156).
+5. Checks that stop the evaluation, in all 6 configurations (q8 included): each run has 126 samples (30 + 96); the
+   runs kb_* (kernel builds) are not used; t is equal at each sample in all runs (1e-12 relative); the run_loops
+   arguments are equal except the value of --out; the accepted steps do not decrease. q8_108 and q8_156 have no old
+   arm: only these checks and new against new (information). G uses the runs with 30 sample intervals of warm-up; a
+   repeat by the halves rule of the speed measurement is for the speed only.
+6. The measure <Ms m_x> is the M_par of the G text of 14a for the default field direction x (ARGS_A and ARGS_B do not
+   set --direction).
+7. A fail of G is a fail. The tool for the cause is a try record of step_dump.py on the sample intervals with the
+   largest difference, old and new. I report the value, its ratio to the scale and the cause; only Chris can release
+   the patch.
+8. Evaluation: k_eval.py --g_old OLD... --g_new NEW... [--g_null NULL...] (the commit of this amendment). Tests before
+   the data: synthetic traces (pass, fail, not determined, no old runs, old runs with scatter, and the stop checks for
+   the sample count, the arguments and the null flag), and prof_step.py on the CPU (T3 geometry, 9e0ea7c, with and
+   without --null reverse: 4 fields in each trace row; the null run changes the accepted steps of the first sample
+   interval by 1). prof_step.py has no kernel null run (1 + 2^-52 rounds to 1 in single precision). A second review
+   of this text by the same reviewer: the 8 points are closed; its 3 small points are in this text.
+
 **Pass of the patch.** D1, D1b, D3, D4 pass, the pairs pass D5, D6 and T5, and ABP passes G. Then PLAN 10, B5, B4, B1,
 A4 and AB on pass with the patch as section 14a defines.
 

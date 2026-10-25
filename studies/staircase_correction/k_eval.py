@@ -446,35 +446,99 @@ def t6(old_dir, new_dir, a):
     return {"a_rms_cu": wr, "a_max_cu": wm, "pooled_cu": pooled, "pass": ok_a and ok_b}
 
 
-def g_check(old, new, a):
-    """G of PLAN 14a: traces of the speed runs (prof_step.py --trace), old against new, scaled by old against old."""
-    R = {"old": [json.load(open(f)) for f in old], "new": [json.load(open(f)) for f in new]}
+def g_check(old, new, null, a):
+    """G of PLAN 14a, as amended in 14b D7 (before the speed data): the traces of the speed runs (prof_step.py --trace:
+    t, tries, <Ms m_x> and accepted steps after each sample interval). Measures: accepted steps per sample interval
+    and <Ms m_x> (judged); tries per sample interval (information: the old code makes a try past the end of the
+    interval, which A4 saves). Scale S of a measure: RMS of old against old if above 0, else RMS of old against the null
+    runs of the old code (--g_null); S = 0: not determined, not a pass. Pass of a measure: RMS of old against new at
+    most --g_factor S, and the largest difference in one sample interval at most --g_factor times that of the scale
+    source. Without old runs (q 8): only the checks and new against new (information). Checks that stop: each run has
+    skip + plain samples (all the same), t is equal at each sample in all runs (1e-12 relative), the run_loops
+    arguments are equal except the value of --out, and the accepted steps do not decrease."""
+    names = {"old": old or [], "new": new or [], "null": null or []}
+    R = {k: [json.load(open(f)) for f in v] for k, v in names.items()}
+    runs = [(k, f, r) for k in R for f, r in zip(names[k], R[k])]
+
+    def args(r):
+        x = list(r["argv"])
+        if "--out" in x:
+            j = x.index("--out")
+            del x[j:j + 2]
+        return x
+
+    n_exp = runs[0][2]["skip"] + runs[0][2]["plain"]["sample_intervals"]
+    for k, f, r in runs:
+        if "trace" not in r or len(r["trace"]) != n_exp or len(r["trace"][0]) < 4:
+            raise SystemExit("k_eval G: %s has no trace of %d samples with the accepted steps" % (f, n_exp))
+        if r["skip"] + r["plain"]["sample_intervals"] != n_exp or args(r) != args(runs[0][2]):
+            raise SystemExit("k_eval G: %s has other samples or other run_loops arguments than %s" % (f, runs[0][1]))
+        if any(r["trace"][i][3] < r["trace"][i - 1][3] for i in range(1, n_exp)):
+            raise SystemExit("k_eval G: the accepted steps of %s decrease" % f)
+        if (k == "null") != bool(r.get("null")):
+            raise SystemExit("k_eval G: %s is %s a null run" % (f, "not" if k == "null" else "unexpectedly"))
+    t0 = runs[0][2]["trace"]
+    for k, f, r in runs:
+        if any(abs(r["trace"][i][0] - t0[i][0]) > 1e-12 * abs(t0[i][0]) + 1e-30 for i in range(n_exp)):
+            raise SystemExit("k_eval G: t of %s is not equal to t of %s at each sample" % (f, runs[0][1]))
     tr = {k: [r["trace"] for r in v] for k, v in R.items()}
-    n = min(len(t) for v in tr.values() for t in v)
-    t_equal = all(abs(x[i][0] - tr["old"][0][i][0]) <= 1e-12 * abs(tr["old"][0][i][0]) + 1e-30
-                  for v in tr.values() for x in v for i in range(n))
 
-    def rms(a_, b_, j, diff):
-        if diff:   # tries per sample interval
-            da = [a_[i][j] - a_[i - 1][j] for i in range(1, n)]
-            db = [b_[i][j] - b_[i - 1][j] for i in range(1, n)]
-        else:
-            da = [a_[i][j] for i in range(n)]
-            db = [b_[i][j] for i in range(n)]
-        return math.sqrt(sum((x - y) ** 2 for x, y in zip(da, db)) / len(da))
+    def series(x, j, diff):
+        return [x[i][j] - x[i - 1][j] for i in range(1, n_exp)] if diff else [x[i][j] for i in range(n_exp)]
 
-    out = {"samples": n, "t_equal": t_equal}
-    for nm, j, diff in (("tries", 1, True), ("Mx", 2, False)):
-        oo = [rms(tr["old"][i], tr["old"][k], j, diff) for i in range(len(old)) for k in range(i + 1, len(old))]
-        on = [rms(x, y, j, diff) for x in tr["old"] for y in tr["new"]]
-        s_oo = math.sqrt(sum(v * v for v in oo) / len(oo))
-        s_on = math.sqrt(sum(v * v for v in on) / len(on))
-        out[nm] = {"old_old": s_oo, "old_new": s_on, "pass": s_on <= a.g_factor * s_oo}
-    out["pass"] = t_equal and all(out[k]["pass"] for k in ("tries", "Mx"))
-    print("G: %d samples, t equal %s; tries per sample interval RMS old/new %.3g, old/old %.3g; <Ms m_x> RMS old/new "
-          "%.3g, old/old %.3g (bound %.0f x) -> %s" % (n, t_equal, out["tries"]["old_new"], out["tries"]["old_old"],
-                                                      out["Mx"]["old_new"], out["Mx"]["old_old"], a.g_factor,
-                                                      "PASS" if out["pass"] else "FAIL"))
+    def pairs(A, B=None):
+        return [(x, y) for i, x in enumerate(A) for y in (A[i + 1:] if B is None else B)]
+
+    def stat(P, j, diff):     # pooled RMS and the largest difference in one sample interval over the pairs
+        if not P:
+            return None
+        d = [[u - v for u, v in zip(series(x, j, diff), series(y, j, diff))] for x, y in P]
+        return (math.sqrt(sum(sum(e * e for e in z) / len(z) for z in d) / len(d)),
+                max(abs(e) for z in d for e in z))
+
+    out = {"samples": n_exp, "t_equal": True, "runs": {k: len(v) for k, v in R.items()}}
+    for nm, j, diff in (("steps", 3, True), ("Mx", 2, False), ("tries", 1, True)):
+        oo, on, onl, nn = (stat(pairs(tr["old"]), j, diff), stat(pairs(tr["old"], tr["new"]), j, diff),
+                           stat(pairs(tr["old"], tr["null"]), j, diff), stat(pairs(tr["new"]), j, diff))
+        m = {"old_old": oo, "old_new": on, "old_null": onl, "new_new": nn}
+        if nm == "tries" and tr["old"] and tr["new"]:
+            m["mean_old_minus_new"] = sum(sum(u - v for u, v in zip(series(x, j, True), series(y, j, True)))
+                                          / (n_exp - 1) for x, y in pairs(tr["old"], tr["new"])) / (len(tr["old"]) * len(tr["new"]))
+        if nm == "steps" and tr["old"] and tr["new"]:
+            m["intervals_differing"] = max(sum(u != v for u, v in zip(series(x, j, True), series(y, j, True)))
+                                           for x, y in pairs(tr["old"], tr["new"]))
+        if nm != "tries" and tr["old"]:
+            src = "old_old" if oo and oo[0] > 0 else ("old_null" if onl and onl[0] > 0 else None)
+            m["scale"] = src
+            if src is None:
+                m["pass"] = None
+            else:
+                S, Smax = m[src]
+                m["pass"] = on[0] <= a.g_factor * S and on[1] <= a.g_factor * Smax
+        out[nm] = m
+    if tr["old"]:
+        v = [out[k]["pass"] for k in ("steps", "Mx")]
+        out["pass"] = False if False in v else (None if None in v else True)
+    else:
+        out["pass"] = None
+    word = {True: "PASS", False: "FAIL", None: "NOT DETERMINED" if tr["old"] else "information (no old runs)"}
+    fm = lambda x: "-" if x is None else "%.3g / %.3g" % x
+    print("G: %d samples, %s; t equal at each sample, arguments equal" % (n_exp, out["runs"]))
+    for nm in ("steps", "Mx", "tries"):
+        m = out[nm]
+        print("   %-5s RMS / largest per interval: old-old %s, old-null %s, old-new %s, new-new %s; scale %s; %s" % (
+            nm, fm(m["old_old"]), fm(m["old_null"]), fm(m["old_new"]), fm(m["new_new"]), m.get("scale", "-"),
+            word[m["pass"]] if "pass" in m else "information"))
+    for nm in ("steps", "Mx"):
+        m = out[nm]
+        if m["old_old"] and m["old_old"][0] == 0 and m["new_new"] and m["new_new"][0] > 0:
+            m["finding_new_scatter"] = True
+            print("   finding: %s of the new runs differ from each other (RMS %.3g), the old runs do not" % (
+                nm, m["new_new"][0]))
+    if "mean_old_minus_new" in out["tries"]:
+        print("   tries: mean old - new per sample interval %.3f; steps: intervals with a difference (largest pair) %d"
+              % (out["tries"]["mean_old_minus_new"], out["steps"]["intervals_differing"]))
+    print("   RESULT G: %s (bound %.0f x the scale)" % (word[out["pass"]], a.g_factor))
     return out
 
 
@@ -505,6 +569,7 @@ def main(argv):
     ap.add_argument("--t6", nargs=2, metavar=("OLD_DIR", "NEW_DIR"), help="T6: double-precision folders (B1)")
     ap.add_argument("--g_old", nargs="+", help="G: json files of prof_step.py --trace of the old code")
     ap.add_argument("--g_new", nargs="+", help="G: json files of prof_step.py --trace of the new code")
+    ap.add_argument("--g_null", nargs="+", help="G: json files of prof_step.py --trace --null of the old code")
     ap.add_argument("--g_factor", type=float, default=3.0)
     ap.add_argument("--t6_band", type=float, nargs=2, default=[0.1, 10.0])
     ap.add_argument("--same", nargs=2)
@@ -518,8 +583,8 @@ def main(argv):
         out["t1"] = t1(*a.t1, a)
     if a.t6:
         out["t6"] = t6(*a.t6, a)
-    if a.g_old:
-        out["g"] = g_check(a.g_old, a.g_new, a)
+    if a.g_old or a.g_new:
+        out["g"] = g_check(a.g_old, a.g_new, a.g_null, a)
     if a.t2:
         out["t2"] = t2(a.t2[0], a.t2[1], a.t2[2], a.t2[3], a.t2[4] if len(a.t2) > 4 else None, a)
     if a.pair or a.pilot:
@@ -550,7 +615,7 @@ def main(argv):
         ok &= r["pass"] if "pass" in r else r["pilot"]["pass"]
     for k in ("t1", "t2", "t6", "g"):
         if k in out:
-            ok &= out[k]["pass"]
+            ok &= out[k]["pass"] is True                  # G "not determined" (None) is not a pass
     sys.exit(0 if ok else 1)
 
 
