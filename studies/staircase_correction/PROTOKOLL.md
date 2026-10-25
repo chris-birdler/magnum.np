@@ -2990,6 +2990,19 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   q4_156 with the single-precision arguments of D7 and a copy of the kernel folder ABP_156. Rule as part 4 with the
   new group ABP, AB r1, AB r2 (n 3): e_old / e_new over the intervals 113 … 117, all 126 and the RMS. Also the largest
   difference ABP against AB r1 and r2 and AB r1 against AB r2 (the rounding scale, as part 2).
+  Result (14:30 … 14:43 UTC; logs without error text, the 2 more lines are the CSR beta warning of torch; 126
+  samples, t equal; configuration of AB r1 against ABP new r1 of D7: only out, magnumnp_path and git_commit):
+  AB r1 and AB r2 are not bitwise equal (2 realisations). Largest difference of <Ms m_x>: ABP against AB r1 0.013,
+  against AB r2 0.017, AB r1 against AB r2 0.013 A/m (old against old 0.019 A/m). Distance to D (A/m):
+
+  | group | n | largest, intervals 113 … 117 | largest, all 126 | RMS over 126 | interval 115 |
+  |---|---|---|---|---|---|
+  | old (c63e862, single) | 5 | 0.0607 | 0.0607 | 0.0150 | +0.056 … +0.061 |
+  | new (ABP, AB r1, AB r2, single) | 3 | 0.0102 | 0.0140 | 0.0046 | +0.009 … +0.010 |
+
+  e_old / e_new: 6.0, 4.3 and 3.2, thus by the rule: the old code is the worse one, now with 5 old and 3 new
+  realisations. The limit of part 4 (1 new realisation) is closed. Data: remote_20261024_box11/D7c/D7c5.tgz, md5
+  ca1242a932134f28c47211217aa36d1a, equal on the box and local.
 - Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
   echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
   holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
