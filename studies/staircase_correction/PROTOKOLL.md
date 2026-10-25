@@ -3037,3 +3037,23 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   interval): q4_108 3.99 ± 0.02; q4_156 3.69 ± 0.02; off108 0.95 ± 0.05 (no gain); off156 1.10 ± 0.00. Distance of
   <Ms m_x> to the double-precision reference, old against new (largest, all 126 intervals): q4_108 0.285 against
   0.115 A/m (n 5 and 3); q4_156 0.0607 against 0.0140 A/m (n 5 and 3).
+
+### 3.42 Speed against the old code with DemagFieldPBC; profile of ABP (2026-10-25, from about 18:30 UTC)
+
+Question of Chris: how fast is the released code (ABP, correction q 4, Newell true_pbc, single precision) against the
+old code without the patches, without the correction and with DemagFieldPBC, also in single precision? The only
+earlier number (β study, tolbench_report.md, 2026-10-17: Newell 42 % more wall time per step than DemagFieldPBC) is
+from an older code state, 1 run for each solver, on a node with a changing load. Go of Chris ("Ok") for a direct
+measurement on box 11 before its destroy.
+
+- Rule (d8.sh, written before the data). Old tree M_9e0 (main 9e0ea7c, as the off arms of D7), the arguments of
+  off108 and off156 of D7 (ARGS_A, single precision, the same start states), only --strayfield_cycles fd added: the
+  drive cycles use DemagFieldPBC (the mesh keeps pbc 4, which DemagFieldPBC does not use; the exchange is periodic in
+  both). prof_step.py --skip 30 --plain 96 --window 0 as D7, n 3 runs for each N, then 1 control run of M_9e0 with
+  Newell (the D7 arm off_old) for each N. Results: ms per sample interval, ms per stage and tries per sample interval
+  (mean ± SE, n 3); ratio ABP q4 (D7) / M_9e0 fd per sample interval and per stage, with the SE of both. Drift check:
+  the control run is within 3 % of the D7 mean of off_old; else I report it and give the ratio also against the
+  control.
+- Information for the question "is more speed possible": profile of ABP in q4_108, q4_156, off108 and off156
+  (prof_step.py --skip 30 --plain 20 --window 10): GPU busy share and the GPU time per stage split into the field
+  terms (correction, stray field, other terms, rest of stage, rest of step).
