@@ -2751,10 +2751,24 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - Finding in D4 (information, check X1 below): H3_d53P_a and H3_d53P_b are not bitwise equal to each other, although
   both start each window from the same state of refB.pt. The first try of window 0 differs already (error norm);
   m at the window ends differs by at most 3.7e-14, m in the probe cells by at most 3.8e-10 (the adaptive step grows
-  the difference: dt at the window ends differs by up to 6e-7 relative). Of the cycle quantities, only those of the
-  dissipated power differ (p_dis, W_dis; W_dis relative 2e-14); E_start of the correction differs in the last digit,
-  E_start of the other terms is bitwise equal. Thus each process computes a slightly different result for the same
-  input, while each process repeats its own result bitwise. Cause not known yet. Check X1 (decision, within the
-  mandate; about 10 min GPU): T1 of B_d53P against a second process of B_d53P on the 16 states of refB.pt (each field
-  term bitwise), and the md5 of the layout and of the first products of PairBlocks in two processes (bench_det.py).
+  the difference: dt at the window ends differs by up to 1.2e-6 relative). In the sample file, only p_dis shows a
+  difference at the printed precision; in summary.json all cycle quantities differ at the rounding level (relative
+  1e-15 … 6e-14, for example W_dis 5.7e-14). E_start of the correction differs in the last digit, E_start of the
+  other terms is bitwise equal. Thus each process computes a slightly different result for the same input, while each
+  process repeats its own result bitwise.
+- Cause candidate (from the compile caches of the two runs, no GPU): the two processes chose different configurations
+  for the generated kernel of stage 1 of block_sum (the sum over the 16 blocks of each chunk, a persistent reduction,
+  5 002 851 outputs in float64): H3_d53P_a XBLOCK 32 and 4 warps, H3_d53P_b XBLOCK 128 and 8 warps. Inductor chooses
+  the configuration by time at the first call, thus by the load of the GPU at that time. The configuration sets the
+  layout of the 16 terms on the threads and with it the order of the sum. Stage 2 (980 160 outputs) has the same
+  configuration in both runs. The T1 of D1b (B_d53P) chose XBLOCK 32 and 4 warps, as H3_d53P_a.
+- Check X1 (decision, within the mandate; about 10 min GPU; x1.sh, after the D5 pilot): (1) T1 of B_d53P in a new
+  process with a copy of the compile cache of the T1 of D1b, against D1b, on the 16 states of refB.pt; (2)
+  bench_det.py (the product of production, float64; md5 of the layout and of the first products) with copies of the
+  caches of H3_d53P_a (2 processes) and of H3_d53P_b (1 process), and 1 process with an empty cache. Rules, written
+  before the data: if (1) gives 0 difference in all terms and the products of (2) are bitwise equal for the same
+  configuration and differ for the other configuration, the cause is the choice of the configuration and there is no
+  second cause. Any other result: a second cause exists; it is reported with its size. The code stays unchanged
+  in both cases (a change would make D4 void; whether two processes must give bitwise the same result is a decision of
+  Chris).
 - D5 pilot started 04:08 UTC (k1.sh p3_pilot.txt 2).

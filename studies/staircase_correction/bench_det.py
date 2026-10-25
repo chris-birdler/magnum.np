@@ -11,7 +11,9 @@ the K1 reference, set up the correction and compare, in double and in single pre
 For each: the largest difference to csr (relative to the largest entry of csr), the count of products that are not
 bitwise equal to the first product on the same state (--reps products, on the states in turn, a new tensor of m each
 time, as in the stages) and their largest difference, the time per product (median of --time products, CUDA events),
-and the peak of the added GPU memory of one product.
+and the peak of the added GPU memory of one product. The json has the md5 of the layout (V, S, T, rows) and of the
+first products, for a comparison of two processes. In a tree with @torch.compile on block_sum, "eager" is the product
+of production (PairBlocks @ m with the compiled block_sum).
 
     CUDA_DEVICE=0 python bench_det.py --ref refB.pt --k0 8 144 --json out.json -- <run_loops arguments>
 """
@@ -65,7 +67,9 @@ def main(argv):
             slot = torch.nonzero((row_of_chunk.repeat_interleave(C) >= 0) & (Vc != 0).any(0)).reshape(-1)
             tgt, src, cf = row_of_chunk.repeat_interleave(C)[slot], Sc[slot], Vc[:, slot].T.contiguous()
         out["blocks"] = {"n_rows": len(rows), "n_chunk": n_chunk, "chunk": C, "L": int(T.shape[1]),
-                         "n_blocks": len(slot), "slots": (n_chunk + 1) * C}
+                         "n_blocks": len(slot), "slots": (n_chunk + 1) * C,
+                         "md5": {k: hashlib.md5(getattr(B, k).cpu().numpy().tobytes()).hexdigest()   # across processes
+                                 for k in ("V", "S", "T", "rows")}}
         print("[bench] %d rows, %d blocks, %d chunks of %d (%d slots), at most %d chunks per row" % (
             len(rows), len(slot), n_chunk, C, (n_chunk + 1) * C, T.shape[1]), flush=True)
         cb = torch.compile(mod.block_sum, dynamic=False)
