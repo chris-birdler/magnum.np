@@ -3205,3 +3205,35 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   (bitwise); T2 all e and b values of ASQ exactly equal to those of ABP (25 quantities); the configuration of the
   stage-1 kernel of block_sum equal in both trees (float64: XBLOCK 512, 8 warps; float32: XBLOCK 1024, 4 warps; the
   copies of one inductor cache). Pass by the bitwise rule.
+- W2, B states (d12.sh, 22:58 … 23:24 UTC; logs without error text; the configuration of the block_sum kernel equal
+  in each pair):
+
+  | pair | T1 worst RMS / max (cu) | T1 bitwise | T2 (14a) |
+  |---|---|---|---|
+  | FQ (ABP → ASQ) | 0 / 0 | yes | PASS, all values equal |
+  | F1 (ASQ → AS1) | 8.7e-7 / 8.0e-6 (correction RMS 2.9e-9, max 6.7e-8) | no (rounding rule of F1) | PASS |
+  | F2 (AS1 → AS2) | 6.3e-7 / 6.0e-6 (DemagField 0; correction RMS 1.9e-9, max 7.3e-8) | no | FAIL: b of stage4 6.50e-6 and stage5 1.60e-5 above 2 × the base c63e862 (6.06e-6, 1.46e-5) |
+  | F3 (AS2 → AS3) | 5.4e-7 / 8.2e-6 | no (rounding rule of F1) | FAIL: b of stage3 1.22e-6 above 2 × AS2 (1.14e-6) |
+
+  - F2 fails the bitwise rule of W2: the field of DemagField is bitwise equal (0 in T1), but the compiled functions
+    that read it (the stage function and _centroid_total of F1) get another memory layout of h, and torch.compile
+    generates other kernels for it (another fusion and FMA), so the correction and the stage values change at the
+    rounding level. Thus F2 is not bitwise neutral end to end.
+  - Method check of the T2 bias b of the stage values (the files of T2; RMS of b over the 16 states):
+
+    | tree | rhs | stage2 | stage3 | stage4 | stage5 | stage6 | dx |
+    |---|---|---|---|---|---|---|---|
+    | c63e862 (base) | 1.04e-6 | 7.68e-7 | 1.21e-6 | 3.03e-6 | 7.32e-6 | 2.20e-6 | 9.98e-7 |
+    | c63e862 null run (field sum reversed) | 1.04e-6 | 8.27e-7 | 1.06e-6 | 3.54e-6 | 7.33e-6 | 2.45e-6 | 5.06e-7 |
+    | ABP = ASQ | 8.06e-7 | 9.70e-7 | 8.89e-7 | 5.25e-6 | 1.13e-5 | 3.62e-6 | 6.23e-7 |
+    | AS1 | 8.05e-7 | 1.06e-6 | 6.01e-7 | 5.79e-6 | 1.38e-5 | 3.93e-6 | 4.88e-7 |
+    | AS2 | 8.06e-7 | 1.02e-6 | 5.72e-7 | 6.50e-6 | 1.60e-5 | 4.12e-6 | 4.77e-7 |
+    | AS3 | 8.06e-7 | 1.04e-6 | 1.22e-6 | 5.79e-6 | 1.32e-5 | 3.59e-6 | 6.65e-7 |
+
+    The null run changes b by the factors 0.51 … 1.17 (dx 0.51), and the signed b of a stage value changes its sign
+    between the base and its null run in several states (stage3: k0 32 −8.9e-7 / −1.6e-7, k0 240 +6.7e-7 / +2.2e-7).
+    Thus the b of the stage values is dominated by the rounding pattern, not by a systematic error; a pure change of
+    the order of a sum moves it by up to about a factor 2. The two fails (2.15 and 2.13 times the bound reference)
+    are at that level. Rule of 14a: b has a floor of 2^-24 but no null floor (the noise quantities err and norm have
+    one). By the fixed rule, W2 fails for F2 and F3; a release needs Chris. The other checks (W2 A states, W3, W4, W5,
+    WQ) run on, so that the decision has all data.
