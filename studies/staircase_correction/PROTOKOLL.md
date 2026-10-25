@@ -3098,3 +3098,16 @@ measurement on box 11 before its destroy.
   - In the Newell stray field a concatenation copy (CatArrayBatchedCopy) takes 0.31 of 0.63 ms (N 108) and 1.17 of
     2.17 ms (N 156). In the rest of the stage about 20 elementwise kernels per stage take 1.0 ms (N 108) and 2.8 ms
     (N 156).
+
+### 3.43 Feasibility of q 16 on the V100 16 GB (2026-10-25, from about 19:00 UTC)
+
+Chris wants to run q 16. q 16 never ran: before B4 the coupling table needed about 276 GB; B4 (d538bde) replaced it,
+but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11.
+
+- Rule (d9.sh, written before the data; information, no pass rule): for N 108 and N 156 as the q 8 arms of D7, only
+  --staircase_q 16 in place of 8. (1) Transfer state T_q16_N as in d7t.sh (tree B_det, step_dump.py --at 1
+  --init_transfer from K1_2_sat or K4_2_sat, at most 6000 relaxation iterations, single precision); nvidia-smi
+  records the GPU memory every 5 s. (2) Speed run of ABP from that state as the q 8 arms of D7 (prof_step.py --skip
+  30 --plain 96 --window 0 --trace), n 1 for each N (feasibility; the run-to-run SE of D7 is below 0.5 %). Results:
+  set-up time, peak GPU memory (allocated, reserved), ms per sample interval, ms per stage and tries, against q 4 and
+  q 8 of D7. An out-of-memory stop is itself the result for that N (then: where, and at which memory).
