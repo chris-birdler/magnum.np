@@ -3121,3 +3121,9 @@ but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11
   information; full and empty cells have constant rows. The centroid offsets are also computed twice (NearCorrection
   and DemagStaircaseCorrection._setup). This is a limit of the code, not of the GPU. Patch proposal: PLAN 15, Q1.
 
+
+### 3.44 PLAN 15: speed patches 2 and the set-up memory for q 16 (2026-10-25, from about 20:30 UTC; in progress)
+
+**Decision.** Chris approved PLAN 15 ("1,2,3 ja", 2026-10-25, about 20:25 UTC): (1) PLAN 15 as written (commit of
+section 15 after the two context-free reviews); (2) the mandate of PLAN 14: do all steps to the end with the
+conservative rules of the plan, and report at the end; (3) box 11 stays rented for PLAN 15.
