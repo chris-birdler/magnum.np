@@ -2983,6 +2983,8 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   nearer to the double-precision reference than the old code (q4_108: factor 2.5 … 2.8 with 5 old and 3 new
   realisations; q4_156: factor 3.3 … 6.6 with 5 old and 1 new). The G fail in q4_108 is a limit of G (its scale is the
   scatter of the old code, not its error). G stays failed by its own rule; only Chris can release ABP.
+  Data of parts 1 … 4 (d7c, d7cres, the 4 scripts, progress.txt): local in remote_20261024_box11/D7c/D7c.tgz, md5
+  f90375f9844d9724ad4aa3bfae757660, equal on the box and local.
 - Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
   echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
   holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
