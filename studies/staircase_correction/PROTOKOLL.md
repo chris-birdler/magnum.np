@@ -2942,6 +2942,25 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   3 e_new: both single-precision codes have an error of the same size, and the old code has its own systematic
   rounding that the realisations of one code do not show (a limit of G). e_new above 3 e_old: A1 … A3 make the
   single-precision result worse at this event. e_old above 3 e_new: the old code is the worse one.
+  Result (12:52 … 13:20 UTC; logs without error text; 126 samples, t equal):
+  (a) c63e862 double against ABP double: largest 1.0e-4 A/m over the 126 intervals (RMS below 1e-4 A/m); the
+  accepted steps per interval differ by at most 1. The reference does not depend on the code; D = c63e862 double.
+  (b) Differences of <Ms m_x> to D (A/m; the largest over the realisations of a group):
+
+  | group | n | largest, intervals of the excess | largest, all 126 | RMS over 126 | interval 29 | interval 100 |
+  |---|---|---|---|---|---|---|
+  | old (c63e862, single) | 5 | 0.285 | 0.285 | 0.0433 | +0.232 … +0.244 | −0.267 … −0.285 |
+  | new (ABP, AB r1, AB r2, single) | 3 | 0.115 | 0.115 | 0.0153 | +0.033 … +0.042 | −0.097 … −0.115 |
+  | chain without A1 … A3 (B_d53P, B_det, BA4P; information) | 3 | 0.295 | 0.295 | 0.0440 | +0.239 … +0.242 | −0.261 … −0.295 |
+
+  e_old / e_new: 2.5 (largest) and 2.8 (RMS), thus by the rule: both single-precision codes have an error of the same
+  size (factor at most 3), and G cannot see the systematic single-precision error of the old code. The new code is the
+  nearer one: the 5 old realisations and the 3 trees without A1 … A3 share an error of +0.24 A/m in interval 29 and
+  −0.27 A/m in interval 100 (1.0e-4 and 1.4e-4 relative to <Ms m_x>), which A1 … A3 make smaller. Cause of the G fail:
+  a limit of G (the scale is the scatter of the old code, not its error); A1 … A3 do not make the result worse.
+- Part 4 (d7c4.sh; rule as part 3, written before the data): the same double-precision reference for q4_156 (G passes
+  with a small margin, interval 115 has a local excess). Groups: old 5 (old r1 … r3, null reverse, null rotate), new 1
+  (ABP; the 3 runs are bitwise equal); the intervals of the excess 113 … 117 and all 126.
 - Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
   echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
   holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
