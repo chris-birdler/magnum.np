@@ -3127,3 +3127,25 @@ but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11
 **Decision.** Chris approved PLAN 15 ("1,2,3 ja", 2026-10-25, about 20:25 UTC): (1) PLAN 15 as written (commit of
 section 15 after the two context-free reviews); (2) the mandate of PLAN 14: do all steps to the end with the
 conservative rules of the plan, and report at the end; (3) box 11 stays rented for PLAN 15.
+- Step 1 on box 11 (d10a.sh, from 20:43 UTC): the 8 perturbed start files (perturb_init.py, eps 1e-7, seeds 1 and 2;
+  changed cells 0.9934 … 0.9943 of the magnetic cells, the void unchanged in all 8), then ABP from them (8 runs), then
+  the double-precision runs of off108 and off156. F0 (d10b.sh) and WFQ (d10c.sh) wait in the queue.
+- FQ (5d76d5d on perf/speed2, from 15e5909): centroid_offsets computes only the cut cells, in blocks of a budget of
+  1 GiB for 2 live float64 blocks; NearCorrection keeps only the occ rows of the modified cells; _setup takes the
+  offsets of its NearCorrection. W1 for FQ: fq_check.py (old 15e5909 against new, md5 of the centroid offsets, B, V,
+  S, T, rows, _d, _v; the new offsets also with a budget of 3 cells per block): all equal on T3 at q 2, 4 and 8 and on
+  N 108 at q 4 (CPU, float64 set-up as in production); test_staircase.py 37 of 37 pass (3 new tests: the cut-cell
+  offsets bitwise against the full map, also with a small budget). The test test_setup_in_blocks_of_offsets_is_
+  bitwise_equal used the removed argument chunk=1000; it now uses budget for 1000 cells (the same check).
+- F1 (built, not committed yet; the commit follows the F0 record, as the order of PLAN 15): _centroid_source and
+  _centroid_total (torch.compile) and the kernel product of A2 for the convolution; used in h() for PBC with B1. New
+  test: fused against the unfused form, float64 within 1e-12 and float32 within 1e-5 of the largest value, on a box
+  of N 16 (q 2) and on the T3 geometry (N 48, q 4): pass.
+- Finding (outside PLAN 15): the full unit tests (tests/unit, torch 2.7.1, CPU) on FQ + F1: 184 pass, 1 fails:
+  inverse_test.py::test_linear_fieldterms[DemagField], "RuntimeError: mul(): functions with out=... arguments don't
+  support automatic differentiation". The same test fails on the released tree 15e5909 (ABP) itself. Cause: A2
+  (31aa455) writes M with torch.mul(..., out=M) in DemagField.h; with an m that requires grad (inverse problems)
+  autograd stops. Production runs do not use autograd, so the results of PLAN 14 and 15 are not affected; a merge
+  to main would break the inverse problems with DemagField. A fix needs a go of Chris (not in PLAN 15). Decision for
+  W1: a test that fails also on 15e5909 is not a failure of a PLAN 15 patch; it is reported. The known rkky failure
+  of the memory does not occur on this branch (the test passes).
