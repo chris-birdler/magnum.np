@@ -12,7 +12,7 @@ xfer() {  # NAME ARGS SRC
   echo "$(date -u +%T) start D7 transfer $n" >> $P
   cd /root/B_det/studies/beta_bpeak
   TORCHINDUCTOR_CACHE_DIR=/root/ic/d7t_$n PYTHONPATH=/root/B_det python /root/s/step_dump.py --at 1 --save $W/prep_m.pt -- $a --b_list 0.006 --init_transfer $src --out $W > $W.log 2>&1
-  echo "$(date -u +%T) end D7 transfer $n exit $? ($(ls $W/init.pt 2>/dev/null))" >> $P
+  rc=$?; echo "$(date -u +%T) end D7 transfer $n exit $rc ($(ls $W/init.pt 2>/dev/null))" >> $P
 }
 xfer T_q4_156 "$(N156 "$B")" /root/states/K4_2_sat/init.pt
 xfer T_q8_108 "${B/--staircase_q 4/--staircase_q 8}" /root/states/K1_2_sat/init.pt

@@ -17,15 +17,15 @@ cp -a /root/ic/H/H3_d53P_a /root/ic/x1_a1; cp -a /root/ic/H/H3_d53P_a /root/ic/x
 echo "$(date -u +%T) start X1 T1" >> $P
 cd /root/B_d53P/studies/beta_bpeak
 TORCHINDUCTOR_CACHE_DIR=/root/ic/x1_t1 PYTHONPATH=/root/B_d53P python /root/s/s1_states.py --ref /root/k1/B/refB.pt --out $T1/B_d53P_r -- $ARGS_B --b_list 0.006 --out /root/t1/run_BP_B_d53P_r > $X/t1_r.log 2>&1
-echo "$(date -u +%T) end X1 T1 exit $?" >> $P
+rc=$?; echo "$(date -u +%T) end X1 T1 exit $rc" >> $P
 python /root/s/k_eval.py --t1 X1 $T1/B_d53P $T1/B_d53P_r --json $X/t1_X1.json > $X/t1_X1.txt 2>&1
-echo "$(date -u +%T) X1 T1 eval exit $?" >> $P
+rc=$?; echo "$(date -u +%T) X1 T1 eval exit $rc" >> $P
 one() {
   x=$1
   echo "$(date -u +%T) start X1 bench $x" >> $P
   cd /root/B_d53P/studies/beta_bpeak
   TORCHINDUCTOR_CACHE_DIR=/root/ic/x1_$x PYTHONPATH=/root/B_d53P python /root/s/bench_det.py --ref /root/k1/B/refB.pt --k0 8 144 --reps 20 --time 20 --modes eager --dtypes float64 --json $X/bench_$x.json -- $ARGS_B --b_list 0.006 --out $X/run_$x > $X/bench_$x.log 2>&1
-  echo "$(date -u +%T) end X1 bench $x exit $?" >> $P
+  rc=$?; echo "$(date -u +%T) end X1 bench $x exit $rc" >> $P
 }
 one a1 & one b1 & wait
 one a2 & one n & wait

@@ -2654,12 +2654,12 @@ box.
   needs a condition of the dynamics (other kernels of the same process between the products, new inputs). This does
   not change the cause (the cuSPARSE path, row pattern above); it means that a test of a patch needs the dynamics
   (outlier test 3 on the patched tree), not stress test 3.
-- Stress test 3, process a complete (end 11:27 UTC, exit 0): 3 parts of 1 h, 423 000 + 460 800 + 416 200 =
+- Stress test 3, process a complete (end 11:27 UTC; log without error text): 3 parts of 1 h, 423 000 + 460 800 + 416 200 =
   1 300 000 products, 0 events; largest difference 2.6e-16 in all parts. First hour of process b (parallel on the
   same GPU): 415 800 products, 0 events. Sum to 11:29 UTC: 1 715 800 products, 0 events. Expected at the pooled rate
   per product of the dynamics (1.1e-5): 18.9 events, probability of 0 about 6e-9; at its lower bound (4.9e-6):
   8.4 events, probability of 0 about 2e-4. This confirms the reading of 10:27 UTC. GPU ECC counters stay 0.
-- Stress test 3 complete (process b end 13:01 UTC, exit 0). Process b: 415 800 + 726 200 + 966 200 = 2 108 200
+- Stress test 3 complete (process b end 13:01 UTC; log without error text). Process b: 415 800 + 726 200 + 966 200 = 2 108 200
   products (more per hour after the end of process a: the GPU was then free). Total of both processes: 3 408 200
   products, 0 events, largest difference 2.6e-16 in all 6 parts. Expected at the pooled rate per product of the
   dynamics (1.1e-5): 37 events; at its lower bound (4.9e-6): 17 events, probability of 0 about 6e-8. Logs and JSON
@@ -2670,7 +2670,7 @@ box.
   (B_01e, B_c56, B_df0, AB_on) must be repeated after a patch or are not needed without PLAN 10; (3) no run. Applied:
   (1), started 13:07 UTC (p2b_c63.txt, about 10 min). After it, the GPU has no work that does not depend on the patch
   decision of Chris; box 11 then stays rented without load (0.162 $/h) until his decision. Destroying it needs his go.
-- K1 arm B_c63 complete (13:07 … 13:21 UTC, exit 0): 256 sample intervals, 17 windows, 1896 tries, mismatch 0;
+- K1 arm B_c63 complete (13:07 … 13:21 UTC; log without error text): 256 sample intervals, 17 windows, 1896 tries, mismatch 0;
   /root/k1/B/B_c63.pt (1.6 GB, stays on the box). Its pair (PLAN 10) needs the arm of the patched product, so there is
   no evaluation yet. Log local in remote_20261023_box11/K1B/ (manifest box_B_c63.md5 with the md5 of the .pt). The GPU
   has had no load since 13:21 UTC.
@@ -2730,15 +2730,15 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
     tries done twice): 4 tries with a difference, the 4 injections (matched by dt: 7.750e-12, 7.656e-12, 2.306e-12,
     7.916e-12); first part "spmv" in stage 3, 3, 3 and 1 (the products 4, 4, 4 and 2 of the try invocations 17, 117, 217
     and 334; 3 in a first try, 1 in a second try), relative difference 9.99e-4 … 1.00e-3 at the injected entry, 1 entry
-    above the noise. No other difference; exit code 0.
+    above the noise. No other difference; log without error text.
   - D3b (ABP, the cycle in single precision; windows 8 and 144, 2 repetitions; 504 tries done twice, 1008 try
     evaluations): 0 differences at the threshold 0, the window ends of the 2 repetitions bitwise equal, mismatch 0,
-    the stored stray field used in all 6306 calls; exit code 0.
+    the stored stray field used in all 6306 calls; log without error text.
 - D4 (box 11, 2026-10-24 18:44 … 2026-10-25 04:07 UTC, d4.sh; local copy remote_20261024_box11/D4/, md5 verified;
   evaluation d4_eval.py, D4_verdict.json): PASS.
   - P arm (B_d53P, each try done twice, threshold 0): H3_d53P_a and H3_d53P_b, 18 repetitions each, 2 × 68 256 try
     evaluations (E_P 136 512): 0 tries with a difference, 0 non-finite values, 0 event lines in the logs, mismatch 0,
-    exit code 0 for both.
+    logs without error text.
   - Rate control (B_d53, the CSR product): H3_d53 (68 270 try evaluations), the fillers f1 … f7 (7 584 … 7 590 each;
     f8 was stopped at the end of the P arm and is not counted) and H2_d53 of PLAN 14a (68 266); E_C 189 630. 15 events
     above the thresholds of test 3, all with the first part spmv (6 in H3_d53, 1 in each of f1, f2, f4, f6, f7, 0 in
@@ -2771,7 +2771,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   second cause. Any other result: a second cause exists; it is reported with its size. The code stays unchanged
   in both cases (a change would make D4 void; whether two processes must give bitwise the same result is a decision of
   Chris).
-- D5 pilot (04:08 … 04:55 UTC, k1.sh p3_pilot.txt 2, 11 arms, all exit code 0, mismatch 0; evaluation
+- D5 pilot (04:08 … 04:55 UTC, k1.sh p3_pilot.txt 2, 11 arms, all logs without error text, mismatch 0; evaluation
   k1_eval_p.sh pilot; local copy remote_20261024_box11/D5/, md5 verified): PASS.
   - pilotBP (base B_d53P): each window has determined points (windows without a point: none); null / control in C1
     at most 4.7e-5 (bound 1e-3); geometric mean null 2 / null 1 1.30 (bounds 0.5 … 2), per window 0.51 … 2.82 (bounds
@@ -2798,7 +2798,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   Note on the time: 3.8 ms per float64 product here against 9.0 ms in D1. In D1 the two processes did their 20 000
   repeats at the same time (the float32 time of D1 alone against with 2 processes: 2.2 against 4.8 ms, a factor 2.2);
   here the 20 timed products ran without such load (estimate). D7 measures the speed in production.
-- D5 arms (05:07 … 05:28 UTC, k1.sh p3_arms.txt 2: B_01eP, B_c56P, B_df0P, ABP_on; all exit code 0, mismatch 0) and
+- D5 arms (05:07 … 05:28 UTC, k1.sh p3_arms.txt 2: B_01eP, B_c56P, B_df0P, ABP_on; all logs without error text, mismatch 0) and
   pairs (k1_eval_p.sh pairs; local copy remote_20261024_box11/D5/, md5 verified): PASS by the rules of 14a.
 
   | pair | old → new | D | C1 largest (bound 1e-2) | C2 GM all (bound 10) | C2 largest window (bound 30) | result |
@@ -2824,7 +2824,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - T5, code part: the git diff of ABP (15e5909) against AB (7f755a0) changes only demag_staircase.py and
   test_staircase.py, and its changed lines in magnumnp/ are the same as those of the patch (df0f811 → 3f1faf7). The
   config.json part follows with the runs of D6 and D7.
-- D6 (05:28 … 06:18 UTC, d6chain.sh: t12p.sh after the D5 arms; all steps exit code 0; local copy
+- D6 (05:28 … 06:18 UTC, d6chain.sh: t12p.sh after the D5 arms; all logs without error text; local copy
   remote_20261024_box11/D6/D6.tgz, md5 1e4f049f… verified): PASS by the rules of 14a.
   - T1 (double precision, 16 states of refB.pt, worst state; bounds RMS 1e-3 cu, max 1e-1 cu, norm 1e-6):
 
@@ -2847,7 +2847,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - T5, config part of D6: config.json of the T1 run of ABP_on against that of AB_on (B_AB_on, 7f755a0) differs only in
   out, magnumnp_path and git_commit. The config part of D7 (ABP off against 9e0ea7c off) follows with D7.
 - D7 (06:19 … 12:18 UTC, d7chain.sh: d7t.sh, the transfer states T_q4_156, T_q8_108 and T_q8_156; then d7.sh: 6
-  kernel builds, 30 measurement runs, 8 null runs; all 47 steps exit code 0; evaluation d7_eval.sh; local copy
+  kernel builds, 30 measurement runs, 8 null runs; the logs of the transfers and of the 38 measurement and null runs without error text, the 6 kernel builds ended with an error after the build (finding below); evaluation d7_eval.sh; local copy
   remote_20261024_box11/D7/D7.tgz, md5 93e43b14… verified).
   - Speed (single precision, V100 16 GB, one run on the GPU at a time; 30 sample intervals of warm-up, 96 measured;
     mean ± SE, n 3 runs for each arm; the halves rule: no run of the 30 above 10 %, largest 1.8 % in q4_108 new r2):
@@ -2895,7 +2895,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
     branch. q4_156 has one such interval (115: 0.052 A/m against 0.004 A/m of old against old and null); off108 and
     off156 have none above 0.04 A/m. The ABP runs are bitwise repeatable (new against new 0), thus the 3 new runs of
     G are one realisation of the rounding; the old side has 5 (3 old runs, CSR not repeatable, and 2 null runs).
-- Cause check of the G fail, part 1 (d7c.sh, 12:25 … 12:36 UTC, all exit code 0; amendment item 7). A try record of
+- Cause check of the G fail, part 1 (d7c.sh, 12:25 … 12:36 UTC, all logs without error text; amendment item 7). A try record of
   step_dump.py needs the state at the start of interval 27 of the q4_108 run, and the runs of D7 do not keep states.
   Thus the check puts the trees of the chain in place of ABP, with the same arguments and the same demag kernel (the
   kernel files of all trees have the same md5): B_d53P (PLAN 10, B5, B4 with the pair sum; no B1, no A), B_det
@@ -2942,3 +2942,18 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   3 e_new: both single-precision codes have an error of the same size, and the old code has its own systematic
   rounding that the realisations of one code do not show (a limit of G). e_new above 3 e_old: A1 … A3 make the
   single-precision result worse at this event. e_old above 3 e_new: the old code is the worse one.
+- Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
+  echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
+  holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
+  lines of k1_eval*.sh and d7_eval.sh have no time stamp and are correct). Check of the real state (2026-10-25, about
+  12:55 UTC): all run logs and evaluation files on the box (d1, k1, t1, t2, x1, d7, d7c, glitch, stress, stress2,
+  stress3, tres, tres_p, k1res, k1res_p, d7res, d7cres) and the local copies D1 … D7 and X1, searched for Traceback,
+  Killed, out of memory, Error and the stop messages of the tools (lines that start with "k_eval…:", "step_dump…:",
+  "prof_step…:", "s1_states…:", "bench_det…:" and the like). Result: errors only in (1) the first attempt of D1
+  (17:36 … 17:40 UTC, folder d1/failed1: a tensor on the CPU in bench_det.py, before the first product; no data; the
+  D1 of the record started at 17:41 UTC after the fix); (2) the 6 kernel builds of D7 (KeyError 'half': prof_step.py
+  with --plain 1 has no second half; the error comes after the kernel file is written, and all measurement runs load
+  these files, md5 equal over the trees; consequence: speed.txt has no set-up time of a kernel build); (3) the 2 null
+  runs of ABP in part 2 (stop message of k1_null, see above). The results of the record stand on the content of the
+  output files (verdict lines, counts, 126 samples in each trace), not on the exit codes. The scripts now keep the
+  exit code first (rc=$?; echo "… exit $rc"); the runs of the record used the version before that change.

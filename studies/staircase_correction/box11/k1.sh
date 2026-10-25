@@ -13,7 +13,7 @@ one() {
   cd /root/$tree/studies/beta_bpeak
   if [ $geo = A ]; then A="$ARGS_A"; else A="$ARGS_B"; fi
   TORCHINDUCTOR_CACHE_DIR=/root/ic/$geo/$name PYTHONPATH=/root/$tree python /root/s/step_dump.py "$@" -- $A --b_list $bl --out $W/run_$name > $W/$name.log 2>&1
-  echo "$(date -u +%T) end K1 $name exit $?" >> $P
+  rc=$?; echo "$(date -u +%T) end K1 $name exit $rc" >> $P
 }
 export -f one; export P ARGS_A ARGS_B CUDA_DEVICE
 grep -v '^#' $1 | grep -v '^$' | xargs -P ${2:-3} -L1 bash -c 'one "$@"' _

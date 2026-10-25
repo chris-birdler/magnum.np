@@ -33,7 +33,7 @@ arm() {  # ARM TREE OTHER THR MAIN_RUN_NAMES...
       fi
       sleep 20
     done
-    wait $pid; echo "$(date -u +%T) end D4 $n exit $?" >> $P
+    wait $pid; rc=$?; echo "$(date -u +%T) end D4 $n exit $rc" >> $P
     i=$((i + 1))
   done
 }
@@ -42,8 +42,8 @@ arm H3_d53 B_d53 H3_d53P "" H3_d53 &
 wait
 cd $W
 python /root/s/glitch_count.py --reps $(ls H3_d53P_*.pt) --term_rel 0 --json H3_d53P_count.json > H3_d53P_count.txt 2>&1
-echo "$(date -u +%T) D4 count P arm exit $?" >> $P
+rc=$?; echo "$(date -u +%T) D4 count P arm exit $rc" >> $P
 python /root/s/glitch_count.py --reps $(ls H3_d53.pt H3_d53_f*.pt 2>/dev/null) --json H3_d53_count.json > H3_d53_count.txt 2>&1
-echo "$(date -u +%T) D4 count rate control exit $?" >> $P
+rc=$?; echo "$(date -u +%T) D4 count rate control exit $rc" >> $P
 grep -c "redo event" H3_d53P*.log > H3_d53P_events_in_logs.txt 2>&1
 echo "$(date -u +%T) DONE d4" >> $P

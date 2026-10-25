@@ -17,7 +17,7 @@ run() {  # NAME TREE KC ARGS
   echo "$(date -u +%T) start D7c $n" >> $P
   cd /root/$t/studies/beta_bpeak
   TORCHINDUCTOR_CACHE_DIR=/root/ic/d7c_$n PYTHONPATH=/root/$t python /root/s/prof_step.py --skip 30 --plain 96 --window 0 --trace --kcache /root/kc/c_$3 --json $W/$n.json -- $4 --b_list 0.006 --out $W/run_$n > $W/$n.log 2>&1
-  echo "$(date -u +%T) end D7c $n exit $?" >> $P
+  rc=$?; echo "$(date -u +%T) end D7c $n exit $rc" >> $P
 }
 for t in B_d53P B_det BA4P; do run q4_108_$t $t ABP_108 "$B --init_from /root/states/Bprep/init.pt"; done
 for r in 4 5; do run off108_new_r$r ABP ABP_108 "$A --init_from /root/states/K1_2_sat/init.pt"; done
@@ -25,6 +25,6 @@ for t in B_d53P B_det BA4P; do
   python /root/s/k_eval.py --g_old $D7/q4_108_old_r1.json $D7/q4_108_old_r2.json $D7/q4_108_old_r3.json \
     --g_new $W/q4_108_$t.json --g_null $D7/q4_108_null_reverse.json $D7/q4_108_null_rotate.json \
     --json $R/g_q4_108_$t.json > $R/g_q4_108_$t.txt 2>&1
-  echo "$(date -u +%T) D7c G q4_108 $t exit $?" >> $P
+  rc=$?; echo "$(date -u +%T) D7c G q4_108 $t exit $rc" >> $P
 done
 echo "$(date -u +%T) DONE d7c" >> $P

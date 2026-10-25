@@ -23,7 +23,7 @@ run() {  # NAME TREE CONF SKIP PLAIN [PROF_STEP_OPTIONS]
   echo "$(date -u +%T) start D7 $n" >> $P
   cd /root/$t/studies/beta_bpeak
   TORCHINDUCTOR_CACHE_DIR=/root/ic/d7_$n PYTHONPATH=/root/$t python /root/s/prof_step.py --skip $4 --plain $5 --window 0 --trace $6 --kcache /root/kc/${t}_${NN[$c]} --json $W/$n.json -- ${CONF[$c]} --b_list 0.006 --out $W/run_$n > $W/$n.log 2>&1
-  echo "$(date -u +%T) end D7 $n exit $?" >> $P
+  rc=$?; echo "$(date -u +%T) end D7 $n exit $rc" >> $P
 }
 # kernel builds (one for each tree and N)
 for x in M_9e0:off108 ABP:off108 B_c63:q4_108 M_9e0:off156 ABP:off156 B_c63:q4_156; do
