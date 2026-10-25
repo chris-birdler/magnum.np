@@ -1152,3 +1152,106 @@ events and at least 3 in the rate control, had only p 0.125); differences below 
 part; non-finite values in the tools; the D1 reference read back from the layout (D1b), the gap in the choice rule, the
 md5 between processes; the single-precision coverage (D3b); the logging of D3; the wording (three kinds of control,
 15 arms, G in the pass rule).
+
+## 15. Speed patches 2: the stage with the correction, and the set-up memory for q 16 (proposal 2026-10-25; for the approval of Chris)
+
+**Reason.** Chris wants q 16 and more speed. The profile of ABP (PROTOKOLL 3.42; GPU ms per RKF45 stage, q 4, N 108 /
+N 156): correction 5.13 / 13.43 (pair sum 2.12 / 4.33; the rest is the centroid term, with about 95 small kernels per
+stage), Newell stray field 0.63 / 2.17 (of it a concatenation copy, CatArrayBatchedCopy, 0.31 / 1.17), the rest of the
+stage 1.12 / 3.37 (about 20 elementwise kernels per stage; 13 without the correction), anisotropy, exchange and RKF45
+0.45 / 1.35. With the correction the GPU is busy 97 … 100 % of the wall time. The q 16 test (PROTOKOLL 3.43) stops in
+the set-up at N 108 and at N 156: out of memory in centroid_offsets (8 GiB requested, with 13.0 and 15.0 GiB
+allocated; the full occupancy map of all cells at q 16 has N³ × 4096 bytes: 5.2 GB at N 108, 15.5 GB at N 156).
+
+**Goal.** Less time per stage on the production path (single precision), with the same computed function up to
+round-off; q 16 at N 108 and N 156 on the 16-GB V100, if the set-up permits it. No change of the model, of the run
+arguments or of the results beyond round-off.
+
+**Estimate (from the profile, not measured; the parts overlap on the GPU, error about ±30 %).**
+
+| part (GPU ms per stage) | N 108 now | N 108 expected | N 156 now | N 156 expected |
+|---|---|---|---|---|
+| pair sum | 2.1 | 2.1 | 4.3 | 4.3 |
+| centroid term (S1) | 3.0 | 1.0 … 1.5 | 9.1 | 3.5 … 4.5 |
+| Newell stray field (S2) | 0.6 | 0.35 | 2.2 | 1.2 |
+| rest of the stage (S3) | 1.1 | 0.6 | 3.4 | 2.0 |
+| anisotropy, exchange, RKF45 | 0.45 | 0.45 | 1.35 | 1.35 |
+| sum | 7.4 | 4.7 … 5.2 | 20.5 | 12.5 … 13.5 |
+
+Gain per stage with the correction: 1.4 … 1.6 (estimate; about 1.3 is likely also if one patch gives less). Upper
+bound about 2: the pair sum (near the memory bandwidth), the FFTs and the other terms stay. Without the correction (S2
+and S3 only): about 1.1 … 1.3 (estimate).
+
+**Patches.** Branch perf/speed2 from 15e5909 (ABP, released); one commit for each patch; box tree AS (all patches) and
+one tree for each commit (AS1, AS2, AS3, ASQ), as the chain of 14b.
+- P0, diagnosis before the build (box 11, about 0.3 h): prof_step.py gets --stack (torch.profiler with_stack: for each
+  kernel the Python line that starts it). Runs of ABP: q4_108, q4_156, off156; 10 profiled sample intervals. Output:
+  a table kernel → source line → GPU ms per stage. It fixes the exact change list of S2 and S3; I record it in the
+  PROTOKOLL before the build. A planned change that P0 shows to give less than 0.2 ms per stage at N 156 is left out
+  (recorded).
+- S1, centroid term: centroid_field gets one compiled function (torch.compile, as A1 … A3) for the work outside the
+  FFTs: the products v m and v d_k m, the periodic central differences (torch.roll; the fused kernel reads with index
+  shifts), the sums over k and the products with d. The kernel product in Fourier space becomes one fused kernel (as
+  _kernel_product of A2). The FFT count does not change.
+- S2, stray-field layout: DemagField.h without the copy of torch.stack([hx, hy, hz], dim=3): the inverse transforms
+  write into one buffer with the component first, and h is a view [N, N, N, 3] on it. The consumers (the compiled stage
+  function of A1, h1 of B1 in the centroid term, the energy) read the view; if a consumer needs a contiguous array, the
+  copy moves into a compiled function that reads h already. The details follow P0.
+- S3, copies in the stage: the full-field copies that P0 finds in the rest of the stage are removed: the compiled
+  functions get their inputs in the layout that they read, or the copy moves into the compiled function. The details
+  follow P0.
+- Q1, set-up memory for q 16 (no change of the run speed): centroid_offsets and NearCorrection keep only the rows of
+  the occupancy map occ for the modified cells (0 < n < q³; a full cell has all ones and an empty cell all zeros, and
+  these rows are not stored); the float64 block of centroid_offsets takes its size from a byte budget (now a fixed 2^18
+  cells, 8 GiB at q 16); the centroid offsets are computed once (now twice: in NearCorrection and in _setup). Expected
+  GPU memory of the occupancy rows at q 16 (estimate from 70 016 cut cells at q 4, d/l_ex 211, PROTOKOLL 3.35; more at
+  q 16): about 0.3 GB at N 108 and 0.6 GB at N 156 (now the full map: 5.2 GB and 15.5 GB). Not known: the set-up time
+  at q 16. The coupling build has a part that grows as q⁶ (the einsum over the
+  pairs of sub-cells; 64 times from q 8 to q 16). Q2 measures it.
+
+**Verification.**
+- V1, local (CPU, torch 2.7.1): test_staircase.py and the unit tests of demag, llg and rkf45 pass. New tests: each
+  changed function against the old function on random data and on T3 data, float64 within 1e-12 of the largest value,
+  float32 within 1e-5. Q1: the centroid offsets and the coupling blocks within 1e-14 of the largest value of the old
+  code at q 2, 4 and 8 (T3 geometry; production geometry N 108 at q 4), and the pair blocks equal.
+- V2, T1 and T2 (box; the criteria of 14a): the chain ABP → AS1 → AS2 → AS3 → ASQ, each pair on the 16 B states of
+  refB.pt (correction on); for S2 and S3 also on the A states of T1 (correction off).
+- V3, repeatability (as D3b): AS in single precision, step_dump.py --k1_redo all --k1_thr 0 0 --k1_reps 2, windows k0 8
+  and 144. Pass: 0 differences, exit code 0, no error text in the log.
+- V4, dynamics against a double-precision reference (the method of PROTOKOLL 3.41 parts 3 … 5; replaces G, whose scale
+  is the scatter of the old code and not its error). Configurations q4_108, q4_156 (reference D of 3.41: c63e862 in
+  double precision), off108 and off156 (new D: 9e0ea7c in double precision with the arguments of D7 and
+  --precision_cycles double; check of D: AS in double precision against D, largest difference at most 1/10 of e_R).
+  e: the largest distance of <Ms m_x> to D over the 126 sample intervals, and the RMS over them. Reference group R:
+  q4: ABP, AB r1, AB r2 (3.41, n 3); off: ABP (its 3 runs are bitwise equal, n 1) with the 5 realisations of the old
+  code of D7 (old r1 … r3, null reverse, null rotate). AS: 3 runs, each in its own process with its own compile cache.
+  Pass in each configuration: e_AS at most 2 × e_R, for the largest distance and for the RMS (e_R, e_AS: the largest
+  over the realisations of the group). A fail: stop; V4 for the commits in between to find the patch; report. Only
+  Chris can release then. Information: the accepted steps per sample interval of AS against ABP.
+- V5, speed: the runs of V4 are also the speed runs, as D7 (prof_step.py --skip 30 --plain 96 --window 0 --trace; one
+  run on the GPU at a time; ABP and AS in turn; the D7 halves rule; kernel files with equal md5). Configurations
+  off108, off156, q4_108, q4_156, q8_108, q8_156; n 3 for each code. Results: gain per sample interval and per stage
+  (mean ± SE), set-up time, peak GPU memory.
+- Q2, q 16 after Q1 (d9.sh with AS): transfer states, set-up time, peak GPU memory, ms per sample interval at N 108 and
+  N 156; information, n 1. If the set-up does not fit in 16 GB or takes more than 1 h: report; a further patch only
+  with a go.
+
+**Pass.** V1 … V4 pass. Then Chris decides on AS as the production code. V5 and Q2 are measurements.
+
+**Not in this plan.** B3 (FCC translation symmetry), A5 (CUDA graphs), A6 (one batched FFT), a lower precision of the
+pair matrix, another GPU type, a merge to main.
+
+**Order.** P0 (box) and the build of Q1 (local) at the same time → build of S1, S2, S3, V1 → upload with md5 → V2 → V3
+→ V4 with V5 → Q2 → report → download with md5 → destroy box 11 (go of Chris).
+
+**Cost (estimate).** Box 11 at 0.162 $/h: P0 0.3 h, V2 1.5 h, V3 0.5 h, the double references off 0.2 h, V4 with V5
+(36 runs) about 4.5 h, Q2 about 1.5 h: about 8.5 h, about 1.4 $. The box waits idle during the local build (about 3 …
+5 h, about 0.6 $). Recommendation: keep box 11 (its trees, states and kernel files are in place; a new box needs a
+go, a new set-up and new md5 checks); alternative: destroy it now and rent a new box for V2.
+
+**Risks.**
+- S1 … S3 change the rounding (fused operations). V2 and V4 test it.
+- torch.compile chooses its kernels in each process (X1): runs of AS in different processes can differ at the
+  round-off level. V4 uses 3 processes.
+- P0 can show less gain for S2 or S3 than the estimate; then the change is left out.
+- At q 16 the set-up can need more than 16 GB at another place, or more than 1 h: then I report.

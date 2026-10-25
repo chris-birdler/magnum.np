@@ -3099,7 +3099,7 @@ measurement on box 11 before its destroy.
     2.17 ms (N 156). In the rest of the stage about 20 elementwise kernels per stage take 1.0 ms (N 108) and 2.8 ms
     (N 156).
 
-### 3.43 Feasibility of q 16 on the V100 16 GB (2026-10-25, from about 19:00 UTC)
+### 3.43 Feasibility of q 16 on the V100 16 GB (2026-10-25, 19:32 … 19:45 UTC)
 
 Chris wants to run q 16. q 16 never ran: before B4 the coupling table needed about 276 GB; B4 (d538bde) replaced it,
 but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11.
@@ -3111,3 +3111,13 @@ but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11
   30 --plain 96 --window 0 --trace), n 1 for each N (feasibility; the run-to-run SE of D7 is below 0.5 %). Results:
   set-up time, peak GPU memory (allocated, reserved), ms per sample interval, ms per stage and tries, against q 4 and
   q 8 of D7. An out-of-memory stop is itself the result for that N (then: where, and at which memory).
+- Result (local copy remote_20261024_box11/D9/D9.tgz, md5 7d9cd79ba75727f3ee466286adba5d41, equal on the box): q 16
+  does not run on the 16-GB V100 with the code of today. Both transfer runs stop in the set-up of the correction with
+  torch.OutOfMemoryError in centroid_offsets (demag_staircase.py line 200): 8.00 GiB requested, with 12.98 GiB (N 108,
+  19:36 UTC) and 15.00 GiB (N 156, 19:44 UTC) allocated by PyTorch. No speed run started (no transfer state).
+- Cause: centroid_offsets moves the full occupancy map occ of all N³ cells with q³ sub-cells each to the GPU (bool,
+  N³ × 4096 bytes at q 16: 5.2 GB at N 108, 15.5 GB at N 156) and converts it in blocks of a fixed 2^18 cells to
+  float64 (2^18 × 4096 × 8 bytes = 8 GiB at q 16; 1 GiB at q 8). Only the rows of the modified cells carry
+  information; full and empty cells have constant rows. The centroid offsets are also computed twice (NearCorrection
+  and DemagStaircaseCorrection._setup). This is a limit of the code, not of the GPU. Patch proposal: PLAN 15, Q1.
+
