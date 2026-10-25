@@ -3,6 +3,7 @@ import pathlib
 import torch
 from magnumnp import *
 from magnumnp.field_terms.demag import newell, f, g
+import magnumnp.field_terms.demag as demag_module
 import numpy as np
 
 
@@ -408,3 +409,35 @@ def _check_fused_h(dtype, tol, pbc, kw):
     assert float((h - h_ref).abs().max() / h_ref.abs().max()) < tol
     E, E_ref = float(dem.E(state)), float((-0.5 * constants.mu_0 * ms * state.m * h_ref * state.mesh.cell_volumes).sum())
     assert abs(E / E_ref - 1) < tol
+
+
+@pytest.mark.parametrize("dtype", [torch.float64, torch.float32])
+def test_pbc_h_view_bitwise_equals_stack(dtype):
+    """PLAN 15 F2: with PBC (no padding) h is a view [nx, ny, nz, 3] on a buffer with the component first, bitwise
+    equal to the stacked form of the inverse transforms; each call gives a new buffer (_last stays valid)."""
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+        g = torch.Generator().manual_seed(2)
+        state = State(Mesh(n, dx, pbc=(2, 2, 2)))
+        state.material = {"Ms": 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)}
+        r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+        state.m = r / r.norm(dim=-1, keepdim=True)
+        dem = DemagField(p=2, true_pbc=True, extrapolate=True)
+        h = dem.h(state)
+        assert h.shape == n + (3,) and not h.is_contiguous() and h.dtype == dtype
+        # the stacked form of the same transforms (the code before F2)
+        s = list(n)
+        M = (state.m * state.material["Ms"]).permute(3, 0, 1, 2).contiguous()
+        m_fft = [torch.view_as_real(torch.fft.rfftn(M[ax], dim=[0, 1, 2], s=s)) for ax in range(3)]
+        hs = [torch.fft.irfftn(torch.view_as_complex(hk), s=s, dim=[0, 1, 2], norm="forward")
+              for hk in demag_module._kernel_product(dem._N_h, m_fft)]
+        h_ref = torch.stack(hs, dim=3)
+        ib = torch.int64 if dtype == torch.float64 else torch.int32
+        assert torch.equal(h.contiguous().view(ib), h_ref.view(ib))
+        state.m = state.m.clone()
+        h2 = dem.h(state)
+        assert h2.data_ptr() != h.data_ptr() and torch.equal(h2, h)
+    finally:
+        torch.set_default_dtype(default)

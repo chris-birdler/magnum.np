@@ -305,12 +305,21 @@ class DemagField(LinearFieldTerm):
         m_fft = [torch.view_as_real(torch.fft.rfftn(M[ax], dim = dim, s = s)) for ax in range(3)]
 
         # unnormalized inverse: the factor 1/n is in self._N_h
-        hx, hy, hz = [torch.fft.irfftn(torch.view_as_complex(hk), s = s, dim = dim, norm = "forward")
-                      for hk in _kernel_product(self._N_h, m_fft)]
+        if len(dim) == 3 and list(s) == list(state.mesh.n):
+            # no padding (PBC): the inverse transforms write into a new buffer with the component first, and h is a
+            # view [nx, ny, nz, 3] on it, without the copy of torch.stack (PLAN 15 F2); a new buffer for each call,
+            # so that _last and any h that a caller holds stay valid
+            H = torch.empty((3,) + tuple(state.m.shape[:3]), dtype=state.m.dtype, device=state.device)
+            for ax, hk in enumerate(_kernel_product(self._N_h, m_fft)):
+                torch.fft.irfftn(torch.view_as_complex(hk), s = s, dim = dim, norm = "forward", out = H[ax])
+            h = H.permute(1, 2, 3, 0)
+        else:
+            hx, hy, hz = [torch.fft.irfftn(torch.view_as_complex(hk), s = s, dim = dim, norm = "forward")
+                          for hk in _kernel_product(self._N_h, m_fft)]
 
-        h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                         hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
-                         hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
+            h = torch.stack([hx[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                             hy[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]],
+                             hz[:state.mesh.n[0],:state.mesh.n[1],:state.mesh.n[2]]], dim=3)
         self._last = (state.m, state.m._version, h)
         return h
 
