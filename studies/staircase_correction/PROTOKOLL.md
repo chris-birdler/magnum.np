@@ -3149,3 +3149,45 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   to main would break the inverse problems with DemagField. A fix needs a go of Chris (not in PLAN 15). Decision for
   W1: a test that fails also on 15e5909 is not a failure of a PLAN 15 patch; it is reported. The known rkky failure
   of the memory does not occur on this branch (the test passes).
+- Step 1 results (box 11; logs without error text): ABP from the 8 perturbed starts (20:43 … 21:08 UTC); Dref of off108
+  and off156 (9e0ea7c in double precision) and ABP in double precision in both (21:08 … 21:40 UTC). Evaluation with W4.
+- WFQ (d10c.sh, 21:52 … 22:10 UTC; fq_check.py on the GPU, ABP against ASQ): PASS. All md5 equal (centroid offsets,
+  B, V, S, T, rows, _d, _v; the small-budget offsets equal) at q 8 for N 108 (85 184 cut cells) and N 156 (166 784)
+  and at q 16 on T3 (N 48, 17 120 cut cells). GPU peak of the centroid offsets old → new: 2.64 → 0.37 GiB (q8_108),
+  3.90 → 0.60 GiB (q8_156), 3.81 → 0.51 GiB (q16 T3); peak of the whole set-up 5.02 → 5.02, 9.94 → 9.94 and 4.08 →
+  2.76 GiB (at q 8 the peak is in the coupling build, not in the offsets). Set-up time old/new: 58/62 s, 103/110 s,
+  194/199 s (q 16 on T3).
+- F0 (d10b.sh, 21:40 … 21:53 UTC) gave no source lines: torch 2.7 records the Python stacks only with the verbose
+  profiler config (checked locally). prof_step.py fixed (9c4fcea…); F0 again (d10d.sh, 22:10 … 22:28 UTC; ABP, 10
+  profiled sample intervals). GPU ms per stage by source line (the largest; plain wall time per stage 7.66, 20.43 and
+  7.19 ms):
+
+  | source line | q4_108 | q4_156 | off156 | kernels per stage |
+  |---|---|---|---|---|
+  | demag_staircase.py block_sum (pair sum) | 2.19 | 4.32 | – | 3 |
+  | llg.py _llg_rhs_sum (stage function of A1) | 1.12 | 3.44 | 3.10 | 32 … 35 |
+  | demag_staircase.py centroid_field, cd, conv and their generator lines (centroid term) | 2.9 | 8.7 | – | about 62 |
+  | demag.py DemagField.h, line of the call (stack copy and the strided product of M) | 0.25 | 0.94 | 0.94 | 2 |
+  | demag.py FFT lines and _kernel_product | 0.37 | 1.25 | 1.24 | 19 |
+  | anisotropy, exchange, RKF45 | 0.45 | 1.3 | 1.3 | about 12 |
+
+- Finding of F0 (the cause of the stage kernels): the stage function _llg_rhs_sum (A1, torch.compile) is not compiled
+  as a whole in production. The graph of dynamo contains only the field sum (4 additions); the cross products and the
+  cat run eagerly (about 32 kernels per stage: strided products of the slices m[..., 0:1], additions, a cat). Cause:
+  state.material["alpha"] is a CoWTensor (the State keeps homogeneous parameters as copy-on-write stride-0 views,
+  common/cow.py), and dynamo does not trace a CoWTensor argument ("step_unsupported"). Local check
+  (torch._dynamo.explain on _llg_rhs_sum, N 8): alpha a float: 1 graph, 7 ops; alpha a CoWTensor: no traced ops, break
+  reason step_unsupported; alpha the same tensor as a plain view (as_subclass(torch.Tensor), no copy): 1 graph, 8
+  ops, no break. Thus A1 gave less than its estimate in production; the unit tests of A1 used a float alpha.
+- Change list after F0 (fixed before the build of F2 and F3; GPU time of the kernels that each change removes, q4_108 /
+  q4_156 / off156):
+  - F1 (as planned): the centroid term in 3 fused kernels; removes about 60 of the 62 kernels (the 6 FFTs stay):
+    about 2.4 / 7.2 / – ms (the FFTs: about 0.5 / 1.5 ms).
+  - F2: the stack copy of DemagField.h (CatArrayBatchedCopy, 1 per call): 0.155 / 0.650 / 0.650 ms. The strided
+    product torch.mul(..., out=M) of A2 at the same line (0.10 / 0.29 / 0.29 ms) is not changed (it is the one pass of
+    A2; the autograd finding above concerns it).
+  - F3: LLGSolver.dm gives _llg_rhs_sum a plain view of alpha (alpha.as_subclass(torch.Tensor) if alpha is a tensor
+    subclass: the same storage and strides, no copy); then the whole function compiles. Removes the eager part:
+    about 1.0 / 3.0 / 2.7 ms (the fused kernel that stays: estimate 0.1 / 0.4 / 0.4 ms). Decision: this is the F3 kind
+    "the compiled functions get their inputs in the form that they read"; the compiler then fuses the arithmetic of
+    A1 as A1 intends, which changes the rounding, so the bounds of F1 apply to F3 (W1, W2), not the bitwise rule.
