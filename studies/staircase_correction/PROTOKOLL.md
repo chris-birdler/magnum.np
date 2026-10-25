@@ -2824,4 +2824,27 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - T5, code part: the git diff of ABP (15e5909) against AB (7f755a0) changes only demag_staircase.py and
   test_staircase.py, and its changed lines in magnumnp/ are the same as those of the patch (df0f811 → 3f1faf7). The
   config.json part follows with the runs of D6 and D7.
-- D6 started 05:28 UTC (d6chain.sh: t12p.sh after the D5 arms).
+- D6 (05:28 … 06:18 UTC, d6chain.sh: t12p.sh after the D5 arms; all steps exit code 0; local copy
+  remote_20261024_box11/D6/D6.tgz, md5 1e4f049f… verified): PASS by the rules of 14a.
+  - T1 (double precision, 16 states of refB.pt, worst state; bounds RMS 1e-3 cu, max 1e-1 cu, norm 1e-6):
+
+    | pair | RMS | max | norm | same branch | result |
+    |---|---|---|---|---|---|
+    | PLAN10 | 9.9e-7 cu | 1.1e-5 cu | 3.8e-10 | yes | PASS |
+    | B5 | 0 | 0 | 0 | yes | PASS |
+    | B4 | 0 | 0 | 0 | yes | PASS |
+    | A4 | 0 | 0 | 0 | yes | PASS |
+    | AB on | 1.4e-6 cu | 1.0e-5 cu | 3.3e-10 | yes | PASS |
+
+    B5, B4 and A4 are bitwise equal on all 16 states, also the energies. PLAN10 and AB on differ at the rounding
+    level (energy of the correction at most 2.9e-11 cu); AB on has the same order as D1b (8.2e-7 cu, 8.5e-6 cu).
+  - T6 of B1 (B_d53P → B_df0P): (a) the correction without the stored stray field against the old correction RMS 0,
+    max 0 (bounds 1e-3 cu, 1e-1 cu); (b) change of the effective field pooled over 16 states: cut cells 1.39 cu (band
+    0.1 … 10 cu), full and void cells 0 (bound 1e-3 cu). PASS.
+  - T2 (single precision, 3 repeats, against the double-precision states; reference c63e862 and its null run): PASS
+    for PLAN10, B5, B4, B1, A4 and AB on. err_rms of the new arm 3.07 … 3.10 against the bound 6.18 … 6.20; norm
+    0.403 … 0.428 against 0.772 … 0.856.
+- T5, config part of D6: config.json of the T1 run of ABP_on against that of AB_on (B_AB_on, 7f755a0) differs only in
+  out, magnumnp_path and git_commit. The config part of D7 (ABP off against 9e0ea7c off) follows with D7.
+- D7 started 06:19 UTC (d7chain.sh: d7t.sh, transfer states T_q4_156, T_q8_108, T_q8_156, all exit code 0 at 07:41
+  UTC; then d7.sh).
