@@ -83,6 +83,10 @@ class LLGSolver(object):
         state.t = t
         state.m = x
         alpha = alpha or state.material["alpha"]
+        # a tensor subclass (the CoWTensor of a homogeneous parameter) as a plain view of the same storage: torch.compile
+        # does not trace the subclass, and without this view only the field sum of _llg_rhs_sum is compiled (PLAN 15 F3)
+        if isinstance(alpha, torch.Tensor) and type(alpha) is not torch.Tensor:
+            alpha = alpha.as_subclass(torch.Tensor)
 
         # all fields at once (one more full field per term than accumulate_h) for one fused pass
         return _llg_rhs_sum(state.m, [term.h(state) for term in self._terms], alpha, self._no_precession)

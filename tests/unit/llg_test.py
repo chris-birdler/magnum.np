@@ -181,3 +181,43 @@ def _check_rhs_sum(dtype, tol, n_fields, alpha_field, no_precession):
     new = _llg_rhs_sum(m, hs, state.material["alpha"], no_precession)
     assert new.shape == m.shape
     assert float((new - ref).abs().max() / ref.abs().max()) < tol
+
+
+@pytest.mark.parametrize("dtype, tol", [(torch.float64, 1e-12), (torch.float32, 1e-5)])
+def test_dm_compiles_the_rhs_with_a_cow_alpha(dtype, tol):
+    """PLAN 15 F3: a homogeneous alpha is a CoWTensor in the State; dm gives _llg_rhs_sum a plain view of it, so that
+    torch.compile traces the whole function (with the subclass it traced only the field sum). The result equals the
+    eager function within tol of the largest value."""
+    import torch._dynamo as dyn
+    from magnumnp.common.cow import CoWTensor
+    from magnumnp.solvers.llg import _llg_rhs_sum
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        n = (6, 5, 4)
+        state = State(Mesh(n, (1e-9,) * 3))
+        state.material = {"alpha": 0.1, "Ms": 8e5}
+        assert type(state.material["alpha"]) is CoWTensor          # the case of production (run_loops)
+        g = torch.Generator().manual_seed(3)
+        r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+        m = r / r.norm(dim=-1, keepdim=True)
+        hs = [torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype) * 1e5 for _ in range(3)]
+
+        class Fixed:                                               # a field term that returns a fixed field
+            def __init__(self, h):
+                self._h = h
+
+            def h(self, state):
+                return self._h
+        llg = LLGSolver([Fixed(h) for h in hs])
+        dm = llg.dm(0.0, m, state)
+        eager = _llg_rhs_sum._torchdynamo_orig_callable
+        ref = eager(m, hs, state.material["alpha"].as_subclass(torch.Tensor), False)
+        assert float((dm - ref).abs().max()) <= tol * float(ref.abs().max())
+        alpha = state.material["alpha"]
+        for a, traced in ((alpha, False), (alpha.as_subclass(torch.Tensor), True)):
+            dyn.reset()
+            e = dyn.explain(eager)(m, hs, a, False)
+            assert (e.graph_break_count == 0 and e.op_count >= 8) == traced
+    finally:
+        torch.set_default_dtype(default)
