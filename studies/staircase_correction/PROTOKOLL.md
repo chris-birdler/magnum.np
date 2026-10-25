@@ -2771,4 +2771,31 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   second cause. Any other result: a second cause exists; it is reported with its size. The code stays unchanged
   in both cases (a change would make D4 void; whether two processes must give bitwise the same result is a decision of
   Chris).
-- D5 pilot started 04:08 UTC (k1.sh p3_pilot.txt 2).
+- D5 pilot (04:08 … 04:55 UTC, k1.sh p3_pilot.txt 2, 11 arms, all exit code 0, mismatch 0; evaluation
+  k1_eval_p.sh pilot; local copy remote_20261024_box11/D5/, md5 verified): PASS.
+  - pilotBP (base B_d53P): each window has determined points (windows without a point: none); null / control in C1
+    at most 4.7e-5 (bound 1e-3); geometric mean null 2 / null 1 1.30 (bounds 0.5 … 2), per window 0.51 … 2.82 (bounds
+    0.1 … 10).
+  - pilotBA4P (base BA4P): windows without a point: none; window 48 has 94 of 94 tries determined (in the old pilot
+    0, the CSR outlier; rule of D5 met); null / control at most 5.4e-5; geometric mean null 2 / null 1 0.90, per
+    window 0.31 … 3.15. The stored stray field is used in all 11 124 calls of each BA4P arm.
+  - BP_base against BP_base2 (two processes at the same time): all 17 windows bitwise equal (tries, m, t, dt, probe
+    m). Both processes chose the same configuration (stage 1: XBLOCK 128, 8 warps). Configurations of stage 1 in the
+    pilot arms: XBLOCK 128 and 8 warps in BP_base, BP_base2, BP_n2 and all 5 BA4P arms; XBLOCK 32 and 4 warps in
+    BP_ctrl, BP_n1 and BP_n3. Thus the null runs and the control of BP contain also the rounding difference of the
+    configuration, as the patch arms do (each arm is its own process).
+- X1 (04:55 … 05:06 UTC, x1.sh; local copy remote_20261024_box11/X1/, md5 verified): the rules of X1 are met.
+  (1) T1 of B_d53P in a new process with the cache of D1b (stage 1: XBLOCK 32, 4 warps) against D1b: all 6 field
+  terms, the 6 stages, dx, the error estimate and the 6 energies bitwise equal on all 16 states (all differences 0).
+  (2) bench_det.py, float64: the md5 of the layout (V, S, T, rows) is the same in all 4 processes. The md5 of the
+  first products on the states 8 and 144: equal in a1 and a2 (cache of H3_d53P_a) and in n (empty cache; it chose
+  XBLOCK 32 and 4 warps); different in b1 (cache of H3_d53P_b, XBLOCK 128 and 8 warps). Difference to csr 1.03e-15
+  (a1, a2, n) and 1.16e-15 (b1); 0 of 20 repeats not bitwise equal in each process.
+  Result: the cause of the difference between processes is the configuration that inductor chooses for stage 1 of
+  block_sum; there is no second cause. With the same configuration, two processes give bitwise the same try. The
+  difference is at the rounding level (product 1e-15 relative) and the adaptive step grows it as any rounding
+  difference (D4: m at most 3.7e-14 at the window ends). The code stays unchanged.
+  Note on the time: 3.8 ms per float64 product here against 9.0 ms in D1. In D1 the two processes did their 20 000
+  repeats at the same time (the float32 time of D1 alone against with 2 processes: 2.2 against 4.8 ms, a factor 2.2);
+  here the 20 timed products ran without such load (estimate). D7 measures the speed in production.
+- D5 arms started 05:07 UTC (k1.sh p3_arms.txt 2: B_01eP, B_c56P, B_df0P, ABP_on).
