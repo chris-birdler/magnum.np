@@ -36,7 +36,7 @@ import torch
 
 from magnumnp.common import constants
 from magnumnp.field_terms.field_terms import LinearFieldTerm
-from magnumnp.field_terms.demag import demag_f, demag_g
+from magnumnp.field_terms.demag import demag_f, demag_g, _kernel_product
 
 __all__ = ["DemagStaircaseCorrection", "DemagStaircaseFine", "NearCorrection", "staircase_cells", "centroid_offsets",
            "centroid_field", "centroid_field_fourier", "pair_matrix", "pair_blocks", "PairBlocks"]
@@ -245,6 +245,24 @@ def centroid_field(Nhat, v, d, m, shape=None, h1=None):
     return h - conv(sum(cd(vm * d[..., k:k + 1], k) for k in range(3)))
 
 
+@torch.compile
+def _centroid_source(v, d, m):
+    """sum_k CD_k(v d_k m), the source of the second convolution of centroid_field, component first [3, N, N, N]:
+    one fused kernel (PLAN 15 F1; the periodic central differences become index shifts)."""
+    vm = v[..., None] * m
+    s = sum(0.5 * (torch.roll(vm * d[..., k:k + 1], -1, k) - torch.roll(vm * d[..., k:k + 1], 1, k)) for k in range(3))
+    return s.permute(3, 0, 1, 2).contiguous()
+
+
+@torch.compile
+def _centroid_total(hp, Ms, hd, d, c0, c1, c2):
+    """Ms h_pair + Ms (sum_k d_k CD_k(h1) - K * source) with h1 = hd / Ms, as h() of the pair form with the centroid
+    term and B1 computes it: one fused kernel (PLAN 15 F1). c0, c1, c2: the components of K * source."""
+    h1 = hd / Ms
+    h = sum(d[..., k:k + 1] * (0.5 * (torch.roll(h1, -1, k) - torch.roll(h1, 1, k))) for k in range(3))
+    return Ms * hp + Ms * (h - torch.stack([c0, c1, c2], -1))
+
+
 def centroid_field_fourier(Nhat, v, d, m, shape=None):
     """centroid_field with the differences in Fourier space (24 FFTs); any FFT shape, also open boundaries."""
     N = v.shape[0]
@@ -436,6 +454,7 @@ class DemagStaircaseCorrection(LinearFieldTerm):
         self._Ms, self._form, self._periodic = float(Ms), form, periodic
         self._centroid, self._demag = centroid, demag
         self._ready = False
+        self._Nk = None
 
     def _setup(self, state):
         nc = NearCorrection(self._n, self._occ, self._q, self._p, periodic=self._periodic, centroid=self._centroid)
@@ -473,7 +492,6 @@ class DemagStaircaseCorrection(LinearFieldTerm):
             h[self._idx] = sym_matvec(self._k, m[self._idx])
         else:
             h = (self._A @ m.reshape(-1)).reshape(-1, 3)
-        h = (self._Ms * h).reshape(self._shape + (3,))
         if self._centroid:
             dem = self._demag
             if not hasattr(dem, "_N"):
@@ -482,9 +500,24 @@ class DemagStaircaseCorrection(LinearFieldTerm):
             # h_demag / M_s = K * (v m) + the field of the void moments (ms_void, about 1e-8) + the uniform block
             # term of true_pbc, which the central differences remove
             hd = dem.last_h(state) if hasattr(dem, "last_h") else None
-            h = h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=tuple(dem._shape(state)),
-                                              h1=None if hd is None else hd / self._Ms)
-        return h
+            s = tuple(dem._shape(state))
+            if hd is not None and s == tuple(self._shape):           # PBC with B1 (production): fused (PLAN 15 F1)
+                return self._centroid_fused(h.reshape(self._shape + (3,)), hd, state.m, s)
+            h = (self._Ms * h).reshape(self._shape + (3,))
+            return h + self._Ms * centroid_field(dem._N, self._v, self._d, state.m, shape=s,
+                                                 h1=None if hd is None else hd / self._Ms)
+        return (self._Ms * h).reshape(self._shape + (3,))
+
+    def _centroid_fused(self, hp, hd, m, s):
+        """h() of the pair form with the centroid term and B1, as centroid_field with h1 = hd / Ms: the work outside
+        the 6 FFTs in 3 fused kernels (_centroid_source, _kernel_product of DemagField, _centroid_total)."""
+        if self._Nk is None:
+            N = self._demag._N
+            self._Nk = [K.unsqueeze(-1) for K in (N[0][0], N[0][1], N[0][2], N[1][1], N[1][2], N[2][2])]
+        src = _centroid_source(self._v, self._d, m)
+        f = [torch.view_as_real(torch.fft.rfftn(src[a], s=s, dim=(0, 1, 2))) for a in range(3)]
+        c = [torch.fft.irfftn(torch.view_as_complex(k), s=s, dim=(0, 1, 2)) for k in _kernel_product(self._Nk, f)]
+        return _centroid_total(hp, self._Ms, hd, self._d, *c)
 
     def E(self, state, domain = Ellipsis): # without torch.compile, as DemagField.E
         E = -0.5 * constants.mu_0 * state.material["Ms"] * state.m * self.h(state) * state.mesh.cell_volumes

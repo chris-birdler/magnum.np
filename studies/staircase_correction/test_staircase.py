@@ -405,6 +405,35 @@ def test_setup_in_blocks_of_offsets_is_bitwise_equal(q):
     assert torch.equal(centroid_offsets(occ, q), centroid_offsets(occ, q, budget=1000 * 2 * 8 * q ** 3))  # 1000 cells
 
 
+@pytest.mark.parametrize("N, q, d", [(16, 2, 6.0), (48, 4, 92.0 / 3.0)])             # a small box; the T3 geometry
+@pytest.mark.parametrize("dtype, tol", [(torch.float64, 1e-12), (torch.float32, 1e-5)])
+def test_centroid_fused_equals_centroid_field(dtype, tol, N, q, d):
+    """PLAN 15 F1: h() of the pair form with the centroid term and B1 (3 fused kernels) against the unfused form
+    Ms h_pair + Ms centroid_field(..., h1 = h_demag / Ms), within tol of the largest value, in float64 and float32."""
+    from magnumnp import Mesh, State, DemagField, DemagStaircaseCorrection
+    from magnumnp.field_terms.demag_staircase import centroid_field
+    torch.set_default_dtype(dtype)
+    try:
+        Ms = 8e5
+        ids = fcc_box(q * N, d, 1.0 / q)["ids"]
+        n, pid, occ = v1_cells(ids, q)
+        v = n / q ** 3
+        state = State(Mesh((N, N, N), (2e-9,) * 3, pbc=(2, 2, 2)))
+        state.m = random_m((N, N, N), 12).to(dtype)
+        state.material["Ms"] = torch.as_tensor(np.maximum(v, 1e-8) * Ms, dtype=dtype).reshape(N, N, N, 1)
+        dem = DemagField(true_pbc=True, extrapolate=True)
+        term = DemagStaircaseCorrection(n, occ, q, 2, Ms, form="pair", centroid=True, demag=dem)
+        hd = dem.h(state)
+        h = term.h(state)                                          # the fused form: last_h of this m exists
+        hp = (term._A @ state.m.reshape(-1)).reshape(N, N, N, 3)
+        ref = Ms * hp + Ms * centroid_field(dem._N, term._v, term._d, state.m, shape=tuple(dem._shape(state)),
+                                            h1=hd / Ms)
+        assert h.dtype == ref.dtype == dtype and h.shape == ref.shape
+        assert float((h - ref).abs().max()) <= tol * float(ref.abs().max())
+    finally:
+        torch.set_default_dtype(torch.float64)
+
+
 @pytest.mark.parametrize("ms_void, tol", [(0.0, 1e-12), (1e-8, 1e-7)])
 def test_centroid_term_from_the_stray_field(ms_void, tol):
     """Audit B1: the centroid term takes K * (v m) from the stray field of DemagField (h_demag / M_s). Without void
