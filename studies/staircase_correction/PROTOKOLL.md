@@ -2734,5 +2734,27 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   - D3b (ABP, the cycle in single precision; windows 8 and 144, 2 repetitions; 504 tries done twice, 1008 try
     evaluations): 0 differences at the threshold 0, the window ends of the 2 repetitions bitwise equal, mismatch 0,
     the stored stray field used in all 6306 calls; exit code 0.
-- D4 started 18:44 UTC (d4.sh): H3_d53P_a (B_d53P, --k1_thr 0 0) and H3_d53 (B_d53, rate control) in parallel; then
-  H3_d53P_b and fillers of the rate control. Expected end about 05:00 … 06:00 UTC (estimate).
+- D4 (box 11, 2026-10-24 18:44 … 2026-10-25 04:07 UTC, d4.sh; local copy remote_20261024_box11/D4/, md5 verified;
+  evaluation d4_eval.py, D4_verdict.json): PASS.
+  - P arm (B_d53P, each try done twice, threshold 0): H3_d53P_a and H3_d53P_b, 18 repetitions each, 2 × 68 256 try
+    evaluations (E_P 136 512): 0 tries with a difference, 0 non-finite values, 0 event lines in the logs, mismatch 0,
+    exit code 0 for both.
+  - Rate control (B_d53, the CSR product): H3_d53 (68 270 try evaluations), the fillers f1 … f7 (7 584 … 7 590 each;
+    f8 was stopped at the end of the P arm and is not counted) and H2_d53 of PLAN 14a (68 266); E_C 189 630. 15 events
+    above the thresholds of test 3, all with the first part spmv (6 in H3_d53, 1 in each of f1, f2, f4, f6, f7, 0 in
+    f3 and f5, 4 in H2_d53); largest difference of the product 3e-5 … 0.24 of the largest value of the product. Rate
+    7.9e-5 per try evaluation (Poisson standard error 2.0e-5, n 15); at this rate the P arm expects 10.8 events.
+    In the rate control, each try has a difference below the thresholds (the CSR product is not bitwise repeatable).
+  - Conditional binomial test: p = (E_C / (E_C + E_P))^n_C = 2.9e-4 (bound 0.01). Thus PairBlocks removes the
+    transient faults of the product in the production path of B_d53, and each try of the patched tree repeats
+    bitwise in the same process.
+- Finding in D4 (information, check X1 below): H3_d53P_a and H3_d53P_b are not bitwise equal to each other, although
+  both start each window from the same state of refB.pt. The first try of window 0 differs already (error norm);
+  m at the window ends differs by at most 3.7e-14, m in the probe cells by at most 3.8e-10 (the adaptive step grows
+  the difference: dt at the window ends differs by up to 6e-7 relative). Of the cycle quantities, only those of the
+  dissipated power differ (p_dis, W_dis; W_dis relative 2e-14); E_start of the correction differs in the last digit,
+  E_start of the other terms is bitwise equal. Thus each process computes a slightly different result for the same
+  input, while each process repeats its own result bitwise. Cause not known yet. Check X1 (decision, within the
+  mandate; about 10 min GPU): T1 of B_d53P against a second process of B_d53P on the 16 states of refB.pt (each field
+  term bitwise), and the md5 of the layout and of the first products of PairBlocks in two processes (bench_det.py).
+- D5 pilot started 04:08 UTC (k1.sh p3_pilot.txt 2).
