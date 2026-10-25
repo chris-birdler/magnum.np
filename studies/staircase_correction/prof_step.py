@@ -257,7 +257,10 @@ def main(argv):
             if A.window == 0:
                 report_plain(res)
                 raise SystemExit(0)
-            c["prof"] = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=A.stack)
+            # the Python stacks of the events need the verbose config (torch 2.7: with_stack alone gives empty stacks)
+            xc = torch._C._profiler._ExperimentalConfig(verbose=True) if A.stack else None
+            c["prof"] = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=A.stack,
+                                experimental_config=xc)
             c["prof"].__enter__()
             c.update(t=time.perf_counter(), dm=ST["dm"], tries=ST["tries"])
             ST["phase"] = "prof"
