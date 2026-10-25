@@ -2358,7 +2358,7 @@ nicht mehr startet ganz löschen"). Lost with the box (not needed for PLAN 14; t
 the precision test, S2 and S3 (about 4.2 GB raw data) and the kernel cache. The account now has only the 2 instances of
 the other session (53995473, 57335263; not touched).
 
-### 3.40 PLAN 14: verification over the full cycle and final speed measurement (2026-10-23, from about 11:30 UTC; in progress)
+### 3.40 PLAN 14: verification over the full cycle and final speed measurement (2026-10-23, from about 11:30 UTC; finished 2026-10-25, continued in 3.41)
 
 **Decision.** Chris approved PLAN 14 with the decisions 1 … 6 as proposed ("Go", 2026-10-23): K1 bound 1e-3 × the
 control for criteria 1 and 2; K2 factor 2 and bias floor 2^-24; B1 band 0.1 … 10 control units; the A4 rule (the
@@ -2688,7 +2688,7 @@ box.
 wrong pattern and did not find it, so I started a second one. I stopped both chains by PID after about 2 min, moved
 the partial outputs to /root/k1/A/dup_20261024 (not deleted) and started one chain again.
 
-### 3.41 PLAN 14b: the pair sum of the correction in a fixed order (2026-10-24, from about 17:25 UTC; in progress)
+### 3.41 PLAN 14b: the pair sum of the correction in a fixed order (2026-10-24, from about 17:25 UTC; finished 2026-10-25, ABP released)
 
 Work on the mini PC after the move (HANDOVER.md). Mandate of Chris (2026-10-24, about 17:05 UTC): do all necessary
 steps of PLAN 14 to the end, choose conservative criteria, report once at the end.
@@ -3018,3 +3018,22 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   runs of ABP in part 2 (stop message of k1_null, see above). The results of the record stand on the content of the
   output files (verdict lines, counts, 126 samples in each trace), not on the exit codes. The scripts now keep the
   exit code first (rc=$?; echo "… exit $rc"); the runs of the record used the version before that change.
+- Decision of Chris (2026-10-25, about 17:55 UTC, "Ja" to the proposal): ABP (15e5909, branch perf/speed-all-det) is
+  released. For q4_108 the double-precision reference of parts 3 … 5 takes the place of G (G failed by its own rule;
+  its scale is the scatter of the old code, not its error). PLAN 14 and PLAN 14b are finished. A merge to main is not
+  part of this release and needs its own go.
+- Data before the destroy of box 11 (about 17:55 … 18:05 UTC): md5 of all 596 result and script files below 50 MB on
+  the box (chk, csr, d1, d7, d7c, d7cres, d7res, glitch, k1res, k1res_p, stress, stress2, stress3, tres, tres_p, x1,
+  s) compared with the local copies remote_20261023_box11/, remote_20261024_box11/ and the contents of their .tgz.
+  Not local before: the scripts of /root/s (older versions than in git), 11 config.json of runs, the logs of
+  d1/failed1 and the transfer states T_q4_156, T_q8_108, T_q8_156 (init.pt, config, logs). Now local in
+  remote_20261024_box11/rest/rest.tgz, md5 e8f1601b5d0229c12c9aaa0879114a23 (98 MB), unpacked with manifest
+  rest.md5 (95 files); the md5 of the 3 init.pt are equal to the box. The base states Bprep, K1_2_sat, K4_2_sat are
+  local in remote_20261023_box8 and remote_20261022_prod (md5 equal). Left on the box (raw data, not downloaded): k1
+  (79 GB), t1 (7.3 GB), t2 (387 MB), the kernel and inductor caches, the prep_m.pt of the transfer states, the code
+  trees; the evaluations of k1, t1 and t2 are local (k1res, k1res_p, tres, tres_p). All 19 code trees are clean
+  (no changed tracked files), and their commits are on GitHub branches.
+- Key numbers of PLAN 14 (V100 16 GB, single precision, n 3 runs each, mean ± SE of the gain old / new per sample
+  interval): q4_108 3.99 ± 0.02; q4_156 3.69 ± 0.02; off108 0.95 ± 0.05 (no gain); off156 1.10 ± 0.00. Distance of
+  <Ms m_x> to the double-precision reference, old against new (largest, all 126 intervals): q4_108 0.285 against
+  0.115 A/m (n 5 and 3); q4_156 0.0607 against 0.0140 A/m (n 5 and 3).
