@@ -2917,6 +2917,28 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - off108, information (d7c.sh, method check of the run new r2; not used for the result of the plan): two more runs of
   ABP, 321.2 and 319.5 ms per sample interval (halves 0.8 % and 0.7 %). Thus r2 (373.7 ms) is a single slow run; the
   result of the plan stays 0.95 ± 0.05.
-- Cause check, part 2 (d7c2.sh, from 12:40 UTC): (1) AB (7f755a0: A1 … A3 and the B patches with the old CSR product,
-  no pair sum), 2 runs (2 realisations, CSR not repeatable); (2) null runs of ABP (reverse and rotate order of the
-  field terms). Each run judged by G as in part 1.
+- Cause check, part 2 (d7c2.sh, 12:40 … 12:46 UTC): (1) AB (7f755a0: A1 … A3 and the B patches with the old CSR
+  product, no pair sum), 2 runs (2 realisations, CSR not repeatable); (2) null runs of ABP (reverse and rotate order
+  of the field terms). Each run judged by G as in part 1.
+  - AB r1: steps 1.45 / 7 PASS; <Ms m_x> 0.0292 / 0.202 A/m FAIL. AB r2: steps 1.39 / 7 PASS; <Ms m_x> 0.0308 / 0.211
+    A/m FAIL. Both have their excess in the same intervals as ABP (12, 27 … 29, 99 … 102; AB r1 also 57), with the same
+    sign and size (interval 29: ABP −0.204, AB r1 −0.199, AB r2 −0.208 A/m against old r1). Largest difference over the
+    126 intervals: ABP against AB r1 0.016, against AB r2 0.014, AB r1 against AB r2 0.018 A/m (the scale of old
+    against old, 0.015 … 0.018 A/m).
+  - The null runs of ABP did not run: step_dump.k1_null stops on a tree with A1 (the field sum is in the compiled
+    function of A1; message in the log, no json). The 2 realisations of AB take their place.
+  - Result: the excess is systematic (3 realisations: ABP, AB r1, AB r2) and it does not come from the pair sum (ABP
+    against AB at the scale of the rounding). It comes from A1 … A3 with the correction on, in the B set-up (state
+    Bprep, ARGS_B). The A patches pass G in off108 and off156 (A set-up, correction off).
+- Cause check, part 3 (d7c3.sh; rule written before the data): a double-precision reference. c63e862 and ABP on q4_108
+  with ARGS_B as in K1 (--precision_cycles double), --trace, a new kernel folder for each run. Rule:
+  (a) check of the reference: the largest difference of <Ms m_x> between the two double runs over the 126 intervals.
+  At most 0.04 A/m: the reference does not depend on the code; then c63e862 double is the reference D. Near 0.2 A/m:
+  the computed function or the step control changed also in double precision; this contradicts the pair AB on of D5
+  (C1 3.4e-5), and I check the method before a conclusion.
+  (b) e_old: the largest difference to D over the 5 old single-precision realisations (old r1 … r3, null reverse,
+  null rotate); e_new: the same over the 3 new realisations (ABP, AB r1, AB r2); in the intervals 12, 27 … 30 and
+  99 … 103 and over all 126 intervals, and the RMS over the 126 intervals. e_new at most 3 e_old and e_old at most
+  3 e_new: both single-precision codes have an error of the same size, and the old code has its own systematic
+  rounding that the realisations of one code do not show (a limit of G). e_new above 3 e_old: A1 … A3 make the
+  single-precision result worse at this event. e_old above 3 e_new: the old code is the worse one.
