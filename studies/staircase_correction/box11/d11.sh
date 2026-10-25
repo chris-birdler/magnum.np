@@ -26,7 +26,8 @@ r32() {  # TREE
   rc=$?; echo "$(date -u +%T) end W2 T2 $g $t exit $rc" >> $P
   [ -d $IC/32 ] || cp -a $IC/32_$t $IC/32; }
 cfg() {  # the configurations of the stage-1 kernel of block_sum (triton_poi_fused_stack_0) in the caches of a tree
-  for d in $IC/64_$1 $IC/32_$1; do echo "$1 $(basename $d): $(find $d -name 'triton_poi_fused_stack_0*.best_config' -exec cat {} \; 2>/dev/null | tr '\n' ' ')"; done; }
+  for d in $IC/64_$1 $IC/32_$1; do
+    for f in $(find $d -name '*.best_config'); do grep -q "def triton_poi_fused_stack_0" ${f%.best_config}.py 2>/dev/null && echo "$1 $(basename $d): $(tr '\n' ' ' < $f)"; done; done; }
 r64 $old; r64 $new
 python /root/s/k_eval.py --t1 $pair $T1/$old $T1/$new --json $RES/t1_$pair.json > $RES/t1_$pair.txt 2>&1
 rc=$?; echo "$(date -u +%T) W2 T1 $pair exit $rc" >> $P
