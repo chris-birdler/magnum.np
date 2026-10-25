@@ -186,19 +186,28 @@ def staircase_cells(ids_fine, q):
     return n, pid, occ
 
 
-def centroid_offsets(occ, q, chunk=1 << 18):
+def centroid_offsets(occ, q, budget=1 << 30):
     """Offset of the centroid of the body sub-cells of each cell from its centre, in cells: [N, N, N, 3] (0 where a
-    cell has no body sub-cell). In blocks of cells: the full map in float64 needs 8 q^3 bytes per cell (13 GB at q 8,
-    N 148; audit B4)."""
-    occ_t = torch.as_tensor(occ)
+    cell has no body sub-cell or all of them). Only the cut cells (0 < n < q^3) are computed, in blocks whose two live
+    float64 blocks take at most budget bytes; the map occ stays where it is (at q 16 the full map has 4096 bytes per
+    cell: 15.5 GB at N 156; PLAN 15 FQ). Each sum is exact in float64 (the positions are multiples of 1/(2q), at most
+    q^3 terms), so the result does not depend on the blocks or on the device."""
+    occ_t = occ if torch.is_tensor(occ) else torch.as_tensor(occ, device="cpu")
+    dev = occ.device if torch.is_tensor(occ) else torch.empty(0).device     # as before: the default device for numpy
+    nq = occ_t.shape[-1]
     shape = occ_t.shape[:-1]
-    occ_t = occ_t.reshape(-1, occ_t.shape[-1])
+    occ_t = occ_t.reshape(-1, nq)
+    n = occ_t.sum(-1)
+    rows = torch.nonzero((n > 0) & (n < nq)).reshape(-1)
     aloc = torch.stack(torch.meshgrid(*(torch.arange(q, dtype=torch.float64),) * 3, indexing="ij"), -1).reshape(-1, 3)
-    pos = ((aloc + 0.5) / q - 0.5).to(occ_t.device)                  # sub-cell centres relative to the cell centre
-    d = torch.empty(occ_t.shape[0], 3, dtype=torch.float64, device=occ_t.device)
-    for i in range(0, occ_t.shape[0], chunk):
-        o = occ_t[i:i + chunk].to(torch.float64)
-        d[i:i + chunk] = (o @ pos) / o.sum(-1, keepdim=True).clamp(min=1.0)
+    pos = ((aloc + 0.5) / q - 0.5).to(dev)                           # sub-cell centres relative to the cell centre
+    d = torch.zeros(occ_t.shape[0], 3, dtype=torch.float64, device=dev)
+    chunk = max(1, int(budget) // (2 * 8 * nq))
+    for i in range(0, len(rows), chunk):
+        r = rows[i:i + chunk]
+        o = occ_t[r].to(device=dev, dtype=torch.float64)
+        d[r.to(dev)] = (o @ pos) / o.sum(-1, keepdim=True).clamp(min=1.0)
+        del o
     return d.reshape(*shape, 3)
 
 
@@ -301,7 +310,17 @@ class NearCorrection:
         Rf = (p + 1) * q - 1                                         # largest fine offset between cells in the window
         Kf = kernel_table(Rf)
         aloc = torch.stack(torch.meshgrid(*(torch.arange(q),) * 3, indexing="ij"), dim=-1).reshape(-1, 3)  # [q^3, 3]
-        occ_t = torch.as_tensor(occ.reshape(-1, nq))               # bool; only gathered rows go to float64 (audit B4)
+        # the rows of occ only for the modified cells (PLAN 15 FQ: no full map on the GPU); rows(idx) gives the float64
+        # rows of any cells, with ones for a full cell and zeros for an empty cell (the values of the full map)
+        occ_c = occ if torch.is_tensor(occ) else torch.as_tensor(occ, device="cpu")
+        occ_J = occ_c.reshape(-1, nq)[self.J.to(occ_c.device)].to(self.J.device)   # [M, q^3] bool
+        slot = torch.full((N ** 3,), -1, dtype=torch.int64)
+        slot[self.J] = torch.arange(len(self.J))
+
+        def rows(idx):
+            s = slot[idx]
+            o = occ_J[s.clamp(min=0)].to(torch.float64)
+            return torch.where((s >= 0)[..., None], o, self.full[idx][..., None].to(torch.float64))
         # B[j, offset, 6] = L_{t, j}, target t = j + offset (zero if the target is not magnetic, or if the offset
         # leaves the box in the open case); computed in blocks of offsets (the table K^f(q offset + a - b) of all
         # offsets has 343 q^6 6 values: 4.3 GB at q 8) and in blocks of source cells (bounded memory for any q)
@@ -317,13 +336,14 @@ class NearCorrection:
             nb = max(1, min(batch, int(2e8) // ((dc.stop - dc.start) * nq * 6 * 8)))
             for s in range(0, M, nb):
                 sl = slice(s, min(s + nb, M))
-                S = torch.einsum("jb,dabc->jdac", occ_t[self.J[sl]].to(torch.float64), Kab)  # sum over source b
+                S = torch.einsum("jb,dabc->jdac", occ_J[sl].to(torch.float64), Kab)  # sum over source b
                 t, ok = t_all[sl, dc], ok_all[sl, dc]                # [b, n_d]
-                L = torch.einsum("bda,bdac->bdc", occ_t[t].to(torch.float64), S)
+                L = torch.einsum("bda,bdac->bdc", rows(t), S)
                 nt = self.n[t]
                 L = torch.where((ok & (nt > 0))[..., None], L / nt.clamp(min=1.0)[..., None], torch.zeros_like(L))
                 self.B[sl, dc] = L
             del Kab, base
+        del occ_J, slot
         self._kloc = None
 
     def _targets(self, xyz):
@@ -422,7 +442,7 @@ class DemagStaircaseCorrection(LinearFieldTerm):
         dev, dt = state.device, state.dtype
         if self._centroid:
             self._v = torch.as_tensor(np.asarray(self._n) / self._q ** 3, device=dev, dtype=dt)
-            self._d = centroid_offsets(self._occ, self._q).to(device=dev, dtype=dt)
+            self._d = nc.d.reshape(tuple(np.asarray(self._n).shape) + (3,)).to(device=dev, dtype=dt)   # computed once
         if self._form == "local":
             k = nc.k_local()
             idx = torch.nonzero((k != 0).any(-1)).reshape(-1)

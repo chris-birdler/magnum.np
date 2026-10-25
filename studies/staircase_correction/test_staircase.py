@@ -147,6 +147,29 @@ def test_centroid_full_window_open_boundaries_equals_fine_reference(q):
     assert float((h_c - h_ref)[mag].abs().max()) < 1e-10
 
 
+def _centroid_offsets_full_map(occ, q):
+    """The centroid offsets as the code before PLAN 15 FQ computed them: the full map in float64, all cells."""
+    o = torch.as_tensor(occ).reshape(-1, q ** 3).to(torch.float64)
+    aloc = torch.stack(torch.meshgrid(*(torch.arange(q, dtype=torch.float64),) * 3, indexing="ij"), -1).reshape(-1, 3)
+    pos = (aloc + 0.5) / q - 0.5
+    return ((o @ pos) / o.sum(-1, keepdim=True).clamp(min=1.0)).reshape(*occ.shape[:-1], 3)
+
+
+@pytest.mark.parametrize("q", [2, 4, 8])
+def test_centroid_offsets_cut_cells_only_bitwise(q):
+    """PLAN 15 FQ: only the cut cells, in blocks of a byte budget: bitwise equal to the full map (the sums are exact),
+    also with a budget of 3 cells per block (several blocks and a partial last block); +0.0 in full and empty cells."""
+    N = 12
+    ids = fcc_box(q * N, 5.0, 1.0 / q)["ids"]
+    n, pid, occ = v1_cells(ids, q)
+    assert ((n > 0) & (n < q ** 3)).sum() > 7 and (n == q ** 3).any() and (n == 0).any()
+    ref = _centroid_offsets_full_map(occ, q)
+    for budget in (1 << 30, 3 * 2 * 8 * q ** 3):
+        d = centroid_offsets(occ, q, budget=budget)
+        assert d.shape == ref.shape and d.dtype == torch.float64
+        assert torch.equal(d.contiguous().view(torch.int64), ref.contiguous().view(torch.int64))
+
+
 def test_centroid_operator_is_symmetric():
     N, q = 16, 2
     ids = fcc_box(q * N, 6.0, 0.5)["ids"]
@@ -379,7 +402,7 @@ def test_setup_in_blocks_of_offsets_is_bitwise_equal(q):
     one = NearCorrection(n, occ, q, 2, centroid=True)
     blk = NearCorrection(n, occ, q, 2, centroid=True, table_bytes=3 * q ** 6 * 6 * 8)
     assert torch.equal(one.B, blk.B)
-    assert torch.equal(centroid_offsets(occ, q), centroid_offsets(occ, q, chunk=1000))
+    assert torch.equal(centroid_offsets(occ, q), centroid_offsets(occ, q, budget=1000 * 2 * 8 * q ** 3))  # 1000 cells
 
 
 @pytest.mark.parametrize("ms_void, tol", [(0.0, 1e-12), (1e-8, 1e-7)])
