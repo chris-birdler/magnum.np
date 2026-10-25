@@ -3038,7 +3038,7 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   <Ms m_x> to the double-precision reference, old against new (largest, all 126 intervals): q4_108 0.285 against
   0.115 A/m (n 5 and 3); q4_156 0.0607 against 0.0140 A/m (n 5 and 3).
 
-### 3.42 Speed against the old code with DemagFieldPBC; profile of ABP (2026-10-25, from about 18:30 UTC)
+### 3.42 Speed against the old code with DemagFieldPBC; profile of ABP (2026-10-25, from about 18:05 UTC)
 
 Question of Chris: how fast is the released code (ABP, correction q 4, Newell true_pbc, single precision) against the
 old code without the patches, without the correction and with DemagFieldPBC, also in single precision? The only
@@ -3057,3 +3057,44 @@ measurement on box 11 before its destroy.
 - Information for the question "is more speed possible": profile of ABP in q4_108, q4_156, off108 and off156
   (prof_step.py --skip 30 --plain 20 --window 10): GPU busy share and the GPU time per stage split into the field
   terms (correction, stray field, other terms, rest of stage, rest of step).
+- Result (18:05 … 18:42 UTC; d8.sh; logs without error text; local copy remote_20261024_box11/D8/D8.tgz, md5
+  7803433c23505b4066f9775b2da72bac, equal on the box). Configuration check: the fd run against off_old r1 of D7
+  differs only in strayfield_cycles and out. Drift check: the Newell control runs give 323.04 and 1004.16 ms per
+  sample interval, −0.04 % and +0.01 % against the D7 means: pass. Mean ± SE, n 3 (V100 16 GB, single precision):
+
+  | N | arm | ms per sample interval | ms per stage | tries per sample interval |
+  |---|---|---|---|---|
+  | 108 | old, DemagFieldPBC | 670.0 ± 1.3 | 2.261 ± 0.004 | 49.39 |
+  | 108 | old, Newell (D7) | 323.2 ± 0.2 | 2.469 ± 0.002 | 21.81 |
+  | 108 | ABP, q 4 (D7) | 1023.6 ± 4.1 | 7.661 ± 0.031 | 22.27 |
+  | 156 | old, DemagFieldPBC | 1959.6 ± 1.0 | 6.850 ± 0.003 | 47.68 |
+  | 156 | old, Newell (D7) | 1004.1 ± 0.6 | 7.578 ± 0.005 | 22.08 |
+  | 156 | ABP, q 4 (D7) | 2628.0 ± 6.3 | 20.471 ± 0.049 | 21.40 |
+
+  - Per stage (does not depend on the state): ABP q 4 against old DemagFieldPBC 3.39 ± 0.02 (N 108) and
+    2.99 ± 0.01 (N 156) times the time. DemagFieldPBC costs 9 % and 10 % less per stage than Newell; the 42 % of
+    tolbench_report.md (older code state, 1 run for each solver) is not confirmed for the code of today.
+  - Per sample interval: DemagFieldPBC needs 2.26 and 2.16 times the tries of Newell in these runs; thus ABP q 4 is
+    only 1.53 ± 0.01 and 1.34 ± 0.00 times the time of old DemagFieldPBC. These tries are not those of a production
+    with DemagFieldPBC: the start states are relaxed with Newell, and at N 156 the tries fall from 61.1 to 34.3 per
+    sample interval from the first to the second half (a transient; at N 108 from 51.3 to 47.5). In the β study
+    (DemagFieldPBC with its own relaxed state, atol 1e-5) DemagFieldPBC needed about the steps of Newell (5381
+    against 5272 steps per cycle, tolbench_report.md). With equal steps the per-stage factor applies (estimate). The
+    steps of DemagFieldPBC at the tight cycle tolerance from its own relaxed state are not measured.
+- Profile of ABP (information; 10 profiled sample intervals; GPU ms per stage):
+
+  | conf | wall ms per stage | GPU busy share | correction | Newell stray field | rest of the stage | anisotropy + exchange | RKF45 |
+  |---|---|---|---|---|---|---|---|
+  | q4_108 | 7.59 | 0.97 | 5.13 (69 %) | 0.63 | 1.12 | 0.31 | 0.15 |
+  | q4_156 | 20.54 | 1.00 | 13.43 (66 %) | 2.17 | 3.37 | 0.93 | 0.42 |
+  | off108 | 2.53 | 0.89 | – | 0.62 | 1.10 | 0.30 | 0.15 |
+  | off156 | 7.18 | 0.98 | – | 2.17 | 3.38 | 0.89 | 0.42 |
+
+  - With the correction the GPU limits the stage (busy share 0.97 … 1.00): CUDA graphs (A5) can give little there.
+    Without the correction at N 108 the CPU side limits 11 % of the time.
+  - In the correction: the pair sum (triton kernels stack_0 and sum_1) 2.12 of 5.13 ms (N 108) and 4.33 of 13.43 ms
+    (N 156); the rest is the centroid term, with about 95 small kernels per stage (elementwise add, roll, unary,
+    FFT, complex products; 149 kernels per stage with the correction against 75 without).
+  - In the Newell stray field a concatenation copy (CatArrayBatchedCopy) takes 0.31 of 0.63 ms (N 108) and 1.17 of
+    2.17 ms (N 156). In the rest of the stage about 20 elementwise kernels per stage take 1.0 ms (N 108) and 2.8 ms
+    (N 156).
