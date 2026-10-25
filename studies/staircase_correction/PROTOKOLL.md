@@ -2985,6 +2985,11 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
   scatter of the old code, not its error). G stays failed by its own rule; only Chris can release ABP.
   Data of parts 1 … 4 (d7c, d7cres, the 4 scripts, progress.txt): local in remote_20261024_box11/D7c/D7c.tgz, md5
   f90375f9844d9724ad4aa3bfae757660, equal on the box and local.
+- Part 5 (d7c5.sh; rule written before the data): the new group of part 4 has 1 realisation. 2 runs of AB (7f755a0;
+  the CSR product is not repeatable, so 2 more realisations of the new code without the pair sum, as in part 2) on
+  q4_156 with the single-precision arguments of D7 and a copy of the kernel folder ABP_156. Rule as part 4 with the
+  new group ABP, AB r1, AB r2 (n 3): e_old / e_new over the intervals 113 … 117, all 126 and the RMS. Also the largest
+  difference ABP against AB r1 and r2 and AB r1 against AB r2 (the rounding scale, as part 2).
 - Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
   echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
   holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
