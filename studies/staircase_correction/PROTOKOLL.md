@@ -2893,12 +2893,30 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
     amplitude of <Ms m_x> is 3938 A/m). After these intervals the traces of old and new agree again at the scale of
     old against old. The intervals 27 … 29 and 99 … 102 lie at about the same <Ms m_x> on the rising and the falling
     branch. q4_156 has one such interval (115: 0.052 A/m against 0.004 A/m of old against old and null); off108 and
-    off156 have none above 0.04 A/m. Hypothesis (not tested yet): an event at a threshold of the field (for example a
-    jump in one particle) comes a little earlier or later in the new code; the one systematic change of the field in
-    the chain is B1 (T6 b: 1.39 cu in the cut cells).
-- Cause check of the G fail (d7c.sh, from 12:25 UTC; amendment item 7). A try record of step_dump.py needs the state
-  at the start of interval 27 of the q4_108 run, and the runs of D7 do not keep states. Thus the check puts the trees of
-  the chain in place of ABP, with the same arguments and the same demag kernel (the kernel files of all trees have the
-  same md5): B_d53P (PLAN 10, B5, B4 with the pair sum; no B1, no A), B_det (= B_df0P: adds B1) and BA4P (adds A4). Each
-  tree is judged by G against the old and the null runs of q4_108. If B_d53P passes and B_det fails, the cause is B1.
-  Information: two more runs of ABP in off108 (method check of r2; not used for the result of the plan).
+    off156 have none above 0.04 A/m. The ABP runs are bitwise repeatable (new against new 0), thus the 3 new runs of
+    G are one realisation of the rounding; the old side has 5 (3 old runs, CSR not repeatable, and 2 null runs).
+- Cause check of the G fail, part 1 (d7c.sh, 12:25 … 12:36 UTC, all exit code 0; amendment item 7). A try record of
+  step_dump.py needs the state at the start of interval 27 of the q4_108 run, and the runs of D7 do not keep states.
+  Thus the check puts the trees of the chain in place of ABP, with the same arguments and the same demag kernel (the
+  kernel files of all trees have the same md5): B_d53P (PLAN 10, B5, B4 with the pair sum; no B1, no A), B_det
+  (= B_df0P: adds B1) and BA4P (adds A4). Each tree is judged by G against the old and the null runs of q4_108 (1 run
+  each).
+
+  | new tree | steps: old-new RMS / largest | <Ms m_x>: old-new RMS / largest in A/m | G |
+  |---|---|---|---|
+  | B_d53P | 1.52 / 7 | 0.00524 / 0.0272 | PASS |
+  | B_det (B1) | 1.54 / 7 | 0.00524 / 0.0170 | PASS |
+  | BA4P (A4) | 1.70 / 7 | 0.00464 / 0.0149 | PASS |
+  | ABP (D7) | 1.47 / 7 | 0.0298 / 0.207 | FAIL |
+
+  Scale (old against old): 1.46 / 6 and 0.00495 / 0.0149. In the intervals 12, 27 … 30 and 99 … 103 the
+  differences of B_d53P, B_det and BA4P to old r1 are at most 0.023 A/m, those of ABP 0.041 … 0.204 A/m. Result: the
+  pair sum, B5, B4, B1 and A4 do not give the excess; B1 is not the cause. The excess enters at the last step of the
+  chain, BA4P → ABP: A1 … A3 with the correction on (AB on). PLAN 14a: AB on is the only test of A1 … A3 with the
+  correction on. Open (part 2): is the excess systematic for AB on, and does AB without the pair sum show it too.
+- off108, information (d7c.sh, method check of the run new r2; not used for the result of the plan): two more runs of
+  ABP, 321.2 and 319.5 ms per sample interval (halves 0.8 % and 0.7 %). Thus r2 (373.7 ms) is a single slow run; the
+  result of the plan stays 0.95 ± 0.05.
+- Cause check, part 2 (d7c2.sh, from 12:40 UTC): (1) AB (7f755a0: A1 … A3 and the B patches with the old CSR product,
+  no pair sum), 2 runs (2 realisations, CSR not repeatable); (2) null runs of ABP (reverse and rotate order of the
+  field terms). Each run judged by G as in part 1.
