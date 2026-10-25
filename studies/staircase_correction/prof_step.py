@@ -102,7 +102,26 @@ def analyse(prof, wall, n_dm, n_try, n_steps):
         k[2][lab] = k[2].get(lab, 0.0) + d.time_range.elapsed_us() / 1e3
     cpu_ops = sorted(((e.key, e.count, e.self_cpu_time_total / 1e3) for e in prof.key_averages()
                       if not e.key.startswith("L:")), key=lambda r: -r[2])[:30]
-    return {"wall_s": wall, "stages": n_dm, "tries": n_try, "sample_intervals": n_steps,
+    src = {}
+    if A.stack:
+        # --stack (PLAN 15 F0): the source line of each kernel, the innermost frame in magnumnp/ or in this study on
+        # the stack of the first CPU event above the launch call that has a stack (the aten op, or the call of a
+        # compiled function), and the name of that event
+        for d in dev:
+            p = launch.get(d.id)
+            while p is not None and not getattr(p, "stack", None):
+                p = p.cpu_parent
+            line, op = "(no stack)", p.name if p is not None else "(no launch)"
+            for fr in (p.stack if p is not None else []):
+                if "magnumnp/" in fr or "studies/" in fr:
+                    line = fr
+                    break
+            key = (d.name[:70], op[:40], line)
+            r = src.setdefault(key, [0, 0.0])
+            r[0] += 1
+            r[1] += d.time_range.elapsed_us() / 1e3
+    return {"sources": sorted(([k[0], k[1], k[2], v[0], v[1]] for k, v in src.items()), key=lambda r: -r[4]),
+            "wall_s": wall, "stages": n_dm, "tries": n_try, "sample_intervals": n_steps,
             "gpu_busy_ms": busy / 1e3, "gpu_kernel_sum_ms": ksum / 1e3, "kernels": len(dev),
             "labels": labels,
             "top_kernels": sorted(([k, v[0], v[1] / 1e3, v[2]] for k, v in kern.items()), key=lambda r: -r[2]),
@@ -150,6 +169,11 @@ def report(res):
     for k, v in sorted(w["labels"].items(), key=lambda kv: -kv[1]["gpu_ms_excl"]):
         print("[prof_step] %-34s %8d %22.4f %26.4f" % (k, v["calls"], v["gpu_ms_excl"] / w["stages"],
                                                        v["cpu_ms_incl"] / w["stages"]))
+    if A.stack:
+        print("[prof_step] kernels by source line (kernel, op, line, calls per stage, GPU ms per stage):")
+        for k, op, line, n, t in w["sources"][:60]:
+            print("[prof_step]   %-70s %-30s %-70s %6.2f %8.4f" % (k, op[:30], line[-70:], n / w["stages"],
+                                                                 t / w["stages"]))
     print("[prof_step] top kernels (name, calls, GPU ms per stage):")
     for k, n, t, lab in w["top_kernels"][:20]:
         print("[prof_step]   %-80s %7d %9.4f  %s" % (k[:80], n, t / w["stages"], max(lab, key=lab.get)))
@@ -175,6 +199,8 @@ def main(argv):
                     help="null run as step_dump.py --k1_null (scale of the rounding for check G; not the kernel null "
                          "run: 1 + 2^-52 rounds to 1 in single precision)")
     ap.add_argument("--rl_dir", default=".", help="folder of run_loops.py (default: the current folder)")
+    ap.add_argument("--stack", action="store_true",
+                    help="profiled window with Python stacks: the source line of each kernel (PLAN 15 F0)")
     A = ap.parse_args(argv[:i])
     rl = argv[i + 1:]
     sys.path.insert(0, str(pathlib.Path(A.rl_dir).resolve()))
@@ -231,7 +257,7 @@ def main(argv):
             if A.window == 0:
                 report_plain(res)
                 raise SystemExit(0)
-            c["prof"] = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA])
+            c["prof"] = profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=A.stack)
             c["prof"].__enter__()
             c.update(t=time.perf_counter(), dm=ST["dm"], tries=ST["tries"])
             ST["phase"] = "prof"
