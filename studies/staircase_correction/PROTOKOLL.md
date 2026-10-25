@@ -3191,3 +3191,17 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     about 1.0 / 3.0 / 2.7 ms (the fused kernel that stays: estimate 0.1 / 0.4 / 0.4 ms). Decision: this is the F3 kind
     "the compiled functions get their inputs in the form that they read"; the compiler then fuses the arithmetic of
     A1 as A1 intends, which changes the rounding, so the bounds of F1 apply to F3 (W1, W2), not the bitwise rule.
+- F2 (0fde7e5) and F3 (b753fa9) built (F2: DemagField.h with PBC writes the 3 inverse transforms into a new buffer
+  with the component first, h a view; F3: LLGSolver.dm passes alpha.as_subclass(torch.Tensor)). W1: demag_test.py
+  31 of 31 (new test: bitwise equal to the stacked form, a new buffer for each call), llg_test.py 43 of 43 (new
+  test: with a CoWTensor alpha the subclass is not traced and the view is, dm equals the eager function within 1e-12
+  and 1e-5), test_staircase.py 41 of 41; the full tests/unit on AS3: 188 pass, 1 fails, the same inverse_test
+  failure as on 15e5909 (F2 adds a second out= on the same path; a fix of the autograd finding must cover both).
+- F2 check (d12.sh, AS2, q4_108, 2 profiled sample intervals, --stack): at the line of DemagField.h no
+  CatArrayBatchedCopy (before: 0.155 ms per stage); new: 3 kernels per call AUnaryFunctor (the scalar product of the
+  out= path of irfftn, factor 1 with norm "forward", in place: not a copy, bitwise neutral), 0.0285 ms per stage. Pass.
+  Wall time per stage of AS2 (F1 and F2) in q4_108: 5.29 ms (ABP in F0: 7.66 ms; 10 sample intervals, information).
+- W2 pair FQ (ABP → ASQ, B states, d11.sh, 22:38 … 22:57 UTC): T1 all differences 0 in all quantities and states
+  (bitwise); T2 all e and b values of ASQ exactly equal to those of ABP (25 quantities); the configuration of the
+  stage-1 kernel of block_sum equal in both trees (float64: XBLOCK 512, 8 warps; float32: XBLOCK 1024, 4 warps; the
+  copies of one inductor cache). Pass by the bitwise rule.
