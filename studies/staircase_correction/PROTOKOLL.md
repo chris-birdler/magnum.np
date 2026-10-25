@@ -2961,6 +2961,28 @@ steps of PLAN 14 to the end, choose conservative criteria, report once at the en
 - Part 4 (d7c4.sh; rule as part 3, written before the data): the same double-precision reference for q4_156 (G passes
   with a small margin, interval 115 has a local excess). Groups: old 5 (old r1 … r3, null reverse, null rotate), new 1
   (ABP; the 3 runs are bitwise equal); the intervals of the excess 113 … 117 and all 126.
+  Result (13:21 … 14:26 UTC; logs without error text; 126 samples, t equal). Configuration check: c63e862 double
+  against old r1 differs only in precision_cycles and out; ABP double against c63e862 double only in out,
+  magnumnp_path, git_commit and the new default keys (as T5).
+  (a) c63e862 double against ABP double: largest 1e-5 A/m over the 126 intervals; the accepted steps per interval
+  differ by at most 2. The reference does not depend on the code; D = c63e862 double (D = ABP double gives the same
+  numbers to 1e-4 A/m).
+  (b) Differences of <Ms m_x> to D (A/m; the largest over the realisations of a group; amplitude of <Ms m_x> 2996 A/m):
+
+  | group | n | largest, intervals 113 … 117 | largest, all 126 | RMS over 126 | interval 115 |
+  |---|---|---|---|---|---|
+  | old (c63e862, single) | 5 | 0.0607 | 0.0607 (interval 115) | 0.0150 | +0.056 … +0.061 |
+  | new (ABP, single) | 1 | 0.0092 | 0.0140 (interval 63) | 0.0046 | +0.009 |
+
+  e_old / e_new: 6.6 (intervals 113 … 117), 4.3 (all 126) and 3.3 (RMS), thus by the rule: the old code is the worse
+  one. The 5 old realisations share an error of +0.06 A/m in interval 115 (2e-5 relative to the amplitude); this is
+  the local excess that G showed in old against new. Limit: the new group has 1 realisation (ABP is bitwise
+  repeatable, and the null runs do not run on a tree with A1), so the scatter of the new code in q4_156 is not
+  measured; in q4_108 the 3 new realisations differ by at most 0.018 A/m among themselves.
+  Result of parts 3 and 4: in both configurations with the correction on, the new code (A1 … A3 and the pair sum) is
+  nearer to the double-precision reference than the old code (q4_108: factor 2.5 … 2.8 with 5 old and 3 new
+  realisations; q4_156: factor 3.3 … 6.6 with 5 old and 1 new). The G fail in q4_108 is a limit of G (its scale is the
+  scatter of the old code, not its error). G stays failed by its own rule; only Chris can release ABP.
 - Finding (method): the progress lines of the box scripts gave the exit code of date, not of the run. Cause: in
   echo "$(date -u +%T) … exit $?" the command substitution runs first and sets $? to its own exit code (0). This
   holds for 18 scripts of box11/ and for all "exit" values in progress.txt of box 11 that follow a time stamp (the
