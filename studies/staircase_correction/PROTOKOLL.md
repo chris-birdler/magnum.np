@@ -3122,7 +3122,7 @@ but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11
   and DemagStaircaseCorrection._setup). This is a limit of the code, not of the GPU. Patch proposal: PLAN 15, Q1.
 
 
-### 3.44 PLAN 15: speed patches 2 and the set-up memory for q 16 (2026-10-25, from about 20:30 UTC; in progress)
+### 3.44 PLAN 15: speed patches 2 and the set-up memory for q 16 (2026-10-25 20:30 UTC … 2026-10-26 05:00 UTC)
 
 **Decision.** Chris approved PLAN 15 ("1,2,3 ja", 2026-10-25, about 20:25 UTC): (1) PLAN 15 as written (commit of
 section 15 after the two context-free reviews); (2) the mandate of PLAN 14: do all steps to the end with the
@@ -3386,3 +3386,27 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   operator is that of the released code: FQ does not change the operator (WFQ: V, S, T bitwise equal), F1 … F3 do not
   touch it. Thus the fail at q 8 and q 16 is not from PLAN 15. Scale: 4.4e-11 is about 1e-3 of the float32 rounding
   of production (6.0e-8). Information (WQ); a change of the bound or of the method needs Chris.
+- Key numbers of PLAN 15 (code tree AS3 = b753fa9 on perf/speed2: FQ 5d76d5d, F1 1925170, F2 0fde7e5, F3 b753fa9;
+  against ABP 15e5909):
+  - Pass rule of PLAN 15 (W1, WFQ, W2, W3, W4, T5): not met. W2 T2 fails for F2 (B states: b of stage4 and stage5
+    above 2 × the base) and for F3 (B states: b of stage3 above 2 × AS2). All other checks pass: W1; WFQ (bitwise);
+    W2 T1 all pairs; W2 T2 FQ, F1, F2 A, F3 A; W3 (0 differences, B1 used 6258, not used 0); check of Dref (4 of 4);
+    W4 (4 of 4, ratio AS3 / ABP 0.95 … 1.21, bound 2); T5 (6 of 6); W5 halves rule and kernel files. Information:
+    T2 end to end ABP → AS3 on the B states passes; the b fails are at the level by which a null run of the base
+    moves b (factors 0.51 … 1.17).
+  - Gain per RKF45 stage, ABP / AS3 (n 3 for each code, ± SE): off108 1.39 ± 0.13 (repeat with 100 intervals of
+    warm-up; large scatter between processes), off156 1.932 ± 0.004, q4_108 1.723 ± 0.006, q4_156 1.911 ± 0.029,
+    q8_108 1.671 ± 0.025, q8_156 1.876 ± 0.021. ms per stage of AS3: 1.974, 3.712, 4.447, 10.690, 4.802, 11.259.
+    Tries per sample interval equal within 1 %; set-up of AS3 3 … 8 s longer.
+  - Set-up memory (WFQ): peak GPU memory of centroid_offsets 2.64 → 0.37 GiB (q 8, N 108), 3.90 → 0.60 GiB (q 8,
+    N 156), 3.81 → 0.51 GiB (q 16, T3).
+  - q 16 (WQ, n 1): N 108 fits: 5.207 ms per stage (+ 8 % against q 8), set-up 1070 s (q 8: 64 s), peak GPU memory
+    5.58 GiB. N 156 stops on the host memory (82.9 GiB limit of the container) in centroid_offsets: the int64 copy of
+    occ by torch sum (124 GB). A patch needs a go.
+  - Pair symmetry (float64): 1.5e-13 (q 2), 8.2e-13 (q 4), 1.2e-11 (q 8), 4.4e-11 (q 16); the bound 1e-12 of the
+    unit test fails at q 8 and q 16; the q 8 operator is that of the released code; scale about 1e-3 of the float32
+    rounding.
+  - Open findings (outside PLAN 15): the autograd failure of inverse_test (out= of A2, also on 15e5909; F2 adds a
+    second out= on that path); the A1 finding (the compiled right-hand side did not compile with a CoWTensor alpha) is
+    what F3 fixes.
+  - Raw data: remote_20261024_box11/D15.tgz (md5 d89cbd55…) and D16.tgz (see below).
