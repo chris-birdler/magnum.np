@@ -1324,3 +1324,157 @@ names that are not used already. A second review by the same reviewer: points 1 
 open parts of points 5, 7 and 8 and its 9 new points (the bitwise rule of W2 with one inductor cache, the F3 rule, the
 WFQ cost, the idle time, the WQ time limit, the W4 details, the tree names, the F2 check, the B1 cache count as a rule)
 are in this version.
+
+## 16. Release rules that a correct patch can meet; the autograd fix and the q 16 memory patch (mandate of Chris 2026-10-26)
+
+**Mandate.** Chris (2026-10-26, about 16:30 UTC): "Okay, bitte, dann mach das auch wieder eigenständig, nach bestem
+Wissen und Gewissen. Ich will weiter konservativ, sehr, sehr konservativ sein, aber ich will Regeln, die auch erfüllbar
+sind. Und die Patches müssen alle sicher, wirklich absolut sicher, die Ergebnisse nicht verändern. [...] Dann folge
+ich allen deinen Empfehlungen unter dieser Prämisse." And: "Bit gleich, wo Bit gleich möglich ist und überall anders
+unter dem Rundungsfehler. [...] Aber es muss klar belegt sein, dass das unter der Rundungsgenauigkeit liegt. Und nicht
+nur ja, zufällig sich ausgehen." With it he accepted my recommendations of the same day: AS3 as the production code
+under the rules of this section, the autograd fix, the q 16 memory patch, box 11 for the tests and then its destroy.
+Not in the mandate: a merge to main, a new box, a change of physics or model (for example a q-convergence study).
+
+**Why new rules.** Three rules of PLAN 15 can fail for a correct patch:
+- The bitwise rule for F2 and F3. A compiled function (torch.compile) fuses operations and can change their order;
+  then the single-precision rounding changes. Bitwise equality is possible only if the order of all floating-point
+  operations stays.
+- The T2 rule for the bias b pair by pair (RMS of b at most 2 × the old tree and 2 × the chain start). b of the stage
+  values is mostly a fixed pattern for each state that the rounding path sets (3.45: correlation 0.89 within the trees
+  with A1 … A3). A correct change of the order moves its RMS by factors 0.5 … 2.2 (3.45). Against a chain start from
+  before A1 … A3 (c63e862) or a low previous value (AS2), a correct patch can fail by chance.
+- The exemption list of W1 (only rkky). The autograd failure comes from A2 in the released ABP.
+
+**Classes of patches.**
+- Class E (exact): the patch keeps the order of all floating-point operations on the production path (removal of a
+  copy, the memory layout of the set-up, a separate path for autograd). Rule: the output of the production path is
+  bitwise equal to the tree before the patch. No tolerance.
+- Class R (rounding): the patch changes the order of floating-point operations (fused or compiled kernels): A1 … A3
+  (released), F1, F2, F3. Rule: R1 … R4, against the released tree ABP (15e5909), end to end, not pair by pair along
+  the chain and not against an older base. Reason: production uses the end of the chain; a chain of pairs multiplies
+  the chance of a fail by noise.
+
+**R1, double precision (T1 of 14a).** On the B states and the A states, the bounds of 14a against ABP: RMS of the
+equivalent field difference at most 1e-3 cu and its largest value at most 0.1 cu, energies at most 1e-3 E_cu, error
+norm at most 1e-6 relative and the same norm class. Meaning: in double precision a pure change of the order gives
+1e-7 … 1e-5 cu (14a). The stray field h0 has an RMS of about 6.9e3 A/m and 1 cu is 8.95e-4 A/m; thus the RMS bound
+catches a wrong coefficient of about 1.3e-10 relative and more, far below u = 6e-8. R1 shows that the patch computes the
+same function.
+
+**R2, single-precision accuracy (T2, e against the double-precision output of the same tree; RMS over the 16
+states).** Deterministic quantities (term fields, effective field, right-hand side, the 6 stage values, the increment,
+the energies): e of the new tree at most 1.10 × e of ABP. Noise quantities (the error estimate, its RMS, the error
+norm; e is 0.4 … 4 already in ABP, cancellation): at most 1.25 × e of ABP. A field whose reference has an RMS below
+1 cu in all 16 states: the rule of 14a (absolute RMS difference at most 1e-3 cu more than ABP). Meaning: the new
+single-precision result is not farther from the exact result than the released one. Calibration (PLAN 14/15 data, no
+tree of this section): a pure change of the rounding (the null run of c63e862 and the 3 repeats of c63e862) moves e by
+at most 1.1 % for the deterministic quantities and 4.6 % for the error norm; the released pairs of the B chain move e
+by at most 3.7 % (E1, c63e862 → 01e) and 15.3 % (norm, df0 → BA4); ABP → AS1 changes the norm e by × 0.857 (× 1.167
+in the reverse direction). The bound 1.25 for the noise quantities thus has a margin of only about 1.5 × the largest
+seen value. A kernel that loses 1 bit doubles e.
+
+**R3, single-precision systematic part (T2, b over the 16 states).** For each deterministic quantity, with
+u = 2^-24 (the unit round-off of float32), d_k = b_new,k − b_ABP,k and SE = sample SD / 4: pass if
+(a) |mean d| is at most max(u, 4 SE(d)) (the systematic part does not change), or
+(b) |mean b_new| is at most max(u, |mean b_ABP|) (the systematic part does not grow).
+Not used for the noise quantities (as 14a). Meaning: a change of the rounding can move the systematic part
+coherently (BA4 → AB on, released: h0, h1, E1 by 9 … 18 SE), but in the term fields and the energies by less than
+1 u (largest 0.46 u); a fault in a single-precision kernel (a wrong cast, a lost term, a changed constant) moves it by
+more. The term fields and the energies already have a systematic part of 0.2 … 2.5 u in ABP (many SE; the rounding of
+constants to float32); in the old code the stray-field energy E0 had 28 u, and A2 lowered it to 6 u: this pair passes
+only by (b). Detection limit (r16_eval.py gives it for each quantity: the smallest shift of b in all states that fails
+R3; ABP → AS3 on the PLAN 15 data): term fields 1 … 5 u, energies 1 … 12 u, the stage values 1 … 166 u, the increment
+dx 8 … 20 u. Thus for the fields and the energies R3 shows "below a few u"; for the stage values and dx it shows only
+"no coherent change above the noise of 16 states" (stage5: below 1 % of its e). For these, R2 ("not less accurate")
+and R4 (the dynamics) carry the decision. R3 does not see a change of the pattern of b over the states with the same
+mean (A1 … A3 changed its RMS by × 1.65, 3.45); R2 bounds b, because |b| is at most e (Cauchy-Schwarz). Calibration
+(margin |mean d| / limit): all pairs of the PLAN 14 B chain (01e, c56, d53, df0, BA4, AB on, ABP), the null run of
+c63e862 in both directions and the PLAN 15 pairs pass R2 and R3 (largest |mean d| / limit 0.76: stage2, ABP → AS1;
+by (b) only: E0 in BA4 → AB on and BA4P → ABP); the step back from ABP to c63e862 fails (R2: h1 1.29, E0 2.46; R3: E0).
+On the A states (box: the PLAN 14 chain 9b15ea9, its null run, A2, A1, A3, AB off, and AS1 … AS3) all 11 pairs pass.
+The chance of a false fail of (a) alone is 0.12 % for one quantity (t distribution, 15 degrees of freedom), 2.5 % for
+22 quantities, about 5 % for the 2 state sets of C1; (b) lowers it further.
+
+**R4, dynamics against the double-precision reference (W4 of PLAN 15, unchanged).** The distance of <Ms m_x> to
+Dref over the full cycle (largest value and RMS over the 126 sample intervals), 3 realisations per code: at most 2 ×
+that of ABP in off108, off156, q4_108 and q4_156. Measured for AS3 in PLAN 15: 0.94 … 1.21 × ABP. The old code was
+2.5 … 6.6 × farther than ABP at q 4; there the factor 2 keeps a new tree nearer to Dref than the old code. In off108
+the old code was about as near to Dref as ABP (0.0167 against 0.0175 A/m).
+
+**Not by chance: decision on new data.** I fixed R2 and R3 after I saw the data of PLAN 15. Thus the decision uses
+new data that do not exist now: R1 … R3 on new B states and new A states for ABP and the final tree. New states: the
+16 checkpoint states of refB.pt and of refA.pt with m + 1e-7 r (seed 3; perturb_ref.py, the method of perturb_init.py:
+r random with |r| 1, renormalised, the void unchanged; t and dt of the reference unchanged). 1e-7 is about 1 ulp of
+float32 at |m| 1: every rounding of the state changes, the physics does not. The PLAN 15 data (ABP → AS3 on the
+original states) are reported with the same rules as information. Limit (review): a 1-ulp perturbation hardly moves
+e, and the systematic part of the fields and energies comes from rounded constants. For these, C1 is close to a repeat
+of the PLAN 15 data; there the safety comes from the margins (e ratios at most 1.004 against the bound 1.10, field
+shifts at most 0.46 u against u), not from new draws. Only the b of the stage values and dx is a partly new draw. The
+evaluation gives, for each quantity, the correlation of b over the states between the original and the perturbed
+states (ABP), so that it is clear which rules get new data. The K1 reference has no other checkpoint states.
+
+**Patches (planned as class E), on perf/speed2 after AS3 (b753fa9).** The class is decided by the measurement (E1,
+E2), not by the kind of the change: F2 was a removal of a copy and still changed the rounding through torch.compile
+(new strides give new kernels).
+- G, autograd: DemagField.h uses out= (A2: M = Ms m; F2: the inverse transforms into H) only if autograd records
+  nothing (torch.is_grad_enabled() is false, or neither m nor Ms requires a gradient). Else the same products without
+  out= (M contiguous, as now; the inverse transforms as new tensors, then torch.stack, as before F2). The production
+  path keeps the same operations. Tree AS4.
+- Q, q 16 memory: centroid_offsets counts the body sub-cells of each cell in blocks of cells (integer sums, exact)
+  instead of torch.sum over the whole map (that sum makes an int64 copy of the map: 124 GB at q 16, N 156; 3.44). Tree
+  AS5 (AS4 + Q), the final tree. If the q 16 set-up at N 156 then stops at another place for memory, at most 2
+  further patches of class E with the same checks are in this mandate; I record each one. Then I report.
+
+**Checks.**
+- L1, local (CPU, torch 2.7.1; the box has no pytest): tests/unit all pass, also inverse_test (known exception:
+  rkky_test, if it fails on main); test_staircase.py all pass; a new unit test for G (m or Ms requires a gradient,
+  with and without PBC, float64 and float32): the field with autograd equals the field without it (tolerance 1e-13 /
+  1e-5 of the largest value: the autograd path is not production and can compile other kernels), and the gradients
+  equal the analytic ones (dE/dm = −μ0 Ms V h, dE/dMs = −μ0 V m·h); the test of FQ extended for Q (a partial last
+  count block, occ as a tensor).
+- L2, local (started before the instruction of Chris to compute on the box): fq_check.py AS3 against AS5 at q 2, 4,
+  8 on T3 and at q 4 on N 108 (CPU).
+- E1, box (bitwise; the rule: AS5 equals AS3 run again beside it): T1 and T2 of AS3 and of AS5 on the original B and
+  A states, each with a copy of the base inductor cache of W2 of its geometry; r16_eval.py --same on the T1 state
+  files and on the T2 files. Control: AS5 against the T2 file of AS3 of PLAN 15 (md5 of the PLAN 15 files checked
+  against the local copies of D15.tgz first). Speed runs of AS5 as W5 (r1) in q4_108, off108, q8_108, q4_156 and
+  off156: the trace (t, tries, <Ms m_x>, accepted steps) bitwise equal to the 3 AS3 runs of W5 (they are bitwise equal
+  among themselves, between processes); if a trace differs, AS3 runs again beside AS5 as the control. The compiled
+  kernels: the files that the AS3 and AS5 runs add to their copies of one inductor cache must be the same (names and
+  md5). T5: config.json of the AS5 speed runs equals that of AS3 (W5) except out, magnumnp_path and git_commit. Note
+  (review): r16_eval.py --same on the A-state T2 files of AS1 and AS2 (F2) gives 188 differences of about 1e-23 (e, b
+  and ref of h0 and h_eff), with T1 0 and 0: the float64 sums of the evaluator follow the strides of h, so E1 also sees
+  a change of the layout. 3.44 said "all values equal" for F2 on the A states; this is corrected in 3.46.
+- E2, box GPU (d23.sh; the CPU run on the box, d21.sh, was too slow under the CPU quota of 19.2 CPUs of the container
+  and was stopped): fq_check.py AS3 against AS5 on T3 at q 2, 4, 8, 16, on N 108 at q 4, 8, 16 and on N 156 at q 4 and
+  8. Pass: all md5 equal.
+- C1, box (the decision on new data): T1 (double) and T2 (single, 3 repetitions) of ABP and AS5 on the perturbed B
+  and A states; R1 with k_eval.py --t1, R2 and R3 with r16_eval.py (the rules above as code; final version, md5
+  6d228f21…, uploaded before the first C1 data existed; self-test: e × 1.2 fails R2, a shift of 2u away from 0 fails
+  R3, a shift through 0 beyond |mean b_ABP| fails R3).
+- WQ, box (information, n 1): q 16 at N 156 with AS5: transfer state (as d9.sh, tree AS5), set-up time, peak GPU and
+  host memory, ms per stage, the pair symmetry (sym_check.py). Time limit 6 h; then the process is stopped by its PID.
+- R4: no new runs. AS5 is bitwise equal to AS3 on the production path (E1), so the W4 result of AS3 holds for AS5.
+
+**Pass and release.** AS5 is the production code if L1, L2, E1, E2 and C1 pass (and R4 holds by E1). A fail: stop,
+find the cause, report; no bound changes after the data. A merge to main needs a separate go of Chris.
+
+**Information, no rule.** The relative asymmetry of the pair operator in float64 grows with q (1.5e-13 at q 2 …
+4.4e-11 at q 16, also in the released code; 3.44). The unit test (small q, bound 1e-12) stays. At production q it
+is the double round-off of long sums, about 1e-3 of the float32 round-off of production.
+
+**Order.** (As done: G, Q, the scripts and this section were built while box 11 waited; Chris asked to compute on
+the box, so the checks started there before the commit; the commit follows L1.)
+1. This section, a context-free review (14 points, all taken over in this version), the commits.
+2. Box 11 (new inductor cache folders; the default cache is damaged, 3.44): upload with md5; d20.sh (E1, C1), d23.sh
+   (calibration on the A states, E2), d22.sh (WQ).
+3. Evaluation, PROTOKOLL 3.46, download with md5, destroy box 11, report to Chris.
+
+**Cost (estimate; box 11 at 0.162 $/h).** Box: E1 about 1.5 h, C1 about 1.2 h, E2 about 1 h (q 16 N 108 set-up
+about 18 min per tree), WQ 1.5 … 6 h (limit). In all 5 … 10 h, about 0.8 … 1.6 $; worst case with the box idle before
+the start about 12 h, 1.9 $.
+
+**Risks.** q 16 at N 156 can stop at another place (host 82.9 GiB, GPU 16 GB): then report. The perturbed states can
+make a data-dependent branch occur that the original states do not reach (for example another norm class): R1 tests
+it, and I report it.
