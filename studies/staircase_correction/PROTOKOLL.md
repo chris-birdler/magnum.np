@@ -3328,3 +3328,17 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   is the smallest configuration (about 2 … 3 ms per stage, many small kernels), where the time on the host side
   counts most; the host has 80 cores and a load average of 12.6 from other tenants (03:07 UTC). This is a probable
   cause, not a proven one. The configurations with the correction (q 4, q 8) and off156 have SE of 0.2 … 1.6 %.
+- WQ, N 108 (d16.sh; information, n 1):
+  - Transfer T16_q16_108 (03:07 … 03:32 UTC; exit code 0): the relaxation did not converge in 6000 iterations
+    (1485 s wall; --allow_unconverged, as the q 8 transfer T_q8_108: 6000 iterations, 843 s). The relaxation time
+    includes the set-up of the correction (lazy, at the first field evaluation). Peak GPU memory (nvidia-smi, with
+    the CUDA context): 7.86 GB. Before FQ the same set-up stopped with OOM (3.43).
+  - Speed run q16_108 (AS3, 03:32 … 03:52 UTC; exit code 0; log without error text; 126 samples; halves 2.1 %):
+    5.207 ms per stage, 661.9 ms per sample interval, 21.19 tries per sample interval; time before the first step
+    1070 s (it includes the geometry at q 16 and the set-up of the correction; q8_108 of W5: 64 s); peak GPU memory
+    5.58 GiB allocated, 7.29 GiB reserved (q8_108 of W5: 5.17 GiB). Against AS3 q8_108 (4.802 ± 0.044 ms per stage,
+    n 3): + 8 % per stage (n 1 at q 16, an information).
+  - The v-weighted symmetry of the pair operator at q 16 was not in d15.sh (my omission). sym_check.py (2 random
+    fields, float64, bound 1e-12 of the unit test) runs after d16.sh (d17.sh). Local check of the script (CPU, N 27,
+    q 2): relative asymmetry 2.5e-14, pass; negative control without the weight v: 1.0, fail (the check sees an
+    asymmetric operator).
