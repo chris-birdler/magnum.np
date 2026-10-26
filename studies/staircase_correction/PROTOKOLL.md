@@ -3369,3 +3369,20 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   needs Chris.
 - W5, kernel files: the kernel folders kc/AS3_108 and kc/AS3_156 (copies of kc/ABP_108 and kc/ABP_156) have, after all
   runs, the same md5 as the ABP folders (1 file each). Pass.
+- WQ, the v-weighted symmetry of the pair operator (sym_check.py, tree AS3, float64, 2 random fields, the geometry of
+  q16_108; d17.sh 04:26 … 04:44 UTC, d19.sh 04:58 … 05:00 UTC; a first q series of 04:47 ran on the CPU, because
+  CUDA_DEVICE was not set, and was stopped by its PID):
+
+  | q | relative asymmetry | bound of the unit test | set-up float64 (s) |
+  |---|---|---|---|
+  | 2 | 1.46e-13 | 1e-12: pass | 15.8 |
+  | 4 | 8.18e-13 | pass | 17.5 |
+  | 8 | 1.17e-11 | fail | 53.7 |
+  | 16 | 4.38e-11 | fail | 1047.0 (peak GPU 5.41 GiB) |
+
+  Method check: the asymmetry grows with q by the factors 5.6, 14 and 3.7 per doubling (on average about q^2.8).
+  This agrees with the rounding of the float64 coefficient sums (q^6 sub-cell pairs per coefficient pair, a random
+  rounding grows about as q^3); not proven. The bound 1e-12 of the unit test was set for q 2 (N 8). At q 8 the
+  operator is that of the released code: FQ does not change the operator (WFQ: V, S, T bitwise equal), F1 … F3 do not
+  touch it. Thus the fail at q 8 and q 16 is not from PLAN 15. Scale: 4.4e-11 is about 1e-3 of the float32 rounding
+  of production (6.0e-8). Information (WQ); a change of the bound or of the method needs Chris.
