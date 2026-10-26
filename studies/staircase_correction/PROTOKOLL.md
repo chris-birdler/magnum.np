@@ -3304,7 +3304,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   AS3 1.823 ± 0.13 ms per stage; AS3 r1 2.089, r2 1.715, r3 1.666) are not used. By the rule of section 14 the
   configuration repeats with 100 sample intervals of warm-up (d16.sh, ABP and AS3 in turn, n 3 for each code, so that
   both codes have the same measured intervals). The tries per sample interval of the two codes are equal within 1 %:
-  the gain is the time per stage. The set-up of AS3 takes 3 … 6 s longer (the compilation of the F1 functions).
+  the gain is the time per stage. With the correction the set-up of AS3 takes 3 … 7 s longer (mean of 3; the compilation of the F1 functions); without it −1 … +1 s.
 - WQ, first try (d15.sh, 02:45 … 02:47 UTC): both transfers stopped at once, exit code 1: "ERROR: K1_2_sat/init.pt
   was relaxed with other arguments: sat_static True -> False, h_sat 2.0 -> None". Cause: an error of my script, not of
   the code: d15.sh used the run_loops of the AS3 tree (15e5909 study code, which compares sat_static and h_sat at a
@@ -3397,7 +3397,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   - Gain per RKF45 stage, ABP / AS3 (n 3 for each code, ± SE): off108 1.39 ± 0.13 (repeat with 100 intervals of
     warm-up; large scatter between processes), off156 1.932 ± 0.004, q4_108 1.723 ± 0.006, q4_156 1.911 ± 0.029,
     q8_108 1.671 ± 0.025, q8_156 1.876 ± 0.021. ms per stage of AS3: 1.974, 3.712, 4.447, 10.690, 4.802, 11.259.
-    Tries per sample interval equal within 1 %; set-up of AS3 3 … 8 s longer.
+    Tries per sample interval equal within 1 %; set-up of AS3 with the correction 3 … 7 s longer.
   - Set-up memory (WFQ): peak GPU memory of centroid_offsets 2.64 → 0.37 GiB (q 8, N 108), 3.90 → 0.60 GiB (q 8,
     N 156), 3.81 → 0.51 GiB (q 16, T3).
   - q 16 (WQ, n 1): N 108 fits: 5.207 ms per stage (+ 8 % against q 8), set-up 1070 s (q 8: 64 s), peak GPU memory
