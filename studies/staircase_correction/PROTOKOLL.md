@@ -3314,3 +3314,17 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   study folder of B_det (md5 in /root/wq/ASW_md5.txt). The alternative (--sat_static --h_sat 2.0 with the run_loops of
   AS3) repeats the static saturation in the transfer and gives a start state with another preparation than the q 8
   states of W5. The speed run from the q 16 state uses the tree AS3, as W5. WQ runs after the off108 repeat (d16.sh).
+- W5 off108, repeat with 100 sample intervals of warm-up (d16.sh, 02:58 … 03:07 UTC; ABP and AS3 in turn; 6 runs,
+  exit code 0, logs without error text; 196 samples in each run): halves rule pass (largest 5.4 %).
+
+  | code | ms per stage r1 / r2 / r3 | mean ± SE | ms per sample interval, mean ± SE | tries per sample interval |
+  |---|---|---|---|---|
+  | ABP | 2.584 / 3.049 / 2.600 | 2.744 ± 0.152 | 342.5 ± 19.0 | 20.80 |
+  | AS3 | 2.205 / 2.035 / 1.681 | 1.974 ± 0.154 | 248.5 ± 19.4 | 20.99 |
+
+  Gain off108: 1.391 ± 0.133 per stage, 1.378 ± 0.132 per sample interval (n 3 for each code). This replaces the
+  values of the first measurement. The scatter between the processes is large in off108 only (ABP 2.58 … 3.05 ms per
+  stage; in the first measurement ABP 2.73 … 2.75 and AS3 1.67 … 2.09), while the two halves of each run agree. off108
+  is the smallest configuration (about 2 … 3 ms per stage, many small kernels), where the time on the host side
+  counts most; the host has 80 cores and a load average of 12.6 from other tenants (03:07 UTC). This is a probable
+  cause, not a proven one. The configurations with the correction (q 4, q 8) and off156 have SE of 0.2 … 1.6 %.
