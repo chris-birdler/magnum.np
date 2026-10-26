@@ -3270,3 +3270,47 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   precision is nearer to ABP in double precision (at most 2.4e-6 A/m) than either is to Dref: F1 … F3 do not change
   the computed function.
   md5 of the AS3 double json: off108 db3335b6…, off156 449ccf60…, q4_108 61b2154d…, q4_156 7cab0087….
+- W4 and W5 runs (d14.sh, 00:29 … 02:45 UTC): 44 runs, all exit code 0, logs without error text. Evaluation
+  w15_eval.py (exit code 0; all stop checks pass: 126 samples in each run, t equal at each sample).
+- W4, dynamics against Dref (largest distance and RMS of <Ms m_x> over the 126 sample intervals, A/m; e of a group:
+  the largest over its 3 realisations; ABP: unperturbed W5 r1 and the perturbed starts p1, p2 of d10a.sh; AS3: W5 r1,
+  p1, p2; each group has 3 distinct realisations):
+
+  | configuration | e largest ABP / AS3 (ratio) | e RMS ABP / AS3 (ratio) | old code, largest / RMS (n) | steps per interval, largest difference | AS3 W5 r1 … r3 bitwise equal | W4 |
+  |---|---|---|---|---|---|---|
+  | off108 | 0.0175 / 0.0210 (1.21) | 0.0061 / 0.0063 (1.04) | 0.0167 / 0.0061 (3) | 4 | yes | PASS |
+  | off156 | 0.0113 / 0.0115 (1.01) | 0.0045 / 0.0043 (0.95) | 0.0182 / 0.0075 (3) | 5 | yes | PASS |
+  | q4_108 | 0.1109 / 0.1084 (0.98) | 0.0146 / 0.0146 (1.00) | 0.2852 / 0.0433 (5) | 4 | yes | PASS |
+  | q4_156 | 0.0140 / 0.0166 (1.19) | 0.0047 / 0.0047 (1.00) | 0.0607 / 0.0150 (5) | 5 | yes | PASS |
+
+  All ratios are in 0.95 … 1.21 (pass bound 2). The old code (information): in off108 the largest distance of AS3
+  (0.0210) is above that of the old code (0.0167, n 3), and that of ABP (0.0175) also; the RMS is the same for all
+  three (0.0061 … 0.0063). Thus in off108 the codes are at the same distance from Dref within the scatter of the
+  realisations. In q 4 both new codes are 2.6 … 4.3 times nearer to Dref than the old code.
+- T5: config.json of AS3 against ABP (W5 r1) differs only in git_commit, magnumnp_path and out, in all 6
+  configurations. Pass.
+- W5, speed (n 3 for each code; mean ± SE; ms per stage = wall time of the measured part / RKF45 stages; gain = ABP /
+  AS3 ± SE from the two SEs):
+
+  | configuration | ABP ms per stage | AS3 ms per stage | gain per stage | gain per sample interval | tries per sample interval ABP / AS3 | set-up ABP / AS3 (s) | peak GPU memory ABP / AS3 (GiB) | halves, largest |
+  |---|---|---|---|---|---|---|---|---|
+  | off156 | 7.171 | 3.712 | 1.932 ± 0.004 | 1.938 ± 0.004 | 21.21 / 21.15 | 14 … 18 / 14 … 15 | 1.14 / 1.06 | 0.3 % |
+  | q4_108 | 7.662 | 4.447 | 1.723 ± 0.006 | 1.721 ± 0.006 | 22.27 / 22.29 | 20 … 23 / 25 … 26 | 4.46 / 4.46 | 2.0 % |
+  | q4_156 | 20.431 | 10.690 | 1.911 ± 0.029 | 1.936 ± 0.030 | 21.40 / 21.12 | 26 … 30 / 31 … 32 | 8.94 / 8.95 | 1.6 % |
+  | q8_108 | 8.025 | 4.802 | 1.671 ± 0.025 | 1.678 ± 0.025 | 21.66 / 21.56 | 59 … 61 / 64 | 5.17 / 5.17 | 0.9 % |
+  | q8_156 | 21.117 | 11.259 | 1.876 ± 0.021 | 1.864 ± 0.021 | 24.48 / 24.64 | 102 … 106 / 109 … 112 | 10.37 / 10.38 | 2.8 % |
+
+  off108: the halves rule fails (AS3 r1 14.7 %, AS3 r2 11.5 %; bound 10 %); the measured values (ABP 2.744 ± 0.007,
+  AS3 1.823 ± 0.13 ms per stage; AS3 r1 2.089, r2 1.715, r3 1.666) are not used. By the rule of section 14 the
+  configuration repeats with 100 sample intervals of warm-up (d16.sh, ABP and AS3 in turn, n 3 for each code, so that
+  both codes have the same measured intervals). The tries per sample interval of the two codes are equal within 1 %:
+  the gain is the time per stage. The set-up of AS3 takes 3 … 6 s longer (the compilation of the F1 functions).
+- WQ, first try (d15.sh, 02:45 … 02:47 UTC): both transfers stopped at once, exit code 1: "ERROR: K1_2_sat/init.pt
+  was relaxed with other arguments: sat_static True -> False, h_sat 2.0 -> None". Cause: an error of my script, not of
+  the code: d15.sh used the run_loops of the AS3 tree (15e5909 study code, which compares sat_static and h_sat at a
+  transfer); the q 4 and q 8 transfer states of W5 (d7t.sh) and the q 16 try of d9.sh used step_dump --at 1 with the
+  study folder of B_det, which has no such check. Decision (in the mandate; not a code change): the transfer as in
+  d7t.sh and d9.sh, with only the magnumnp package changed to that of AS3 (FQ): the tree ASW is a copy of AS3 with the
+  study folder of B_det (md5 in /root/wq/ASW_md5.txt). The alternative (--sat_static --h_sat 2.0 with the run_loops of
+  AS3) repeats the static saturation in the transfer and gives a start state with another preparation than the q 8
+  states of W5. The speed run from the q 16 state uses the tree AS3, as W5. WQ runs after the off108 repeat (d16.sh).
