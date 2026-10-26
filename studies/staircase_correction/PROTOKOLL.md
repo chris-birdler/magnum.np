@@ -3363,7 +3363,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
 - Information for the decision on the W2 T2 fails: T2 end to end, ABP → AS3 on the 16 B states (k_eval.py --t2 with
   the T2 files of W2, no new runs; base c63e862 and its null run as in W2): PASS in all quantities. b of the stage
   values, AS3 / ABP / base: stage3 1.22e-6 / 8.89e-7 / 1.21e-6, stage4 5.79e-6 / 5.25e-6 / 3.03e-6, stage5 1.32e-5 /
-  1.13e-5 / 7.32e-6 (AS3 at most 1.37 × ABP and at most 1.91 × the base); e of all quantities of AS3 at most that of
+  1.13e-5 / 7.32e-6 (AS3 at most 1.38 × ABP and at most 1.92 × the base); e of all quantities of AS3 at most that of
   ABP × 1.01. The fail of F3 is against the b of AS2 in stage3 (5.72e-7), the smallest value of that column (below
   ABP, the base and its null run). The pass rule of PLAN 15 is pair by pair; an end-to-end rule is a rule change and
   needs Chris.
