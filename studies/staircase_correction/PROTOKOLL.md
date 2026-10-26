@@ -3336,7 +3336,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   - Speed run q16_108 (AS3, 03:32 … 03:52 UTC; exit code 0; log without error text; 126 samples; halves 2.1 %):
     5.207 ms per stage, 661.9 ms per sample interval, 21.19 tries per sample interval; time before the first step
     1070 s (it includes the geometry at q 16 and the set-up of the correction; q8_108 of W5: 64 s); peak GPU memory
-    5.58 GiB allocated, 7.29 GiB reserved (q8_108 of W5: 5.17 GiB). Against AS3 q8_108 (4.802 ± 0.044 ms per stage,
+    5.58 GiB allocated, 7.29 GiB reserved (q8_108 of W5: 5.17 GiB). Against AS3 q8_108 (4.802 ± 0.072 ms per stage,
     n 3): + 8 % per stage (n 1 at q 16, an information).
   - The v-weighted symmetry of the pair operator at q 16 was not in d15.sh (my omission). sym_check.py (2 random
     fields, float64, bound 1e-12 of the unit test) runs after d16.sh (d17.sh). Local check of the script (CPU, N 27,
