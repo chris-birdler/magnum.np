@@ -158,16 +158,19 @@ def _centroid_offsets_full_map(occ, q):
 @pytest.mark.parametrize("q", [2, 4, 8])
 def test_centroid_offsets_cut_cells_only_bitwise(q):
     """PLAN 15 FQ: only the cut cells, in blocks of a byte budget: bitwise equal to the full map (the sums are exact),
-    also with a budget of 3 cells per block (several blocks and a partial last block); +0.0 in full and empty cells."""
+    also with a budget of 3 cells per block (several blocks and a partial last block); +0.0 in full and empty cells.
+    PLAN 16 Q: the count of the body sub-cells in blocks of cells; the budget of 5 cells per count block gives a partial
+    last count block (12^3 cells), also with occ as a torch tensor."""
     N = 12
     ids = fcc_box(q * N, 5.0, 1.0 / q)["ids"]
     n, pid, occ = v1_cells(ids, q)
     assert ((n > 0) & (n < q ** 3)).sum() > 7 and (n == q ** 3).any() and (n == 0).any()
     ref = _centroid_offsets_full_map(occ, q)
-    for budget in (1 << 30, 3 * 2 * 8 * q ** 3):
-        d = centroid_offsets(occ, q, budget=budget)
-        assert d.shape == ref.shape and d.dtype == torch.float64
-        assert torch.equal(d.contiguous().view(torch.int64), ref.contiguous().view(torch.int64))
+    for budget in (1 << 30, 3 * 2 * 8 * q ** 3, 5 * 8 * q ** 3):
+        for o in (occ, torch.as_tensor(occ)):
+            d = centroid_offsets(o, q, budget=budget)
+            assert d.shape == ref.shape and d.dtype == torch.float64
+            assert torch.equal(d.contiguous().view(torch.int64), ref.contiguous().view(torch.int64))
 
 
 def test_centroid_operator_is_symmetric():

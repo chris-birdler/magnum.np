@@ -197,7 +197,10 @@ def centroid_offsets(occ, q, budget=1 << 30):
     nq = occ_t.shape[-1]
     shape = occ_t.shape[:-1]
     occ_t = occ_t.reshape(-1, nq)
-    n = occ_t.sum(-1)
+    # the count of the body sub-cells in blocks of cells: torch.sum of a bool map makes an int64 copy of its input
+    # (124 GB at q 16, N 156); integer sums are exact, so the blocks do not change the result (PLAN 16 Q)
+    cb = max(1, int(budget) // (8 * nq))
+    n = torch.cat([occ_t[i:i + cb].sum(-1) for i in range(0, occ_t.shape[0], cb)])
     rows = torch.nonzero((n > 0) & (n < nq)).reshape(-1)
     aloc = torch.stack(torch.meshgrid(*(torch.arange(q, dtype=torch.float64),) * 3, indexing="ij"), -1).reshape(-1, 3)
     pos = ((aloc + 0.5) / q - 0.5).to(dev)                           # sub-cell centres relative to the cell centre
