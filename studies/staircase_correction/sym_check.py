@@ -34,7 +34,7 @@ from geometry import fcc_subcells  # noqa: E402
 
 def random_m(shape, seed, device):
     g = torch.Generator(device="cpu").manual_seed(seed)
-    m = torch.randn(shape + (3,), generator=g, dtype=torch.float64)
+    m = torch.randn(shape + (3,), generator=g, dtype=torch.float64, device="cpu")   # also with a CUDA default device
     return (m / m.norm(dim=-1, keepdim=True)).to(device)
 
 
