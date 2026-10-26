@@ -1,0 +1,122 @@
+tree c56P: b bitwise equal to 01eP, not counted again
+tree d53P: b bitwise equal to 01eP, not counted again
+tree df0P: b bitwise equal to BA4P, not counted again
+tree ABPon: b bitwise equal to ABP, not counted again
+tree ASQ: b bitwise equal to ABP, not counted again
+14 distinct trees, 16 states
+== stage3, b in 1e-6
+(a) repeat noise, 8 trees, 384 pairs: RMS 0.62, largest 3.28; RMS for each state 0.29 (k0 192) ... 1.42 (k0 8); floor for two medians of 3: 0.42
+(b) change c63 -> c63n: RMS 0.35, largest 0.73
+(b) change BA4P -> ABP: RMS 1.08, largest 3.21
+(b) change ABP -> AS1: RMS 0.74, largest 1.97
+(b) change AS1 -> AS2: RMS 0.44, largest 0.73
+(b) change AS2 -> AS3: RMS 0.93, largest 2.94
+(b) change c63 -> AS2: RMS 0.93, largest 3.13
+(c) c63    RMS   1.21; largest k0   8   -4.1 (71 % of the sum of squares); mean -0.16 +- 0.31 (-0.53 SE); e 1.061e-04
+(c) c63n   RMS   1.06; largest k0   8   -3.4 (66 % of the sum of squares); mean -0.17 +- 0.27 (-0.64 SE); e 1.059e-04
+(c) 01e    RMS   1.10; largest k0   8   -3.4 (58 % of the sum of squares); mean -0.04 +- 0.28 (-0.13 SE); e 1.048e-04
+(c) c56    RMS   1.09; largest k0   8   -2.8 (42 % of the sum of squares); mean -0.11 +- 0.28 (-0.39 SE); e 1.051e-04
+(c) d53    RMS   1.16; largest k0  16   -3.0 (42 % of the sum of squares); mean -0.12 +- 0.30 (-0.39 SE); e 1.051e-04
+(c) df0    RMS   1.15; largest k0   8   -3.4 (55 % of the sum of squares); mean -0.27 +- 0.29 (-0.94 SE); e 1.053e-04
+(c) BA4    RMS   1.03; largest k0   8   -3.2 (58 % of the sum of squares); mean -0.22 +- 0.26 (-0.83 SE); e 1.055e-04
+(c) ABon   RMS   0.69; largest k0  64   +1.3 (23 % of the sum of squares); mean +0.22 +- 0.17 (+1.34 SE); e 1.050e-04
+(c) 01eP   RMS   1.15; largest k0   8   -3.1 (46 % of the sum of squares); mean +0.13 +- 0.30 (+0.43 SE); e 1.057e-04
+(c) BA4P   RMS   1.19; largest k0   8   -3.5 (54 % of the sum of squares); mean -0.17 +- 0.30 (-0.56 SE); e 1.062e-04
+(c) ABP    RMS   0.89; largest k0  48   +1.9 (27 % of the sum of squares); mean +0.45 +- 0.20 (+2.28 SE); e 1.059e-04
+(c) AS1    RMS   0.60; largest k0 144   +1.1 (22 % of the sum of squares); mean +0.18 +- 0.15 (+1.23 SE); e 1.053e-04
+(c) AS2    RMS   0.57; largest k0  48   +1.2 (28 % of the sum of squares); mean +0.25 +- 0.13 (+1.92 SE); e 1.046e-04
+(c) AS3    RMS   1.22; largest k0   8   -3.9 (63 % of the sum of squares); mean +0.13 +- 0.31 (+0.41 SE); e 1.043e-04
+(d) 5 trees in A, 9 others; correlation within A 0.51 ... 0.81 (mean 0.66), A-others mean 0.70, within the others mean 0.89; RMS of the group mean A 0.68, others 1.06, ratio 0.64 (95 % 0.47 ... 1.15); states with one sign: in all trees 6, in A 9
+(e) RMS ratio c63n / c63: 0.88; without k0 8 in both: 0.95
+(e) RMS ratio ABP / BA4P: 0.75; without k0 8 in both: 1.11
+(e) RMS ratio AS1 / ABP: 0.68; without k0 8 in both: 0.65
+(e) RMS ratio AS2 / AS1: 0.95; without k0 8 in both: 0.91
+(e) RMS ratio AS3 / AS2: 2.12; without k0 8 in both: 1.41
+(e) RMS ratio AS2 / c63: 0.47; without k0 8 in both: 0.81
+== stage4, b in 1e-6
+(a) repeat noise, 8 trees, 384 pairs: RMS 2.44, largest 12.57; RMS for each state 0.77 (k0 208) ... 5.50 (k0 8); floor for two medians of 3: 1.64
+(b) change c63 -> c63n: RMS 2.98, largest 9.68
+(b) change BA4P -> ABP: RMS 5.70, largest 12.75
+(b) change ABP -> AS1: RMS 3.57, largest 13.49
+(b) change AS1 -> AS2: RMS 2.46, largest 7.13
+(b) change AS2 -> AS3: RMS 2.28, largest 5.05
+(b) change c63 -> AS2: RMS 7.09, largest 17.86
+(c) c63    RMS   3.03; largest k0  80   +6.1 (25 % of the sum of squares); mean +0.46 +- 0.77 (+0.60 SE); e 5.098e-04
+(c) c63n   RMS   3.54; largest k0   8   +8.3 (34 % of the sum of squares); mean +0.99 +- 0.88 (+1.13 SE); e 5.095e-04
+(c) 01e    RMS   4.19; largest k0  16  +11.2 (45 % of the sum of squares); mean +0.68 +- 1.07 (+0.64 SE); e 5.098e-04
+(c) c56    RMS   3.67; largest k0  16   +8.9 (37 % of the sum of squares); mean +0.24 +- 0.95 (+0.26 SE); e 5.103e-04
+(c) d53    RMS   3.96; largest k0  16   +8.2 (27 % of the sum of squares); mean +0.03 +- 1.02 (+0.03 SE); e 5.102e-04
+(c) df0    RMS   4.58; largest k0   8   -9.8 (28 % of the sum of squares); mean -0.75 +- 1.17 (-0.64 SE); e 5.094e-04
+(c) BA4    RMS   4.60; largest k0   8  -10.1 (30 % of the sum of squares); mean -1.02 +- 1.16 (-0.88 SE); e 5.088e-04
+(c) ABon   RMS   5.25; largest k0   8  +12.8 (37 % of the sum of squares); mean +0.46 +- 1.35 (+0.34 SE); e 5.058e-04
+(c) 01eP   RMS   3.47; largest k0  80   +7.3 (28 % of the sum of squares); mean -0.50 +- 0.89 (-0.56 SE); e 5.105e-04
+(c) BA4P   RMS   3.16; largest k0  16   +7.8 (38 % of the sum of squares); mean +0.40 +- 0.81 (+0.50 SE); e 5.093e-04
+(c) ABP    RMS   5.25; largest k0   8  +10.7 (26 % of the sum of squares); mean -0.33 +- 1.35 (-0.25 SE); e 5.061e-04
+(c) AS1    RMS   5.79; largest k0  16  +14.1 (37 % of the sum of squares); mean +0.39 +- 1.49 (+0.26 SE); e 5.066e-04
+(c) AS2    RMS   6.50; largest k0   8  +16.4 (40 % of the sum of squares); mean +0.72 +- 1.67 (+0.43 SE); e 5.057e-04
+(c) AS3    RMS   5.79; largest k0   8  +12.2 (28 % of the sum of squares); mean +0.07 +- 1.50 (+0.05 SE); e 5.056e-04
+(d) 5 trees in A, 9 others; correlation within A 0.80 ... 0.96 (mean 0.89), A-others mean 0.33, within the others mean 0.71; RMS of the group mean A 5.46, others 3.26, ratio 1.68 (95 % 1.19 ... 2.39); states with one sign: in all trees 6, in A 14
+(e) RMS ratio c63n / c63: 1.17; without k0 8 in both: 0.96
+(e) RMS ratio ABP / BA4P: 1.66; without k0 8 in both: 1.45
+(e) RMS ratio AS1 / ABP: 1.10; without k0 8 in both: 1.17
+(e) RMS ratio AS2 / AS1: 1.12; without k0 8 in both: 0.95
+(e) RMS ratio AS3 / AS2: 0.89; without k0 8 in both: 0.98
+(e) RMS ratio AS2 / c63: 2.15; without k0 8 in both: 1.68
+== stage5, b in 1e-6
+(a) repeat noise, 8 trees, 384 pairs: RMS 5.19, largest 25.24; RMS for each state 1.37 (k0 208) ... 11.14 (k0 8); floor for two medians of 3: 3.48
+(b) change c63 -> c63n: RMS 5.16, largest 17.51
+(b) change BA4P -> ABP: RMS 12.05, largest 26.42
+(b) change ABP -> AS1: RMS 7.76, largest 28.40
+(b) change AS1 -> AS2: RMS 6.32, largest 20.36
+(b) change AS2 -> AS3: RMS 5.44, largest 16.98
+(b) change c63 -> AS2: RMS 17.49, largest 50.93
+(c) c63    RMS   7.32; largest k0  80  +15.2 (27 % of the sum of squares); mean +0.67 +- 1.88 (+0.36 SE); e 1.183e-03
+(c) c63n   RMS   7.33; largest k0 112  -14.4 (24 % of the sum of squares); mean +1.57 +- 1.85 (+0.85 SE); e 1.183e-03
+(c) 01e    RMS   9.32; largest k0  16  +23.1 (38 % of the sum of squares); mean +1.95 +- 2.35 (+0.83 SE); e 1.183e-03
+(c) c56    RMS   8.43; largest k0  16  +17.5 (27 % of the sum of squares); mean +0.33 +- 2.17 (+0.15 SE); e 1.183e-03
+(c) d53    RMS   9.58; largest k0  16  +21.3 (31 % of the sum of squares); mean +0.37 +- 2.47 (+0.15 SE); e 1.184e-03
+(c) df0    RMS  11.55; largest k0   8  -29.6 (41 % of the sum of squares); mean -1.74 +- 2.95 (-0.59 SE); e 1.183e-03
+(c) BA4    RMS  10.66; largest k0   8  -20.2 (23 % of the sum of squares); mean -1.40 +- 2.73 (-0.51 SE); e 1.180e-03
+(c) ABon   RMS  12.86; largest k0   8  +28.3 (30 % of the sum of squares); mean +1.19 +- 3.31 (+0.36 SE); e 1.174e-03
+(c) 01eP   RMS   8.11; largest k0  80  +17.4 (29 % of the sum of squares); mean -1.32 +- 2.06 (-0.64 SE); e 1.185e-03
+(c) BA4P   RMS   7.48; largest k0  16  +19.1 (41 % of the sum of squares); mean -0.16 +- 1.93 (-0.08 SE); e 1.181e-03
+(c) ABP    RMS  11.34; largest k0 128  -20.8 (21 % of the sum of squares); mean -1.45 +- 2.91 (-0.50 SE); e 1.174e-03
+(c) AS1    RMS  13.79; largest k0  16  +30.4 (30 % of the sum of squares); mean +1.40 +- 3.54 (+0.40 SE); e 1.175e-03
+(c) AS2    RMS  15.96; largest k0   8  +44.3 (48 % of the sum of squares); mean +2.16 +- 4.08 (+0.53 SE); e 1.174e-03
+(c) AS3    RMS  13.21; largest k0  16  +29.6 (31 % of the sum of squares); mean +0.68 +- 3.41 (+0.20 SE); e 1.173e-03
+(d) 5 trees in A, 9 others; correlation within A 0.82 ... 0.96 (mean 0.89), A-others mean 0.33, within the others mean 0.75; RMS of the group mean A 12.80, others 7.81, ratio 1.64 (95 % 1.20 ... 2.23); states with one sign: in all trees 7, in A 13
+(e) RMS ratio c63n / c63: 1.00; without k0 8 in both: 0.96
+(e) RMS ratio ABP / BA4P: 1.52; without k0 8 in both: 1.44
+(e) RMS ratio AS1 / ABP: 1.22; without k0 8 in both: 1.20
+(e) RMS ratio AS2 / AS1: 1.16; without k0 8 in both: 0.93
+(e) RMS ratio AS3 / AS2: 0.83; without k0 8 in both: 0.98
+(e) RMS ratio AS2 / c63: 2.18; without k0 8 in both: 1.61
+== dx, b in 1e-6
+(a) repeat noise, 8 trees, 384 pairs: RMS 0.61, largest 2.91; RMS for each state 0.19 (k0 176) ... 1.43 (k0 8); floor for two medians of 3: 0.41
+(b) change c63 -> c63n: RMS 0.65, largest 2.25
+(b) change BA4P -> ABP: RMS 1.06, largest 3.35
+(b) change ABP -> AS1: RMS 0.70, largest 1.87
+(b) change AS1 -> AS2: RMS 0.48, largest 0.85
+(b) change AS2 -> AS3: RMS 0.55, largest 0.99
+(b) change c63 -> AS2: RMS 1.02, largest 2.24
+(c) c63    RMS   1.00; largest k0   8   -2.9 (54 % of the sum of squares); mean -0.14 +- 0.25 (-0.56 SE); e 8.323e-05
+(c) c63n   RMS   0.51; largest k0 224   +0.8 (15 % of the sum of squares); mean +0.04 +- 0.13 (+0.28 SE); e 8.311e-05
+(c) 01e    RMS   0.66; largest k0   8   -1.4 (28 % of the sum of squares); mean -0.14 +- 0.17 (-0.87 SE); e 8.301e-05
+(c) c56    RMS   0.87; largest k0   8   -3.1 (79 % of the sum of squares); mean -0.17 +- 0.22 (-0.76 SE); e 8.284e-05
+(c) d53    RMS   0.77; largest k0   8   -2.2 (54 % of the sum of squares); mean -0.14 +- 0.19 (-0.72 SE); e 8.307e-05
+(c) df0    RMS   0.96; largest k0   8   -2.8 (54 % of the sum of squares); mean -0.34 +- 0.23 (-1.49 SE); e 8.355e-05
+(c) BA4    RMS   0.89; largest k0   8   -2.7 (56 % of the sum of squares); mean -0.33 +- 0.21 (-1.53 SE); e 8.314e-05
+(c) ABon   RMS   0.44; largest k0  32   +0.9 (28 % of the sum of squares); mean +0.13 +- 0.11 (+1.20 SE); e 8.253e-05
+(c) 01eP   RMS   0.91; largest k0   8   -2.3 (39 % of the sum of squares); mean -0.02 +- 0.24 (-0.09 SE); e 8.225e-05
+(c) BA4P   RMS   0.93; largest k0  32   -2.0 (28 % of the sum of squares); mean +0.07 +- 0.24 (+0.27 SE); e 8.362e-05
+(c) ABP    RMS   0.62; largest k0   8   +1.5 (38 % of the sum of squares); mean +0.29 +- 0.14 (+2.08 SE); e 8.234e-05
+(c) AS1    RMS   0.49; largest k0  32   -1.0 (28 % of the sum of squares); mean -0.01 +- 0.13 (-0.09 SE); e 8.283e-05
+(c) AS2    RMS   0.48; largest k0 240   -0.8 (20 % of the sum of squares); mean +0.05 +- 0.12 (+0.44 SE); e 8.189e-05
+(c) AS3    RMS   0.67; largest k0   8   -1.3 (23 % of the sum of squares); mean -0.07 +- 0.17 (-0.38 SE); e 8.208e-05
+(d) 5 trees in A, 9 others; correlation within A -0.02 ... 0.60 (mean 0.27), A-others mean 0.21, within the others mean 0.85; RMS of the group mean A 0.35, others 0.77, ratio 0.46 (95 % 0.26 ... 0.88); states with one sign: in all trees 3, in A 6
+(e) RMS ratio c63n / c63: 0.51; without k0 8 in both: 0.70
+(e) RMS ratio ABP / BA4P: 0.67; without k0 8 in both: 0.60
+(e) RMS ratio AS1 / ABP: 0.78; without k0 8 in both: 0.98
+(e) RMS ratio AS2 / AS1: 0.98; without k0 8 in both: 0.92
+(e) RMS ratio AS3 / AS2: 1.40; without k0 8 in both: 1.31
+(e) RMS ratio AS2 / c63: 0.48; without k0 8 in both: 0.66

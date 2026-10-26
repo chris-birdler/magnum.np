@@ -3439,3 +3439,92 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   block_sum without torch.compile ("WON'T CONVERT block_sum"; 152 warning lines in sym_q8_108.log); the asymmetry
   is the same. The values of the first q 8 run (1.172e-11, 53.7 s) were read from its json before the restart and
   are in no file now. A further run on box 11 needs a new inductor cache folder.)
+
+### 3.45 The T2 bias b of the stage values: A1 … A3 changed its pattern; F2 and F3 move it by about the repeat noise (2026-10-26, question of Chris)
+
+**Question.** Chris asked for the cause of the W2 T2 fails of F2 and F3 (3.44: b of stage4 and stage5 2.15 and 2.18 ×
+the base c63e862, b of stage3 2.13 × AS2) and of the growth of b along the chain. No new runs.
+
+**Data and terms.**
+- T2 files of the B states (16 states, 3 repeats each): the chain of PLAN 14 (box 11, /root/t2/B, 14 files, md5
+  locally equal to the box) and W2 of PLAN 15 (D15.tgz, w2/t2/B, 5 files). A "tree" is one code state with its T2
+  file. Of the 19 files, 14 trees are distinct; the others have bitwise equal b (01eP = c56P = d53P, BA4P = df0P,
+  ABP = ABP_on = ASQ).
+- "A trees": the 5 trees with A1 … A3 (AB_on, ABP, AS1, AS2, AS3). A1: the field sum of the stage function compiled
+  (in production only the field sum, 3.44 F0); A2: the strided product of DemagField.h with out=; A3: the compiled
+  RKF45 combination and error norm. "Other trees": the 9 trees without A1 … A3 (c63e862, its null run c63n, 01e,
+  c56, d53, df0, BA4, 01eP, BA4P).
+- b (s1_states.py): for each quantity and state, b = Σ (q − q_ref)·q_ref / Σ q_ref·q_ref, the relative float32 error
+  along the double-precision value. T2 uses the RMS of b over the 16 states. e is RMS |q − q_ref| / RMS |q_ref|.
+- "Repeat noise": the difference of b between two repeats of one tree in one state, in the 8 trees with the CSR
+  product (atomic additions; their repeats are not bitwise equal: c63e862, c63n, 01e, c56, d53, df0, BA4, AB_on).
+  The trees with the pair sum repeat bitwise. The CSR trees store the median of the 3 repeats.
+- Script: t2_b_noise.py (exit code 0). Values of b below in units of 1e-6; stage5 first, stage4 and stage3 in
+  brackets.
+
+**Results.**
+1. Mean over the states. In stage4 and stage5 the mean of the signed b over the 16 states is zero within 1.2 SE in
+   each of the 14 trees (largest |mean| / SE 0.85 in stage5, 1.13 in stage4; n 16). The trees are correlated (item
+   2), thus these are not 14 independent tests. In stage3 the 5 A trees have a positive mean (+0.13 … +0.45; ABP
+   2.3 SE, AS2 1.9 SE); in dx ABP has 2.1 SE.
+2. Pattern over the states. The signed b of one state is mostly a fixed value of the code path, not a random value.
+   Correlation of the signed b over the 16 states (stage5 [stage4]): within the A trees 0.82 … 0.96, mean 0.89
+   [0.80 … 0.96, 0.89]; between A trees and other trees mean 0.33 [0.33]; within the other trees mean 0.75 [0.71].
+   States with one sign in all 5 A trees: 13 of 16 [14]; in all 14 trees: 7 [6].
+3. Size. RMS over the states of the group mean of b: A trees 12.80, other trees 7.81, ratio 1.64 (95 % interval of a
+   bootstrap over the states 1.20 … 2.23) [stage4 1.68, 1.19 … 2.39]. Stage3: 0.64 (0.47 … 1.15). dx, the step
+   that changes m: 0.46 (0.26 … 0.88), thus smaller with A1 … A3. e does not change: stage5 1.173e-3 … 1.185e-3
+   (A trees about 0.8 % lower), dx 8.19e-5 … 8.36e-5.
+4. Steps of the chain (change of the signed b in each state, RMS over the states; stage5 [stage4, stage3]):
+   - Floors: repeat noise of single repeats 5.19 [2.44, 0.62] (n 384 pairs; the RMS for one state ranges from 1.37
+     at k0 208 to 11.14 at k0 8); for a difference of two medians of 3 repeats 3.48 [1.64, 0.42] (normal noise:
+     the median of 3 has the variance 0.449 σ²).
+   - Null run c63 → c63n (CSR, medians): 5.16 [2.98, 0.35], 1.5 × [1.8 ×, 0.8 ×] the median floor.
+   - BA4P → ABP (A1 … A3): 12.05 [5.70, 1.08], 2.3 × the floor of single repeats.
+   - F1 (ABP → AS1): 7.76 [3.57, 0.74]; F2 (AS1 → AS2): 6.32 [2.46, 0.44]; F3 (AS2 → AS3): 5.44 [2.28, 0.93]. The
+     pair-sum trees repeat bitwise, so the floor of single repeats applies: F2 and F3 move b in stage4 and stage5 by
+     about the repeat noise (1.0 … 1.2 ×); F1 by 1.5 ×; F3 in stage3 by 1.5 ×.
+   - The RMS ratio of the F2 fail is a product of the steps: AS2 / c63 2.18 = ABP / c63 1.55 × AS1 / ABP 1.22 × AS2 /
+     AS1 1.16. The base c63e862 is from before A1 … A3.
+5. Stage3 (the F3 fail). In k0 8 the 9 other trees give −2.7 … −4.1, AB_on, ABP, AS1 and AS2 give −0.3 … −1.0, and AS3
+   gives −3.9. AS2 has the lowest RMS of b in stage3 of the 14 trees (0.57); AS3 has 1.22, the base 1.21. The F3 fail
+   is against a low reference value. The data do not exclude that F3 (the stage function now compiled as a whole)
+   brings the stage3 rounding of k0 8 back to that of the other trees.
+6. One state. k0 8 has a large b in all 5 A trees (stage5 +18.2 … +44.3) and the largest repeat noise. It holds 48 %
+   of the sum of squares of AS2 in stage5. With k0 8 removed from both trees of the T2 comparison: AS2 / c63 1.61
+   (stage5), 1.68 (stage4); AS3 / AS2 1.41 (stage3). All are below 2.
+7. Candidate for the larger b of stage4 and stage5 (not shown): the input of stage i is x_i = m + dt Σ a_ij k_j;
+   its error contains the errors of the earlier k_j, weighted with a_ij, and the rounding of the combination. The
+   sum of |a_ij| of RKF45 is 0.25, 0.38, 7.5, 17.4 and 4.4 for stage2 … stage6, and e follows this order (1.0e-4,
+   1.06e-4, 5.1e-4, 1.18e-3, 4.4e-4; stage1 9.6e-5). Thus a change of the rounding in the stage function (A1) or
+   in the combination (A3) acts most on stage4 and stage5. Which operation of A1 … A3 sets the pattern is not
+   shown.
+8. Relation to 3.41 (cause check, part 3): A1 … A3 change the systematic single-precision error of the dynamics in
+   the B set-up and make it 2.5 … 2.8 × smaller against the double-precision reference. The changed pattern of b
+   agrees with that finding. The statement of 3.44 on the null run (RMS ratios 0.88, 1.17, 1.00) stays correct; the
+   view for each state here adds to it.
+
+**Conclusion.** b of the stage values has the mean zero over the states in stage4 and stage5, but in each state a
+value that the rounding path of the code fixes. A1 … A3 (part of the released ABP) changed this pattern and made its
+RMS in stage4 and stage5 about 1.65 × larger (95 % interval about 1.2 … 2.4). In the step dx the RMS of b became
+smaller (0.46 ×), e did not change, and the dynamics against the double-precision reference became better (3.41).
+F2 and F3 move b in stage4 and stage5 by about the repeat noise. The T2 fails of F2 come from the comparison with a
+base from before A1 … A3; the fail of F3 in stage3 comes from a low reference value (AS2). A change of the rule needs
+Chris.
+
+Output of t2_b_noise.py, stage5 ((c) lines of 5 of the 14 trees; the other 9 and stage3, stage4, dx are left out
+here; the full output is results/t2_b_noise_345.txt):
+
+    (a) repeat noise, 8 trees, 384 pairs: RMS 5.19, largest 25.24; RMS for each state 1.37 (k0 208) ... 11.14 (k0 8); floor for two medians of 3: 3.48
+    (b) change c63 -> c63n: RMS 5.16, largest 17.51
+    (b) change BA4P -> ABP: RMS 12.05, largest 26.42
+    (b) change ABP -> AS1: RMS 7.76, largest 28.40
+    (b) change AS1 -> AS2: RMS 6.32, largest 20.36
+    (b) change AS2 -> AS3: RMS 5.44, largest 16.98
+    (c) c63    RMS   7.32; largest k0  80  +15.2 (27 % of the sum of squares); mean +0.67 +- 1.88 (+0.36 SE); e 1.183e-03
+    (c) ABP    RMS  11.34; largest k0 128  -20.8 (21 % of the sum of squares); mean -1.45 +- 2.91 (-0.50 SE); e 1.174e-03
+    (c) AS1    RMS  13.79; largest k0  16  +30.4 (30 % of the sum of squares); mean +1.40 +- 3.54 (+0.40 SE); e 1.175e-03
+    (c) AS2    RMS  15.96; largest k0   8  +44.3 (48 % of the sum of squares); mean +2.16 +- 4.08 (+0.53 SE); e 1.174e-03
+    (c) AS3    RMS  13.21; largest k0  16  +29.6 (31 % of the sum of squares); mean +0.68 +- 3.41 (+0.20 SE); e 1.173e-03
+    (d) 5 trees in A, 9 others; correlation within A 0.82 ... 0.96 (mean 0.89), A-others mean 0.33, within the others mean 0.75; RMS of the group mean A 12.80, others 7.81, ratio 1.64 (95 % 1.20 ... 2.23); states with one sign: in all trees 7, in A 13
+    (e) RMS ratio AS2 / c63: 2.18; without k0 8 in both: 1.61
