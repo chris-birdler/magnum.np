@@ -441,3 +441,46 @@ def test_pbc_h_view_bitwise_equals_stack(dtype):
         assert h2.data_ptr() != h.data_ptr() and torch.equal(h2, h)
     finally:
         torch.set_default_dtype(default)
+
+
+@pytest.mark.parametrize("dtype", [torch.float64, torch.float32])
+@pytest.mark.parametrize("pbc", [False, True])
+@pytest.mark.parametrize("wrt", ["m", "Ms"])
+def test_h_with_autograd_equals_h_without(dtype, pbc, wrt):
+    """PLAN 16 G: when autograd records (m or Ms requires a gradient), h uses no out= (the products as new tensors,
+    the stacked inverse transforms) and equals the path without a gradient (tolerance: the autograd path can compile
+    other kernels; it is not the production path). E is quadratic in Ms m and the kernel is symmetric, so
+    dE/dm = -mu0 Ms V h and dE/dMs = -mu0 V m . h."""
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+        g = torch.Generator().manual_seed(3)
+        state = State(Mesh(n, dx, pbc=(2, 2, 2) if pbc else (0, 0, 0)))
+        ms0 = 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)
+        r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+        m0 = r / r.norm(dim=-1, keepdim=True)
+        dem = DemagField(p=2, true_pbc=True, extrapolate=True) if pbc else DemagField()
+        state.material = {"Ms": ms0.clone()}
+        state.m = m0.clone()
+        h_plain = dem.h(state)
+        x = (m0 if wrt == "m" else ms0).clone().requires_grad_(True)
+        if wrt == "m":
+            state.m = x
+        else:
+            state.material = {"Ms": x}
+        h_grad = dem.h(state)
+        assert h_grad.requires_grad and h_grad.shape == h_plain.shape
+        tol = 1e-13 if dtype == torch.float64 else 1e-5
+        scale = float(h_plain.abs().max())
+        assert float((h_grad.detach() - h_plain).abs().max()) <= tol * scale
+        dem.E(state).backward()
+        V = state.mesh.cell_volumes
+        if wrt == "m":
+            ref = -constants.mu_0 * ms0 * V * h_plain
+        else:
+            ref = -constants.mu_0 * V * (m0 * h_plain).sum(-1, keepdim=True)
+        tol_g = 1e-10 if dtype == torch.float64 else 1e-4
+        assert float((x.grad - ref).abs().max() / ref.abs().max()) < tol_g
+    finally:
+        torch.set_default_dtype(default)

@@ -298,14 +298,20 @@ class DemagField(LinearFieldTerm):
             self._N_h = self._kernel_h(state, s)
 
         # M = Ms m with the component first and contiguous (one pass), so that each rfftn reads a contiguous array
-        M = torch.empty((3,) + tuple(state.m.shape[:3]), dtype=state.m.dtype, device=state.device)
         Ms = state.material["Ms"]
         Ms = torch.broadcast_to(Ms, state.m.shape).permute(3,0,1,2) if torch.is_tensor(Ms) else Ms
-        torch.mul(state.m.permute(3,0,1,2), Ms, out=M)
+        # autograd does not support out=: when it records (inverse problems), the same products without out= and the
+        # stacked inverse transforms (PLAN 16 G); without a gradient the path is unchanged
+        grad = torch.is_grad_enabled() and (state.m.requires_grad or (torch.is_tensor(Ms) and Ms.requires_grad))
+        if grad:
+            M = (state.m.permute(3,0,1,2) * Ms).contiguous()
+        else:
+            M = torch.empty((3,) + tuple(state.m.shape[:3]), dtype=state.m.dtype, device=state.device)
+            torch.mul(state.m.permute(3,0,1,2), Ms, out=M)
         m_fft = [torch.view_as_real(torch.fft.rfftn(M[ax], dim = dim, s = s)) for ax in range(3)]
 
         # unnormalized inverse: the factor 1/n is in self._N_h
-        if len(dim) == 3 and list(s) == list(state.mesh.n):
+        if len(dim) == 3 and list(s) == list(state.mesh.n) and not grad:
             # no padding (PBC): the inverse transforms write into a new buffer with the component first, and h is a
             # view [nx, ny, nz, 3] on it, without the copy of torch.stack (PLAN 15 F2); a new buffer for each call,
             # so that _last and any h that a caller holds stay valid
