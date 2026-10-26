@@ -3377,7 +3377,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   |---|---|---|---|
   | 2 | 1.46e-13 | 1e-12: pass | 15.8 |
   | 4 | 8.18e-13 | pass | 17.5 |
-  | 8 | 1.17e-11 | fail | 53.7 |
+  | 8 | 1.17e-11 | fail | 49.6 (repeat after the host restart; the first run: 53.7) |
   | 16 | 4.38e-11 | fail | 1047.0 (peak GPU 5.41 GiB) |
 
   Method check: the asymmetry grows with q by the factors 5.6, 14 and 3.7 per doubling (on average about q^2.8).
@@ -3409,4 +3409,9 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   - Open findings (outside PLAN 15): the autograd failure of inverse_test (out= of A2, also on 15e5909; F2 adds a
     second out= on that path); the A1 finding (the compiled right-hand side did not compile with a CoWTensor alpha) is
     what F3 fixes.
-  - Raw data: remote_20261024_box11/D15.tgz (md5 d89cbd55…) and D16.tgz (see below).
+  - Raw data: remote_20261024_box11/D15.tgz (md5 d89cbd55…, up to W5) and D16.tgz (md5 d76f7ec2…, WQ, symmetry, memory diagnosis, end-to-end T2, logs).
+- Box 11 went offline about 05:01 UTC (vast status "offline", no ssh; the host restarted, uptime 5 min at 05:11 UTC).
+  The files in /root stayed, but the last writes before the restart were lost: sym_q8_108.json was empty and the
+  last lines of progress.txt were missing. sym_check at q 8 ran again (05:11 … 05:13 UTC): the same relative
+  asymmetry 1.172e-11 (the check is deterministic). md5 of q16_108.json after the restart equal to the value read
+  before (5b316664…). D16.tgz was packed after the repeat.
