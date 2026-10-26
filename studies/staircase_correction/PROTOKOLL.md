@@ -3342,3 +3342,21 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     fields, float64, bound 1e-12 of the unit test) runs after d16.sh (d17.sh). Local check of the script (CPU, N 27,
     q 2): relative asymmetry 2.5e-14, pass; negative control without the weight v: 1.0, fail (the check sees an
     asymmetric operator).
+- WQ, N 156 (d16.sh, 03:52 … 04:00 UTC): the transfer T16_q16_156 stopped with exit code 137 (SIGKILL) after the
+  block averaging, at the start of the set-up of the correction; GPU memory at that time 1.0 GB. The cgroup of the
+  container: memory limit 89.0e9 bytes (82.9 GiB), oom_kill 1, max_usage at the limit. Thus the host memory, not the
+  GPU memory, stops q 16 at N 156 on this box.
+- Diagnosis (d18.sh, mem_phases.py; host memory per phase of the production set-up, tree AS3, q 16, N 156):
+  fcc_subcells 57 s, RSS 1.1 → 15.7 GiB (occ 15.55 GB, 1 byte per sub-cell); then in centroid_offsets the RSS grows by
+  about 3.2 GiB/s (15.8 → 72.4 GiB in 18 s) until the OOM killer stops the process (exit code 137, oom_kill 2).
+  Cause: centroid_offsets (FQ) finds the cut cells with occ_t.sum(-1) on the CPU; for a bool tensor torch makes an
+  int64 copy of the whole map first (8 bytes per sub-cell: 124 GB at N 156, q 16). Local check (torch 2.7.1, CPU,
+  a bool map of 0.51 GB, each in its own process): occ_t.sum(-1) +3.82 GiB VmHWM, occ_t.sum(-1, dtype=torch.int32)
+  +1.91 GiB, np.count_nonzero(occ, axis=-1) +0.00 GiB with the same result. WFQ checked the GPU memory only; at q 8,
+  N 156 (copy 15.5 GB) and q 16 on T3 (3.6 GB) the copy fitted in the host memory. Not known: whether a later phase of
+  the set-up at N 156 also exceeds 82.9 GiB (the diagnosis stops in centroid_offsets). By the plan a further patch
+  needs a go of Chris; the patch would count the sub-cells without a full copy (in blocks, or np.count_nonzero).
+- sym_check.py, first try on q16_108 (d17.sh, 04:01 … 04:19 UTC): exit code 1 after the set-up, "Expected a 'cuda'
+  device type for generator but found 'cpu'" (my script: the random fields used the CUDA default device; the local
+  test ran on the CPU and did not see it). Fixed (device "cpu" for the random fields; checked with a non-CPU default
+  device) and started again (04:26 UTC).
