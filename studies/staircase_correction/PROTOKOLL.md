@@ -3237,3 +3237,36 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     are at that level. Rule of 14a: b has a floor of 2^-24 but no null floor (the noise quantities err and norm have
     one). By the fixed rule, W2 fails for F2 and F3; a release needs Chris. The other checks (W2 A states, W3, W4, W5,
     WQ) run on, so that the decision has all data.
+- W2, A states (d12.sh, 23:24 … 23:46 UTC; correction off; logs without error text):
+
+  | pair | T1 worst RMS / max (cu) | T1 bitwise | T2 (14a) |
+  |---|---|---|---|
+  | F2 (AS1 → AS2) | 0 / 0 | yes | PASS, all values equal |
+  | F3 (AS2 → AS3) | 6.5e-7 / 6.5e-6 (field terms 0; stage5 the largest) | no (rounding rule of F1) | PASS (b of stage5 1.34e-5, AS2 1.14e-5, base 9b15ea9 1.08e-5) |
+
+  Information on the cause of the F2 difference in the B states: without the correction F2 is bitwise end to end
+  (the stage function gives equal bits with h in the new layout). In the B states the correction changes (T1 RMS
+  1.9e-9 cu). Thus the rounding change of F2 is in the path of the correction, which reads h: the compiled
+  _centroid_total of F1 gets h in the new layout (not isolated by a separate run).
+- W3, repeatability of AS3 in single precision (d13.sh, 23:46 … 23:55 UTC; step_dump --k1_redo all --k1_thr 0 0
+  --k1_reps 2, windows k0 8 and 144):
+  - B arm (correction on, refB.pt): 500 tries done twice; largest difference of the error estimate 0, of x1 0; 0
+    events; |m − m| at the window ends 0; stored stray field (B1) used 6258 times, not used 0.
+  - A arm (correction off, refA.pt): 416 tries done twice; all differences 0; 0 events; B1 used 0, not used 0 (no
+    correction).
+  - Exit code 0 in both arms, no error text in the logs. Pass.
+- Check of Dref (d10a.sh for ABP double in off; d13.sh for AS3 double, 23:55 … 00:29 UTC; 126 samples, t equal
+  within 1.1e-14 relative; logs without error text). Largest difference of <Ms m_x> over the 126 intervals (A/m):
+
+  | configuration | ABP double − Dref | AS3 double − Dref | AS3 double − ABP double | bound for AS3 | result |
+  |---|---|---|---|---|---|
+  | off108 | 1.05e-6 | 9.20e-7 | 1.01e-6 | 1.05e-5 | PASS |
+  | off156 | 1.45e-6 | 1.29e-6 | 1.17e-6 | 1.45e-5 | PASS |
+  | q4_108 | 6.66e-5 | 6.67e-5 | 2.40e-6 | 6.66e-4 | PASS |
+  | q4_156 | 1.49e-5 | 1.49e-5 | 1.20e-6 | 1.49e-4 | PASS |
+
+  Note on q4_108: 3.41 gives 1.0e-4 A/m for ABP double − Dref; recomputed from the same two files it is 6.66e-5 A/m
+  (interval 100). The rule uses the recomputed value; this gives the smaller (stricter) bound. AS3 in double
+  precision is nearer to ABP in double precision (at most 2.4e-6 A/m) than either is to Dref: F1 … F3 do not change
+  the computed function.
+  md5 of the AS3 double json: off108 db3335b6…, off156 449ccf60…, q4_108 61b2154d…, q4_156 7cab0087….
