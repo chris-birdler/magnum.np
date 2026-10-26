@@ -3122,7 +3122,7 @@ but no run at q 16 followed. Go of Chris ("Ja") for a feasibility test on box 11
   and DemagStaircaseCorrection._setup). This is a limit of the code, not of the GPU. Patch proposal: PLAN 15, Q1.
 
 
-### 3.44 PLAN 15: speed patches 2 and the set-up memory for q 16 (2026-10-25 20:30 UTC … 2026-10-26 05:00 UTC)
+### 3.44 PLAN 15: speed patches 2 and the set-up memory for q 16 (2026-10-25 20:30 UTC … 2026-10-26 05:13 UTC)
 
 **Decision.** Chris approved PLAN 15 ("1,2,3 ja", 2026-10-25, about 20:25 UTC): (1) PLAN 15 as written (commit of
 section 15 after the two context-free reviews); (2) the mandate of PLAN 14: do all steps to the end with the
@@ -3147,7 +3147,8 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   (31aa455) writes M with torch.mul(..., out=M) in DemagField.h; with an m that requires grad (inverse problems)
   autograd stops. Production runs do not use autograd, so the results of PLAN 14 and 15 are not affected; a merge
   to main would break the inverse problems with DemagField. A fix needs a go of Chris (not in PLAN 15). Decision for
-  W1: a test that fails also on 15e5909 is not a failure of a PLAN 15 patch; it is reported. The known rkky failure
+  W1: a test that fails also on 15e5909 is not a failure of a PLAN 15 patch; it is reported. (Review: the text of W1
+  exempts only the rkky test; by that text W1 is not met. The exception is my decision and needs Chris.) The known rkky failure
   of the memory does not occur on this branch (the test passes).
 - Step 1 results (box 11; logs without error text): ABP from the 8 perturbed starts (20:43 … 21:08 UTC); Dref of off108
   and off156 (9e0ea7c in double precision) and ABP in double precision in both (21:08 … 21:40 UTC). Evaluation with W4.
@@ -3166,7 +3167,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   |---|---|---|---|---|
   | demag_staircase.py block_sum (pair sum) | 2.19 | 4.32 | – | 3 |
   | llg.py _llg_rhs_sum (stage function of A1) | 1.12 | 3.44 | 3.10 | 32 … 35 |
-  | demag_staircase.py centroid_field, cd, conv and their generator lines (centroid term) | 2.9 | 8.7 | – | about 62 |
+  | demag_staircase.py centroid_field, cd, conv and their generator lines (centroid term) | 2.72 | 8.18 | – | 65 |
   | demag.py DemagField.h, line of the call (stack copy and the strided product of M) | 0.25 | 0.94 | 0.94 | 2 |
   | demag.py FFT lines and _kernel_product | 0.37 | 1.25 | 1.24 | 19 |
   | anisotropy, exchange, RKF45 | 0.45 | 1.3 | 1.3 | about 12 |
@@ -3181,8 +3182,9 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   ops, no break. Thus A1 gave less than its estimate in production; the unit tests of A1 used a float alpha.
 - Change list after F0 (fixed before the build of F2 and F3; GPU time of the kernels that each change removes, q4_108 /
   q4_156 / off156):
-  - F1 (as planned): the centroid term in 3 fused kernels; removes about 60 of the 62 kernels (the 6 FFTs stay):
-    about 2.4 / 7.2 / – ms (the FFTs: about 0.5 / 1.5 ms).
+  - F1 (as planned): the centroid term in 3 fused kernels; removes most of the 65 kernels (the FFTs stay): about
+    2.4 / 6.9 / – ms (the FFT kernels of these lines: 0.37 / 1.32 ms). (Review correction: the values 2.9 / 8.7 ms
+    and 62 kernels of the first record included line 447 of DemagStaircaseCorrection.h and __matmul__.)
   - F2: the stack copy of DemagField.h (CatArrayBatchedCopy, 1 per call): 0.155 / 0.650 / 0.650 ms. The strided
     product torch.mul(..., out=M) of A2 at the same line (0.10 / 0.29 / 0.29 ms) is not changed (it is the one pass of
     A2; the autograd finding above concerns it).
@@ -3191,6 +3193,8 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     about 1.0 / 3.0 / 2.7 ms (the fused kernel that stays: estimate 0.1 / 0.4 / 0.4 ms). Decision: this is the F3 kind
     "the compiled functions get their inputs in the form that they read"; the compiler then fuses the arithmetic of
     A1 as A1 intends, which changes the rounding, so the bounds of F1 apply to F3 (W1, W2), not the bitwise rule.
+    (Review: the plan gives the bounds of F1 only to "the move of a copy into the compiled function"; F3 moves no
+    copy. By a strict reading F3 needed a new go; this decision is mine and needs Chris.)
 - F2 (0fde7e5) and F3 (b753fa9) built (F2: DemagField.h with PBC writes the 3 inverse transforms into a new buffer
   with the component first, h a view; F3: LLGSolver.dm passes alpha.as_subclass(torch.Tensor)). W1: demag_test.py
   31 of 31 (new test: bitwise equal to the stacked form, a new buffer for each call), llg_test.py 43 of 43 (new
@@ -3230,11 +3234,12 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     | AS2 | 8.06e-7 | 1.02e-6 | 5.72e-7 | 6.50e-6 | 1.60e-5 | 4.12e-6 | 4.77e-7 |
     | AS3 | 8.06e-7 | 1.04e-6 | 1.22e-6 | 5.79e-6 | 1.32e-5 | 3.59e-6 | 6.65e-7 |
 
-    The null run changes b by the factors 0.51 … 1.17 (dx 0.51), and the signed b of a stage value changes its sign
-    between the base and its null run in several states (stage3: k0 32 −8.9e-7 / −1.6e-7, k0 240 +6.7e-7 / +2.2e-7).
-    Thus the b of the stage values is dominated by the rounding pattern, not by a systematic error; a pure change of
-    the order of a sum moves it by up to about a factor 2. The two fails (2.15 and 2.13 times the bound reference)
-    are at that level. Rule of 14a: b has a floor of 2^-24 but no null floor (the noise quantities err and norm have
+    The null run changes the RMS of b by the factors 0.51 … 1.17 (dx 0.51), but in the three failing columns only by
+    0.88 (stage3), 1.17 (stage4) and 1.00 (stage5). In single states the signed b moves more (stage3: k0 32 −8.9e-7 /
+    −1.6e-7, k0 240 +6.7e-7 / +2.2e-7: the same sign, factors 5.6 and 3.0). Three values fail: F2 stage4 and stage5
+    (2.15 and 2.18 times the base), F3 stage3 (2.13 times AS2). (Review correction: the first record said "two fails"
+    and "at that level"; the null run does not move the failing columns by a factor 2, so the record does not show
+    that the fails are at the noise level.) Rule of 14a: b has a floor of 2^-24 but no null floor (the noise quantities err and norm have
     one). By the fixed rule, W2 fails for F2 and F3; a release needs Chris. The other checks (W2 A states, W3, W4, W5,
     WQ) run on, so that the decision has all data.
 - W2, A states (d12.sh, 23:24 … 23:46 UTC; correction off; logs without error text):
@@ -3266,7 +3271,9 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   | q4_156 | 1.49e-5 | 1.49e-5 | 1.20e-6 | 1.49e-4 | PASS |
 
   Note on q4_108: 3.41 gives 1.0e-4 A/m for ABP double − Dref; recomputed from the same two files it is 6.66e-5 A/m
-  (interval 100). The rule uses the recomputed value; this gives the smaller (stricter) bound. AS3 in double
+  (interval 100). The rule uses the recomputed values: in q4_108 this gives the stricter bound; in q4_156 (3.41:
+  1e-5 A/m, recomputed 1.49e-5 A/m) a looser one, but AS3 double (1.49e-5 A/m) also passes the bound from 3.41
+  (1e-4 A/m). AS3 in double
   precision is nearer to ABP in double precision (at most 2.4e-6 A/m) than either is to Dref: F1 … F3 do not change
   the computed function.
   md5 of the AS3 double json: off108 db3335b6…, off156 449ccf60…, q4_108 61b2154d…, q4_156 7cab0087….
@@ -3283,7 +3290,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   | q4_108 | 0.1109 / 0.1084 (0.98) | 0.0146 / 0.0146 (1.00) | 0.2852 / 0.0433 (5) | 4 | yes | PASS |
   | q4_156 | 0.0140 / 0.0166 (1.19) | 0.0047 / 0.0047 (1.00) | 0.0607 / 0.0150 (5) | 5 | yes | PASS |
 
-  All ratios are in 0.95 … 1.21 (pass bound 2). The old code (information): in off108 the largest distance of AS3
+  All ratios are in 0.94 … 1.21 (pass bound 2). The old code (information): in off108 the largest distance of AS3
   (0.0210) is above that of the old code (0.0167, n 3), and that of ABP (0.0175) also; the RMS is the same for all
   three (0.0061 … 0.0063). Thus in off108 the codes are at the same distance from Dref within the scatter of the
   realisations. In q 4 both new codes are 2.6 … 4.3 times nearer to Dref than the old code.
@@ -3303,8 +3310,10 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   off108: the halves rule fails (AS3 r1 14.7 %, AS3 r2 11.5 %; bound 10 %); the measured values (ABP 2.744 ± 0.007,
   AS3 1.823 ± 0.13 ms per stage; AS3 r1 2.089, r2 1.715, r3 1.666) are not used. By the rule of section 14 the
   configuration repeats with 100 sample intervals of warm-up (d16.sh, ABP and AS3 in turn, n 3 for each code, so that
-  both codes have the same measured intervals). The tries per sample interval of the two codes are equal within 1 %:
-  the gain is the time per stage. With the correction the set-up of AS3 takes 3 … 7 s longer (mean of 3; the compilation of the F1 functions); without it −1 … +1 s.
+  both codes have the same measured intervals). The tries per sample interval of the two codes are equal within
+  1.3 %: the gain is the time per stage. With the correction the set-up of AS3 takes 3 … 7 s longer (mean of 3);
+  without it −1 … +1 s. Cause (review): mostly FQ: centroid_offsets in blocks takes 2.90 s instead of 0.26 s
+  (q8_108) and 6.33 s instead of 0.70 s (q8_156) in WFQ.
 - WQ, first try (d15.sh, 02:45 … 02:47 UTC): both transfers stopped at once, exit code 1: "ERROR: K1_2_sat/init.pt
   was relaxed with other arguments: sat_static True -> False, h_sat 2.0 -> None". Cause: an error of my script, not of
   the code: d15.sh used the run_loops of the AS3 tree (15e5909 study code, which compares sat_static and h_sat at a
@@ -3332,7 +3341,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   - Transfer T16_q16_108 (03:07 … 03:32 UTC; exit code 0): the relaxation did not converge in 6000 iterations
     (1485 s wall; --allow_unconverged, as the q 8 transfer T_q8_108: 6000 iterations, 843 s). The relaxation time
     includes the set-up of the correction (lazy, at the first field evaluation). Peak GPU memory (nvidia-smi, with
-    the CUDA context): 7.86 GB. Before FQ the same set-up stopped with OOM (3.43).
+    the CUDA context): 7855 MiB (7.67 GiB). Before FQ the same set-up stopped with OOM (3.43).
   - Speed run q16_108 (AS3, 03:32 … 03:52 UTC; exit code 0; log without error text; 126 samples; halves 2.1 %):
     5.207 ms per stage, 661.9 ms per sample interval, 21.19 tries per sample interval; time before the first step
     1070 s (it includes the geometry at q 16 and the set-up of the correction; q8_108 of W5: 64 s); peak GPU memory
@@ -3343,7 +3352,7 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
     q 2): relative asymmetry 2.5e-14, pass; negative control without the weight v: 1.0, fail (the check sees an
     asymmetric operator).
 - WQ, N 156 (d16.sh, 03:52 … 04:00 UTC): the transfer T16_q16_156 stopped with exit code 137 (SIGKILL) after the
-  block averaging, at the start of the set-up of the correction; GPU memory at that time 1.0 GB. The cgroup of the
+  block averaging, at the start of the set-up of the correction; GPU memory at that time 1027 MiB (1.00 GiB). The cgroup of the
   container: memory limit 89.0e9 bytes (82.9 GiB), oom_kill 1, max_usage at the limit. Thus the host memory, not the
   GPU memory, stops q 16 at N 156 on this box.
 - Diagnosis (d18.sh, mem_phases.py; host memory per phase of the production set-up, tree AS3, q 16, N 156):
@@ -3380,7 +3389,8 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   | 8 | 1.17e-11 | fail | 49.6 (repeat after the host restart; the first run: 53.7) |
   | 16 | 4.38e-11 | fail | 1047.0 (peak GPU 5.41 GiB) |
 
-  Method check: the asymmetry grows with q by the factors 5.6, 14 and 3.7 per doubling (on average about q^2.8).
+  sym_check exits with code 1 when the bound fails: the exit codes 1 at q 8 and q 16 (d17.sh, d19.sh) are these fails.
+  Method check: the asymmetry grows with q by the factors 5.6, 14 and 3.7 per doubling (on average about q^2.7).
   This agrees with the rounding of the float64 coefficient sums (q^6 sub-cell pairs per coefficient pair, a random
   rounding grows about as q^3); not proven. The bound 1e-12 of the unit test was set for q 2 (N 8). At q 8 the
   operator is that of the released code: FQ does not change the operator (WFQ: V, S, T bitwise equal), F1 … F3 do not
@@ -3388,16 +3398,26 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   of production (6.0e-8). Information (WQ); a change of the bound or of the method needs Chris.
 - Key numbers of PLAN 15 (code tree AS3 = b753fa9 on perf/speed2: FQ 5d76d5d, F1 1925170, F2 0fde7e5, F3 b753fa9;
   against ABP 15e5909):
-  - Pass rule of PLAN 15 (W1, WFQ, W2, W3, W4, T5): not met. W2 T2 fails for F2 (B states: b of stage4 and stage5
-    above 2 × the base) and for F3 (B states: b of stage3 above 2 × AS2). All other checks pass: W1; WFQ (bitwise);
-    W2 T1 all pairs; W2 T2 FQ, F1, F2 A, F3 A; W3 (0 differences, B1 used 6258, not used 0); check of Dref (4 of 4);
-    W4 (4 of 4, ratio AS3 / ABP 0.95 … 1.21, bound 2); T5 (6 of 6); W5 halves rule and kernel files. Information:
-    T2 end to end ABP → AS3 on the B states passes; the b fails are at the level by which a null run of the base
-    moves b (factors 0.51 … 1.17).
+  - Pass rule of PLAN 15 (W1, WFQ, W2, W3, W4, T5): not met.
+    - W1: besides the rkky test, inverse_test::test_linear_fieldterms[DemagField] fails (autograd through the out= of
+      A2; it fails also on 15e5909, the released ABP; F2 adds a second out= on that path). W1 exempts only rkky.
+    - W2, bitwise rule: F2 is not bitwise end to end on the B states (T1 max 6.0e-6 cu; the block_sum configurations
+      are equal, so the 14a bounds do not replace the rule); on the A states F2 is bitwise.
+    - W2 T2, B states: fails for F2 (b of stage4 and stage5: 2.15 and 2.18 × the base) and for F3 (b of stage3:
+      2.13 × AS2).
+    - Kind of change: F3 changes the rounding without a moved copy; I put it under the bounds of F1 myself. By a
+      strict reading of the plan F3 needed a new go.
+    - Pass: WFQ (bitwise); W2 T1 within the 14a bounds for all pairs; W2 T2 FQ, F1, F2 A, F3 A; W3 (0 differences,
+      B1 used 6258, not used 0); check of Dref (4 of 4); W4 (4 of 4, ratio AS3 / ABP 0.94 … 1.21, bound 2); T5 (6 of
+      6); W5 halves rule (after the off108 repeat) and kernel files.
+    - Information: T2 end to end ABP → AS3 on the B states passes. The null run of the base moves the RMS b of the
+      failing columns only by the factors 0.88 … 1.17 (single states by up to 5.6); the record does not show that
+      the b fails are at the noise level.
   - Gain per RKF45 stage, ABP / AS3 (n 3 for each code, ± SE): off108 1.39 ± 0.13 (repeat with 100 intervals of
     warm-up; large scatter between processes), off156 1.932 ± 0.004, q4_108 1.723 ± 0.006, q4_156 1.911 ± 0.029,
     q8_108 1.671 ± 0.025, q8_156 1.876 ± 0.021. ms per stage of AS3: 1.974, 3.712, 4.447, 10.690, 4.802, 11.259.
-    Tries per sample interval equal within 1 %; set-up of AS3 with the correction 3 … 7 s longer.
+    Tries per sample interval equal within 1.3 %; set-up of AS3 with the correction 3 … 7 s longer (mostly FQ:
+    centroid_offsets in blocks is about 10 × slower, 2.9 s and 6.3 s at q 8).
   - Set-up memory (WFQ): peak GPU memory of centroid_offsets 2.64 → 0.37 GiB (q 8, N 108), 3.90 → 0.60 GiB (q 8,
     N 156), 3.81 → 0.51 GiB (q 16, T3).
   - q 16 (WQ, n 1): N 108 fits: 5.207 ms per stage (+ 8 % against q 8), set-up 1070 s (q 8: 64 s), peak GPU memory
@@ -3414,4 +3434,8 @@ conservative rules of the plan, and report at the end; (3) box 11 stays rented f
   The files in /root stayed, but the last writes before the restart were lost: sym_q8_108.json was empty and the
   last lines of progress.txt were missing. sym_check at q 8 ran again (05:11 … 05:13 UTC): the same relative
   asymmetry 1.172e-11 (the check is deterministic). md5 of q16_108.json after the restart equal to the value read
-  before (5b316664…). D16.tgz was packed after the repeat.
+  before (5b316664…). D16.tgz was packed after the repeat. (Review: the repeat found a damaged entry in the default
+  inductor cache of the container (no TORCHINDUCTOR_CACHE_DIR was set; "EOFError: Ran out of input") and ran
+  block_sum without torch.compile ("WON'T CONVERT block_sum"; 152 warning lines in sym_q8_108.log); the asymmetry
+  is the same. The values of the first q 8 run (1.172e-11, 53.7 s) were read from its json before the restart and
+  are in no file now. A further run on box 11 needs a new inductor cache folder.)
