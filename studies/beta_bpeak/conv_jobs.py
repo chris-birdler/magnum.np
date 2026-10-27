@@ -33,6 +33,8 @@ Variant N0b (PLAN 4.11, PROTOKOLL 7.105): the same lines with the reference stra
     python conv_jobs.py --newell solverscan > jobs/solverscan.txt    # FD at all 7 stages of one seed per corner
     python -c "import conv_jobs as CJ; [print(*x) for x in CJ.predemag_lines(runs_dir=<study runs>)]" > jobs/predemag.txt
     python conv_jobs.py --newell initmode > jobs/initmode.txt        # start: each particle uniform (Bloch points)
+    python conv_jobs.py --newell hfprep > jobs/hf416_prep.txt        # PLAN 4.16: the 4 voxel start states
+    python conv_jobs.py --newell hf > jobs/hf416.txt                 # PLAN 4.16: the 36 jobs (after the 4 HFP runs)
 """
 import shlex
 
@@ -656,6 +658,32 @@ def hist_lines(runs, snapshots, src="jobs/sobol_corners.txt", runs_dir="runs"):
     return out
 
 
+HF_GEOM = "--d_lex 300.0 --dx_lex 3.0 --phi 0.65 --Leff_lex 12.0 --r_p 0.0 --alpha 0.1"   # the geometry of 7.29
+HF_ARGS = ("--protocol virgin_asc --init_block 6.0 --relax_mode converge --relax_maxiter 80000 --relax_chunk 500 "
+           "--relax_tol_E 1e-06 --relax_confirm 2 --relax_tol_E_abs 3e-10 --strayfield newell_ext --strayfield_shells 4 "
+           "--atol 1e-06 --atol_cycles 1e-07 --rtol_cycles 1e-06 --precision single --samples 256 --n_amp 1 "
+           "--cycles_per_amp 7 --min_calm 2 --max_cycles_per_amp 15 --b_tol 0.01")   # PLAN 4.16, literal
+HF_SEEDS = (921, 922, 923, 924)
+HF_MT = ((9, "0.006"), (50, "0.033333"), (100, "0.066667"))
+HF_ARMS = (("D", "--surface fraction --staircase pair --staircase_q 8 --staircase_p 3 --staircase_centroid"),
+           ("C", "--surface fraction"), ("A", "--surface voxel"))
+
+
+def hf_lines(kind):
+    """PLAN 4.16 (go of Chris 2026-10-27), high-field test of the staircase correction with the fraction surface.
+    kind "prep": HFP_s<seed>, the virgin relaxation in the voxel model, then stop (--prep_only).
+    kind "main": HF<arm>_s<seed>_b<mT> for the arms A (voxel), C (fraction) and D (fraction + correction q 8), each
+    from HFP_s<seed>/init.pt (--init_transfer, relaxed again in its own model). Submit "main" only after the 4 HFP runs
+    are done with a converged relaxation (the queue has no job dependencies). Order: D first (the longest), then the
+    higher amplitudes."""
+    if kind == "prep":
+        return [("HFP_s%d" % s, "%s --seed %d --b_list 0.006 %s --surface voxel --prep_only" % (HF_GEOM, s, HF_ARGS))
+                for s in HF_SEEDS]
+    return [("HF%s_s%d_b%d" % (arm, s, mT), "%s --seed %d --b_list %s %s %s --init_transfer HFP_s%d/init.pt"
+             % (HF_GEOM, s, b, HF_ARGS, surf, s))
+            for arm, surf in HF_ARMS for mT, b in reversed(HF_MT) for s in HF_SEEDS]
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -693,6 +721,7 @@ if __name__ == "__main__":
                 k4hist_lines() if st == "k4hist" else k3hist_lines() if st == "k3hist" else
                 satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
                 crep_lines() if st == "crep" else
+                hf_lines("prep") if st == "hfprep" else hf_lines("main") if st == "hf" else
                 sat_corner_lines(n, "small", k0=k0) if st == "satsmall" else
                 sat_corner_lines(n, "large", k0=k0) if st == "satlarge" else
                 newell_lines(int(st)))

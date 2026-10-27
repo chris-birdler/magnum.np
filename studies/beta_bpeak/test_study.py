@@ -1184,6 +1184,187 @@ def test_transfer_m_surfaces_nest_on_study_grids(nc, nf):
     assert st["no_same_index_subcell"] == 0 and st["zero_vector"] == 0
 
 
+def test_transfer_voxel_to_fraction_same_mesh():
+    """PLAN 4.16 on its mesh (d/l_ex 300, dx 3, 148³): the transfer from the voxel state to the fraction surface on the
+    same mesh (k = 1) keeps the source m in every cell; the particle cells of the fraction surface that are void in the
+    voxel model (3.8 %) keep the m of the void cell and are counted in no_same_index_subcell (this count goes to
+    summary init.transfer). C (no --staircase) and D (--staircase_q 8) take f and ids from 8³ sub-cells, so both start
+    from the same m. A source with the fraction surface is refused (the transfer reads the source cells as voxel
+    cells); the run itself can have either surface."""
+    pytest.importorskip("torch")
+    import run_loops as RL
+    a, d = box_edge(300.0, 0.65)
+    iv = RL.locked_geometry(148, d, a / 148, 1)["ids"]
+    base = ["--out", "x", "--d_lex", "300", "--surface", "fraction", "--strayfield", "newell_ext"]
+    sub_c = RL.surface_sub(RL.parse_args(base))
+    sub_d = RL.surface_sub(RL.parse_args(base + ["--staircase", "pair", "--staircase_q", "8"]))
+    assert sub_c == sub_d == 8 and RL.surface_sub(RL.parse_args(["--out", "x", "--d_lex", "300"])) == 0
+    i8 = RL.locked_geometry(148, d, a / 148, 1, sub=sub_c)["ids"]
+    m_f = np.random.default_rng(416).normal(size=(148, 148, 148, 3))
+    m_f /= np.linalg.norm(m_f, axis=-1, keepdims=True)
+    m_c, st = RL.transfer_m(m_f, iv, i8)
+    extra = (i8 >= 0) & (iv != i8)
+    assert st["factor"] == 1 and np.allclose(m_c, m_f, atol=1e-12)
+    assert st["no_same_index_subcell"] == int(extra.sum()) and np.all(iv[extra] == -1)
+    assert abs(extra.sum() / (i8 >= 0).sum() - 0.038) < 0.001
+    assert RL.transfer_source_error({"surface": "voxel"}) is None and RL.transfer_source_error({}) is None
+    assert "--surface voxel" in RL.transfer_source_error({"surface": "fraction"})
+    rl = pathlib.Path(RL.__file__).read_text()
+    assert rl.count("transfer_source_error(cf[\"config\"])") == 1 and "or the fraction surface of --staircase" not in rl
+    assert 'summary["init"]["transfer"] = transfer' in rl
+
+
+HF_PLAN_ARGS = ("--protocol virgin_asc --init_block 6.0 --relax_mode converge --relax_maxiter 80000 --relax_chunk 500 "
+                "--relax_tol_E 1e-06 --relax_confirm 2 --relax_tol_E_abs 3e-10 --strayfield newell_ext "
+                "--strayfield_shells 4 --atol 1e-06 --atol_cycles 1e-07 --rtol_cycles 1e-06 --precision single "
+                "--samples 256 --n_amp 1 --cycles_per_amp 7 --min_calm 2 --max_cycles_per_amp 15 --b_tol 0.01")
+# the argument list of PLAN 4.16 as written in PLAN.md (study/beta-bpeak-pinning fc1b8e1)
+
+
+def test_hf416_lines():
+    """PLAN 4.16 jobs (conv_jobs.hf_lines): 4 HFP lines (voxel, --prep_only) and 36 HF lines, D first. Every line has
+    the arguments of the plan, the geometry, seed and b_list of the 7.29 voxel runs M300_dx3_* (jobs/mesh300.txt) and
+    the numerical settings of the corner runs (NX_SET, without accumulators and snapshots). The three arms of a seed
+    and an amplitude differ only in the surface and staircase arguments. The config check of the plan before the jobs:
+    run_loops accepts each HF line as an --init_transfer target of the HFP line of its seed (source voxel, all INIT_KEYS
+    outside TRANSFER_FREE equal)."""
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    from rerun_jobs import get_arg, job_lines
+    here = pathlib.Path(__file__).resolve().parent
+    prep, main = dict(CJ.hf_lines("prep")), CJ.hf_lines("main")
+    assert sorted(prep) == ["HFP_s%d" % s for s in (921, 922, 923, 924)]
+    names = [n for n, _ in main]
+    assert len(set(names)) == 36 and all(n.startswith("HFD_") for n in names[:12])
+    assert {n.split("_")[0] for n in names} == {"HFA", "HFC", "HFD"}
+    plan = shlex.split(HF_PLAN_ARGS)
+    m300 = dict(job_lines(here / "jobs" / "mesh300.txt"))
+    keys = lambda tok: {t[2:] for t in tok if t.startswith("--")}
+    stair = {"surface", "staircase", "staircase_q", "staircase_p", "staircase_centroid"}
+    by = {}
+    for n, line in main + list(prep.items()):
+        tok = shlex.split(line)
+        for k in keys(plan):
+            assert get_arg(tok, k) == get_arg(plan, k), (n, k)
+        s = n.split("_s")[1][:3]
+        mT = n.split("_b")[1] if "_b" in n else "9"
+        ref = shlex.split(m300["M300_dx3_s%s_b%s" % (s, mT)])
+        for k in ("d_lex", "dx_lex", "phi", "Leff_lex", "r_p", "alpha", "seed", "b_list", "init_block",
+                  "relax_chunk", "relax_tol_E", "relax_confirm", "relax_maxiter", "precision", "samples", "n_amp"):
+            assert get_arg(tok, k) == get_arg(ref, k), (n, k)
+        for k, v in CJ.NX_SET:
+            assert get_arg(tok, k) == (None if k in ("acc", "acc_harm", "keep_stage_ckpt") or k.startswith("snap")
+                                       else v), (n, k)
+        assert keys(tok) - keys(plan) - stair <= {"d_lex", "dx_lex", "phi", "Leff_lex", "r_p", "alpha", "seed",
+                                                  "b_list", "init_transfer", "prep_only"}, n
+        if n.startswith("HFP"):
+            assert "--prep_only" in tok and get_arg(tok, "surface") == ["voxel"] and get_arg(tok, "init_transfer") is None
+            continue
+        assert get_arg(tok, "init_transfer") == ["HFP_s%s/init.pt" % s] and "--prep_only" not in tok
+        assert get_arg(tok, "surface") == {"HFA": ["voxel"], "HFC": ["fraction"], "HFD": ["fraction"]}[n[:3]]
+        assert (get_arg(tok, "staircase_q") == ["8"]) == (n[:3] == "HFD") and get_arg(tok, "init_wait_h") is None
+        rest = {k: get_arg(tok, k) for k in keys(tok) - stair}
+        by.setdefault((s, mT), []).append(rest)
+        src, run = vars(RL.parse_args(["--out", "x"] + shlex.split(prep["HFP_s%s" % s]))), \
+            vars(RL.parse_args(["--out", "x"] + tok))
+        assert RL.transfer_source_error(src) is None
+        assert [k for k in RL.INIT_KEYS if k not in RL.TRANSFER_FREE and src.get(k) != run.get(k)] == [], n
+    assert len(by) == 12 and all(len(v) == 3 and v[0] == v[1] == v[2] for v in by.values())
+
+
+def test_dispatcher_takes_all_gpus_of_the_box(tmp_path):
+    """dispatcher.sh (PLAN 4.16): run_queue gets the GPU list of nvidia-smi (0,1,…,7 on an 8-GPU box), not a fixed
+    list; without a list the dispatcher stops. The lines of the script run in bash with a fake nvidia-smi."""
+    import os
+    import subprocess
+    src = (pathlib.Path(__file__).resolve().parent / "instance" / "dispatcher.sh").read_text()
+    assert "--gpus 0,1,2,3" not in src and src.count('--gpus "$G"') == 1
+    lines = [ln for ln in src.splitlines() if ln.startswith(("G=$(nvidia-smi", '[ -n "$G" ]'))]
+    assert len(lines) == 2
+    b = tmp_path / "bin"
+    b.mkdir()
+    for listing, want in (("0\n1\n2\n3\n4\n5\n6\n7\n", "0,1,2,3,4,5,6,7"), ("", None)):
+        (tmp_path / "gpus.txt").write_text(listing)
+        (b / "nvidia-smi").write_text("#!/bin/bash\ncat %s\n" % (tmp_path / "gpus.txt"))
+        (b / "nvidia-smi").chmod(0o755)
+        script = "L=%s\n%s\necho \"GPUS=$G\"\n" % (tmp_path / "disp.log", "\n".join(lines))
+        r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=30,
+                           env=dict(os.environ, PATH="%s:%s" % (b, os.environ["PATH"])))
+        if want:
+            assert r.returncode == 0 and r.stdout.strip() == "GPUS=" + want
+        else:
+            assert r.returncode == 1 and "no GPU list" in (tmp_path / "disp.log").read_text()
+
+
+def _hf_run(d, w, b, bloch_start=0, bloch_samples=0, converged=True, steady=True):
+    """A run folder with one stage of 7 cycles (w_loop w, b_peak b) for analyze.load_run; steady False: an event
+    (|w_dis / w_loop - 1| > 0.20) in the last cycle, so no steady tail is left."""
+    import json
+    d.mkdir(parents=True)
+    (d / "config.json").write_text(json.dumps({"protocol": "virgin_asc"}))
+    cyc = [{"cycle": i, "w_loop": w, "w_dis": w, "b_peak": b, "closure": 0.0, "mean_dt": 1e-12, "offset": 0.0}
+           for i in range(7)]
+    if not steady:
+        cyc[-1]["w_dis"] = 1.5 * w
+    (d / "summary.json").write_text(json.dumps({
+        "init": {"relax_converged": converged, "bloch_virgin": [bloch_start, 0]},
+        "stages": [{"name": "amp00", "measure": True, "complete": True, "h_amp": 0.01, "cycles": cyc}]}))
+    (d / "bloch_00_amp00.csv").write_text("# cycle,sample,n_bloch_pos,n_bloch_neg\n1,0,%d,0\n" % bloch_samples)
+    (d / "DONE").write_text("ok\n")
+
+
+def test_eval_rough_hf_report(tmp_path):
+    """eval_rough --hf (PLAN 4.16): w from the steady tail of the corner evaluation (analyze state restored); a job
+    without a value removes its seed from all three comparisons at that amplitude, so D − A = (D − C) + (C − A) holds
+    for the means; Δβ from the measured b of each arm; a seed with unequal Bloch flags is listed and left out only in
+    the second table; the classes at 100 mT."""
+    import analyze
+    import eval_rough as ER
+    rng = np.random.default_rng(416)
+    ca = {921: 0.55, 922: 0.60, 923: 0.65, 924: 0.58}           # C − A in ln w at 100 mT
+    da = {921: 0.05, 922: -0.04, 923: 0.02, 924: -0.03}         # D − A
+    W = {}
+    for s in ER.SEEDS:
+        for m in ER.AMPS:
+            w_a = 1e-6 * (m / 9.0) ** 1.8 * math.exp(0.1 * rng.normal())
+            for arm, dl in (("A", 0.0), ("C", ca[s] * m / 100.0), ("D", da[s] * m / 100.0)):
+                b = m / 1500.0 * (1.0 + 0.01 * {"A": 0, "C": 1, "D": -1}[arm])
+                W[(arm, s, m)] = (w_a * math.exp(dl), b)
+    for (arm, s, m), (w, b) in W.items():
+        name = ER.HF_ARMS[arm] % (s, m)
+        _hf_run(tmp_path / name, w, b, steady=(name != "HFC_s924_b100"),
+                bloch_samples=int(name == "HFD_s921_b50"))
+    old = analyze.STEADY_TAIL, analyze.STEADY_MIN
+    text, rec = ER.hf_report(tmp_path)
+    assert (analyze.STEADY_TAIL, analyze.STEADY_MIN) == old
+    assert rec["fails"] == [("HFC_s924_b100", "no steady tail of 2 cycles")] and "HFC_s924_b100" in text
+    assert rec["bloch_unequal"] == [(921, 50)]
+    st = rec["all"]["stats"]
+    assert rec["all"]["seeds"]["100"] == [921, 922, 923] and rec["all"]["seeds"]["50"] == [921, 922, 923, 924]
+    assert rec["all"]["seeds"]["(9, 100)"] == [921, 922, 923] and rec["no_bloch"]["seeds"]["50"] == [922, 923, 924]
+    for m in ER.AMPS:
+        assert abs(st["D-A %d" % m][0] - st["D-C %d" % m][0] - st["C-A %d" % m][0]) < 1e-12
+    assert abs(st["C-A 100"][0] - np.mean([ca[s] for s in (921, 922, 923)])) < 1e-9 and st["C-A 100"][5] == 3
+    bt = lambda a, s, lo, hi: (math.log(W[(a, s, hi)][0] / W[(a, s, lo)][0]) /
+                               math.log(W[(a, s, hi)][1] / W[(a, s, lo)][1]))
+    want = np.mean([bt("C", s, 9, 50) - bt("A", s, 9, 50) for s in ER.SEEDS])
+    assert abs(st["C-A (9, 50)"][0] - want) < 1e-9
+    assert rec["all"]["class"] == 2 and rec["no_bloch"]["class"] == 2
+    c = lambda lo, hi: (0.5 * (lo + hi), 0.1, 0.2, lo, hi, 4)
+    assert ER.hf_class(c(-0.1, 0.5), c(0.1, 0.5), c(-0.5, -0.1))[0] == 1
+    assert ER.hf_class(c(0.4, 0.8), c(-0.1, 0.1), c(-0.8, -0.4))[0] == 2
+    assert ER.hf_class(c(0.4, 0.8), c(0.3, 0.7), c(-0.2, 0.1))[0] == 3
+    assert ER.hf_class(c(0.4, 0.8), c(0.1, 0.3), c(-0.6, -0.2))[0] == 4
+    assert ER.hf_class(c(0.4, 0.8), c(-0.6, -0.2), c(-1.2, -0.8))[0] == 5
+    assert ER.hf_class(None, c(0.1, 0.3), c(-0.6, -0.2))[0] == 5
+    for (arm, s, m) in [("A", 921, 9)]:
+        d = tmp_path / "bad" / (ER.HF_ARMS[arm] % (s, m))
+        _hf_run(d, 1e-6, 0.006, converged=False)
+        assert ER.hf_job(d) == {"fail": "relaxation not converged"}
+    assert ER.hf_job(tmp_path / "no_such_run") == {"fail": "not done"}
+
+
 def _conv_recs(F, T15, T3, I15, I3):
     import conv_jobs as CJ
     vals = {"F": F, "T15": T15, "T3": T3, "I15": I15, "I3": I3}

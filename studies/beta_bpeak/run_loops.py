@@ -339,8 +339,9 @@ def parse_args(argv=None):
     g.add_argument("--init_transfer", type=str, default=None,
                    help="virgin_asc (PLAN 4.10): start the relaxation from the relaxed state init.pt of a run on a finer "
                         "mesh (integer ratio of the cells) instead of a random state: block average of m over the "
-                        "particle sub-cells, normalised; then the production relaxation. All INIT_KEYS except dx_lex "
-                        "and relax_maxiter must agree; waits like --init_from (--init_wait_h)")
+                        "particle sub-cells, normalised; then the production relaxation. The source must have --surface "
+                        "voxel; the run can have either surface (PLAN 4.16). All INIT_KEYS except TRANSFER_FREE must "
+                        "agree; waits like --init_from (--init_wait_h)")
     g.add_argument("--init_wait_h", type=float, default=0.0,
                    help="wait up to this many hours for the --init_from file (it is written by a job that "
                         "still relaxes)")
@@ -431,6 +432,27 @@ def geometry_rep(args):
     if rep > 1 and args.surface != "voxel":
         raise ValueError("--geom_dx_lex needs --surface voxel")
     return rep
+
+
+def surface_sub(args):
+    """Sub-cells per cell edge for the volume fraction f of the fraction surface: q of --staircase, else 8; 0 for the
+    voxel surface. At --staircase_q 8 the fraction surface with and without the correction has the same f and ids."""
+    if args.surface != "fraction":
+        return 0
+    return args.staircase_q if args.staircase != "none" else 8
+
+
+# INIT_KEYS that may differ between an --init_transfer source and the run: the mesh, and (staircase correction, PROTOKOLL
+# 3.11; PLAN 4.16) the surface model, the locked geometry and the preparation (the source state is already prepared)
+TRANSFER_FREE = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p", "staircase_centroid",
+                 "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries", "bloch_smooth", "init_mode")
+
+
+def transfer_source_error(src_config):
+    """--init_transfer reads the cells of the source state as voxel cells (locked_geometry without sub-cells), so the
+    source must have --surface voxel; the run itself can have either surface (PLAN 4.16). The error text, or None."""
+    s = src_config.get("surface", "voxel")
+    return None if s == "voxel" else "the source has --surface %s; --init_transfer needs a source with --surface voxel" % s
 
 
 def upsample(x, rep):
@@ -881,8 +903,7 @@ def main(argv=None):
                                      or rep != 1 or args.strayfield_cycles not in (None, args.strayfield)):
         sys.exit("ERROR: --staircase needs --surface fraction, a Newell --strayfield (also in the cycles) and no "
                  "--geom_dx_lex")
-    sub = (args.staircase_q if args.staircase != "none" else 8) if args.surface == "fraction" else 0
-    geo = locked_geometry(N, d, dx, rep, sub=sub)
+    geo = locked_geometry(N, d, dx, rep, sub=surface_sub(args))
     ids = geo["ids"]
     mag = ids >= 0
     phi = geo["phi_vox"]
@@ -1309,14 +1330,10 @@ def main(argv=None):
             if not src.exists():
                 sys.exit("ERROR: --init_transfer %s does not exist" % src)
             cf = torch.load(str(src), map_location="cpu")
-            if args.surface != "voxel" and args.staircase == "none":
-                sys.exit("ERROR: --init_transfer needs --surface voxel (or the fraction surface of --staircase)")
-            # keys that may differ from the source: the mesh, and (staircase correction, PROTOKOLL 3.11) the surface
-            # model, the locked geometry and the preparation (the source state is already prepared)
-            free = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p",
-                    "staircase_centroid", "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries",
-                    "bloch_smooth", "init_mode")
-            diff = [k for k in INIT_KEYS if k not in free
+            err = transfer_source_error(cf["config"])
+            if err:
+                sys.exit("ERROR: %s: %s" % (src, err))
+            diff = [k for k in INIT_KEYS if k not in TRANSFER_FREE
                     and cf["config"].get(k, NEW_KEYS.get(k)) != config.get(k)]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(

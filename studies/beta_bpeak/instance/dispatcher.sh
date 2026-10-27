@@ -1,5 +1,6 @@
 #!/bin/bash
-# The box dispatcher (Chris 2026-10-18: one queue per box, one job per GPU). It runs run_queue.py --spool until
+# The box dispatcher (Chris 2026-10-18: one queue per box, one job per GPU; all GPUs that nvidia-smi lists, PLAN 4.16;
+# no list: stop). It runs run_queue.py --spool until
 # spool/EXIT exists and takes the job files that submit.sh puts into spool/ (priority in the file name). Post-processing
 # of the snapshots and accumulators under a supervisor loop for the production names (<design name>_nx). Own worktree
 # /root/magnum.np-disp at /root/disp_commit; runs/ and spool/ are links to the shared folders.
@@ -35,7 +36,9 @@ for x in runs spool; do
 done
 cd $T || exit 1
 L=$B/dispatcher.log
-echo "$(date '+%F %T') dispatcher (re)start at $(git log --oneline -1 | cut -c1-60)" >> $L
+G=$(nvidia-smi --query-gpu=index --format=csv,noheader 2>/dev/null | paste -sd, -)   # all GPUs of the box (PLAN 4.16)
+[ -n "$G" ] || { echo "$(date '+%F %T') no GPU list from nvidia-smi: stop" >> $L; exit 1; }
+echo "$(date '+%F %T') dispatcher (re)start at $(git log --oneline -1 | cut -c1-60) on GPUs $G" >> $L
 ( while [ ! -f spool/EXIT ]; do
       P='^(S\d{3}|C\d|K\d_\d)_(nx|hs|ad|as)$'
       [ -s /root/postproc_pattern ] && P=$(head -1 /root/postproc_pattern)        # an empty file keeps the default
@@ -44,7 +47,7 @@ echo "$(date '+%F %T') dispatcher (re)start at $(git log --oneline -1 | cut -c1-
       echo "$(date '+%F %T') instance_postproc (dispatcher) restarted" >> runs/ALERT
       sleep 60
   done ) &
-python run_queue.py --spool spool --gpus 0,1,2,3 --min_free_gb 3 --retries 1 --job_timeout_h 24 --exclusive_gpu \
+python run_queue.py --spool spool --gpus "$G" --min_free_gb 3 --retries 1 --job_timeout_h 24 --exclusive_gpu \
     --status status_dispatcher.json --stop_file runs/STOP_NEW_JOBS >> $L 2>&1
 echo "$(date '+%F %T') dispatcher ended, exit code $?" >> $L
 wait
