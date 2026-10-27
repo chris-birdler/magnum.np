@@ -1,0 +1,25 @@
+T1 R1_B       worst over 16 states: RMS 8.97e-07 cu, max 8.22e-06 cu (bounds 1e-03, 1e-01); norm 6.7e-10 (bound 1e-06); same branch True -> PASS
+     h0_DemagField                RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h1_DemagStaircaseCorrection  RMS 2.47e-09 cu (largest state), max 6.51e-08 cu
+     h2_ExchangeField             RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h3_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h4_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h5_SinusoidalDrive           RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h1_DemagStaircaseCorrection_noh1 RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h_eff                        RMS 2.55e-09 cu (largest state), max 7.31e-08 cu
+     rhs                          RMS 2.05e-09 cu (largest state), max 8.14e-08 cu
+     stage1                       RMS 2.05e-09 cu (largest state), max 8.14e-08 cu
+     stage2                       RMS 6.27e-08 cu (largest state), max 4.07e-07 cu
+     stage3                       RMS 1.04e-07 cu (largest state), max 8.69e-07 cu
+     stage4                       RMS 4.18e-07 cu (largest state), max 3.41e-06 cu
+     stage5                       RMS 8.97e-07 cu (largest state), max 8.22e-06 cu
+     stage6                       RMS 3.69e-07 cu (largest state), max 3.33e-06 cu
+     dx                           RMS 1.09e-07 cu (largest state), max 6.14e-07 cu
+     err                          RMS 1.32e-08 cu (largest state), max 1.01e-07 cu
+     E0_DemagField                RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E1_DemagStaircaseCorrection  RMS 1.45e-11 cu (largest state), max 1.45e-11 cu
+     E2_ExchangeField             RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E3_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E4_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E5_SinusoidalDrive           RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h_eff pooled over the states: cut 5.65e-09 cu, full 2.19e-09 cu, void 2.24e-09 cu

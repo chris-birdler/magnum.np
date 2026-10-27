@@ -1,0 +1,12 @@
+# PLAN 14b D5, pilot: base arms of the P trees (two of B_d53P for the bitwise check), controls, three null runs of each base
+BP_base B_d53P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_base.pt
+BP_base2 B_d53P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_base2.pt
+BP_ctrl B_d53P B 0.006000006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_ctrl.pt
+BP_n1 B_d53P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_n1.pt --k1_null reverse
+BP_n2 B_d53P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_n2.pt --k1_null rotate
+BP_n3 B_d53P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BP_n3.pt --k1_null kernel
+BA4P_base BA4P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4P_base.pt
+BA4P_ctrl BA4P B 0.006000006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4P_ctrl.pt
+BA4P_n1 BA4P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4P_n1.pt --k1_null reverse
+BA4P_n2 BA4P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4P_n2.pt --k1_null rotate
+BA4P_n3 BA4P B 0.006 --k1_arm /root/k1/B/refB.pt --k1_out /root/k1/B/BA4P_n3.pt --k1_null kernel

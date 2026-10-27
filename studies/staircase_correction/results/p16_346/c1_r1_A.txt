@@ -1,0 +1,22 @@
+T1 R1_A       worst over 16 states: RMS 6.37e-07 cu, max 6.11e-06 cu (bounds 1e-03, 1e-01); norm 3.1e-10 (bound 1e-06); same branch True -> PASS
+     h0_DemagField                RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h1_ExchangeField             RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h2_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h3_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h4_SinusoidalDrive           RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h_eff                        RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     rhs                          RMS 6.29e-10 cu (largest state), max 2.07e-08 cu
+     stage1                       RMS 6.29e-10 cu (largest state), max 2.07e-08 cu
+     stage2                       RMS 2.23e-08 cu (largest state), max 2.70e-07 cu
+     stage3                       RMS 8.47e-08 cu (largest state), max 5.94e-07 cu
+     stage4                       RMS 3.11e-07 cu (largest state), max 2.74e-06 cu
+     stage5                       RMS 6.37e-07 cu (largest state), max 6.11e-06 cu
+     stage6                       RMS 2.87e-07 cu (largest state), max 2.50e-06 cu
+     dx                           RMS 1.02e-07 cu (largest state), max 5.80e-07 cu
+     err                          RMS 1.14e-08 cu (largest state), max 8.19e-08 cu
+     E0_DemagField                RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E1_ExchangeField             RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E2_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E3_UniaxialAnisotropyField   RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     E4_SinusoidalDrive           RMS 0.00e+00 cu (largest state), max 0.00e+00 cu
+     h_eff pooled over the states: cut 0.00e+00 cu, full 0.00e+00 cu, void 0.00e+00 cu

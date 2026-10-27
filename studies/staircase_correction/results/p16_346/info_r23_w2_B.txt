@@ -1,0 +1,26 @@
+R2/R3 AS3_w2_B against ABP: PASS (16 states)
+     h0_DemagField                      e ratio 1.0000 (bound 1.10); mean d +8.27e-25 (limit 5.96e-08); mean b new -1.50e-07, ABP -1.50e-07; fails from +5.1/-1.0 u
+     h1_DemagStaircaseCorrection        e ratio 0.9993 (bound 1.10); mean d +6.98e-13 (limit 5.96e-08); mean b new +4.11e-08, ABP +4.11e-08; fails from +1.0/-1.7 u
+     h2_ExchangeField                   e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +1.16e-07, ABP +1.16e-07; fails from +1.0/-3.9 u
+     h3_UniaxialAnisotropyField         e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +1.87e-08, ABP +1.87e-08; fails from +1.0/-1.3 u
+     h4_UniaxialAnisotropyField         e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +5.53e-08, ABP +5.53e-08; fails from +1.0/-1.9 u
+     h5_SinusoidalDrive                 e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +1.73e-08, ABP +1.73e-08; fails from +1.0/-1.3 u
+     h1_DemagStaircaseCorrection_noh1   e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +4.26e-08, ABP +4.26e-08; fails from +1.0/-1.7 u
+     h_eff                              e ratio 1.0000 (bound 1.10); mean d +1.30e-11 (limit 5.96e-08); mean b new +8.28e-08, ABP +8.28e-08 *; fails from +1.0/-2.8 u
+     rhs                                e ratio 1.0000 (bound 1.10); mean d +6.16e-10 (limit 5.96e-08); mean b new -1.64e-07, ABP -1.65e-07; fails from +5.5/-1.0 u
+     stage1                             e ratio 1.0000 (bound 1.10); mean d +6.16e-10 (limit 5.96e-08); mean b new -1.64e-07, ABP -1.65e-07; fails from +5.5/-1.0 u
+     stage2                             e ratio 1.0010 (bound 1.10); mean d -2.07e-07 (limit 2.86e-07); mean b new -7.56e-08, ABP +1.31e-07; fails from +8.3/-1.3 u
+     stage3                             e ratio 0.9853 (bound 1.10); mean d -3.22e-07 (limit 1.00e-06); mean b new +1.30e-07, ABP +4.51e-07; fails from +22.2/-11.4 u
+     stage4                             e ratio 0.9990 (bound 1.10); mean d +4.04e-07 (limit 2.90e-06); mean b new +7.16e-08, ABP -3.32e-07; fails from +41.9/-55.6 u
+     stage5                             e ratio 0.9999 (bound 1.10); mean d +2.13e-06 (limit 7.78e-06); mean b new +6.80e-07, ABP -1.45e-06; fails from +95.1/-166.4 u
+     stage6                             e ratio 1.0001 (bound 1.10); mean d -3.72e-07 (limit 1.72e-06); mean b new +1.30e-08, ABP +3.85e-07; fails from +35.2/-22.7 u
+     dx                                 e ratio 0.9968 (bound 1.10); mean d -3.60e-07 (limit 8.56e-07); mean b new -6.51e-08, ABP +2.95e-07; fails from +20.4/-8.3 u
+     err                                e ratio 1.0033 (bound 1.25)
+     E0_DemagField                      e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new -3.52e-07, ABP -3.52e-07; fails from +11.8/-1.0 u
+     E1_DemagStaircaseCorrection        e ratio 0.9967 (bound 1.10); mean d -4.84e-10 (limit 5.96e-08); mean b new +1.46e-07, ABP +1.46e-07; fails from +1.0/-4.9 u
+     E2_ExchangeField                   e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +1.45e-07, ABP +1.45e-07; fails from +1.0/-4.9 u
+     E3_UniaxialAnisotropyField         e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new -1.07e-08, ABP -1.07e-08; fails from +1.2/-1.0 u
+     E4_UniaxialAnisotropyField         e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +2.72e-08, ABP +2.72e-08; fails from +1.0/-1.5 u
+     E5_SinusoidalDrive                 e ratio 1.0000 (bound 1.10); mean d +0.00e+00 (limit 5.96e-08); mean b new +1.34e-07, ABP +1.34e-07; fails from +1.0/-4.5 u
+     err_rms                            e ratio 1.0044 (bound 1.25)
+     norm                               e ratio 0.9124 (bound 1.25)

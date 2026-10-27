@@ -1,0 +1,30 @@
+control A       drive × (1 + 1e-06): ρ double 2.07e-06; ρ_null single 1.95e-06; detection limit for ρ ≤ 1e-3 ρ_null: relative drive change 9.4e-10; first step difference 14; D double +2.00e-06
+control B       drive × (1 + 1e-06): ρ double 2.97e-06; ρ_null single 2.82e-06; detection limit for ρ ≤ 1e-3 ρ_null: relative drive change 9.5e-10; first step difference 8; D double +1.89e-06
+A2       ρ double 1.47e-08; ρ_null single 1.95e-06 (pair in single 1.02e-05); ratio 7.5e-03 (bound 1e-03): not determined (tries differ first after sample interval 15)
+         tries old/new 5119/5130, accepted 4613/4613, t equal False, steps in the cycle 4613/4613, D double +4.00e-09
+         ρ (largest angle in degrees) after sample interval 1: 2.9e-14 (1.0e-11), 2: 3.1e-13 (1.0e-10), 4: 3.5e-13 (1.1e-10), 8: 3.4e-12 (1.0e-09), 16: 8.6e-09 (3.3e-06), 32: 2.1e-08 (8.4e-06), 64: 4.3e-08 (2.3e-05), 128: 7.0e-10 (4.4e-07), 256: 1.5e-08 (1.1e-05)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 2.9e-14, 8.5e-09, 4.1e-08, 6.6e-10, 1.4e-08
+A1       ρ double 3.10e-09; ρ_null single 1.93e-06 (pair in single 1.91e-06); ratio 1.6e-03 (bound 1e-03): not determined (tries differ first after sample interval 14)
+         tries old/new 5130/5124, accepted 4613/4615, t equal False, steps in the cycle 4613/4615, D double -4.39e-09
+         ρ (largest angle in degrees) after sample interval 1: 1.3e-14 (4.4e-12), 2: 1.4e-13 (4.5e-11), 4: 1.7e-13 (5.0e-11), 8: 1.6e-12 (4.9e-10), 16: 6.8e-09 (2.6e-06), 32: 2.4e-08 (9.7e-06), 64: 8.7e-09 (4.6e-06), 128: 1.1e-08 (7.2e-06), 256: 3.1e-09 (2.3e-06)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 1.3e-14, 6.7e-09, 8.3e-09, 1.1e-08, 2.9e-09
+A3       ρ double 2.14e-08; ρ_null single 1.91e-06 (pair in single 1.94e-06); ratio 1.1e-02 (bound 1e-03): not determined (tries differ first after sample interval 14)
+         tries old/new 5124/5109, accepted 4615/4616, t equal False, steps in the cycle 4615/4616, D double -5.30e-10
+         ρ (largest angle in degrees) after sample interval 1: 6.9e-15 (2.3e-12), 2: 7.4e-14 (2.4e-11), 4: 8.9e-14 (2.7e-11), 8: 8.4e-13 (2.5e-10), 16: 7.1e-09 (2.7e-06), 32: 3.2e-08 (1.3e-05), 64: 4.0e-08 (2.1e-05), 128: 4.6e-08 (2.9e-05), 256: 2.1e-08 (1.6e-05)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 6.9e-15, 7.0e-09, 3.8e-08, 4.3e-08, 2.0e-08
+PLAN10   ρ double 2.08e-08; ρ_null single 2.77e-06 (pair in single 2.83e-06); ratio 7.5e-03 (bound 1e-03): not determined (tries differ first after sample interval 11)
+         tries old/new 5678/5652, accepted 5027/5024, t equal False, steps in the cycle 5027/5024, D double +2.14e-10
+         ρ (largest angle in degrees) after sample interval 1: 5.5e-16 (6.8e-13), 2: 8.3e-15 (2.5e-12), 4: 8.5e-14 (7.0e-11), 8: 2.1e-11 (6.7e-09), 16: 1.3e-10 (4.2e-08), 32: 3.3e-12 (6.0e-08), 64: 4.3e-09 (1.9e-06), 128: 1.9e-08 (8.7e-06), 256: 2.1e-08 (9.7e-06)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 5.6e-16, 1.3e-10, 4.3e-09, 1.9e-08, 2.1e-08
+B5       ρ double 1.09e-08; ρ_null single 2.79e-06 (pair in single 3.10e-06); ratio 3.9e-03 (bound 1e-03): not determined (tries differ first after sample interval 11)
+         tries old/new 5652/5699, accepted 5024/5031, t equal False, steps in the cycle 5024/5031, D double -4.26e-09
+         ρ (largest angle in degrees) after sample interval 1: 5.5e-16 (4.6e-13), 2: 1.0e-14 (3.5e-12), 4: 1.7e-13 (1.4e-10), 8: 4.0e-11 (1.3e-08), 16: 1.2e-10 (4.8e-08), 32: 3.5e-12 (4.9e-08), 64: 5.6e-09 (2.5e-06), 128: 2.4e-09 (1.0e-06), 256: 1.1e-08 (5.0e-06)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 5.5e-16, 1.2e-10, 5.6e-09, 2.4e-09, 1.1e-08
+B4       ρ double 1.91e-08; ρ_null single 2.73e-06 (pair in single 2.86e-06); ratio 7.0e-03 (bound 1e-03): not determined (tries differ first after sample interval 43)
+         tries old/new 5699/5656, accepted 5031/5023, t equal False, steps in the cycle 5031/5023, D double +6.79e-09
+         ρ (largest angle in degrees) after sample interval 1: 5.4e-16 (3.8e-13), 2: 8.5e-15 (3.3e-12), 4: 1.2e-13 (1.0e-10), 8: 3.0e-11 (9.8e-09), 16: 2.5e-11 (7.1e-09), 32: 7.3e-13 (1.4e-08), 64: 2.0e-08 (9.0e-06), 128: 1.2e-08 (5.7e-06), 256: 1.9e-08 (8.7e-06)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 5.6e-16, 2.5e-11, 2.0e-08, 1.2e-08, 1.9e-08
+B1       ρ double 3.66e-08; ρ_null single 2.82e-06 (pair in single 2.78e-06); ratio 1.3e-02 (bound 1e-01): not determined (tries differ first after sample interval 8)
+         tries old/new 5665/5663, accepted 5028/5025, t equal False, steps in the cycle 5028/5025, D double +6.12e-07
+         ρ (largest angle in degrees) after sample interval 1: 8.1e-10 (8.6e-07), 2: 1.2e-09 (1.0e-06), 4: 2.1e-09 (1.6e-06), 8: 1.5e-08 (4.6e-06), 16: 6.1e-09 (8.4e-06), 32: 9.8e-09 (1.1e-05), 64: 2.5e-08 (1.8e-05), 128: 3.3e-08 (2.7e-05), 256: 3.7e-08 (2.1e-04)
+         probe ρ (2048 cells) after sample interval 1, 16, 64, 128, 256: 8.3e-10, 6.6e-09, 2.6e-08, 3.3e-08, 3.5e-08

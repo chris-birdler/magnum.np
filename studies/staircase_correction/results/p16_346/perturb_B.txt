@@ -1,0 +1,18 @@
+k0   0: RMS |dm| 9.061e-08, max |dm| 1.817e-07, changed float32 share 0.9935 of the magnetic cells, void unchanged True
+k0   8: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9879 of the magnetic cells, void unchanged True
+k0  16: RMS |dm| 8.164e-08, max |dm| 1.000e-07, changed float32 share 0.9880 of the magnetic cells, void unchanged True
+k0  32: RMS |dm| 8.164e-08, max |dm| 1.000e-07, changed float32 share 0.9880 of the magnetic cells, void unchanged True
+k0  48: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9881 of the magnetic cells, void unchanged True
+k0  64: RMS |dm| 8.164e-08, max |dm| 1.000e-07, changed float32 share 0.9879 of the magnetic cells, void unchanged True
+k0  80: RMS |dm| 8.164e-08, max |dm| 1.000e-07, changed float32 share 0.9883 of the magnetic cells, void unchanged True
+k0  96: RMS |dm| 8.164e-08, max |dm| 1.000e-07, changed float32 share 0.9879 of the magnetic cells, void unchanged True
+k0 112: RMS |dm| 8.166e-08, max |dm| 1.000e-07, changed float32 share 0.9879 of the magnetic cells, void unchanged True
+k0 128: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9880 of the magnetic cells, void unchanged True
+k0 144: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9882 of the magnetic cells, void unchanged True
+k0 160: RMS |dm| 8.166e-08, max |dm| 1.000e-07, changed float32 share 0.9883 of the magnetic cells, void unchanged True
+k0 176: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9883 of the magnetic cells, void unchanged True
+k0 192: RMS |dm| 8.168e-08, max |dm| 1.000e-07, changed float32 share 0.9883 of the magnetic cells, void unchanged True
+k0 208: RMS |dm| 8.168e-08, max |dm| 1.000e-07, changed float32 share 0.9884 of the magnetic cells, void unchanged True
+k0 224: RMS |dm| 8.165e-08, max |dm| 1.000e-07, changed float32 share 0.9881 of the magnetic cells, void unchanged True
+k0 240: RMS |dm| 8.163e-08, max |dm| 1.000e-07, changed float32 share 0.9884 of the magnetic cells, void unchanged True
+perturb_ref: 17 states, seed 3, eps 1e-07 -> /root/p16/ref/refB_p3.pt: PASS

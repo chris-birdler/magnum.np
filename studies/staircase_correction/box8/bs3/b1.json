@@ -1,0 +1,143 @@
+{
+ "old": {
+  "dir": "/root/bs3/b1/old",
+  "w_loop": 4.5420616107496346e-08,
+  "w_dis": 1.4291178280349167e-06,
+  "steps": 5652,
+  "bloch": {
+   "start": [
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0
+   ],
+   "max": 0,
+   "mean": 0.0
+  },
+  "lnP": -16.907299735686927,
+  "state_change_cells": 214664,
+  "min_m_dot_m0": -0.9999796706871258,
+  "cells_below_0.97": 288313,
+  "cells_below_0.99": 362961
+ },
+ "null": [
+  {
+   "dir": "/root/bs3/b1/null1",
+   "w_loop": 4.5423685807732914e-08,
+   "w_dis": 1.429212985927152e-06,
+   "steps": 5715,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.907232154117736,
+   "state_change_cells": 214663,
+   "min_m_dot_m0": -0.9999796602850823,
+   "cells_below_0.97": 288313,
+   "cells_below_0.99": 362962,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.7752462823707706e-06
+  },
+  {
+   "dir": "/root/bs3/b1/null2",
+   "w_loop": 4.542449712800989e-08,
+   "w_dis": 1.4292651951899123e-06,
+   "steps": 5671,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.907214293104982,
+   "state_change_cells": 214663,
+   "min_m_dot_m0": -0.9999796859333911,
+   "cells_below_0.97": 288313,
+   "cells_below_0.99": 362961,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.9597461226314292e-06
+  },
+  {
+   "dir": "/root/bs3/b1/null3",
+   "w_loop": 4.542077408165586e-08,
+   "w_dis": 1.4291465773812447e-06,
+   "steps": 5711,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.90729625766531,
+   "state_change_cells": 214664,
+   "min_m_dot_m0": -0.9999796129279961,
+   "cells_below_0.97": 288312,
+   "cells_below_0.99": 362962,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.8162342840875426e-06
+  }
+ ],
+ "new": {
+  "dir": "/root/bs3/b1/new",
+  "w_loop": 4.542173276614099e-08,
+  "w_dis": 1.429101514982538e-06,
+  "steps": 5750,
+  "bloch": {
+   "start": [
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0
+   ],
+   "max": 0,
+   "mean": 0.0
+  },
+  "lnP": -16.907275151147697,
+  "state_change_cells": 214663,
+  "min_m_dot_m0": -0.999979699323535,
+  "cells_below_0.97": 288313,
+  "cells_below_0.99": 362961,
+  "div_cells_0.9": 0,
+  "div_cells_0.9999": 0,
+  "div_rms_dm": 2.7795357656458375e-06
+ },
+ "D_null": [
+  6.75815691906223e-05,
+  8.544258194476129e-05,
+  3.478021618263938e-06
+ ],
+ "D_new": 2.458453922926651e-05,
+ "RMS_D_null": 6.292800102241511e-05,
+ "calibration_ok": false,
+ "state_change": true,
+ "divergence": false,
+ "pass": false,
+ "pass_proposal": true
+}

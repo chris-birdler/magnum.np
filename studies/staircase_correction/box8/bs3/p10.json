@@ -1,0 +1,143 @@
+{
+ "old": {
+  "dir": "/root/bs3/p10/old",
+  "w_loop": 4.542040103566524e-08,
+  "w_dis": 1.4291372837582506e-06,
+  "steps": 5692,
+  "bloch": {
+   "start": [
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0
+   ],
+   "max": 0,
+   "mean": 0.0
+  },
+  "lnP": -16.907304470812928,
+  "state_change_cells": 214663,
+  "min_m_dot_m0": -0.9999798000347542,
+  "cells_below_0.97": 288313,
+  "cells_below_0.99": 362961
+ },
+ "null": [
+  {
+   "dir": "/root/bs3/p10/null1",
+   "w_loop": 4.542324533142854e-08,
+   "w_dis": 1.4292441874731334e-06,
+   "steps": 5723,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.907241851226903,
+   "state_change_cells": 214663,
+   "min_m_dot_m0": -0.9999796593630812,
+   "cells_below_0.97": 288313,
+   "cells_below_0.99": 362961,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.831176192449091e-06
+  },
+  {
+   "dir": "/root/bs3/p10/null2",
+   "w_loop": 4.542093221200947e-08,
+   "w_dis": 1.4291156108866926e-06,
+   "steps": 5692,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.90729277621697,
+   "state_change_cells": 214663,
+   "min_m_dot_m0": -0.9999797690361385,
+   "cells_below_0.97": 288313,
+   "cells_below_0.99": 362962,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.703538646420219e-06
+  },
+  {
+   "dir": "/root/bs3/p10/null3",
+   "w_loop": 4.5424163149197216e-08,
+   "w_dis": 1.4291803007150168e-06,
+   "steps": 5675,
+   "bloch": {
+    "start": [
+     0,
+     0
+    ],
+    "end": [
+     0,
+     0
+    ],
+    "max": 0,
+    "mean": 0.0
+   },
+   "lnP": -16.90722164552629,
+   "state_change_cells": 214663,
+   "min_m_dot_m0": -0.999979701648769,
+   "cells_below_0.97": 288312,
+   "cells_below_0.99": 362962,
+   "div_cells_0.9": 0,
+   "div_cells_0.9999": 0,
+   "div_rms_dm": 2.765447399744635e-06
+  }
+ ],
+ "new": {
+  "dir": "/root/bs3/p10/new",
+  "w_loop": 4.5421819533604955e-08,
+  "w_dis": 1.4291708224808918e-06,
+  "steps": 5680,
+  "bloch": {
+   "start": [
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0
+   ],
+   "max": 0,
+   "mean": 0.0
+  },
+  "lnP": -16.907273240886337,
+  "state_change_cells": 214663,
+  "min_m_dot_m0": -0.9999797223758229,
+  "cells_below_0.97": 288312,
+  "cells_below_0.99": 362961,
+  "div_cells_0.9": 0,
+  "div_cells_0.9999": 0,
+  "div_rms_dm": 2.8272905943546696e-06
+ },
+ "D_null": [
+  6.261958602493678e-05,
+  1.1694595958289256e-05,
+  8.282528663983157e-05
+ ],
+ "D_new": 3.12299265914362e-05,
+ "RMS_D_null": 6.032689901841012e-05,
+ "calibration_ok": false,
+ "state_change": true,
+ "divergence": false,
+ "pass": false,
+ "pass_proposal": true
+}

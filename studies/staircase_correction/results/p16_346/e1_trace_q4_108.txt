@@ -1,0 +1,1 @@
+trace q4_108 AS5 r1 against AS3 r1, r2, r3 of W5 (126 rows: t, tries, <Ms m_x>, accepted): [True, True, True]

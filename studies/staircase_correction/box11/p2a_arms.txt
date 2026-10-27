@@ -1,0 +1,5 @@
+# phase 2, A part: patch arms of the base 9b15ea9 (A pilot accepted, PLAN 14a; B arms wait for the cause of the outlier)
+A_31a A_31a A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_31a.pt
+A_a1f A_a1f A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_a1f.pt
+A_3d9 A_3d9 A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/A_3d9.pt
+AB_off AB A 0.006 --k1_arm /root/k1/A/refA.pt --k1_out /root/k1/A/AB_off.pt
