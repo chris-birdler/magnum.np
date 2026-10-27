@@ -3722,3 +3722,32 @@ with the halves rule of section 14 (at most 10 %); not in the text of PLAN 16. S
 - Gain per sample interval of AS5 against the start code: off156 2.14, q4_108 6.84, q4_156 7.43, off108 1.44 ± 0.07.
   Against ABP: 1.43 … 1.99.
 - Open for Chris: the release of AS5 with the 2 deviations (recommendation: release); the merge to main.
+
+### 3.47 Release of AS5 and merge to main (2026-10-27, decision of Chris)
+
+**Decision (Chris, 2026-10-27).** The 2 deviations of 3.46 are accepted, AS5 is released, and AS5 is merged to main.
+- L1: the fail of eigensolver_test::test_singlespin_aniso (known flake of the base code) is accepted. Its fix (b376ffa)
+  stays on fix/preexisting-issues.
+- E1: the sub-check of the compiled kernel files is removed from the release rule. It cannot pass for equal code
+  (the files contain the path of their cache). Bitwise equality is shown by the outputs (T1, T2, traces).
+- AS5 (7792c21 on perf/speed2) is the production code. It replaces ABP (15e5909).
+
+**Merge.** perf/speed2 merged into main with a merge commit (cf9eb71, pushed to github/main). Merge base 9e0ea7c;
+main had 8 commits after it (study scripts of beta_bpeak only: eval_corners_compare.py, eval_corners_origin.py,
+eval_hotcores.py, eval_hotspots.py, a job file, test_study.py), perf/speed2 had 122. No file was changed on both
+sides; the merge had no conflicts. magnumnp/ and tests/ of main are now equal to 7792c21 (git diff: 0 lines); thus L1
+of 3.46 holds for them.
+
+**Tests after the merge (local, CPU, torch 2.7.1).**
+- studies/staircase_correction/test_staircase.py: 41 passed.
+- studies/beta_bpeak/test_study.py (the tests of main against run_loops.py and geometry.py of perf/speed2): 148
+  passed, 5 skipped (the local run folders and archives are not in this worktree). A first try stopped at
+  test_analyze_design_recovers_known_effects: statsmodels was not installed in the local test environment
+  (requirements-analysis.txt pins statsmodels 0.15.0); with it installed, the test passes.
+
+**Consequence for runs from main.** The box dispatcher runs from main. New runs from main use AS5. Against runs made
+with the old main (9e0ea7c), the single-precision results change at the rounding level (PLAN 14: ABP; PLAN 15 and 16:
+AS5 within R1 … R4 of ABP). The staircase correction is off unless a run sets it.
+
+**Note.** perf/speed2 carries the folder studies/staircase_correction at the state of c63e862 (PROTOKOLL up to 3.35).
+Main now has this old state of the folder. The current record (3.36 … 3.47) is on feature/staircase-correction.
