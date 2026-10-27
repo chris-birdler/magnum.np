@@ -3749,5 +3749,10 @@ of 3.46 holds for them.
 with the old main (9e0ea7c), the single-precision results change at the rounding level (PLAN 14: ABP; PLAN 15 and 16:
 AS5 within R1 … R4 of ABP). The staircase correction is off unless a run sets it.
 
-**Note.** perf/speed2 carries the folder studies/staircase_correction at the state of c63e862 (PROTOKOLL up to 3.35).
-Main now has this old state of the folder. The current record (3.36 … 3.47) is on feature/staircase-correction.
+**Study branch into main.** perf/speed2 carries the folder studies/staircase_correction at the state of c63e862
+(PROTOKOLL up to 3.35). Thus, on a second go of Chris (2026-10-27), feature/staircase-correction was also merged
+into main (d08d463, pushed; no conflicts). magnumnp/, tests/ and studies/beta_bpeak/ did not change with it (git
+diff to cf9eb71: 0 lines). The study folder in main equals that of feature/staircase-correction, except
+b_checks.py, energy_budget.py, profile_staircase.py and test_staircase.py: main keeps their newer versions from
+perf/speed2. test_staircase.py after this merge: 41 passed. New entries of this record are written on
+feature/staircase-correction and merged into main.
