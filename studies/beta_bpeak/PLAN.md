@@ -1720,6 +1720,108 @@ is less than 1 % of the run time, and (a) needs no code change. **Decision of Ch
   run at 2 M_s with this commit, and not at K1 and K3.
 - Credit and disk (O1, O2). Without a top-up the instances stop at about 21:00 UTC.
 
+### 4.16 High-field test of the staircase correction with the fraction surface (proposal 2026-10-27; option a of Chris, "Ok")
+
+**Terms.** "Fraction surface": each cut surface cell carries its magnetic volume fraction f, and Ms, A, K_eff and K_p
+are scaled with f (`--surface fraction`). "Correction": the near-field correction of the stray field of the cut
+cells (staircase PROTOKOLL 3.34; code AS5 in main, 3.46, 3.47). "Steady tail": the cycles after the last cycle with
+|w_dis/w_loop − 1| > 0.20; a stage needs at least 2 of them (the setting of the corner evaluation, eval_corners_sat.py: STEADY_TAIL =
+BAL_EVENT, STEADY_MIN 2).
+
+**Question.** The correction needs the fraction surface. Chris excluded the fraction surface on 2026-10-06 (7.29;
+confirmed 2026-10-15, 7.104). At d/l_ex 300 and dx 3 l_ex it gave, against the voxel staircase, Δ ln w +0.59 ± 0.10
+at 100 mT and Δβ(9→100 mT) +0.30 ± 0.07 (paired, n 4). The cause is not known. A finer staircase (dx 1.5) moved the
+loss the other way (−0.19 ± 0.10). The dynamic tests of the correction ran only at 9 mT, d/l_ex 96 and q 2, 4
+(staircase PROTOKOLL 3.23 … 3.34). This test asks: at high field, does the fraction surface with the correction
+behave like the voxel staircase, or does it keep the excess of 7.29?
+
+**Arms (one pinned commit; the arguments differ only in the surface model).**
+- A, voxel staircase: `--surface voxel`.
+- C, fraction surface without the correction: `--surface fraction`.
+- D, fraction surface with the correction: `--surface fraction --staircase pair --staircase_q 8 --staircase_p 3
+  --staircase_centroid`.
+q 8 is necessary for the design: C takes f from 8³ samples per cell, D from q³ (run_loops.py, `sub`); only at q 8 do
+C and D have the same f, so D − C is the effect of the correction alone.
+
+**Common start state (against the confounder of 7.29, where each arm relaxed on its own).** For each seed, one
+preparation job (`HFP_s<seed>`) relaxes the virgin state in the voxel model and stops: the argument list of the jobs
+below with `--surface voxel --prep_only`. The 36 jobs go into the queue only after all 4 preparation jobs are done
+with a converged relaxation (the queue has no job dependencies). Each job starts from the state of its seed with
+`--init_transfer` and relaxes it again in its own model before the cycles (as the arms of staircase PROTOKOLL 3.11
+and 3.23). Thus the arms start from the same relaxed state, and only the model changes. At mesh 148³, 3.8 % of the
+magnetic cells of the fraction surface are void cells in the voxel model (f at most 0.49, mean 0.18); they start
+with the m of the void cell and relax in the second relaxation, the same for C and D. One code change is needed:
+`--init_transfer` refuses `--surface fraction` without `--staircase` (run_loops.py); arm C needs it. The change
+allows this case only for a source state with `--surface voxel` (the transfer reads the source cells as voxel
+cells). Own commit on main, with a test: the transfer gives the same start m for C and D, and the count of cells
+without a voxel source is written to the run record.
+
+**Design.** Geometry of 7.29: d/l_ex 300, dx 3 l_ex, φ 0.65, L_eff/l_ex 12, r_p 0, α 0.1 (mesh 148³). Seeds 921 …
+924. One job per arm, seed and amplitude: B_peak 9, 50 and 100 mT (b 0.006, 0.033333, 0.066667); 3 × 4 × 3 = 36 jobs
+plus 4 preparation jobs. Names `HF<arm>_s<seed>_b<mT>`. Arguments: `--protocol virgin_asc --init_block 6.0
+--relax_mode converge --relax_maxiter 80000 --relax_chunk 500 --relax_tol_E 1e-06 --relax_confirm 2
+--relax_tol_E_abs 3e-10 --strayfield newell_ext --strayfield_shells 4 --atol 1e-06 --atol_cycles 1e-07 --rtol_cycles
+1e-06 --precision single --samples 256 --n_amp 1 --cycles_per_amp 7 --min_calm 2 --max_cycles_per_amp 15 --b_tol
+0.01` (the numerical settings and the cycle rule of the corner runs of 4.15). Not the production preparation (static
+saturation): this test asks only for the effect of the surface model; the 7.29 comparison used the virgin start.
+The config.json files of the jobs are compared before the start: besides name, out, init_transfer, b_list, stages, device,
+surface and the staircase arguments, only the keys derived from the surface model (phi_vox, n_cubes_per_particle) may
+differ.
+
+**Code and box.** One commit of main for all jobs (at least 98db1f6, AS5, plus the transfer change). The box: the one
+that the offer watcher rents (rule of Chris 2026-10-27: V100 32 GB, at least 4 GPUs, below 0.07 $ per GPU-h, CUDA
+12.6 or newer). On a box with more than 4 GPUs, dispatcher.sh takes the GPU list of the box instead of its fixed
+`--gpus 0,1,2,3` (own commit on main).
+
+**Checks before the jobs.**
+- Box speed: prof_step.py --skip 30 --plain 96 --window 0 with AS5 in the configuration off156 of staircase PLAN 16
+  (start state K4_2_sat/init.pt, local), 1 run. Pass: within 10 % of box 11 (3.699 ± 0.003 ms per stage, n 3). Else I
+  report, and no job starts.
+- The first D jobs (mesh 148³ at q 8 was not run before): the set-up of the correction ends without error, and the
+  peak GPU memory stays below 28 GiB (32-GB GPU; q8_156 needed 10.4 GiB). The peak container memory is recorded.
+
+**Failed job and missing values.** A job fails if it stops with an error or a timeout, or if a relaxation does not
+converge (gate of 7.13). A failed job runs once again; a second fail removes its seed from the comparisons at that
+amplitude. A stage without a steady tail of 2 cycles within its cycle limit (15, or 16 after a second drive correction)
+gives no value at that amplitude. Each such
+case is reported with its number. Bloch points are counted for each job; a pair where only one arm gains or loses a
+Bloch point is reported, and the results are given with and without such pairs.
+
+**Readings (fixed before the data).** eval_rough.py is extended, with a test: the arms HFA, HFC and HFD; the steady
+tail of the corner evaluation (STEADY_TAIL = BAL_EVENT 0.20, STEADY_MIN 2); a missing value removes its seed from all
+three comparisons at that amplitude (one common seed set, so that D − A = (D − C) + (C − A) holds); 95 % intervals
+with the t distribution. For each job: w = mean w_loop of the steady tail (analyze.load_run), b_peak measured. Paired
+by seed (n 4, or fewer after removals), mean ± SE and 95 % interval: Δ ln w at 9, 50 and 100 mT and Δβ for 9→50, 50→100 and
+9→100 mT (β from the measured b_peak, as eval_rough.py), for C − A, D − A and D − C. Detection limit: with the SE of
+7.29 (0.10), the smallest difference that n 4 can show at 100 mT is about 0.32 in ln w (about 0.50 with n 3). Classes
+at 100 mT (Δ ln w), in this order:
+1. "Excess not reproduced": the 95 % interval of C − A is not above 0. The excess of 7.29 does not appear with the
+   settings of today (stray field, tolerances, cycle rule); the D − A values are reported, no class 2 … 4.
+2. "The correction removes the excess": the 95 % interval of D − C lies below 0, and the 95 % interval of D − A
+   contains 0 (no remaining difference larger than the detection limit).
+3. "The correction does not remove the excess": the 95 % interval of D − C does not lie below 0, and the 95 %
+   interval of D − A lies above 0.
+4. "Partly removed": the 95 % interval of D − C lies below 0 and that of D − A above 0.
+5. Else "not determined".
+After the test (each step needs a go of Chris): class 2 → the corner step with the correction (draft exists); class 3
+→ the correction is not usable in this form for the β study, report with options; classes 1, 4, 5 → report with
+options (more seeds, a finer voxel arm as reference).
+
+**Cost (estimate).** Times from the 7.29 runs (5 cycles of about 215 s with the old code), the nx relaxations of 4.15
+(1862 … 4726 s at mesh 152 … 156³ before AS5) and the measured time per RKF45 stage of AS5 (staircase PLAN 16, scaled
+with the cell count to 148³): 4 preparations about 0.2 … 0.6 h each; A and C jobs about 8 cycles of about 105 s plus a
+short relaxation, about 0.3 h; D jobs about 8 cycles of about 310 s plus set-up and relaxation, about 0.9 h (q 8
+needs about 3 times the time per stage of A, and up to 16 % more tries). Sum about 20 … 25 GPU-h. On 8 GPUs about
+3 … 4 h of wall time, on 4 GPUs about 6 … 7 h. With the set-up of the box about 2 … 3 $ at a price below 0.07 $ per
+GPU-h.
+
+**Data and end.** Download of the small files of the 40 jobs (config.json, summary.json, stdout.log, samples) and of
+the evaluation, with md5; no state files. The box stays for a next step only with a go of Chris; its destroy needs
+his go.
+
+**Not in this plan.** A finer voxel arm (dx 1.5, mesh 296³), other geometries, the production preparation, the corner
+step.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
