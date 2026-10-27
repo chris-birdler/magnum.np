@@ -1,0 +1,12 @@
+DEBUG    torch.__trace:utils.py:1806
+=============================== warnings summary ===============================
+tests/unit/eigensolver_test.py::test_spectrum
+tests/unit/eigensolver_test.py::test_absorption
+  /tmp/claude-1000/-home-christoph-Documents-code-magnum-np-powder/8923aced-d69a-40c5-9b21-05b5fb54ea0d/scratchpad/venv271/lib/python3.12/site-packages/torch/utils/_device.py:104: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+    return func(*args, **kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/unit/eigensolver_test.py::test_singlespin_aniso - scipy.sparse.l...
+1 failed, 192 passed, 2 warnings in 1339.12s (0:22:19)
+rc=1

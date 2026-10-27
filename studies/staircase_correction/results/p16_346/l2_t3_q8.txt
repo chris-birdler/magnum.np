@@ -1,0 +1,3 @@
+blocks             equal
+small budget       equal
+fq_check: PASS (all md5 equal)

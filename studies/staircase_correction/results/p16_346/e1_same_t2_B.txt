@@ -1,0 +1,1 @@
+same /root/p16/t2/e1_AS3_B.pt /root/p16/t2/e1_AS5_B.pt: 16 states, 0 differences

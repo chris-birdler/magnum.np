@@ -1,0 +1,9 @@
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+45 passed, 2 warnings in 230.62s (0:03:50)
+--- AS3
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+37 passed, 2 warnings in 199.71s (0:03:19)
+
+[exited with code 0]

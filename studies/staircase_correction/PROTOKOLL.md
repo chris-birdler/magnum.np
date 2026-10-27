@@ -3528,3 +3528,197 @@ here; the full output is results/t2_b_noise_345.txt):
     (c) AS3    RMS  13.21; largest k0  16  +29.6 (31 % of the sum of squares); mean +0.68 +- 3.41 (+0.20 SE); e 1.173e-03
     (d) 5 trees in A, 9 others; correlation within A 0.82 ... 0.96 (mean 0.89), A-others mean 0.33, within the others mean 0.75; RMS of the group mean A 12.80, others 7.81, ratio 1.64 (95 % 1.20 ... 2.23); states with one sign: in all trees 7, in A 13
     (e) RMS ratio AS2 / c63: 2.18; without k0 8 in both: 1.61
+
+### 3.46 PLAN 16: release rules, patches G and Q, verification of AS5 and final speed measurement (2026-10-26 … 2026-10-27 05:00 UTC; mandate of Chris)
+
+**Mandate.** PLAN 16 (Chris, 2026-10-26): very conservative rules that a correct patch can meet; bitwise equal where
+this is possible, else below the rounding error, and this must be shown, not reached by chance; compute on box 11
+(GPU or CPU), not locally. Later messages of Chris on the same day: a final speed measurement after the verification
+(start code, ABP, AS5); then download the results with md5 and destroy box 11 (dedicated go, about 17:45 UTC); "if a
+verification fails, try to fix it, as far as possible on your own". A merge to main needs a separate go.
+
+**Code.** Branch perf/speed2 after AS3 (b753fa9): G 9c12fc7 (DemagField.h without out= when autograd records),
+Q 7792c21 (centroid_offsets counts the body sub-cells in blocks of cells). Tree AS5 = 7792c21. Rules, scripts and
+the review: PLAN.md section 16 (76f4365, b72ae47).
+
+**Finding on ABP (fixed by G).** Since A2 (part of the released ABP), DemagField.h writes the product M = Ms m with
+out=. F2 (AS2, AS3) also writes the inverse transforms with out=. Autograd does not accept out=:
+inverse_test::test_linear_fieldterms[DemagField] stops with "RuntimeError: mul(): functions with out=... arguments
+don't support automatic differentiation". Thus ABP gives an error, not a wrong value, when m or Ms requires a
+gradient (inverse problems). Forward runs (all production runs of the studies) do not record a gradient and are not
+affected. G uses the products without out= only in this case. The path without a gradient is unchanged (E1 below).
+
+**Results.** (Output files in results/p16_346/ unless a file is named.)
+- L1, local (CPU, torch 2.7.1):
+  - tests/unit: 192 passed, 1 failed (22 min; l1_unit_summary.txt). The failure is
+    eigensolver_test::test_singlespin_aniso (ARPACK error 3). This is the known flake of the base code (about 25 % of
+    the runs; fix b376ffa on fix/preexisting-issues, not on perf/speed2). The single-spin case returns before the
+    demag code that G changes. Alone, the test passed 3 of 3 times on AS3 and 3 of 3 times on AS5 (session output,
+    not kept). demag_test and eigensolver_test together: AS5 45 passed, AS3 37 passed (l1_demag_eigensolver.txt; the
+    difference is the 8 cases of the new G test). PLAN 16 names only rkky_test as a known exception: see "Deviations".
+  - The new G test (float64 and float32, with and without PBC, gradient for m and for Ms; 8 cases) passes: the field
+    with autograd equals the field without it within 1e-13 (float64) and 1e-5 (float32) of the largest value; the
+    gradients equal dE/dm = −μ0 Ms V h and dE/dMs = −μ0 V m·h. inverse_test passes.
+  - test_staircase.py: all pass (the FQ test extended for Q: a partial last count block, occ as a tensor).
+- L2, local (CPU): fq_check.py AS3 against AS5 (md5 of the centroid offsets, B, V, S, T, rows, _d, _v) on T3 at
+  q 2, 4, 8 and on N 108 at q 4: 4 of 4 pass (l2_*.json, l2_*.txt).
+- E1, box (bitwise; r16_eval.py --same):
+  - T1 (double precision) and T2 (single precision, 3 repetitions) of AS5 against AS3, run again beside it, on the
+    original B and A states. T1: 16 state files each for B and A, 0 differences. T2: 16 states each, 0 differences.
+  - Control: AS5 T2 against the AS3 T2 files of PLAN 15 (w2/t2/B/AS3.pt, w2/t2/A/AS3.pt): 0 differences on B and on
+    A. The md5 of the 21 PLAN 15 files on the box agree with the local copies in D15.tgz and D16.tgz (w2check.txt).
+  - Speed traces (t, tries, <Ms m_x>, accepted steps; 126 sample intervals): AS5 r1 in off108, off156, q4_108,
+    q4_156 and q8_108 is bitwise equal to each of the 3 AS3 runs of W5. The final speed measurement (below) adds:
+    all 3 AS5 runs equal all 3 AS3 runs of W5 in all 6 configurations (also q8_156), and all 3 ABP runs equal those
+    of W5.
+  - The sub-check of the compiled kernel files was not usable: see "Deviations".
+  - T5: config.json of the 18 AS5 speed runs differs from that of AS3 r1 of W5 only in git_commit, magnumnp_path and
+    out (t5_config.txt). git_commit of AS5 is "b753fa9-dirty", because the tree AS5 on the box is a copy of AS3 with
+    the changed files. Its files are md5-equal to 7792c21 in 229 of 230 files. The exception is
+    tests/unit/demag_test.py: the box has an earlier version of the new G test (as5_tree_vs_7792c21.txt). It is not
+    production code and does not run on the box (no pytest).
+- E2, box GPU (d23.sh): fq_check.py AS3 against AS5 on T3 at q 2, 4, 8, 16, on N 108 at q 4, 8, 16 and on N 156 at
+  q 4 and 8: 9 of 9 pass (all md5 equal; e2_*.json). The q 16 N 108 check took 78 min. The set-up is equal (AS3
+  1038 s, AS5 1030 s). The rest is the self-test of fq_check with a small budget (3 cells per block), not
+  production. The CPU version on the box (d21.sh) was too slow under the CPU quota of the container (19.2 CPUs;
+  t3_q2 took more than 9 min, local 11 s). I stopped it by its PIDs.
+- Calibration on the A states (box, d23.sh): all 11 pairs of the PLAN 14 A chain (9b1, its null run, A_31a, A_3d9,
+  A_a1f, AB off, AS1, AS2, AS3) pass R2 and R3 (cal/*.txt), as the B pairs before (PLAN 16 section).
+- C1, box (the decision on new data). The states are m + 1e-7 r (seed 3). perturb_ref.py gives PASS for A and B:
+  about 98.8 % of the float32 values of the magnetic cells changed, the void is unchanged (perturb_*.txt).
+  r16_eval.py (md5 6d228f21…) was on the box before the data existed.
+  - R1 (T1, AS5 against ABP, double precision; c1_r1_*.txt): B, worst state of 16: RMS 8.97e-7 cu, max 8.22e-6 cu
+    (bounds 1e-3, 1e-1), norm 6.7e-10 (bound 1e-6), same branches: pass. A: RMS 6.37e-7 cu, max 6.11e-6 cu, norm
+    3.1e-10, same branches: pass.
+  - R2 (accuracy, AS5 against ABP, 16 states, 3 repetitions; c1_r23_*.txt): B: e ratio 0.986 (dx) … 1.000 for the
+    deterministic quantities (bound 1.10); err 0.994, err_rms 0.989, norm 1.076 (bound 1.25). A: 0.9996 … 1.0072
+    (dx); err 1.000, err_rms 1.001, norm 1.024. Pass.
+  - R3 (systematic part): pass for all quantities, by (a) in all. In the term fields and the energies, AS5 and ABP
+    have the same mean b: |mean d| is at most 7.7e-10, that is 0.013 u with u 5.96e-8, and exactly 0 in most of
+    them. Largest |mean d| / limit: B stage2 0.31, dx 0.21; A stage3 0.33, stage6 0.24.
+  - Information: AS3 against ABP on the original PLAN 15 B data with the same rules: pass (info_r23_w2_B.txt;
+    largest |mean d| / limit: stage2 0.72, dx 0.42).
+  - Information (r16_corr.py; r16_corr.txt): correlation of b over the 16 B states between the original and the
+    perturbed states, for ABP. Term fields 0.44 … 1.00, energies 0.40 … 1.00, stage values 0.27 … 0.84 (stage4 …
+    stage6 0.79 … 0.84), dx 0.04, err 0.15. The data do not split into "fields a repeat, stage values a new draw":
+    stage4 … stage6 correlate more than h0, h2 and E3. New draws are mainly stage2, dx and err. The term fields and
+    the energies have almost the same mean b in C1 and in the original data (h0: −1.46e-7 and −1.50e-7). For them,
+    C1 is close to a repeat of the systematic part, and the margins carry the decision (e ratios 0.995 … 1.000,
+    |mean d| at most 0.013 u).
+- R4: no new runs. AS5 is bitwise equal to AS3 on the production path (E1). Thus the W4 result of AS3 (0.94 … 1.21 ×
+  ABP, bound 2 ×) holds for AS5.
+- WQ, q 16 at N 156 with AS5 (box, d25.sh; information; n 3 for the speed, n 1 for the rest):
+  - Transfer state T17_q16_156 (00:27 … 01:16 UTC). Method of d16.sh: step_dump --at 1 with the tree ASW5, that is
+    the magnumnp package of AS5 (63 files, md5-equal) and the study folder of B_det. The relaxation did not converge
+    in 6000 iterations (2845 s wall; --allow_unconverged, as for the transfers T16_q16_108 and T_q8_108). Peak GPU
+    memory 13295 MiB (nvidia-smi, with the CUDA context). Peak container memory 33.6 GiB; the container limit is
+    82.9 GiB (3.44). Before Q, the same transfer was stopped by the OOM killer (exit code 137, 3.44). Q removes the
+    int64 copy of 124 GB.
+  - Speed q16_156 (3 runs): 11.410 / 11.414 / 11.395 ms per stage, mean 11.406 ± 0.006 (SE); 1450.7 ± 0.7 ms per
+    sample interval; 21.20 tries per sample interval. Set-up 2027 … 2038 s. Peak GPU memory 11.08 GiB allocated,
+    12.65 GiB reserved (nvidia-smi 13349 MiB). Container memory at most 34.5 GiB. Halves at most 0.3 %. The 3 traces
+    are bitwise equal.
+  - Symmetry of the pair operator (sym_check.py, float64, 2 random fields): relative asymmetry 7.20e-12. The script
+    compares with the unit-test bound 1e-12 (set for small q), writes FAIL and exits with code 1. This is
+    information, no rule. PLAN 15 at q 16, N 108: 4.38e-11. Set-up in float64 1924 s. Peak GPU memory 10.58 GiB
+    allocated, nvidia-smi 15567 MiB (95 % of the 16-GB GPU; only this float64 diagnosis, not production). Peak
+    container memory 35.8 GiB, the highest value of WQ.
+
+**Deviations from PLAN 16 (found after the data; for the release by Chris).**
+1. L1: PLAN 16 allows only rkky_test as a known exception. The full run had 1 fail in
+   eigensolver_test::test_singlespin_aniso (known flake of the base code, cause above). The code of G and Q is not
+   on its path, and the test passes alone 3 of 3 times on AS3 and on AS5. My recommendation: accept; the fix of the
+   flake (b376ffa) stays on fix/preexisting-issues.
+2. E1: PLAN 16 requires that the compiled kernel files that AS3 and AS5 add to copies of one inductor cache have
+   equal names and md5. kcmp.py (after E1 ran) shows that this check cannot pass even for equal code: the control,
+   two caches of the same tree AS3, differs in 90 of 143 files, because the files contain the path of their cache
+   (session output, recorded in the commit b72ae47). Thus the check gives no information. E1 rests on the bitwise
+   T1, T2 and trace results. My recommendation: remove this sub-check from the rule.
+
+**Result.** L2, E1 (without the kernel-file sub-check), E2 and C1 pass, L1 passes with deviation 1, and R4 holds by
+E1. AS5 (7792c21) gives the same values as AS3 on the production path, bitwise. PLAN 16 makes AS5 the production code
+when all checks pass. Because of the 2 deviations, the release needs Chris. My recommendation: release AS5. A merge
+to main needs a separate go of Chris.
+
+**Final speed measurement (d24.sh, d25.sh).** Source of the request: Chris, 2026-10-26. Method of W5 (section 15)
+with the halves rule of section 14 (at most 10 %); not in the text of PLAN 16. Set-up:
+- box 11, Tesla V100-SXM2 16 GB; prof_step.py --skip 30 --plain 96 --window 0 --trace; single precision;
+- one run on the GPU at a time, the codes in turn; n 3 processes for each code and configuration; mean ± SE;
+- gain = time of the other code / time of AS5, SE from the two SEs;
+- start code: M_9e0 (main 9e0ea7c, correction off) in off108 and off156, B_c63 (c63e862, correction on) in q4_108
+  and q4_156; the start code does not fit at q 8;
+- evaluation speed16_eval.py (speed16.txt, speed16.json).
+
+| configuration | start code ms per stage | ABP ms per stage | AS5 ms per stage | gain start / AS5, per stage | per sample interval | gain ABP / AS5, per stage | per sample interval | tries per sample interval start / ABP / AS5 | halves, largest |
+|---|---|---|---|---|---|---|---|---|---|
+| off108 | 2.465 ± 0.003 | 2.544 ± 0.008 | 1.793 ± 0.087 | 1.375 ± 0.067 | 1.435 ± 0.069 | 1.419 ± 0.069 | 1.429 ± 0.069 | 21.81 / 21.05 / 20.91 | 0.5 % |
+| off156 | 7.573 ± 0.002 | 7.175 ± 0.007 | 3.699 ± 0.003 | 2.048 ± 0.002 | 2.138 ± 0.002 | 1.940 ± 0.002 | 1.946 ± 0.002 | 22.08 / 21.21 / 21.15 | 0.1 % |
+| q4_108 | 29.235 ± 0.007 | 7.770 ± 0.008 | 4.469 ± 0.077 | 6.542 ± 0.113 | 6.844 ± 0.121 | 1.739 ± 0.030 | 1.737 ± 0.030 | 23.32 / 22.27 / 22.29 | 1.5 % |
+| q4_156 | 73.085 ± 0.009 | 20.364 ± 0.003 | 10.358 ± 0.013 | 7.056 ± 0.009 | 7.429 ± 0.012 | 1.966 ± 0.003 | 1.991 ± 0.003 | 22.24 / 21.40 / 21.12 | 0.1 % |
+| q8_108 | – | 8.063 ± 0.070 | 4.880 ± 0.098 | – | – | 1.652 ± 0.036 | 1.660 ± 0.036 | – / 21.66 / 21.56 | 2.4 % |
+| q8_156 | – | 21.089 ± 0.003 | 11.091 ± 0.006 | – | – | 1.901 ± 0.001 | 1.889 ± 0.001 | – / 24.48 / 24.64 | 0.1 % |
+| q16_108 | – | – | 4.995 ± 0.050 | – | – | – | – | – / – / 21.19 | 3.3 % |
+| q16_156 | – | – | 11.406 ± 0.006 | – | – | – | – | – / – / 21.20 | 0.3 % |
+
+- Set-up (s, range of 3): start code 12 (off108), 13 (off156), 33 … 35 (q4_108), 76 … 77 (q4_156); ABP 13 … 15, 14,
+  21 … 24, 27 … 28, 59, 102 … 103; AS5 13, 14, 26, 31, 64 … 69, 109 … 110, 1052 (q16_108), 2027 … 2038 (q16_156).
+  Peak GPU memory allocated (GiB) start code / ABP / AS5: off108 0.33 / 0.39 / 0.36, off156 0.98 / 1.14 / 1.06,
+  q4_108 4.97 / 4.46 / 4.46, q4_156 9.90 / 8.94 / 8.95, q8_108 – / 5.17 / 5.17, q8_156 – / 10.37 / 10.38; AS5
+  q16_108 5.58, q16_156 11.08.
+- The halves rule holds in all runs. The 3 traces of each code are bitwise equal, except B_c63 (its CSR product
+  adds with atomic operations; 3.45).
+- Tries per sample interval: the start code has 4.3 … 5.3 % more tries than AS5 in all 4 configurations. Cause: A4
+  (no try past the end of the interval; 3.41, D7). ABP against AS5: −0.7 … +1.3 %, with both signs (another rounding
+  path in single precision changes the step control). The traces are bitwise equal between the processes, so each
+  code gives one trajectory. The SE of the gain per sample interval contains no scatter between realisations; the
+  gain per stage is the gain of the code alone.
+- off108 scatters between the processes again (AS5 1.966 / 1.716 / 1.696 ms per stage; the two halves of each run
+  agree), as in W5. 3.44 gives a probable cause, not a proven one: the smallest configuration has many small kernels,
+  and the host side counts most. The gain in off108 has an SE of 5 %.
+- Repeat of W5 (AS5 = AS3 on the production path, bitwise; W5 measured ABP / AS3):
+  - AS5 against AS3 of W5: −3.1 % (q4_156) … +1.6 % (q8_108) in off156, q4_108, q4_156, q8_108, q8_156. ABP against
+    W5: −0.3 … +1.4 % in the same 5 configurations. The gains of W5 (ABP / AS3, 1.671 … 1.932 per stage) are
+    reproduced within 0 … 3 %.
+  - off108 against the W5 repeat with 100 sample intervals of warm-up (3.44): AS5 1.793 against AS3 1.974 ms per
+    stage (−9.2 %), ABP 2.544 against 2.744 (−7.3 %); gain 1.419 ± 0.069 against 1.391 ± 0.133.
+- q 16 against q 8 (AS5, n 3 each): N 108 +2.4 ± 2.3 % per stage (4.995 ± 0.050 against 4.880 ± 0.098), N 156
+  +2.8 ± 0.1 % (11.406 ± 0.006 against 11.091 ± 0.006). 3.44 gave +8 % at N 108 from 1 run of AS3 (5.207 ms per
+  stage, 4.2 % above the new mean of 3); the new value replaces it. The set-up is 16 … 19 × longer than at q 8
+  (1052 s at N 108, 3.44: 1070 s; 2032 s at N 156).
+
+**Notes and corrections.**
+- d22.sh (first try of WQ) stopped at once at the transfer check ("K4_2_sat/init.pt was relaxed with other
+  arguments: sat_static True -> False, h_sat 2.0 -> None"). This is the same error of my script as in the first WQ
+  try of PLAN 15 (3.44), not an error of the code. d25.sh used the transfer method of d16.sh (tree ASW5).
+- d22.sh, d23.sh and d25.sh write "exit $?" after "$(date …)" in the same echo. This writes the exit code of date,
+  always 0. Their outcomes come from the output files: cal/*.txt 11 × PASS; e2/*.json 9 × pass true; d25: the
+  transfer state, the 3 json files, logs without error text, and sym_check FAIL (its real exit code is 1). d20.sh and
+  d24.sh keep the exit code first (rc=$?).
+- Correction to 3.44: "all values equal" for F2 on the A states holds for the T1 state files (0 differences). The T2
+  files of AS1 and AS2 on the A states differ in 188 values by about 1e-23 (e, b and ref of h0 and h_eff). Cause: the
+  float64 sums of the evaluator follow the strides of h, and F2 changes the strides. The single-precision values
+  themselves are equal.
+
+**Data.**
+- All evaluation data of box 11 for PLAN 16: remote_20261027_box11/D17.tgz (md5 893950a5…, 527 files; the md5 list
+  D17/D17.md5 checked locally: all pass). The aggregate results are committed in results/p16_346/.
+- Not downloaded (raw states): the perturbed reference states p16/ref/refA_p3.pt and refB_p3.pt (4.27e9 bytes; md5
+  in D17_ref_on_box.md5); the T1 state files of E1 and C1 (deleted on the box after the evaluation, as in PLAN 15);
+  the transfer state T17_q16_156 (init.pt, prep_m.pt). These states and the K1 reference states (left on the box
+  after PLAN 14) are lost with the box. A new T1 or T2 needs a new reference run.
+- Box 11 (57396637) was destroyed on 2026-10-27 at about 03:50 UTC on the dedicated go of Chris. The account has no
+  instance left (credit 4.06 $).
+- Cost (0.162 $/h): PLAN 16 on the box 16:30 … 03:41 UTC, 11.2 h, about 1.8 $ (PLAN 16 estimate: 5 … 10 h; the final
+  speed measurement, d24.sh 19:45 … 00:27 UTC, 4.7 h, was not in that estimate). Before that, the box waited without
+  load from 05:13 to 16:30 UTC on 2026-10-26 (end of PLAN 15 to the start of PLAN 16), 11.3 h, about 1.8 $. From the
+  end of the runs to the destroy: 0.15 h.
+
+**Key numbers of PLAN 16.**
+- AS5 (7792c21) = AS3 bitwise on the production path (T1, T2, 6 × 3 speed traces).
+- C1 on new states: R1 RMS at most 9.0e-7 cu; R2 e ratios 0.986 … 1.007 (bound 1.10), norm 1.08 (bound 1.25); R3
+  pass.
+- G fixes the autograd error of ABP (inverse problems). Q: q 16 at N 156 runs on the V100 16 GB (11.1 GiB GPU,
+  34.5 GiB host).
+- Gain per sample interval of AS5 against the start code: off156 2.14, q4_108 6.84, q4_156 7.43, off108 1.44 ± 0.07.
+  Against ABP: 1.43 … 1.99.
+- Open for Chris: the release of AS5 with the 2 deviations (recommendation: release); the merge to main.

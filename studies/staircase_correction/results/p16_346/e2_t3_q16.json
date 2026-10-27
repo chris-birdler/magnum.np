@@ -1,0 +1,40 @@
+{
+ "N": 48,
+ "q": 16,
+ "p": 3,
+ "cut_cells": 17120,
+ "old": {
+  "centroid_offsets": "1723384f432263cb2f3f2bfcbca45f66",
+  "t_offsets_s": 3.0000633439995,
+  "peak_offsets_GiB": 0.5114846229553223,
+  "V": "805779df763a46620447ad1e36f10120",
+  "S": "aac76d6e718d1d50ccc28c97e9aa21b0",
+  "T": "549d7383ea9080639f6c5f50a4c227eb",
+  "rows": "79439634f9817b4658c37562f1a874f6",
+  "_d": "b34063498d5b80d56949cc91a17b229c",
+  "_v": "b729768cbcf419ea140c016cf96be1c9",
+  "B": "a731f72040b47da9a1699bf3456175d4",
+  "blocks": 6,
+  "t_setup_s": 198.20248740100214,
+  "peak_setup_GiB": 2.7610726356506348,
+  "peak_setup_reserved_GiB": 4.126953125
+ },
+ "new": {
+  "centroid_offsets": "1723384f432263cb2f3f2bfcbca45f66",
+  "t_offsets_s": 3.1597685669985367,
+  "peak_offsets_GiB": 0.5114846229553223,
+  "centroid_offsets_small_budget": "1723384f432263cb2f3f2bfcbca45f66",
+  "V": "805779df763a46620447ad1e36f10120",
+  "S": "aac76d6e718d1d50ccc28c97e9aa21b0",
+  "T": "549d7383ea9080639f6c5f50a4c227eb",
+  "rows": "79439634f9817b4658c37562f1a874f6",
+  "_d": "b34063498d5b80d56949cc91a17b229c",
+  "_v": "b729768cbcf419ea140c016cf96be1c9",
+  "B": "a731f72040b47da9a1699bf3456175d4",
+  "blocks": 6,
+  "t_setup_s": 202.1068133039953,
+  "peak_setup_GiB": 2.7610726356506348,
+  "peak_setup_reserved_GiB": 4.126953125
+ },
+ "pass": true
+}

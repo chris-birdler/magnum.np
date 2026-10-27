@@ -1,0 +1,1 @@
+same /root/p16/t1/e1_AS3_A /root/p16/t1/e1_AS5_A: 16 files, 0 differences
