@@ -32,6 +32,25 @@ def _llg_rhs(m, h, alpha, no_precession: bool):
     return dm
 
 
+@torch.compile
+def _llg_rhs_sum(m, hs: list, alpha, no_precession: bool):
+    """_llg_rhs for the sum of the fields hs, in one pass: the field sum (in the order of hs) and the cross products
+    are written out, so that torch.compile fuses them into one kernel (torch.linalg.cross is not fused)."""
+    h = hs[0]
+    for f in hs[1:]:
+        h = h + f
+    gamma_prime = constants.gamma / (1. + alpha**2)
+    # components with the last axis of size 1, so that alpha broadcasts as in _llg_rhs (a scalar or [..., 1])
+    mx, my, mz = m[...,0:1], m[...,1:2], m[...,2:3]
+    hx, hy, hz = h[...,0:1], h[...,1:2], h[...,2:3]
+    cx, cy, cz = my*hz - mz*hy, mz*hx - mx*hz, mx*hy - my*hx      # m x h
+    a = -alpha * gamma_prime
+    dx, dy, dz = a * (my*cz - mz*cy), a * (mz*cx - mx*cz), a * (mx*cy - my*cx)  # -alpha gamma' m x (m x h)
+    if not no_precession:
+        dx, dy, dz = dx - gamma_prime*cx, dy - gamma_prime*cy, dz - gamma_prime*cz
+    return torch.cat([dx, dy, dz], dim=-1)
+
+
 class LLGSolver(object):
     def __init__(self, terms, solver = RKF45, no_precession = False, **kwargs):
         """
@@ -64,10 +83,13 @@ class LLGSolver(object):
         state.t = t
         state.m = x
         alpha = alpha or state.material["alpha"]
+        # a tensor subclass (the CoWTensor of a homogeneous parameter) as a plain view of the same storage: torch.compile
+        # does not trace the subclass, and without this view only the field sum of _llg_rhs_sum is compiled (PLAN 15 F3)
+        if isinstance(alpha, torch.Tensor) and type(alpha) is not torch.Tensor:
+            alpha = alpha.as_subclass(torch.Tensor)
 
-        h = accumulate_h(term.h(state) for term in self._terms)
-
-        return _llg_rhs(state.m, h, alpha, self._no_precession)
+        # all fields at once (one more full field per term than accumulate_h) for one fused pass
+        return _llg_rhs_sum(state.m, [term.h(state) for term in self._terms], alpha, self._no_precession)
 
     def E(self, state):
         return sum([term.E(state) for term in self._terms])

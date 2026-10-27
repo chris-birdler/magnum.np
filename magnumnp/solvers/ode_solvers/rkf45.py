@@ -22,6 +22,27 @@ from magnumnp.common import logging
 
 __all__ = ["RKF45"]
 
+# one compiled pass for each combination of the stages (audit item A3); the coefficients are constants, and dt stays
+# outside (a new float value would compile again)
+@torch.compile
+def _lincomb(x, ks: list, c: tuple):
+    """x + c_1 k_1 + c_2 k_2 + ... (in this order)"""
+    r = x
+    for ci, ki in zip(c, ks):
+        r = r + ci * ki
+    return r
+
+@torch.compile
+def _step_end(x, k1, k3, k4, k5, k6):
+    """x + dx and the error estimate of the embedded 4th-order solution"""
+    dx = 16./135.*k1 + 6656./12825.*k3 + 28561./56430.*k4 - 9./50.*k5 + 2./55.*k6
+    rk_error = dx - (25./216.*k1 + 1408./2565.*k3 + 2197./4104.*k4 - 1./5.*k5)
+    return x + dx, rk_error
+
+@torch.compile
+def _error_norm(err, x, atol: float, rtol: float):
+    return (err / (atol + rtol*x.abs())).abs().amax()
+
 #Runge-Kutta-Fehlberg method with stepsize control
 class RKF45(object):
     def __init__(self, f, dt = 1e-15, atol = 1e-5, rtol = 1e-5):
@@ -42,20 +63,19 @@ class RKF45(object):
         f, dt = self._f, self._dt
         kwargs["state"]._dt = dt  # update current dt in state used by thermal field class
         k1 = dt * f(t,              x, **kwargs)
-        k2 = dt * f(t +  1./ 4.*dt, x +      1./ 4.*k1, **kwargs)
-        k3 = dt * f(t +  3./ 8.*dt, x +      3./32.*k1 +      9./32.*k2, **kwargs)
-        k4 = dt * f(t + 12./13.*dt, x + 1932./2197.*k1 - 7200./2197.*k2 + 7296./2197.*k3, **kwargs)
-        k5 = dt * f(t +      1.*dt, x +   439./216.*k1 -          8.*k2 + 3680./ 513.*k3 -  845./4104.*k4, **kwargs)
-        k6 = dt * f(t +  1./ 2.*dt, x -    8. / 27.*k1 +          2.*k2 - 3544./2565.*k3 + 1859./4104.*k4 - 11./40.*k5, **kwargs)
+        k2 = dt * f(t +  1./ 4.*dt, _lincomb(x, [k1], (1./4.,)), **kwargs)
+        k3 = dt * f(t +  3./ 8.*dt, _lincomb(x, [k1, k2], (3./32., 9./32.)), **kwargs)
+        k4 = dt * f(t + 12./13.*dt, _lincomb(x, [k1, k2, k3], (1932./2197., -7200./2197., 7296./2197.)), **kwargs)
+        k5 = dt * f(t +      1.*dt, _lincomb(x, [k1, k2, k3, k4], (439./216., -8., 3680./513., -845./4104.)), **kwargs)
+        k6 = dt * f(t +  1./ 2.*dt, _lincomb(x, [k1, k2, k3, k4, k5], (-8./27., 2., -3544./2565., 1859./4104., -11./40.)), **kwargs)
 
-        dx = 16./135.*k1 + 6656./12825.*k3 + 28561./56430.*k4 - 9./50.*k5 + 2./55.*k6
-        rk_error = dx - (25./216.*k1 + 1408./2565.*k3 + 2197./4104.*k4 - 1./5.*k5)
-        return x+dx, t+dt, rk_error
+        x1, rk_error = _step_end(x, k1, k3, k4, k5, k6)
+        return x1, t+dt, rk_error
 
     def _optimal_stepsize(self, x, err, atol, rtol):
         # single device sync per attempted step; all step-size control
         # afterwards is plain python float arithmetic
-        norm = float(torch.linalg.norm((err / (atol + rtol*x.abs())).flatten(), torch.inf))
+        norm = float(_error_norm(err, x, atol, rtol))
         if math.isnan(norm):
             raise RuntimeError("Unexpected error norm= %.5g!" % norm)
 
@@ -86,6 +106,9 @@ class RKF45(object):
     def step(self, t, x, dt, rtol = None, atol = None, **kwargs):
         remaining = float(dt) # track remaining time in python to avoid device syncs
         while remaining > 0.:
+            if self._dt > remaining:
+                # a try past the end of the interval is always rejected below; try the rest directly
+                self._dt = remaining
             _x1, _t1, err = self._try_step(t, x, **kwargs)
             if atol == None:
                 atol = self._atol

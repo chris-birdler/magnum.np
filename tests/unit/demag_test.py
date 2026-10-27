@@ -3,6 +3,7 @@ import pathlib
 import torch
 from magnumnp import *
 from magnumnp.field_terms.demag import newell, f, g
+import magnumnp.field_terms.demag as demag_module
 import numpy as np
 
 
@@ -355,3 +356,131 @@ def test_true_pbc_extrapolated_kernel():
     state.m = m.clone()
     with pytest.raises(ValueError):
         DemagField(true_pbc=True, extrapolate=True).h(state)
+
+
+def _h_reference(dem, state):
+    """h() of DemagField before the fused kernel product (audit item A2): loop over the components, the block term
+    of true_pbc as a separate term."""
+    dim = [i for i in range(3) if state.mesh.n[i] > 1]
+    s = [dem._shape(state)[i] for i in dim]
+    M = state.material["Ms"] * state.m
+    hk = [0, 0, 0]
+    for ax in range(3):
+        mk = torch.fft.rfftn(M[..., ax], dim=dim, s=s)
+        for i in range(3):
+            hk[i] = hk[i] + dem._N[i][ax] * mk
+    h = torch.stack([torch.fft.irfftn(x, s=s, dim=dim)[:state.mesh.n[0], :state.mesh.n[1], :state.mesh.n[2]]
+                     for x in hk], dim=3)
+    if dem._true_pbc:
+        from magnumnp.field_terms.demag import block_demag_factors
+        h = h + torch.tensor(block_demag_factors(state), dtype=h.dtype) * M.mean(dim=(0, 1, 2))
+    return h
+
+
+@pytest.mark.parametrize("dtype, tol", [(torch.float64, 1e-12), (torch.float32, 1e-5)])
+@pytest.mark.parametrize("pbc, kw", [((2, 2, 2), {"true_pbc": True, "extrapolate": True}),
+                                     ((1, 1, 1), {"true_pbc": True}),
+                                     ((1, 1, 1), {}),
+                                     ((0, 0, 0), {}),
+                                     ((2, 0, 1), {})])
+def test_fused_h_against_reference(dtype, tol, pbc, kw):
+    """The fused kernel product (1/n and the block term of true_pbc in the kernel) gives the field of the loop over
+    the components within round-off (PLAN 11, S1): random m, a varying Ms with a void, periodic and open."""
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        _check_fused_h(dtype, tol, pbc, kw)
+    finally:
+        torch.set_default_dtype(default)
+
+
+def _check_fused_h(dtype, tol, pbc, kw):
+    n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+    g = torch.Generator().manual_seed(1)
+    state = State(Mesh(n, dx, pbc=pbc))
+    ms = 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)
+    ms[:2, :2, :2] = 0.
+    state.material = {"Ms": ms}
+    r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+    state.m = r / r.norm(dim=-1, keepdim=True)
+    dem = DemagField(p=2, **kw)
+    h = dem.h(state)
+    h_ref = _h_reference(dem, state)
+    assert float((h - h_ref).abs().max() / h_ref.abs().max()) < tol
+    E, E_ref = float(dem.E(state)), float((-0.5 * constants.mu_0 * ms * state.m * h_ref * state.mesh.cell_volumes).sum())
+    assert abs(E / E_ref - 1) < tol
+
+
+@pytest.mark.parametrize("dtype", [torch.float64, torch.float32])
+def test_pbc_h_view_bitwise_equals_stack(dtype):
+    """PLAN 15 F2: with PBC (no padding) h is a view [nx, ny, nz, 3] on a buffer with the component first, bitwise
+    equal to the stacked form of the inverse transforms; each call gives a new buffer (_last stays valid)."""
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+        g = torch.Generator().manual_seed(2)
+        state = State(Mesh(n, dx, pbc=(2, 2, 2)))
+        state.material = {"Ms": 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)}
+        r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+        state.m = r / r.norm(dim=-1, keepdim=True)
+        dem = DemagField(p=2, true_pbc=True, extrapolate=True)
+        h = dem.h(state)
+        assert h.shape == n + (3,) and not h.is_contiguous() and h.dtype == dtype
+        # the stacked form of the same transforms (the code before F2)
+        s = list(n)
+        M = (state.m * state.material["Ms"]).permute(3, 0, 1, 2).contiguous()
+        m_fft = [torch.view_as_real(torch.fft.rfftn(M[ax], dim=[0, 1, 2], s=s)) for ax in range(3)]
+        hs = [torch.fft.irfftn(torch.view_as_complex(hk), s=s, dim=[0, 1, 2], norm="forward")
+              for hk in demag_module._kernel_product(dem._N_h, m_fft)]
+        h_ref = torch.stack(hs, dim=3)
+        ib = torch.int64 if dtype == torch.float64 else torch.int32
+        assert torch.equal(h.contiguous().view(ib), h_ref.view(ib))
+        state.m = state.m.clone()
+        h2 = dem.h(state)
+        assert h2.data_ptr() != h.data_ptr() and torch.equal(h2, h)
+    finally:
+        torch.set_default_dtype(default)
+
+
+@pytest.mark.parametrize("dtype", [torch.float64, torch.float32])
+@pytest.mark.parametrize("pbc", [False, True])
+@pytest.mark.parametrize("wrt", ["m", "Ms"])
+def test_h_with_autograd_equals_h_without(dtype, pbc, wrt):
+    """PLAN 16 G: when autograd records (m or Ms requires a gradient), h uses no out= (the products as new tensors,
+    the stacked inverse transforms) and equals the path without a gradient (tolerance: the autograd path can compile
+    other kernels; it is not the production path). E is quadratic in Ms m and the kernel is symmetric, so
+    dE/dm = -mu0 Ms V h and dE/dMs = -mu0 V m . h."""
+    default = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    try:
+        n, dx = (8, 6, 10), (1e-9, 1.5e-9, 1e-9)
+        g = torch.Generator().manual_seed(3)
+        state = State(Mesh(n, dx, pbc=(2, 2, 2) if pbc else (0, 0, 0)))
+        ms0 = 1e6 * (0.5 + torch.rand(n + (1,), generator=g, dtype=torch.float64)).to(dtype)
+        r = torch.randn(n + (3,), generator=g, dtype=torch.float64).to(dtype)
+        m0 = r / r.norm(dim=-1, keepdim=True)
+        dem = DemagField(p=2, true_pbc=True, extrapolate=True) if pbc else DemagField()
+        state.material = {"Ms": ms0.clone()}
+        state.m = m0.clone()
+        h_plain = dem.h(state)
+        x = (m0 if wrt == "m" else ms0).clone().requires_grad_(True)
+        if wrt == "m":
+            state.m = x
+        else:
+            state.material = {"Ms": x}
+        h_grad = dem.h(state)
+        assert h_grad.requires_grad and h_grad.shape == h_plain.shape
+        tol = 1e-13 if dtype == torch.float64 else 1e-5
+        scale = float(h_plain.abs().max())
+        assert float((h_grad.detach() - h_plain).abs().max()) <= tol * scale
+        dem.E(state).backward()
+        V = state.mesh.cell_volumes
+        if wrt == "m":
+            ref = -constants.mu_0 * ms0 * V * h_plain
+        else:
+            ref = -constants.mu_0 * V * (m0 * h_plain).sum(-1, keepdim=True)
+        tol_g = 1e-10 if dtype == torch.float64 else 1e-4
+        assert float((x.grad - ref).abs().max() / ref.abs().max()) < tol_g
+    finally:
+        torch.set_default_dtype(default)

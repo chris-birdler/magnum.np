@@ -105,7 +105,9 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "bloch_free_tries": 0,                                # 2026-10-18, Bloch points (Chris)
             "bloch_smooth": 0,                                    # 2026-10-19, Bloch points (Chris)
             "sat_static": False,                                  # 2026-10-19, static saturation (Chris)
-            "h_sat": None}                                        # 2026-10-20, PLAN 4.15 C1 (default 1 - phi)
+            "h_sat": None,                                        # 2026-10-20, PLAN 4.15 C1 (default 1 - phi)
+            "staircase": "none", "staircase_q": 2, "staircase_p": 3,  # 2026-10-20, staircase correction (Chris)
+            "staircase_centroid": False}
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer", "prep_only", "sat_check",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
@@ -117,7 +119,8 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "seed", "init_seed", "init_block", "protocol", "relax_maxiter", "relax_dm_tol", "relax_mode",
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
-             "bloch_free_tries", "bloch_smooth", "sat_static", "h_sat"]
+             "bloch_free_tries", "bloch_smooth", "sat_static", "h_sat", "staircase", "staircase_q", "staircase_p",
+             "staircase_centroid"]
 
 
 def init_key_diff(src_config, config, converged, late_predemag=False, late_smooth=False, late_sat=False):
@@ -147,7 +150,19 @@ def parse_args(argv=None):
                         "changes between meshes (PLAN 4.12 V3g)")
     g.add_argument("--surface", choices=["voxel", "fraction"], default="voxel",
                    help="voxel: staircase surface; fraction: surface cells carry their magnetic volume "
-                        "fraction f (8^3 samples); Ms, A, K_eff and K_p are scaled with f")
+                        "fraction f (8^3 samples; --staircase_q^3 with --staircase); Ms, A, K_eff and K_p are scaled "
+                        "with f")
+    g.add_argument("--staircase", choices=["none", "pair", "local", "fine"], default="none",
+                   help="near-field correction of the stray field for the cut surface cells (Donahue & McMichael 2007; "
+                        "studies/staircase_correction): pair = full pairwise form (their eq. 5), local = cell-local "
+                        "tensor (eqs. 8, 9); fine = reference model, the exact field of the fine staircase for the "
+                        "coarse m (one FFT on the mesh with q^3 times the cells per step; PROTOKOLL 3.18). Needs "
+                        "--surface fraction and a Newell --strayfield")
+    g.add_argument("--staircase_q", type=int, default=2, help="sub-cells per axis and cell of the correction")
+    g.add_argument("--staircase_p", type=int, default=3, help="half width of the correction window in cells")
+    g.add_argument("--staircase_centroid", action="store_true",
+                   help="far field with the first moment of the cut cells (moment at the centroid of the body part; "
+                        "studies/staircase_correction PROTOKOLL 3.7)")
 
     g = p.add_argument_group("reduced material")
     g.add_argument("--Leff_lex", type=float, default=18.0,
@@ -862,7 +877,12 @@ def main(argv=None):
         a_lex = N * args.dx_lex
     d, dx = d_lex * lex, args.dx_lex * lex
     rep = geometry_rep(args)
-    geo = locked_geometry(N, d, dx, rep, sub=8 if args.surface == "fraction" else 0)
+    if args.staircase != "none" and (args.surface != "fraction" or args.strayfield not in ("newell", "newell_ext")
+                                     or rep != 1 or args.strayfield_cycles not in (None, args.strayfield)):
+        sys.exit("ERROR: --staircase needs --surface fraction, a Newell --strayfield (also in the cycles) and no "
+                 "--geom_dx_lex")
+    sub = (args.staircase_q if args.staircase != "none" else 8) if args.surface == "fraction" else 0
+    geo = locked_geometry(N, d, dx, rep, sub=sub)
     ids = geo["ids"]
     mag = ids >= 0
     phi = geo["phi_vox"]
@@ -898,6 +918,24 @@ def main(argv=None):
 
     terms = [strayfield, ExchangeField()]
     term_names = ["demag", "exchange"]                    # PLAN 4.13 S5: names of the energy terms, same order
+    if args.staircase != "none":                          # near-field correction of the cut cells (staircase)
+        from magnumnp import DemagStaircaseCorrection
+        from geometry import fcc_subcells
+        q_s = args.staircase_q
+        # = staircase_cells(fcc_box(q_s N, d, dx / q_s)["ids"], q_s), without the fine mesh (bitwise equal; audit B5)
+        n_s, pid_s, occ_s = fcc_subcells(N, d, dx, q_s)
+        if not (np.array_equal(pid_s, ids.astype(np.int64)) and np.allclose(n_s / q_s**3, geo["frac"], atol=1e-6)):
+            sys.exit("ERROR: --staircase: the sub-cells do not agree with the fraction geometry")
+        if args.staircase == "fine":                      # reference: exact fine field instead of the coarse one
+            from magnumnp import DemagStaircaseFine
+            strayfield = DemagStaircaseFine(fcc_box(q_s * N, d, dx / q_s)["ids"] >= 0, q_s, Ms, true_pbc=True,
+                                            extrapolate=(args.strayfield == "newell_ext"))
+            terms[0] = strayfield
+        else:
+            terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
+                                                     centroid=args.staircase_centroid, demag=strayfield))
+            term_names.insert(1, "demag_corr")
+        del n_s, pid_s, occ_s
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
         ax_c, n_cubes = locked_cube_axes(ids, rep, args.dx_lex, a_lex, d_lex, L, args.seed)
@@ -1271,9 +1309,14 @@ def main(argv=None):
             if not src.exists():
                 sys.exit("ERROR: --init_transfer %s does not exist" % src)
             cf = torch.load(str(src), map_location="cpu")
-            if args.surface != "voxel":
-                sys.exit("ERROR: --init_transfer needs --surface voxel")
-            diff = [k for k in INIT_KEYS if k not in ("dx_lex", "relax_maxiter")
+            if args.surface != "voxel" and args.staircase == "none":
+                sys.exit("ERROR: --init_transfer needs --surface voxel (or the fraction surface of --staircase)")
+            # keys that may differ from the source: the mesh, and (staircase correction, PROTOKOLL 3.11) the surface
+            # model, the locked geometry and the preparation (the source state is already prepared)
+            free = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p",
+                    "staircase_centroid", "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries",
+                    "bloch_smooth", "init_mode")
+            diff = [k for k in INIT_KEYS if k not in free
                     and cf["config"].get(k, NEW_KEYS.get(k)) != config.get(k)]
             if diff:
                 sys.exit("ERROR: %s was relaxed with other arguments: %s" % (src, ", ".join(
@@ -1284,7 +1327,8 @@ def main(argv=None):
             if not (is_multiple(a_lex, dxf) and is_multiple(args.dx_lex, dxf)):
                 sys.exit("ERROR: dx %g l_ex of %s is not a divisor of dx %g and of a %g l_ex" % (dxf, src, args.dx_lex, a_lex))
             Nf = int(round(a_lex / dxf))
-            rep_f = int(round(args.geom_dx_lex / dxf)) if args.geom_dx_lex else 1      # the same locked geometry
+            g_src = cf["config"].get("geom_dx_lex")                                   # geometry of the source
+            rep_f = int(round(g_src / dxf)) if g_src else 1
             ids_f = locked_geometry(Nf, d, dxf * lex, rep_f)["ids"]
             m_c, tstats = transfer_m(cf["m"].numpy(), ids_f, ids)
             state.m = T(m_c)
