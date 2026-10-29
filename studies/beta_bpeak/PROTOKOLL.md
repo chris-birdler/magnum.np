@@ -8706,6 +8706,139 @@ amplitudes in the report):
   statements.
 - All arms use dx 3 l_ex. The mesh limit of 7.140 (point 6) holds for all arms.
 
+### 7.142 PLAN 4.16, high-field test of the staircase correction: class 1; at 100 mT the fraction surface gives less loss than the voxel staircase, the sign is opposite to 7.29 (2026-10-28/29)
+
+**Terms.** Arms as in PLAN 4.16: A = voxel staircase, C = fraction surface, D = fraction surface with the correction
+at q 8. All arms start from the relaxed voxel state `HFP_s<seed>` of their seed. "Factor" = ratio of the loss density
+P of two arms at the same seed and amplitude. P is the product of the drive frequency, K_d and w; the frequency and
+K_d are the same in all arms; thus the factor is the ratio of w. Δ ln w is in results/hf416.md. "Bloch flags" of a
+job = (the start state of the job has a Bloch point, a sample of the cycles has a Bloch point), the rule of
+eval_rough.py (ECS.stage_flags_b, all cycles from cycle 0). "Tail Bloch point" = a Bloch point at a sample of a
+cycle of the steady tail (the cycles that give w).
+
+**Run.** Box 58166116 (2 × V100-SXM2 16 GB, 0.209 $/h with storage), code main ef6422a. Speed check off156: 3.772 ms
+per stage, ratio 1.020 to box 11, pass. 4 preparation jobs and 36 jobs, all with a converged relaxation. No failed
+job and no retry. All 36 jobs have a value. Config check over all 36 jobs: besides name, out, seed, init_transfer,
+b_list, stages, device, surface and the staircase arguments, only phi_vox and n_cubes_per_particle differ (plan:
+allowed). Transfer record: 82752 of 2189824 particle cells (3.78 %) have no voxel source (plan: 3.8 %). The box was
+destroyed on 2026-10-29 after the download (mandate of Chris 2026-10-28: "mache den Test, werte alles aus, lade
+wieder alles runter, was wir brauchen, und dann destroy die Box wieder").
+
+**Deviations from PLAN 4.16.**
+1. Box: 2 × V100 16 GB at 0.094 $/GPU-h, not 4 × V100 32 GB below 0.07 $/GPU-h (decisions of Chris 2026-10-28: the
+   price limit raised, 16-GB V100 permitted, budget option 1). The plan criterion "peak GPU memory below 28 GiB" was
+   for a 32-GB GPU. Measured: GPU memory "used" of nvidia-smi (sampled each 10 s) at most 12006 MiB, in the D jobs
+   (73 % of 16 GiB); container memory at most 11.4 GiB. The plan reference (q8_156: 10.4 GiB) is a torch peak, a
+   different measure.
+2. Queue order: the 27 jobs of seeds 921 … 923 went into the queue when their 3 preparation jobs were done, before
+   HFP_s924 was done (no idle GPU). The 9 jobs of seed 924 went in after HFP_s924. The plan said: all 36 jobs after
+   all 4 preparations. Each job reads only the state of its own seed. Thus the order has no effect on a value.
+3. Run time and cost: 36.5 GPU-h in all (HFP 1.4, HFA 5.9, HFC 6.5, HFD 22.7). The estimate was 20 … 25 GPU-h. A and
+   C jobs took 0.42 … 0.63 h (estimate 0.3 h), D jobs 1.35 … 2.60 h (estimate 0.9 h). For D, two causes: the
+   relaxation after the transfer needs 15500 … 30500 iterations, and at 50 and 100 mT the time step of D is smaller
+   (observation 1 below). Box cost: about 4.1 $ (19.6 h × 0.209 $/h, estimate from the run time); the plan estimate
+   was 2 … 3 $. Chris added credit during the run.
+4. dispatcher.sh does not make the folder runs/. At the first start, run_queue.py stopped with FileExistsError, and
+   the post-processing loop could not write runs/ALERT. The log line said "exit code 0" (the known fault of `$?`
+   after `date`). I made runs/ by hand and started the dispatcher again. No job had started. After that, no ALERT
+   occurred. A patch is proposed; it has no go.
+
+**Result** (results/hf416.md, results/hf416.json). Paired by seed, n 4 seeds, factor = exp(mean Δ ln w), with the
+95 % interval of the t distribution:
+
+| comparison | 9 mT | 50 mT | 100 mT |
+|---|---|---|---|
+| C / A (fraction / voxel) | 0.60 [0.42, 0.85] | 0.42 [0.31, 0.56] | 0.43 [0.37, 0.49] |
+| D / A (fraction with correction / voxel) | 0.82 [0.59, 1.14] | 0.46 [0.30, 0.72] | 0.62 [0.48, 0.80] |
+| D / C | 1.37 [0.81, 2.31] | 1.10 [0.69, 1.76] | 1.44 [1.13, 1.84] |
+
+The SE of Δ ln w at 100 mT is 0.045 (C − A), 0.081 (D − A) and 0.077 (D − C). Δβ (mean ± SE [95 % interval], n 4):
+
+| comparison | 9 → 50 mT | 50 → 100 mT | 9 → 100 mT |
+|---|---|---|---|
+| C − A | −0.21 ± 0.05 [−0.39, −0.04] | +0.02 ± 0.12 [−0.35, +0.40] | −0.15 ± 0.04 [−0.28, −0.01] |
+| D − A | −0.34 ± 0.08 [−0.59, −0.10] | +0.41 ± 0.27 [−0.46, +1.28] | −0.13 ± 0.06 [−0.33, +0.08] |
+| D − C | −0.13 ± 0.03 [−0.22, −0.04] | +0.39 ± 0.20 [−0.25, +1.02] | +0.02 ± 0.06 [−0.16, +0.20] |
+
+The measured b_peak is between 1.8 % below and 0.8 % above the target (the largest deviation: HFD_s921_b9). With β
+of about 2, this changes ln w by at most 0.04.
+
+**Class at 100 mT: 1, "excess not reproduced".** The 95 % interval of C / A lies below 1, not above 1. In 7.29 the
+fraction surface gave more loss than the voxel staircase at 100 mT (Δ ln w +0.59 ± 0.10, factor 1.80, n 4). Now it
+gives less (factor 0.43). The sign has changed. By the plan, class 1 gives no class 2 … 4; the D / A values are
+reported above. The D / C values are not a reading of the plan; they are given with the Bloch points below.
+
+**Bloch points.**
+- Rule of the plan (Bloch flags). In 6 of the 12 pairs of seed and amplitude, the three arms do not have the same
+  flags: s921 at 50 and 100 mT, s923 at 100 mT, s924 at 9, 50 and 100 mT. Without these pairs, n is 3 at 9 mT, 2 at
+  50 mT and 1 at 100 mT; the class is "not determined" (results/hf416.md, second table). At 100 mT, D makes the flags
+  unequal in s921 and s923, and A and D in s924. The start state of s924 has 1 Bloch point in A and none in C and D
+  (the second relaxation in C and D removed it). The start state of s922 has 1 Bloch point in all three arms.
+- The flags do not show a lost Bloch point and do not look at the tail. Example: s922 at 100 mT has equal flags in
+  all arms, but A loses its Bloch point after cycle 1, C after cycle 0, and D keeps it in all 7 cycles.
+- Supplementary reading with tail Bloch points (not a rule of the plan). At 100 mT, A and C have no tail Bloch point
+  in any of the 4 seeds. C / A per seed is 0.47 (s921), 0.40 (s922), 0.45 (s923) and 0.40 (s924). Thus C / A at
+  100 mT (0.43 [0.37, 0.49], n 4) is not influenced by Bloch points in the tail. D has tail Bloch points at 100 mT in
+  all 4 seeds (2 of 2, 5 of 5, 2 of 5 and 4 of 5 tail cycles). Thus D / C and D / A at 100 mT contain the effect of
+  these Bloch points; the data cannot separate it from the effect of the correction.
+
+**Checks of the measuring method (local).**
+1. Reading rule. The 7.29 runs read with the 4.16 rule (steady tail, BAL_EVENT 0.20, at least 2 cycles) still give
+   the excess at 100 mT: R300f / M300_dx3 = 1.79 (s922), 1.46 (s923), 1.69 (s924). M300_dx3_s921_b100 has no steady
+   tail. Thus the reading rule does not cause the change of sign.
+2. Run health. Energy balance of the steady tail 0.96 … 1.11 in all 36 jobs. 7 … 10 cycles per job, no job at the
+   limit of 15 cycles. Steady tail 2 … 5 cycles. In 3 jobs the steady flag of the run is false (HFA_s921_b9,
+   HFC_s923_b100, HFD_s921_b100), but each has a steady tail of at least 2 cycles.
+3. Differences between the 7.29 runs and the 4.16 runs (config.json of M300_dx3_s921_b100 against HFA_s921_b100,
+   and of R300f_s921_b100 against HFC_s921_b100):
+   - stray field: 7.29 used DemagFieldPBC (finite differences; the commits 3f8c4bd and 5b1a13c have no
+     `--strayfield` option). 7.105 found its error at edges and corners. 4.16 uses `newell_ext` with 4 shells.
+   - tolerances: atol 1e-5 in 7.29; atol 1e-6, atol_cycles 1e-7, rtol_cycles 1e-6 in 4.16. relax_tol_E_abs 3e-10
+     and b_tol 0.01 are new in 4.16.
+   - cycles: 5 in 7.29; 7 … 15 with the cycle rule in 4.16.
+   - start state: in 7.29 each arm relaxed the virgin state in its own model. In 4.16 all arms start from the voxel
+     state HFP and relax it again in their own model.
+   - code: 599 commits from 3f8c4bd (M300_dx3) and 566 from 5b1a13c (R300f) to ef6422a.
+   - no effect on the model: `init_wait_h` (30 in M300_dx3, 5 in R300f) is only the wait time for the start file;
+     cos_theta_p changed, but K_p is 0.
+4. Both arms changed against 7.29. w of 4.16 / w of 7.29 at 100 mT, same seed: voxel A 1.37 (s922), 1.41 (s923), 1.76
+   (s924); fraction C 0.34 (s921), 0.31 (s922), 0.44 (s923), 0.41 (s924).
+5. Second relaxation after the transfer: A 1500 … 8000 iterations, C 11000 … 25000, D 15500 … 30500, thus C and D
+   need 2.8 … 15.7 times more iterations than A of the same seed. The change of m in this relaxation was not measured.
+
+**Observations about the correction (n 4 seeds; no cause is claimed).**
+1. Time step. Mean RKF45 step at 100 mT: D 2.97 … 3.66 ps, C 5.84 … 5.88 ps, A 4.73 … 5.13 ps; D / C per seed 0.51 …
+   0.63. At 50 mT: D 4.16 … 5.21 ps, C 6.03 … 6.07 ps. At 9 mT all arms 5.87 … 6.14 ps.
+2. Bloch points in the cycles. Of the 9 D jobs with a start state free of Bloch points (s921, s923, s924), 5 have
+   Bloch points at samples (s921 at 50 and 100 mT, s923 at 100 mT, s924 at 50 and 100 mT). Of the 6 such A jobs and
+   9 such C jobs, none. In A and C, only the Bloch points of the start state occur, and some of them go away during
+   the cycles.
+
+**Hypotheses for the change of sign (not tested; the data cannot separate them).**
+- (a) Stray field: the finite-difference stray field of 7.29 has its error at the surface cells, and the two surface
+  models put different charges into these cells.
+- (b) Start state: the transfer from the voxel state gives the fraction arms another relaxed state than a virgin
+  relaxation in the fraction model.
+- (c) Tolerances (atol, relax_tol_E_abs), drive control (b_tol), cycle rule, and other code changes between the
+  commits.
+A test that changes one factor at a time, with n 4, can separate them.
+
+**Consequences.**
+- By PLAN 4.16, class 1 gives a report with options. No step with the correction starts.
+- PLAN 4.17 stops by its precondition (class 2 is necessary). Its decisions D1 … D7 wait.
+- The decision of 7.29 (the fraction surface is not usable at dx 3 for high fields) rests on runs with the
+  finite-difference stray field. With today's settings, the excess of 7.29 does not occur. A new decision is for
+  Chris.
+- It is not known which surface model is nearer to the exact sphere at 100 mT. Only a finer reference can show this.
+
+**Data.** results/hf416.md and results/hf416.json (study branch). The small files of the 40 jobs (config.json,
+summary.json, stdout.log, samples and Bloch CSV) and the provenance of the box (prov416.tar: dispatcher log, job
+lists, memory logs, pip freeze, speed check) are local, with runs/MANIFEST_hf416.md5 (233 entries). The state files
+(init.pt and checkpoint.pt, 2.8 GB by `du` on the box) were not downloaded (plan). The destroy of the box deleted
+them.
+
+**Open for Chris.** The next step after class 1 (options in the chat of 2026-10-29); the dispatcher patch.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
