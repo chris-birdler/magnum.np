@@ -1822,6 +1822,288 @@ his go.
 **Not in this plan.** A finer voxel arm (dx 1.5, mesh 296³), other geometries, the production preparation, the corner
 step.
 
+### 4.17 Corner study and main study with the staircase correction at q 16 on two offline A100 machines (proposal 2026-10-29)
+
+**Terms.**
+- A100 machine: one of the two computers of Chris. Each has one A100 GPU with 80 GB, its own login and no internet
+  access. The names are machine A and machine B. Chris copies files to the machines and from them.
+- Transfer folder: the one folder that Chris copies to a machine. It holds the software archive, the code, the job
+  lists, the scripts and the reference files.
+- Software archive: one file in the transfer folder with Python, PyTorch and all Python packages.
+- Chain: the jobs of one machine. The queue (run_queue.py) runs them one after the other on the GPU of the machine,
+  with the post-processing and the checks of this plan.
+- Correction: the near-field correction of the stray field with the fraction surface (`--surface fraction --staircase
+  pair --staircase_p 3 --staircase_centroid`, code AS5 on main). In this plan at q 16 (`--staircase_q 16`), if no
+  other q is given.
+- q 8 twin: a run at q 8 that starts from the prepared state of the q 16 run with the same seed (its "source run").
+- BP: Bloch point.
+- Half-width: the half-width of the 95 % CI (t distribution) of the corner mean of β over all amplitudes. Target
+  (PLAN 4.15 D1): at most 0.10.
+- Corner difference: β(Ki) − β(K1), as in 4.15.
+- Steps and checks of this plan: W0 … W6 (work steps), C1 … C6 (code), A1 … A4 (checks on each A100 at the install),
+  V0 … V2 (checks before Chris gets the transfer folder), D1 … D7 (decisions of Chris).
+- off156, q16_156: the speed configurations of staircase PLAN 16 (start state K4_2_sat/init.pt, mesh 156³; without the
+  correction, and with the correction at q 16).
+- V100-h, A100-h: hours of one GPU. All times are estimates if they are not marked "measured".
+
+**Request and decisions of Chris (2026-10-29).**
+- Corner study and main study on the two A100 machines, with Newell true PBC and the correction. Chris copies one
+  transfer folder to each machine, installs, starts one script, and gets back one folder with all results,
+  evaluations and figures. In the normal case, nothing on the machines needs me.
+- q: option (c). The production runs use q 16. At each corner, the seed k = 0 runs also as a q 8 twin.
+- The machines have no internet. They are only for this work. Chris said that a run time of 10 days is possible.
+- Seeds: I choose them so that the estimate meets the target of the half-width.
+- Deck: all slides of beta_powder_sobol get the data of the new runs, where the new runs can give these data (table
+  below).
+
+**Precondition and assumption.** PLAN 4.16 must give class 2 ("the correction removes the excess"). With another
+class, this plan stops and I report with options. 4.16 uses q 8, the virgin start, one geometry and n 4. It does not
+test the static saturation preparation or the corners (4.16, "Not in this plan"). This plan assumes that the result
+of 4.16 also applies at q 16 and with the saturation preparation. The first-run check and the q 8 twins test parts
+of this assumption. Split of the work: D1.
+
+**Design.**
+- Corners K1 … K4 (PLAN 4.0) at q 16: n 12 at K1 and K4, n 10 at K2 and K3 (k = 0 … n − 1): 44 runs. For each k that
+  phase 1 of 4.15 has (K1 k 0 … 12, K2 k 0 … 5, K3 k 0 … 7, K4 k 0 … 9), the seed comes from the config.json of the
+  phase 1 run (example: K4_9 has the seed 2050, not the value of sat_seed). For the other k, the seed comes from
+  sat_seed (K2 k 6 … 9: 2027 … 2029 and 3209; K3 k 8 … 9: 2039 and 3309; K4 k 10 … 11: 3410 and 3411). A test
+  checks that no seed occurs twice in the plan and in phase 1.
+- Reason for the seeds. I use the SDs of phase 1 per corner (K1 0.112, K2 0.054, K3 0.072, K4 0.106; without the
+  correction) and the sample SD of the new runs. With these n, the probability that one or more corners miss the
+  target is about 4 %. With n 10 at all corners, it is 19 %. If the correction makes all SDs 20 % larger, it is 27 %.
+  The replacement and reserve runs below make this risk smaller.
+- Replacement runs (D7): if the prepared state of a corner run has a BP after 3 passes, the chain puts the next seed
+  of that corner into the queue at once (at most 2 for each corner, seeds after the reserve seeds).
+- q 8 twins: K1_0 … K4_0 at q 8: 4 runs (C2).
+- Main study: the 96 Sobol points and the 8 centre runs of PLAN 4.0 (jobs/sobol_main.txt, seeds 1001 … 1096 and
+  1901 … 1908) with the setup of 4.15: 104 runs. D6 (b) of 4.15 stays: the corner runs k = 0 … 2 are in the main fits.
+- Sum of the core runs: 152. Settings: the production line of 4.15 (static saturation preparation, newell_ext with
+  4 shells, the tolerances, 7 amplitudes 9 … 150 mT, online stop, snapshots of the last 2 cycles, accumulators with
+  harmonics, 7 stage states) plus the correction. One code commit of main for all runs.
+- Reserve runs, at a lower priority than the core runs: K1 and K4 k 12 … 15 (K1 k 13 … 15 and K4 k 12 … 15 have no
+  phase 1 partner; seeds 3113 … 3115 and 3412 … 3415; K1 k 12 has the phase 1 seed 3112): 8 runs. The evaluation
+  uses them only if a corner misses the target without them. The report gives both values.
+- Optional runs (D2), at the lowest priority.
+
+**Paired information against phase 1.** The corner runs with a phase 1 partner (the k of phase 1 above) have the same
+microstructure. Per corner: the paired difference new − phase 1 for β and ln P (n up to 12, mean ± SE, 95 % CI). Both
+runs of a pair have their own preparation. Thus the pair removes only the part of the scatter that comes from the
+microstructure. The main points use the seeds of the old main study: paired differences per point, as information.
+
+**Code (on main, tests first, no GPU).**
+- C1 Job lines (conv_jobs.py): `a100_lines(machine)` with the corner lines, the twins, the main lines (new
+  `sat_main_lines`), the replacement seeds, the reserve and the optional lines. The main lines are the
+  jobs/sobol_main.txt lines with the same added arguments that sat_corner_lines adds to the jobs/sobol_corners.txt
+  lines, plus the correction. Names: `K<c>_<k>_c16`, `K<c>_0_c8`, `S<nnn>_c16`, `C<j>_c16`. Split: each machine gets
+  about half of each corner and of the main points, with about equal estimated hours. Order on each machine: the
+  corner runs (small and large alternate; each source run before its twin), then the main runs, then the reserve,
+  then the optional runs. Tests: a corner line differs from its phase 1 line only in the planned arguments; a main
+  line differs from its sobol_main line only in the same arguments; no seed twice; A and B together give the full
+  design; each twin is on the machine of its source run and after it; each twin line differs from its source line
+  only in the arguments of C2.
+- C2 q 8 twin start. `--init_transfer` (ef6422a) accepts only a voxel source. New: a source with the fraction surface
+  and the same mesh. The m of each cell is copied. A cell that is magnetic only in the target gets the m of the void
+  cell (as in 4.16). The twin line removes `--predemag_h`, sets `--bloch_free_tries 0` and an `--init_mode` other than
+  saturated (these keys are in TRANSFER_FREE). It keeps `--sat_static --h_sat 2`: these keys are in INIT_KEYS and not in
+  TRANSFER_FREE, and without predemag_h they do not start a preparation. With these arguments, run_loops.py does one
+  relaxation of the copied m in the q 8 model and no AC pass. Its source run did not make this extra relaxation. The
+  pair thus differs in q and in this relaxation; the report says this. `--init_wait_h 0`: if the source state does
+  not exist, the twin fails at once, and the queue tries it again later. Tests: the same cell count; the start m of
+  the common cells is the source m; the count of cells with a changed f (from the source q and the target q) is in the
+  run record. check_sat_run.py does not apply to a twin (no preparation record).
+- C3 Name patterns (`_c16`, `_c8`) in instance_postproc.py, analyze_design.py and the corner evaluation. The
+  post-processing also runs eval_hotcores.py and eval_hotspots.py for each corner run before it deletes the snapshots
+  and the accumulator files (both scripts need them, 7.139). Their results go into the run folder. Tests.
+- C4 Chain runner (new, from dispatcher.sh): it creates runs/ and spool/, logs the real exit code, uses one GPU, and
+  continues after a stop. After a stop, run_loops.py continues a run from the start of the stage in progress
+  (checkpoint.pt). Runs with DONE are skipped. Job timeout 24 h (a hung job does not block the machine). The
+  replacement rule of D7. dispatcher.sh gets the same two fixes (runs/ is not created; the logged exit code is always
+  0): patch, needs the go of Chris.
+- C5 Evaluation script `eval_a100.py` (one command; input: one or more result folders). It calls the evaluations of
+  the study (eval_corners_sat.py, analyze_design.py, eval_harmonics.py, eval_channels.py, census_bloch.py, the results
+  of the post-processing, deck_data.py) and writes report.md, the JSON files and all figures. New readings: the q 8
+  twin pairs and the paired differences against phase 1.
+- C6 Scripts of the transfer folder: install.sh, start.sh, status.sh, stop.sh, support.sh, update.sh,
+  export_jobs.sh, import_jobs.sh, pack.sh (below).
+
+**Software archive (offline).**
+- Variant 2 is the default: a conda-pack environment with Python 3.11, torch 2.7.1+cu126 and the Python packages in
+  the versions of the production box of 2026-10-23 (runs/box_20261023/root/pip_freeze_20261023.txt), plus a C compiler.
+  Reason for the compiler: Triton compiles a small C module at the first use of torch.compile. Variant 2 needs glibc
+  2.28 or newer and an NVIDIA driver for CUDA 12.6 or newer. The dry run V2 tests it on a GPU.
+- Variant 1, only if W0 shows that variant 2 cannot work (for example an old glibc) and Apptainer or Singularity is
+  on the machine: an image of pytorch/pytorch:2.7.1-cuda12.6-cudnn9-devel (the image of the vast boxes). Vast boxes
+  cannot run Apptainer. Thus variant 1 can be tested only on the laptop, without a GPU.
+- The code comes as a git bundle of main at the pinned commit (the runs record the commit).
+
+**Scripts of the transfer folder.**
+- `install.sh` (no network): it checks Linux x86_64, glibc, the driver, one visible A100, free disk, host memory,
+  CPU cores, and that user processes continue after the logout. If a check fails, it stops with a plain message.
+  Then it unpacks the software archive, installs magnum.np, runs A1 … A4 and writes INSTALL_OK with the results.
+- `start.sh A` or `start.sh B`: it does not start without INSTALL_OK, or with the other letter after a first start.
+  It starts the chain in the background, and the chain continues after the logout. A second call while the chain
+  runs does nothing. After a reboot or a power loss, Chris calls start.sh again, and the chain continues. If W0 shows
+  that a user crontab is allowed, install.sh also adds an entry that calls start.sh after a reboot.
+- `status.sh`: the progress. `stop.sh`: no new jobs; after the job in progress, the chain makes the pack and ends.
+  `support.sh`: one small file with STATUS.md, the logs and the end of the log of each failed run. Chris sends it to
+  me after a stop.
+- `update.sh <file>`: brings a code fix (a git bundle from me) to the machine. The jobs that did not start use the new
+  commit. The run in progress starts again from its beginning on the new commit (run_loops.py does not continue a run
+  with another commit). The run record gives the commit of each run.
+- `export_jobs.sh` and `import_jobs.sh`: they move the jobs that are not done from one machine to the other (with
+  the source states of the twins). Chris uses them if one machine fails.
+- `pack.sh`: the results folder (below). The chain calls it after the corner runs (intermediate pack), after the
+  core runs, and at its end. It moves the state files (no second copy).
+- README (English, short): copy, install.sh, start.sh, status.sh; look at STATUS.md once a day (if its time is more
+  than 1 h old, the chain does not run: call start.sh); what to do after a stop or a reboot; the move of jobs;
+  update.sh; the end.
+- Minimum per machine (estimate): host memory 64 GB (q 16 set-up at mesh 156³: 34.5 GiB measured on a V100 box);
+  free disk 120 GB (state files about 0.3 GB per run, about 25 GB per machine; snapshots up to about 9 GB per run until
+  the post-processing, and a run whose post-processing fails keeps them; the software about 10 GB; the stop margin
+  20 GB). CPU cores: the post-processing uses up to 4 workers with 6 threads each; the chain sets the count of workers
+  from the count of cores.
+
+**Checks on each A100 (install.sh, automatic, about 2 h).**
+- A1 The CPU tests of the study and of the correction (test_study.py, the staircase tests).
+- A2 Field check: the effective field of the start state K4_2_sat/init.pt with the correction at q 16 on the A100,
+  against a reference file from a V100 (made in V2). Limits from V2 (there: the V100 field against the same field in
+  fp32 on the CPU gives the size of the round-off between two kinds of hardware). Warning if the relative RMS
+  difference is above this size; stop above 1e-4 (TF32 arithmetic on the A100 gives about 1e-3).
+- A3 Speed of off156 and q16_156 with prof_step.py (information, no pass rule). STATUS.md gives the estimated end
+  date of the chain from this speed.
+- A4 torch.compile: a compiled function on CUDA tensors runs on the GPU and gives the same result as without the
+  compile, and magnum.np does not use its replacement function. (If the test compile in magnumnp/__init__.py fails,
+  magnum.np replaces torch.compile with a function that does nothing and writes only a warning.)
+
+**Chain (automatic, on each machine).**
+- The rules of PLAN 4.13 and 4.15 stay: the gate retry, the flags B and S9, the failure-burst pause, the disk guard,
+  one job at a time on the GPU. D7 changes for this plan (replacement runs).
+- First-run check (C5 of 4.15, check_sat_run.py) on the first corner run of each machine. The static saturation
+  preparation has not run with the fraction surface and the correction before. The check needs the snapshots and the
+  accumulator files: the post-processing of this run waits for the result of the check. If the check fails, the chain
+  starts no new jobs (STOP_NEW_JOBS), and STATUS.md gives the reason.
+- Post-processing during the chain (instance_postproc.py, as on the vast boxes since 4.0, plus C3): phase maps,
+  domains, the census of BPs and the field slices from the snapshots; the accumulators to acc.json and acc_slices.npz
+  (harmonics, sum check); the hot cores and hot spots of the corner runs. Then it deletes the snapshots and the
+  accumulator files.
+- Stop rule (new): the chain starts no new jobs if 3 different runs in a row have failed after their retry, if the
+  first-run check fails, or if the free disk is less than 20 GB. The job in progress ends normally. Then Chris sends
+  the support file to me.
+- STATUS.md every 10 min: the runs that are done, the run in progress, the runs in the queue; the failed runs with
+  their reason; the estimated end; the free disk; the peak GPU memory; the key numbers of the finished runs.
+- Results folder `results_<A|B>/`: the small files of each run (config, summary, logs, samples, the results of the
+  post-processing, acc.json), the state files in `results_<A|B>/states/` (D4), the evaluation of the runs of this
+  machine (eval_a100.py), and an md5 list of all files.
+
+**Evaluation and deck.**
+- On the laptop, one command with both results folders: `eval_a100.py results_A results_B` gives the full evaluation
+  and all figures: corner means, corner differences, pooled SD, census of BPs and flags, q 8 twin pairs, the main fit
+  of analyze_design.py (Holm, TOST), β per window, the factors on P, harmonics and loss channels, loss location, hot
+  cores and hot spots, domains, events, and the comparisons against phase 1 and the old main study.
+- Readings of the corners (fixed before the data, as 4.15): per corner, β over all amplitudes and in the windows, and
+  ln P at 9 / 50 / 100 mT: mean ± SE, sample SD, 95 % CI; the pooled SD; the corner differences (Welch, Holm). q 8
+  twins: paired by seed (n 4), Δβ and Δ ln P at 9 / 50 / 100 mT, mean ± SE and 95 % CI (information; n 4 shows only
+  large differences). If the 95 % CI of Δβ does not contain 0, I report this as a sign that q 16 is not converged in
+  q, with options.
+- Deck: deck_data.py and make_deck.py read the new results. make_deck.py today reads 11 special JSON files in addition
+  to the main results. C5 makes each data block again from the new runs where the table says "new". I write the slide
+  titles, key messages and callouts after the data (about 4 … 6 h), because they state conclusions. Then a
+  context-free review and the PDF.
+- Data blocks of the deck (slide numbers of beta_powder_sobol.pptx, 43 slides):
+
+| data block | used on slides | with the new runs |
+|---|---|---|
+| main study (sobol_analysis*.json, deck_data.json) | 1 … 10, 13, 14, 21 … 26, 30 (left half), 32, 33, 40 … 42 | new |
+| corner study (corners_sat_data, corners_origin, corners_compare) | 34 … 39, 43 | new: corner study with the correction against phase 1 |
+| K1 pair A 10 / A 20 (pair_K1A10, channel_maps_K1A10, scaling_A) | 11, 12, 14, 15 … 18, 33 | D2 |
+| frequency 15 / 30 / 60 MHz (freq_Cprime) | 2, 19, 20, 33, 40 | D2 |
+| 40-cycle runs at 60 MHz (long60) | 18, 32 | D2 |
+| 30-cycle conditioning runs | 30 (right half) | D2 |
+| α 0.01 runs (sobol_a001) | 31 | D2 |
+| model points (model_points) | 32 | new, from the main fit |
+| mesh checks (mesh212, mesh_no9, the K3 fine mesh) | 27, 28, 29, 32 | old data with a status note |
+
+  Slides with blocks of more than one row get the new data for the "new" blocks; the other blocks follow their row.
+  The exact assignment of each figure comes from make_deck.py in W3.
+- Mesh check with the correction (slides 27 … 29): not in this plan. At K3 the fine mesh is about 208³. The GPU
+  memory of the set-up follows the count of cut cells (q16_108 → q16_156: memory × 1.99, cut cells × 1.96). Estimate
+  for K3 on the fine mesh: about 20 … 25 GiB on the GPU and about 80 GB host memory. The limit is the time: a run on
+  the fine mesh needs about 16 times a run on the coarse mesh (estimate). A later plan can do it.
+
+**Verification before Chris gets the transfer folder.**
+- V0 Geometry pre-check (local, CPU, no GPU): the geometry with the fraction surface at q 16 for all lines (the
+  contact check, the fraction statistics). A failed point is a finding before any A100 time. (The fraction surface
+  failed the contact check once in a test geometry at d/l_ex 48.)
+- V1 eval_a100.py on the 37 phase 1 corner runs gives the numbers of PROTOKOLL 7.138 exactly.
+- V2 Dry run on a rented V100 box (one GPU, at least 48 GB host memory, D5) with the final transfer folder: install.sh
+  without network (the box container cannot block the network; the install runs with an invalid proxy and without a
+  package index, so that each network access fails); start.sh with a short job list (one small corner run with
+  2 amplitudes and its q 8 twin); the post-processing; stop.sh with the pack; update.sh; export_jobs.sh and
+  import_jobs.sh; eval_a100.py on the result. V2 also makes the V100 reference file of A2 and its limits.
+- W0 Machine check: `check_machine.sh` prints the operating system, glibc, the driver, the GPU, the CPU cores, the
+  host memory, the free disk, Python, and whether gcc, Apptainer, Singularity or a user crontab are available. Chris
+  runs it on both machines and sends me the output.
+
+**Order of the work.**
+1. W0 machine check. W1 software archive (variant from W0). W2 chain and scripts (C4, C6). W3 evaluation script (C5)
+   with V1, and the list and time of the D2 runs.
+2. After class 2 of 4.16: W4 job lines (C1 … C3) with V0. W5 final transfer folder and README. W6 dry run V2 on it.
+3. Chris copies the transfer folder to A and B and starts the chains. Then the evaluation and the deck.
+
+**Time and cost (estimates).**
+- My work: about 2 … 3 working days; tokens about 2 … 4 M.
+- Dry run V2: about 5 h of a 1 × V100 box (A2 and A3 need the q 16 set-up of about 34 min each; one K1 run with its
+  preparation), about 0.5 … 1 $.
+- Time of one run: about 8.8 V100-h at q 16 (± 25 %). Derivation: the run times of phase 1 (7.135); the time per
+  sample interval at q 16 is 1.45 times the phase 1 code at mesh 156³ and 1.97 times at mesh 108³ (3.46); plus the
+  set-up of about 34 min.
+- A100 against V100: about 2.3 for the SXM A100 and 2.15 for the PCIe A100, from the memory bandwidth (2039 or 1935
+  against 900 GB/s; not measured). At mesh 108³ the CPU side partly sets the time, and the correction starts about 95
+  small GPU kernels per stage. The factor can be lower, about 1.5.
+- Duration of the core runs on 2 machines: 152 × 8.8 / 2.3 / 2 = about 12 days (9 … 15 days with ± 25 %). At a factor
+  of 1.5: about 19 days (14 … 23 days). A3 gives the measured speed on the first day. The corner runs and the twins
+  (48 runs) end after about 4 … 6 days. Their intermediate pack can come back first.
+
+**Decisions for Chris.**
+- D1 Split of the work: (a) W0 … W3 now, W4 … W6 after class 2 of 4.16; (b) all after class 2. Recommendation (a):
+  W0 … W3 do not depend on the correction, and the transfer folder is ready about 1 day earlier.
+- D2 Slides that need runs outside the design. (a) No extra runs: these blocks keep the old data (without the
+  correction) with a status note. (b) The special runs of these blocks again with the correction, at the lowest
+  priority after the reserve. The job files of the old runs hold 69 lines (pair_K1A10 3, freq_K1pair 15, long60 9,
+  cond 18, cond_a001 16, sobol_a001 8); their time is estimated in W3. They run only while the machines have time.
+  The mesh blocks: (a) in both options. Recommendation (b): no delay of the main result; stop.sh can end the chains
+  at any time with a pack.
+- D3 Start of the q 8 twin: (a) from the prepared state of its source run (code C2; the pair differs in q and in one
+  extra relaxation); (b) its own preparation (no code; the pair then also differs in the prepared state, whose scatter
+  is of the order of the seed scatter, 7.129). Recommendation (a).
+- D4 State files in the results: (a) included (about 25 GB per machine; they allow later checks from the same
+  states); (b) only the small files. Recommendation (a).
+- D5 Dry run V2 on a rented V100 box (about 0.5 … 1 $; one box; destroyed after the download): go needed.
+- D6 Duration. No option with the full design fits in 10 days. (a) Accept about 12 days (up to about 19 days if the
+  A100 is slower than the estimate); the corner result comes back after about 4 … 6 days. (b) Main study with the first 64
+  Sobol points and 8 centre runs instead of 96 + 8 (the design can be extended later; 4.15 D3 gives only N 96 or
+  larger, thus this is a new decision): 120 core runs, about 9.5 days at a factor of 2.3 (about 15 days at 1.5); the
+  SE of the range effect of a factor becomes about 1.22 times larger (√(96/64)). Recommendation (a): the corner result
+  comes early, and the main design keeps the precision of 4.15.
+- D7 Runs whose prepared state has a BP after 3 passes. 4.15 chose D7 (b) (no replacement), because more seeds can be
+  added at any time. Offline, this is not possible. (a) Automatic replacement: the next seed of the corner goes into
+  the queue (at most 2 for each corner). (b) No replacement (as 4.15). Recommendation (a).
+
+**Risks.**
+- 4.16 gives another class than 2: the plan stops.
+- The static saturation preparation with the fraction surface and the correction has not run before. The first-run
+  check and the stop rule catch a failure. After a stop, the machine waits until Chris sends the support file to me.
+- The A100 speed is not measured: the duration can be 9 … 23 days.
+- Offline install: a missing library or compiler stops install.sh before any job. V2 tests the transfer folder
+  without network, but not on the operating system of the machines. W0 makes this risk smaller.
+- The BP rate and the event rate with the correction at the corners are not known. Many runs without a value can make
+  a corner miss the target.
+- If one machine fails, each corner keeps only about half of its runs until Chris moves the jobs (export_jobs.sh).
+- A code fix during the run needs update.sh; the runs then have two commits, and the report gives the commit of each
+  run.
+- A different GPU type changes the rounding: single runs differ from V100 runs after events; only the distributions
+  are comparable (7.129).
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
