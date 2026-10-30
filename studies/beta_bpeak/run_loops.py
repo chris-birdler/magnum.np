@@ -107,10 +107,12 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "sat_static": False,                                  # 2026-10-19, static saturation (Chris)
             "h_sat": None,                                        # 2026-10-20, PLAN 4.15 C1 (default 1 - phi)
             "staircase": "none", "staircase_q": 2, "staircase_p": 3,  # 2026-10-20, staircase correction (Chris)
-            "staircase_centroid": False}
+            "staircase_centroid": False,
+            "diag_k_cut": None}                                   # 2026-10-30, PLAN 4.18 E1 (diagnostic)
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer", "prep_only", "sat_check",
-               "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter"}
+               "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter",
+               "diag_fields", "diag_samples", "diag_init_state"}   # PLAN 4.18 E2 ... E4: outputs and the start only
 # relax_maxiter is only a limit: a relaxation that converged gives the same state for any larger limit
 # (deterministic, audit 3, item 5); run_queue raises it after a gate failure (exit code 3)
 # arguments that set the relaxed virgin state; an --init_from state must agree in all of them
@@ -120,7 +122,7 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
              "bloch_free_tries", "bloch_smooth", "sat_static", "h_sat", "staircase", "staircase_q", "staircase_p",
-             "staircase_centroid"]
+             "staircase_centroid", "diag_k_cut"]
 
 
 def init_key_diff(src_config, config, converged, late_predemag=False, late_smooth=False, late_sat=False):
@@ -348,6 +350,22 @@ def parse_args(argv=None):
     g.add_argument("--allow_unconverged", action="store_true",
                    help="continue although the virgin relaxation did not converge (default: stop, exit code 3)")
     g.add_argument("--timer", action="store_true")
+
+    g = p.add_argument_group("diagnostics of PLAN 4.18 (cause test of the large angles at the cut cells; not for "
+                             "production)")
+    g.add_argument("--diag_k_cut", type=float, default=None,
+                   help="E1: the exchange coupling of each neighbour pair with at least one cut cell (0 < f < 1) times "
+                        "this factor (field_terms_extra.CutPairExchange)")
+    g.add_argument("--diag_fields", action="store_true",
+                   help="E2: after the relaxation, diag_fields.npz with f, the particle ids, the relaxed m, the aligned m "
+                        "(each cut cell along the sum of m over the full cells of its particle within 2 cells) and the "
+                        "field of each term (A/m) for both states")
+    g.add_argument("--diag_samples", action="store_true",
+                   help="E3: in the cycles, diag_<stage>.csv (per sample: pairs above 90 deg, largest neighbour angle) "
+                        "and bloch_pos_<stage>.csv (per Bloch point: cube, charge, particle, largest angle in the cube)")
+    g.add_argument("--diag_init_state", type=str, default=None,
+                   help="E4: start the relaxation from the m of a relaxed state file (init.pt) of the same mesh and the "
+                        "same geometry (ids and f); only the arguments in DIAG_INIT_FREE can differ")
     a = p.parse_args(argv)
     if a.predemag_h is not None and len(a.predemag_h) == 1:
         a.predemag_h = a.predemag_h[0]                    # one pass: the scalar of the configs before the list
@@ -445,7 +463,11 @@ def surface_sub(args):
 # INIT_KEYS that may differ between an --init_transfer source and the run: the mesh, and (staircase correction, PROTOKOLL
 # 3.11; PLAN 4.16) the surface model, the locked geometry and the preparation (the source state is already prepared)
 TRANSFER_FREE = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p", "staircase_centroid",
-                 "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries", "bloch_smooth", "init_mode")
+                 "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries", "bloch_smooth", "init_mode",
+                 "diag_k_cut")
+# INIT_KEYS that may differ between a --diag_init_state source and the run (PLAN 4.18 E4): the surface model on the same
+# cells (the correction and the coupling factor); the geometry itself is checked with the ids and f arrays
+DIAG_INIT_FREE = ("relax_maxiter", "staircase", "staircase_q", "staircase_p", "staircase_centroid", "diag_k_cut")
 
 
 def transfer_source_error(src_config):
@@ -633,6 +655,103 @@ def bloch_mask_t(ids_t):
     for s in ((1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 1, 1)):
         ok &= torch.roll(ids_t, shifts=(-s[0], -s[1], -s[2]), dims=(0, 1, 2)) == ids_t
     return ok
+
+
+def full_cell_sum(m, ids, frac, r=2):
+    """PLAN 4.18: per cell the sum of m over the full cells (f = 1) of the same particle in the (2 r + 1)^3 block around
+    it (periodic; numpy). The tilt of a cell is its angle to this sum."""
+    full = (ids >= 0) & (frac >= 1.0)
+    s = np.zeros(m.shape, dtype=np.float64)
+    rng = range(-r, r + 1)
+    for a in rng:
+        for b in rng:
+            for c in rng:
+                sh = (a, b, c)
+                nb = np.roll(full, sh, (0, 1, 2)) & (np.roll(ids, sh, (0, 1, 2)) == ids)
+                s += nb[..., None] * np.roll(m, sh, (0, 1, 2))
+    return s
+
+
+def aligned_m(m, ids, frac):
+    """PLAN 4.18 E2: m with each cut cell (0 < f < 1) set along the full-cell sum of full_cell_sum, all cut cells at the
+    same time. Returns (m, number of cut cells without a full cell in the block; they keep their m)."""
+    s = full_cell_sum(m, ids, frac)
+    n = np.linalg.norm(s, axis=-1)
+    cut = (ids >= 0) & (frac < 1.0)
+    sel = cut & (n > 0)
+    out = np.array(m, dtype=np.float64, copy=True)
+    out[sel] = s[sel] / n[sel][:, None]
+    return out, int((cut & ~sel).sum())
+
+
+def term_fields(state, terms, names):
+    """PLAN 4.18 E2: the field of each term for state.m, in the order of the terms (the stray-field term first, so that
+    the correction can take its field of this m), as {name: tensor}."""
+    return {nm: tm.h(state) for nm, tm in zip(names, terms)}
+
+
+def large_pairs_t(m, masks):
+    """PLAN 4.18 E3: (number of neighbour pairs of one particle with an angle above 90 deg, the smallest cos of these
+    pairs); masks from the pair masks of main (pair (i - 1, i) along an axis at cell i)."""
+    import torch
+    n, cmin = 0, 1.0
+    for ax in range(3):
+        c = (m * torch.roll(m, 1, dims=ax)).sum(-1)[masks[ax]]
+        n += int((c < 0.0).sum())
+        if c.numel():
+            cmin = min(cmin, float(c.min()))
+    return n, cmin
+
+
+def cube_max_angle_t(m, i, j, k):
+    """PLAN 4.18 E3: the largest angle (deg) between neighbour corners (12 edges) of the cube with the corner cell
+    (i, j, k) (periodic)."""
+    N = m.shape[:3]
+    cmin = 1.0
+    for a in (0, 1):
+        for b in (0, 1):
+            for c in (0, 1):
+                p = (i + a) % N[0], (j + b) % N[1], (k + c) % N[2]
+                for ax in range(3):
+                    if (a, b, c)[ax] == 0:
+                        q = list(p)
+                        q[ax] = (q[ax] + 1) % N[ax]
+                        cmin = min(cmin, float((m[p] * m[tuple(q)]).sum()))
+    return math.degrees(math.acos(max(-1.0, min(1.0, cmin))))
+
+
+def bloch_rows_t(m, ids_n, cube_ok):
+    """PLAN 4.18 E3: [[i, j, k, Q, particle, largest angle in the cube (deg)], ...] of the Bloch points of m (cubes inside
+    one particle with |Q| > 0.5, as bloch() of main)."""
+    import torch
+    q = cube_charge_t(m)
+    sel = cube_ok & (q.abs() > 0.5)
+    return [[int(i), int(j), int(k), int(round(float(q[i, j, k]))), int(ids_n[i, j, k]),
+             cube_max_angle_t(m, int(i), int(j), int(k))] for i, j, k in torch.nonzero(sel).cpu().numpy()]
+
+
+def diag_init_error(c, config, N, geo, geo_of):
+    """--diag_init_state (PLAN 4.18 E4): the error text for the state file c, or None. c must hold a converged
+    relaxation of a run with the same INIT_KEYS except DIAG_INIT_FREE, an m on this mesh, and the same particle cells
+    and volume fractions: geo_of(sub) gives the geometry of this mesh for the sub-cells of the source."""
+    import types
+    if "init" not in c or "config" not in c:
+        return "it holds no relaxation record"
+    if not c["init"].get("relax_converged"):
+        return "its relaxation did not converge"
+    diff = [k for k in INIT_KEYS if k not in DIAG_INIT_FREE and c["config"].get(k, NEW_KEYS.get(k)) != config.get(k)]
+    if diff:
+        return "it was relaxed with other arguments: " + ", ".join(
+            "%s %r -> %r" % (k, c["config"].get(k, NEW_KEYS.get(k)), config.get(k)) for k in diff)
+    if tuple(c["m"].shape) != (N, N, N, 3):
+        return "its m has the shape %s, the mesh %s" % (tuple(c["m"].shape), (N, N, N, 3))
+    sc = c["config"]
+    src = types.SimpleNamespace(surface=sc.get("surface", "voxel"), staircase=sc.get("staircase", "none"),
+                                staircase_q=sc.get("staircase_q", NEW_KEYS["staircase_q"]))
+    g = geo_of(surface_sub(src))
+    if not (np.array_equal(g["ids"], geo["ids"]) and np.array_equal(g["frac"], geo["frac"])):
+        return "it has another geometry (particle cells or volume fractions)"
+    return None
 
 
 def stage_start(src, config):
@@ -870,6 +989,10 @@ def main(argv=None):
     if args.init_mode == "saturated" and (args.predemag_h is None or args.protocol != "virgin_asc"
                                           or args.relax_mode != "converge"):
         sys.exit("ERROR: --init_mode saturated needs --predemag_h, --protocol virgin_asc and --relax_mode converge")
+    if args.diag_init_state and (args.init_transfer or args.init_from or args.init_stage
+                                 or args.protocol != "virgin_asc" or args.relax_mode != "converge"):
+        sys.exit("ERROR: --diag_init_state excludes --init_transfer, --init_from and --init_stage and needs --protocol "
+                 "virgin_asc and --relax_mode converge")
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -939,6 +1062,14 @@ def main(argv=None):
 
     terms = [strayfield, ExchangeField()]
     term_names = ["demag", "exchange"]                    # PLAN 4.13 S5: names of the energy terms, same order
+    diag_info = {}
+    if args.diag_k_cut is not None:                       # PLAN 4.18 E1: diagnostic coupling of the cut cells
+        from field_terms_extra import CutPairExchange
+        terms[1] = CutPairExchange(mag & (geo["frac"] < 1.0), args.diag_k_cut)
+        diag_info["k_cut"] = {"K": args.diag_k_cut, "n_cut_cells": int((mag & (geo["frac"] < 1.0)).sum()),
+                              "n_pairs_changed": terms[1].n_pairs_changed(state.material["A"])}
+        print("[diag] exchange: coupling of %d pairs with a cut cell times %g" % (
+            diag_info["k_cut"]["n_pairs_changed"], args.diag_k_cut), flush=True)
     if args.staircase != "none":                          # near-field correction of the cut cells (staircase)
         from magnumnp import DemagStaircaseCorrection
         from geometry import fcc_subcells
@@ -1044,6 +1175,25 @@ def main(argv=None):
         pts = [[int(i), int(j), int(k), int(round(float(q[i, j, k]))), int(ids[i, j, k])]
                for i, j, k in torch.nonzero(sel).cpu().numpy()]
         return npos, nneg, pts
+
+    @torch.no_grad()
+    def write_diag_fields():
+        """--diag_fields (PLAN 4.18 E2): diag_fields.npz with f, the particle ids, the relaxed m, the aligned m and the
+        field of each term (A/m, the drive included) for both states; state.m is restored."""
+        m_rel = state.m
+        m_al, n_noref = aligned_m(m_rel.double().cpu().numpy(), ids, geo["frac"])
+        rec = {"frac": geo["frac"].astype(np.float32), "ids": ids.astype(np.int8), "term_names": np.array(term_names),
+               "Ms": Ms, "l_ex": lex, "dx": dx, "n_cut_without_full_cell": n_noref,
+               "m_relaxed": m_rel.float().cpu().numpy(), "m_aligned": m_al.astype(np.float32)}
+        for tag, mm in (("relaxed", m_rel), ("aligned", T(m_al))):
+            state.m = mm
+            for nm, h in term_fields(state, terms, term_names).items():
+                rec["h_%s_%s" % (tag, nm)] = h.float().cpu().numpy()
+        state.m = m_rel
+        tmp = out / "diag_fields.tmp.npz"
+        np.savez(tmp, **rec)
+        replace_durable(tmp, out / "diag_fields.npz")
+        print("[diag] diag_fields.npz written (%d cut cells without a full cell in the block)" % n_noref, flush=True)
 
     def relax_converge(tag, tol_abs=True):
         """The converge relaxation of virgin_asc (alpha 1, chunks, quiet_chunk; PLAN 4.13 S7). Returns (history,
@@ -1218,6 +1368,8 @@ def main(argv=None):
                    "freq": freq, "anisotropy": aniso_info, "stages": stages, "git_commit": git_commit(),
                    "torch": torch.__version__, "device": str(dev),
                    "gpu": torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"})
+    if diag_info:
+        config["diag"] = diag_info
 
     # --- resume or initialise ---------------------------------------------
     ckpt = out / "checkpoint.pt"
@@ -1319,7 +1471,7 @@ def main(argv=None):
         if args.init_block > 0.0 and not (is_multiple(a_lex, args.init_block) and is_multiple(args.init_block, args.dx_lex)):
             warnings.warn("init_block %g l_ex is not a multiple of dx and a divisor of a: "
                           "the initial state depends on the mesh" % args.init_block)
-        transfer = None
+        transfer, diag_start = None, None
         if args.init_transfer:
             # PLAN 4.10: the relaxed state of a finer mesh, block averaged onto this mesh, as the start of the relaxation
             src = pathlib.Path(args.init_transfer)
@@ -1351,6 +1503,22 @@ def main(argv=None):
             state.m = T(m_c)
             transfer = dict(tstats, source=str(src), dx_lex_fine=dxf)
             print("[init] transferred from %s (dx %g -> %g l_ex): %s" % (src, dxf, args.dx_lex, tstats), flush=True)
+        elif args.diag_init_state:
+            # PLAN 4.18 E4: the relaxed state of another arm on the same cells, then the relaxation of this arm
+            src = pathlib.Path(args.diag_init_state)
+            src = src if src.is_absolute() else out.parent / src
+            if not src.exists():
+                sys.exit("ERROR: --diag_init_state %s does not exist" % src)
+            cs = torch.load(str(src), map_location="cpu")
+            err = diag_init_error(cs, config, N, geo, lambda sub: locked_geometry(N, d, dx, rep, sub=sub))
+            if err:
+                sys.exit("ERROR: --diag_init_state %s: %s" % (src, err))
+            state.m = cs["m"].to(dtype=dt_, device=dev)
+            import hashlib
+            diag_start = {"source": str(src), "md5": hashlib.md5(src.read_bytes()).hexdigest(),
+                          "source_relax_iterations": cs["init"].get("relax_iterations")}
+            print("[init] m from %s (--diag_init_state)" % src, flush=True)
+            del cs
         else:
             state.m = T(virgin_m0(N, a_lex, args.dx_lex, args.init_block, init_seed, args.init_mode, ids,
                                   direction=e_d))
@@ -1429,10 +1597,14 @@ def main(argv=None):
             print("[relax] %.3g s done in %.1f s wall" % (args.relax_tau * U["t_M"], time.time() - t_w), flush=True)
         if transfer is not None and "init" in summary:
             summary["init"]["transfer"] = transfer
+        if diag_start is not None and "init" in summary:
+            summary["init"]["diag_init_state"] = diag_start
         if args.protocol == "virgin_asc":
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
 
+    if args.diag_fields and not resume and not args.init_stage and args.protocol == "virgin_asc":
+        write_diag_fields()                       # PLAN 4.18 E2 (also for a relaxation that did not converge)
     # hard gate: the protocol requires a converged virgin state
     if (args.protocol == "virgin_asc" and not summary.get("init", {}).get("relax_converged", True)
             and not args.allow_unconverged):
@@ -1499,6 +1671,11 @@ def main(argv=None):
         fcsv.write("# cycle,t,H,M_par,Mx,My,Mz,B,p_dis,Mp0,Mp1,Mp2,Mp3,n_pairs_gt60  (SI)\n")
         fbl = open(out / ("bloch_%02d_%s.csv" % (si, st["name"])), "w")
         fbl.write("# cycle,sample,n_bloch_pos,n_bloch_neg  (Bloch points at each sample, Chris 2026-10-18)\n")
+        if args.diag_samples:                     # PLAN 4.18 E3
+            fdg = open(out / ("diag_%02d_%s.csv" % (si, st["name"])), "w")
+            fdg.write("# cycle,sample,n_pairs_gt90,max_angle_deg  (PLAN 4.18 E3)\n")
+            fbp = open(out / ("bloch_pos_%02d_%s.csv" % (si, st["name"])), "w")
+            fbp.write("# cycle,sample,i,j,k,Q,particle,max_angle_cube_deg  (PLAN 4.18 E3; cube corner i, j, k)\n")
 
         ci = 0
         complete = False
@@ -1517,6 +1694,13 @@ def main(argv=None):
                 cmin_c, n60_c = min(cmin_c, cmin), max(n60_c, n60)
                 rows.append((t, drive.value(t), Mpar, *Mv, pd, *Mp, n60))
                 brows.append(bloch())                    # Chris 2026-10-18: Bloch points at each sample
+                if args.diag_samples:                    # PLAN 4.18 E3
+                    ks = len(rows) - 1
+                    n90 = large_pairs_t(state.m, pair_masks)[0]
+                    fdg.write("%d,%d,%d,%.3f\n" % (ci, ks, n90, math.degrees(math.acos(max(-1.0, min(1.0, cmin))))))
+                    if sum(brows[-1]) > 0:
+                        for r in bloch_rows_t(state.m, ids_n, cube_ok):
+                            fbp.write("%d,%d,%d,%d,%d,%d,%d,%.3f\n" % (ci, ks, *r))
 
             e_start = term_energies()                     # PLAN 4.13 S5; the drive field is 0 at the cycle start
             sample()
@@ -1589,6 +1773,9 @@ def main(argv=None):
             for k, (a, b) in enumerate(brows):
                 fbl.write("%d,%d,%d,%d\n" % (ci, k, a, b))
             fbl.flush()
+            if args.diag_samples:
+                fdg.flush()
+                fbp.flush()
             if snap:
                 clean_snapshots(out, st["name"], ci - args.snap_cycles + 1)   # PLAN 4.13 S6: keep the last cycles
             cycles_done += 1
@@ -1637,6 +1824,9 @@ def main(argv=None):
                     break
         fcsv.close()
         fbl.close()
+        if args.diag_samples:
+            fdg.close()
+            fbp.close()
         if complete:
             rec["E_end"] = term_energies()                # PLAN 4.13 S5: the end of the last cycle
             rec["bloch_points_end"] = bloch(positions=True)[2]
