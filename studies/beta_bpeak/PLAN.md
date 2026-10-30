@@ -2104,6 +2104,218 @@ microstructure. The main points use the seeds of the old main study: paired diff
 - A different GPU type changes the rounding: single runs differ from V100 runs after events; only the distributions
   are comparable (7.129).
 
+### 4.18 Cause test: does the correction tilt the cut layer and make the large angles of arm D? (proposal 2026-10-30; Chris: "Okay, mach den Plan")
+
+**Terms.**
+- Cut cell: a magnetic cell of the fraction surface with the volume fraction 0 < f < 1. The correction changes the
+  field mainly at the cut cells: its pair terms couple each cut cell with the magnetic cells within p = 3 cells, thus
+  also full cells near the surface, and its centroid term (a global FFT) changes the field a little everywhere
+  (magnumnp/field_terms/demag_staircase.py, `_coeffs`, `centroid_field`).
+- Thin cell: a cut cell with f < l_ex/dx. Only a descriptive class (it was named after the data were seen); no
+  reading or intervention of this plan uses it.
+- Tilt θ_i of a cell: the angle between m_i and the sum of m over the full cells (f = 1) of the same particle within
+  2 cells (the 5 × 5 × 5 block around the cell). θ shows how far a cell points away from the bulk near it.
+- Large-angle pair: two neighbour cells of one particle with an angle between their m of more than 90°.
+- Pair coupling: magnumnp couples neighbour cells with A_ij = 2 A_i A_j / (A_i + A_j); the fraction surface sets
+  A_i = f_i A and Ms_i = f_i Ms (run_loops.py, `frac4`). Thus A_ij/A = 2 f_i f_j / (f_i + f_j). In units of Ms, cell i
+  gets the field (l_ex/dx)² (A_ij / (f_i A)) (m_j − m_i) from neighbour j; (l_ex/dx)² = 0.11 at dx = 3 l_ex.
+- Field ratio ρ_i of a cut cell (support reading only): ρ_i = |h_d,⊥,i| / Σ_j (l_ex/dx)² A_ij/(f_i A), with h_d the
+  stray field with the correction (all stray-field terms of the arm) in the aligned state (each cut cell set to the
+  direction of its full-cell sum, all at the same time), ⊥ the part normal to that direction. In linear response the
+  tilt is about ρ_i (rad). The aligned state of a coupled layer is an approximation, thus ρ only supports.
+- Levels used by the predictions (from the basis): without the correction (D3f) the largest cut-cell tilt is 21 …
+  24°, the 99th percentile of the cut cells 12.6 … 12.9° and no cut cell is above 45°; with the correction at q 8
+  (T3Pc8) the largest cut-cell tilt is 73 … 82°, the 99th percentile 18.3 … 18.6° and 9 and 12 cut cells are above
+  45°. Full cells tilt up to 25 … 32° in all arms (bulk texture), so the largest tilt alone is near the bulk level.
+  Thus the decisive tilt reading is the number of cut cells above 45°.
+- Arms of 4.16: A voxel, C fraction surface, D fraction surface with the correction (q 8). Loss density P as in 7.142
+  (P = f·K_d·w, W/cm³).
+
+**Basis (local data, no new run, 2026-10-30).**
+1. 4.16 (mesh 148³; summary.json, samples and bloch CSV of the 36 jobs):
+   - Largest angle between neighbour cells in the relaxed start state: D 111 … 147°, C 74 … 96°, A 83 … 96°. Mean
+     over the cycles ≥ 1 (all cycles after cycle 0) of the per-cycle largest angle, per job at 9, 50 and 100 mT:
+     D 143 … 173°, C 86 … 108°, A 96 … 158° (A high only with a Bloch point of the start state); per-cycle maximum
+     D 178.7°, C 157.0°. The number of neighbour pairs above 60° at 100 mT never falls below 25 in D (C 5 … 12).
+   - Bloch points of D: at most 1 at a time, none at the end of a stage (bloch_points_end empty in all 12 D jobs); at
+     100 mT 1 … 55 of 257 samples per cycle; at 9 and 50 mT cycle 0 of D s922 has 182 and 68 samples. The start state
+     has a Bloch point in all arms of s922 and in A of s924; C and D of s921, s923, s924 start without one.
+   - Mean time step (cycles ≥ 1): D 5.6 … 6.0 ps at 9 mT (C 6.1), 4.0 … 5.2 ps at 50 mT (C 6.0), 2.9 … 3.7 ps at
+     100 mT (C 5.8 … 5.9). The steps per cycle do not follow the Bloch samples per cycle (correlation over the
+     cycles ≥ 1 of each D job −0.79 … +0.80, 6 … 10 cycles, no common sign). The cause of the small time step is open.
+2. Staircase study, relaxed states at zero field (d/l_ex 92.2 used, 96 nominal; φ 0.55; mesh 48³ at dx 3 l_ex;
+   init.pt of the runs; scripts plan418_basis/tilt_ref.py and pairs_loc.py):
+
+   | arm | start | cut-cell tilt: largest | cut-cell tilt: 99th percentile | cut cells > 45° | large-angle pairs |
+   |---|---|---|---|---|---|
+   | D3f (fraction, no correction, f from 8³) | virgin | 21 … 24° | 12.6 … 12.9° | 0 | 0 |
+   | T3Pc (correction q 2) | D15 transfer | 63 … 68° | 15.1 … 16.0° | 17 … 19 | 0 |
+   | X3 (exact field q 2) | D15 transfer | 63 … 68° | 15.1 … 16.0° | 17 … 19 | 0 |
+   | T3Pc4 (correction q 4) | D15 transfer | 63 … 69° | 18.7 … 19.2° | 2 … 10 | 3 … 6 |
+   | X3q4 (exact field q 4) | D15 transfer | 63 … 69° | 18.6 … 19.1° | 2 … 10 | 3 … 6 (one more at 90.1° in s943) |
+   | T3Pc8 (correction q 8; s941, s944) | D15 transfer | 73 … 82° | 18.3 … 18.6° | 9, 12 | 5, 6 |
+
+   - Seeds 941 … 944 (T3Pc8: 941, 944). Full cells: largest tilt 25 … 32° in all arms.
+   - No cell points against its bulk (no tilt above 90°). The large-angle pairs join two cut cells that tilt in
+     different directions; each contains a thin cell with its centre outside the sphere (r/R 1.01 … 1.03). Their
+     coupling A_ij/A is 0.01 … 0.25 (3rd … 27th percentile of all pairs with a cut cell; median 0.58). Couplings of this
+     size exist also at q 2, where no pair is above 90° (plan418_basis/pair_coupling.py).
+   - The arms with the exact field (X3, X3q4) give the same tilts as the arms with the correction: the effect belongs
+     to the model "exact near field on a coarse m", not to an error of the correction code.
+   - D3f started from a virgin state (own relaxation), the other arms from the D15 transfer: the D3f row is not a
+     matched control. Step 1 makes the matched control.
+   - The T3Pc8 runs were stopped by the rule of staircase PLAN 9.3 and are not evaluated in the staircase PROTOKOLL;
+     their relaxations converged (7000 and 7500 iterations), so their relaxed states are used here.
+   - All seeds share one geometry (fcc_box has no seed); the seeds differ in the cube axes and the start state.
+   - At dx 1.5 l_ex (voxel) the largest neighbour angle is 54.6 … 55.9° (D15) and 51.7 … 52.8° (T15g).
+3. Torque balance (estimate; plan418_basis/sliver_torque.py): on the cells of the large-angle pairs, the exchange field normal to m
+   is 0.087 … 0.154 Ms, in full cells 0.002 Ms (median). In a converged state the stray field normal to m has the same
+   size within 2 Q_eff = 0.014 Ms.
+4. History: the staircase PROTOKOLL does not give the tilt of the cut layer. The events of staircase phase A were at
+   r/R 0.62 … 1.03 (s942) and 0.88 … 1.03 (s941), in the same cells for T3Pc4 and X3q4. No arm with the fine m
+   (dx 1.5 l_ex) and the correction ran before.
+
+**Hypothesis H.** The correction tilts the cut cells away from the bulk, and at dx = 3 l_ex the pair coupling of a
+cut cell is too weak to limit the tilt. In the cycles, the large-angle pairs give short cube charges that the
+Bloch-point counter reads as Bloch points. Description, not tested apart: at q 4 and q 8 neighbouring cut cells tilt
+in different directions and give the large-angle pairs; at q 2 the tilt is as large, but no pair is above 90°. Step 1
+can show that the correction causes the tilt; it cannot separate the near field at the cut cells from the change of
+the field at the full cells near the surface. Not part of H: the small time step of D, and the loss difference D/C
+(both information in step 3).
+
+**Code (own branch diag/sliver-coupling from main ef6422a, not merged; a test for each change; one pinned commit for
+all runs).** Production code paths stay unchanged when no diagnostic option is set.
+- E1 `--diag_k_cut K`: a copy of the magnumnp exchange term (periodic case) with the factor K on the coupling of each
+  pair with at least one cut cell, on both cells of the pair (the energy stays a sum over pairs). Tests: with K = 1
+  the field equals that of ExchangeField (relative difference below 1e-6, fp64); the count of changed pairs equals a
+  direct count; the energy equals −(μ0/2) Σ Ms m·h dV. Arms without E1 use ExchangeField.
+- E2 `--diag_fields`: at the end of the relaxation, diag_fields.npz with f, particle ids, the relaxed m, the aligned
+  m and the field of each term for both. Test: the sum of the term fields equals the effective field of the solver.
+- E3 per-sample diagnostics in the cycles (a new CSV; the samples CSV stays as it is): the number of large-angle pairs
+  and their largest angle; for each sample with a Bloch point the rows (cycle, sample, i, j, k, Q, particle, largest
+  neighbour angle inside the cube of the Bloch point). Tests: a synthetic hedgehog gives one row at its cube; a
+  synthetic pair at 120° is counted once.
+- E4 `--diag_init_state PATH`: start from the m of a state file of the same mesh and the same geometry (no virgin
+  state, no transfer), then the relaxation of the arm. Test: the start m equals the file; a file of another mesh or
+  geometry stops the run with an error.
+- eval_418.py: all readings below. Test: it gives the tilt table of the basis for the GPU states.
+- No change of the correction code. The field-side intervention is the fraction surface without the correction (arms
+  C8t and C8h below).
+
+**Step 1: local, CPU, staircase geometry, q 8 (no GPU cost).** Mesh 48³, seeds 941 … 944, `--prep_only
+--diag_fields`. Arms:
+- B8 (production model): the arguments of T3Pc8_s<seed> (fraction surface, correction pair q 8, p 3, centroid),
+  start state D15_s<seed>/init.pt (md5 as remote_20261021_box6/d15_init.md5) by `--init_transfer`, as T3Pc8.
+- C8t (field side, formation): the B8 arguments without `--staircase` (f from 8³ samples, thus the same f and the same
+  cells as B8; run_loops.py `surface_sub`), the same start as B8 (transfer). Only the correction differs.
+- C8h (field side, holding): as C8t, but from the relaxed B8 state of the same seed (`--diag_init_state`).
+- T4 and T16 (coupling side): the B8 arguments with `--diag_k_cut` 4 and 16, from the relaxed B8 state of the same
+  seed. The relaxation from this state is short, and the stronger coupling makes each iteration slower (stiffer), so
+  this start limits the cost. That only the cut layer responds is an assumption; the overlap per particle against B8
+  checks it (reported for C8h, T4 and T16).
+20 relaxations. Readings per seed, predictions fixed now:
+- 1.0 Method check: B8 against the GPU states T3Pc8_s941 and s944: overlap m·m_ref at least 0.99 in each particle;
+  largest cut-cell tilt and its 99th percentile within 5°; number of cut cells above 45° within ±2; number of
+  large-angle pairs within ±1. If it fails: stop and report (a CPU/GPU difference is a finding).
+- 1a (field side, decisive): a seed takes part if B8 has at least 3 cut cells above 45°. Prediction: C8t has at most
+  1 cut cell above 45° and no large-angle pair, in each such seed. C8h (information): whether the tilt is held
+  without the correction.
+- 1b (coupling side; T16 can hardly fail, because a 16 times stronger coupling flattens the layer whatever tilts it;
+  the T arms mainly measure how much coupling holds the layer, for k* and the remedies): T4 has at most half the
+  number of cut cells above 45° of B8 (same seed) and no large-angle pair; T16 has at most 1 cut cell above 45° and
+  no large-angle pair.
+- 1c (formation, information): the cut-cell tilts and the large-angle pairs in the start state (the transfer at
+  iteration 0; the cells without a voxel source excluded) and after the relaxation, for B8 and C8t.
+- 1d (field ratio, support): Spearman rank correlation of θ_i and ρ_i over the cut cells of B8, in each seed; slope
+  a = median of θ_i/ρ_i (cut cells with ρ_i ≥ 0.05) from seeds 941 and 942, checked on seeds 943 and 944: the median
+  of θ_i/(a ρ_i) is in 0.67 … 1.5. Prediction: rank correlation at least 0.5 (chance level 0).
+- Verdict of step 1: "confirmed" if 1.0 passes, 1a holds in each seed that takes part (at least 3), and T16 meets its
+  prediction in at least 3 seeds; "refuted" if C8t has at least half the number of cut cells above 45° of B8 (same
+  seed) in at least 2 of the seeds that take part, or if T16 keeps at least half that number in at least 2 of them;
+  else "not determined".
+  1d supports and T4 sets k*; neither decides.
+- k* for step 3: 4 if T4 meets its prediction in at least 3 seeds; else 16.
+- Gate: steps 2 and 3 only if step 1 is "confirmed". In each other case: report with options, no box.
+
+**Step 2: mesh side (box).** Staircase geometry at dx 1.5 l_ex (mesh 96³), correction q 8 (the same sub-cells per
+cell as step 1), seeds 941 … 944, start state D15_s<seed>/init.pt (same mesh), the B8 arguments with `--dx_lex 1.5`,
+`--prep_only --diag_fields`. 4 relaxations. The pair coupling is 4 times that of dx 3 (l_ex/dx). There are about 4
+times as many cut cells, so the reading is the share of cut cells above 45°. Prediction: this share is at most half
+that of B8 at dx 3 (same seed) and there is no large-angle pair, in at least 3 of the 4 seeds. Verdict: confirmed if
+this holds; refuted if at least 2 seeds have a share above 0.8 times that of B8 or a large-angle pair. This step tests the coupling side at a finer mesh; it does not test whether
+the tilt converges to that of the smooth sphere (not in this plan).
+
+**Step 3: 4.16 geometry at 100 mT (box).** The arguments of jobs/hf416_prep.txt and jobs/hf416.txt (d/l_ex 300,
+dx 3 l_ex, φ 0.65, mesh 148³, q 8), seeds 921, 923, 924 (C and D started without a Bloch point in 4.16). New
+preparations HFP_s<seed> (the states of 4.16 were not kept). Each new preparation must be converged and without a
+Bloch point; its relaxation iterations and E/K_d are compared with 4.16 and reported. A preparation with a Bloch point
+is replaced by seed 925 (then 926); this is reported. Arms at 100 mT: C (= HFC), D (= HFD plus `--diag_fields`), Dk
+(= D plus `--diag_k_cut k*`, k* as set in step 1); E3 in all arms. 3
+preparations and 9 jobs; a job starts after the preparation of its seed is DONE. Failed job and missing values: the
+rules of 4.16. Predictions:
+- 3a (location): in D, at least 90 % of the samples with a Bloch point (cycles ≥ 1) have a cut cell in the cube of
+  the Bloch point (2 × 2 × 2 cells; a Bloch point in the bulk has none); pooled, and in each seed with at least 5 such
+  samples. Base rate (148³, q 8; plan418_basis/cube_base.py): 7.7 % of the counted cubes contain a cut cell (3.0 % a thin cell).
+  Also reported: the share of these samples with a large-angle pair in the cube. 3a separates Bloch points at the
+  surface from those in the bulk; it does not separate the artefact from a real Bloch point that enters through the
+  surface. That part is carried by 3b and 3c (Dk against D and C).
+- 3b (removal of Bloch points): in each seed in which D has a Bloch point in the cycles ≥ 2, Dk has none in its
+  cycles ≥ 2. The reading needs at least 2 such seeds; else "not determined".
+- 3c (removal of large-angle pairs): in each seed in which the per-cycle largest number of large-angle pairs of D is
+  above that of C, that of Dk is at most that of C plus 1, in each cycle ≥ 1. The reading needs at least 2 such seeds.
+- 3d (information): mean time step of C, D and Dk (cycles ≥ 1). The stronger coupling of Dk itself makes the system
+  stiffer, so the time step of Dk does not test H.
+- 3e (information): tilt and ρ in the relaxed state of D (diag_fields), with the slope a of step 1.
+- 3f (information): P at 100 mT (steady tail of 4.16) as the factors D/C, Dk/C and Dk/D per seed and as the mean of ln
+  ± SE (n 3) with the 95 % t-interval. Dk is a diagnostic model, not a candidate; no class.
+- Verdict of step 3: confirmed if 3a, 3b and 3c hold; refuted if 3a is below 50 % or 3b fails in at least 2 seeds;
+  else "not determined".
+
+**Total verdict.** "Shown: at dx = 3 l_ex the correction tilts the cut layer against a too weak coupling, and this
+makes the large angles and the Bloch points of D (for the tested meshes: 48³ and 96³ of the staircase geometry, 148³
+of the 4.16 geometry)" if steps 1, 2 and 3 are confirmed. "Cause refuted" if a step is refuted. Each other combination is
+reported as it is, with its numbers. The remedies (coupling over the face share, merging of thin cells, finer m,
+removal of thin cells; message of 2026-10-30) come after the verdict, with a plan of their own.
+
+**Gates and order.** Code E1 … E4 with tests, then step 1. After B8: a timing run of 500 iterations of T16
+s941 (from the B8 state) on the CPU; the CPU time of step 1 is projected with the iteration counts of the GPU runs; if it is above 60 h,
+I report before the runs. A relaxation that does not converge within 80000 iterations is reported; its seed gives no
+value for that arm; an arm with fewer than 3 values gives "not determined" for its readings. After step 1, Chris gets
+the report; the rent for steps 2 and 3 waits for his go. The box is destroyed only with his go, after the download
+with md5.
+
+**Box.** One box under the rent rule of Chris (V100 16 or 32 GB, at most 0.08 $ per GPU-h, CUDA 12.6 or newer, not
+deverified; not the machine 147583 and not the host 381795, excluded in 4.16). Set-up and speed check as 4.16
+(box416_setup.sh with the branch commit; off156 within 10 % of 3.699 ms per stage). Memory: step 3 as 4.16 (peak
+12.0 GiB); step 2 less (estimate).
+
+**Cost (estimates, except where marked as measured).**
+- Step 1 (CPU): measured 2026-10-30 with main ef6422a, T3Pc8_s941 arguments: 1000 iterations in 383 s with the set-up
+  (0.38 s per iteration), peak host memory 3.7 GB; E/K_d after 500 and 1000 iterations equals the GPU run (commit
+  e72b5b6) within 2e-6 relative. Iterations of B8 from the transfer: 7000 and 7500 on the GPU (s941, s944); the other
+  seeds are not known (T3Pc4: 2500 … 42500). B8: 2 … 11 h. C8t (no correction, from the transfer): at most about 1 h
+  per seed. C8h, T4 and T16 from the B8 state: 1000 … 5000 iterations each (estimate); a stronger coupling makes each
+  iteration slower, T4 about 1.7 … 3.3 times and T16 about 7 … 13 times (estimate of the review): C8h below 1 h, T4
+  1 … 7 h, T16 3 … 28 h. Sum about 8 … 50 h of CPU time; with 2 runs
+  at the same time about 0.5 … 1.5 days of wall time (estimate; the efficiency of parallel runs is not measured).
+- My work for E1 … E4, tests and eval_418.py: about 4 … 6 h, 0.7 … 1.2 M tokens.
+- Step 2 (box): 96³ at q 8 on a V100, about 0.6 … 1 s per iteration (the D15 relaxations took 0.28 s per iteration
+  on an RTX 3090 for the voxel model; q 8 costs about 3 times the time per stage of the model without the correction,
+  staircase PROTOKOLL 3.46: 11.09 against 3.70 ms); 5000 … 45000 iterations per seed (estimate): 5 … 40 GPU-h.
+- Step 3 (box), with k* = 4: preparations 0.3 … 0.43 h, C 0.5 … 0.6 h, D 1.8 … 2.6 h (4.16: 1.77 … 2.60 h), Dk 3 … 9 h
+  (D times 1.7 … 3.3 for the stiffer system; estimate) each: 20 … 37 GPU-h. If only T16 meets its prediction
+  (k* = 16, Dk about 13 … 34 h each), I report the new cost before step 3.
+- Box sum 25 … 77 GPU-h, at most 0.08 $ per GPU-h: 2 … 6 $, with the set-up up to about 6.5 $ (credit 9.89 $). On 4
+  GPUs about 1 … 2 days of wall time (the longest step-2 relaxation and the Dk jobs).
+
+**Data.** Raw data (npz, states, CSV) stay local or on the box with an md5 manifest; only evaluations are committed.
+Results go to the PROTOKOLL (the next free section numbers at the time of the write): the basis and step 1 first,
+then steps 2 and 3.
+
+**Not in this plan.** Whether a tilt of the cut layer of 60 … 80° is an artefact of the coarse m or partly real
+surface physics (this needs a convergence test against a finer m and belongs to the plan of the remedies); the cause
+of the small time step of D; the remedies; other geometries; a class for the loss.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
