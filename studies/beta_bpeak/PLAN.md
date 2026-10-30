@@ -2104,7 +2104,7 @@ microstructure. The main points use the seeds of the old main study: paired diff
 - A different GPU type changes the rounding: single runs differ from V100 runs after events; only the distributions
   are comparable (7.129).
 
-### 4.18 Cause test: does the correction tilt the cut layer and make the large angles of arm D? (proposal 2026-10-30; Chris: "Okay, mach den Plan")
+### 4.18 Cause test: does the correction tilt the cut layer and make the large angles of arm D? (proposal 2026-10-30; Chris: "Okay, mach den Plan"; go of Chris 2026-10-30: "Okay, dann gebe ich den Plan frei")
 
 **Terms.**
 - Cut cell: a magnetic cell of the fraction surface with the volume fraction 0 < f < 1. The correction changes the
@@ -2315,6 +2315,19 @@ then steps 2 and 3.
 **Not in this plan.** Whether a tilt of the cut layer of 60 … 80° is an artefact of the coarse m or partly real
 surface physics (this needs a convergence test against a finer m and belongs to the plan of the remedies); the cause
 of the small time step of D; the remedies; other geometries; a class for the loss.
+
+**Record of the work (decisions inside the plan).**
+- 2026-10-30, go of Chris for the code and step 1; the rent for steps 2 and 3 waits for his go after the step-1 report.
+- Code on the branch diag/sliver-coupling (worktree magnum.np-diag, from main ef6422a): commit 0a53c1a (E1 … E4,
+  eval_418.py, test_plan418.py), commit 7fd245a (job lines jobs/plan418_step1.txt, runner run418_slot.sh). All step-1
+  runs use 7fd245a. Tests: test_plan418.py 10 of 10 passed; the 38 tests of test_study.py that use run_loops passed
+  (test_drive_value_matches_field needs PYTHONPATH on the checkout root, as on main).
+- E3 has its own option `--diag_samples` (the plan named no option; the production paths stay unchanged without a
+  diagnostic option). `diag_k_cut` is an INIT_KEY and is free in a transfer (step 3: Dk starts from the HFP state as D).
+- eval_418.py reproduces the basis numbers of T3Pc8_s941 and s944 (73.3° and 82.1°, 18.6° and 18.3°, 9 and 12 cells
+  above 45°, 5 and 6 pairs above 90°; a test).
+- Step 1 runs with two slots of 4 threads each on the 8 cores of the local CPU (Ryzen 7 PRO 8700GE); the timing run of
+  T16 s941 runs in a slot beside a B8 run, thus with the load of the production runs. Start 2026-10-30 09:40.
 
 ## 5. Optional step 3: mesh control (separate go)
 
