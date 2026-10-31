@@ -2414,6 +2414,18 @@ of the small time step of D; the remedies; other geometries; a class for the los
   up to about 3.5 $. On a box with 4 GPUs about 10 … 12 h of wall time (the longest Dk job). Box under the rent rule
   of Chris as in "Box" above; destroyed only with his go, after the download with md5.
 
+**Record of the work for step 3.**
+- 2026-10-31, go of Chris on amendment 1 ("Ok"). Code diag/sliver-coupling 5344a8e: E3 extension (3 columns in
+  bloch_pos), test (test_plan418.py 11 of 11, test_study.py 152 passed, 5 skipped); job lines
+  jobs/plan418_step3_prep.txt (HFP 921, 923, 924 and the spare 925) and jobs/plan418_step3.txt (S3C, S3D, S3Dk per
+  seed; the jobs of a seed start only after its HFP is converged and free of Bloch points).
+- No offer met 0.08 $ per GPU-h outside the excluded host 381795. Decision of Chris: 2 × V100 at 0.094 $ per GPU-h
+  (host 513108, the host of 4.16). Instance 58486186: before any job of ours both GPUs ran at 100 % and 300 W from a
+  process outside our container; measured 6.0 TFLOPS (fp32 matrix product) and 290 GB/s, about 1/3 of a V100. Not
+  used, no data. Decision of Chris: destroy (done 2026-10-31, credit 9.33 $), the watcher waits for a V100 at
+  0.094 $ per GPU-h or less with 2 … 4 GPUs (not machine 152226, not host 381795). After a rent: a GPU load check
+  (no foreign process, throughput) before the set-up.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
