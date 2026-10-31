@@ -146,6 +146,31 @@ def test_bloch_rows_synthetic_hedgehog():
     assert ang == pytest.approx(math.degrees(math.acos(1.0 / 3.0)), abs=1e-6)
 
 
+def test_bloch_rows_edge_fractions():
+    """E3, amendment 1: with frac, a row also gives the f of the two cells of the largest-angle edge (smaller first)
+    and the smallest f of the 8 corners. Hedgehog: all 12 edges have the same angle, so the first edge in the loop
+    order counts, (5, 5, 5)-(6, 5, 5). A single cube with one turned corner: the first of its 3 equal edges counts."""
+    from run_loops import bloch_rows_t, bloch_mask_t, cube_max_edge_t
+    n = 12
+    x = np.arange(n) - 5.5
+    X = np.stack(np.meshgrid(x, x, x, indexing="ij"), -1)
+    r = np.linalg.norm(X, axis=-1)
+    ids = np.where(r < 4.5, 2, -1)
+    m = torch.tensor(X / r[..., None])
+    frac = np.ones((n, n, n))
+    frac[5, 5, 5], frac[6, 5, 5], frac[6, 6, 6] = 0.5, 0.25, 0.125
+    rows = bloch_rows_t(m, torch.tensor(ids), bloch_mask_t(torch.tensor(ids)), frac)
+    assert len(rows) == 1 and len(rows[0]) == 9
+    assert rows[0][6:] == [0.25, 0.5, 0.125]
+    # one cube: all corners +z, the last corner (1, 1, 1) turned by 150 deg; its 3 edges tie
+    mc = np.zeros((4, 4, 4, 3))
+    mc[..., 2] = 1.0
+    mc[1, 1, 1] = [math.sin(math.radians(150)), 0.0, math.cos(math.radians(150))]
+    ang, p, q = cube_max_edge_t(torch.tensor(mc), 0, 0, 0)
+    assert ang == pytest.approx(150.0, abs=1e-9)
+    assert (p, q) == ((0, 1, 1), (1, 1, 1))
+
+
 def test_large_pair_120_counted_once():
     """E3: a pair of one particle at 120 deg is counted once; a pair at 60 deg and a pair of two particles are not."""
     from run_loops import large_pairs_t

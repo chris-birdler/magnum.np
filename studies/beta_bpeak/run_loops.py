@@ -703,11 +703,12 @@ def large_pairs_t(m, masks):
     return n, cmin
 
 
-def cube_max_angle_t(m, i, j, k):
-    """PLAN 4.18 E3: the largest angle (deg) between neighbour corners (12 edges) of the cube with the corner cell
-    (i, j, k) (periodic)."""
+def cube_max_edge_t(m, i, j, k):
+    """PLAN 4.18 E3: (largest angle in deg, cell p, cell q) of the edge with the largest angle between neighbour corners
+    (12 edges) of the cube with the corner cell (i, j, k) (periodic). On equal angles the first edge in the loop order
+    counts (PLAN 4.18 amendment 1)."""
     N = m.shape[:3]
-    cmin = 1.0
+    best = None
     for a in (0, 1):
         for b in (0, 1):
             for c in (0, 1):
@@ -716,18 +717,40 @@ def cube_max_angle_t(m, i, j, k):
                     if (a, b, c)[ax] == 0:
                         q = list(p)
                         q[ax] = (q[ax] + 1) % N[ax]
-                        cmin = min(cmin, float((m[p] * m[tuple(q)]).sum()))
-    return math.degrees(math.acos(max(-1.0, min(1.0, cmin))))
+                        cc = float((m[p] * m[tuple(q)]).sum())
+                        if best is None or cc < best[0]:
+                            best = (cc, p, tuple(q))
+    cc, p, q = best
+    return math.degrees(math.acos(max(-1.0, min(1.0, cc)))), p, q
 
 
-def bloch_rows_t(m, ids_n, cube_ok):
+def cube_max_angle_t(m, i, j, k):
+    """PLAN 4.18 E3: the largest angle (deg) between neighbour corners (12 edges) of the cube with the corner cell
+    (i, j, k) (periodic)."""
+    return cube_max_edge_t(m, i, j, k)[0]
+
+
+def bloch_rows_t(m, ids_n, cube_ok, frac=None):
     """PLAN 4.18 E3: [[i, j, k, Q, particle, largest angle in the cube (deg)], ...] of the Bloch points of m (cubes inside
-    one particle with |Q| > 0.5, as bloch() of main)."""
+    one particle with |Q| > 0.5, as bloch() of main). With the fill fractions frac (numpy, mesh shape), each row also
+    gets the f of the two cells of the largest-angle edge (smaller first) and the smallest f of the 8 corners
+    (amendment 1, reading 3g)."""
     import torch
     q = cube_charge_t(m)
     sel = cube_ok & (q.abs() > 0.5)
-    return [[int(i), int(j), int(k), int(round(float(q[i, j, k]))), int(ids_n[i, j, k]),
-             cube_max_angle_t(m, int(i), int(j), int(k))] for i, j, k in torch.nonzero(sel).cpu().numpy()]
+    N = m.shape[:3]
+    rows = []
+    for i, j, k in torch.nonzero(sel).cpu().numpy():
+        i, j, k = int(i), int(j), int(k)
+        ang, pe, qe = cube_max_edge_t(m, i, j, k)
+        r = [i, j, k, int(round(float(q[i, j, k]))), int(ids_n[i, j, k]), ang]
+        if frac is not None:
+            fe = sorted((float(frac[pe]), float(frac[qe])))
+            fc = min(float(frac[(i + a) % N[0], (j + b) % N[1], (k + c) % N[2]])
+                     for a in (0, 1) for b in (0, 1) for c in (0, 1))
+            r += [fe[0], fe[1], fc]
+        rows.append(r)
+    return rows
 
 
 def diag_init_error(c, config, N, geo, geo_of):
@@ -1675,7 +1698,8 @@ def main(argv=None):
             fdg = open(out / ("diag_%02d_%s.csv" % (si, st["name"])), "w")
             fdg.write("# cycle,sample,n_pairs_gt90,max_angle_deg  (PLAN 4.18 E3)\n")
             fbp = open(out / ("bloch_pos_%02d_%s.csv" % (si, st["name"])), "w")
-            fbp.write("# cycle,sample,i,j,k,Q,particle,max_angle_cube_deg  (PLAN 4.18 E3; cube corner i, j, k)\n")
+            fbp.write("# cycle,sample,i,j,k,Q,particle,max_angle_cube_deg,f_edge_lo,f_edge_hi,f_cube_min  (PLAN 4.18 E3; "
+                      "cube corner i, j, k; f of the largest-angle edge and smallest f of the 8 corners, amendment 1)\n")
 
         ci = 0
         complete = False
@@ -1699,8 +1723,8 @@ def main(argv=None):
                     n90 = large_pairs_t(state.m, pair_masks)[0]
                     fdg.write("%d,%d,%d,%.3f\n" % (ci, ks, n90, math.degrees(math.acos(max(-1.0, min(1.0, cmin))))))
                     if sum(brows[-1]) > 0:
-                        for r in bloch_rows_t(state.m, ids_n, cube_ok):
-                            fbp.write("%d,%d,%d,%d,%d,%d,%d,%.3f\n" % (ci, ks, *r))
+                        for r in bloch_rows_t(state.m, ids_n, cube_ok, geo["frac"]):
+                            fbp.write("%d,%d,%d,%d,%d,%d,%d,%.3f,%.6f,%.6f,%.6f\n" % (ci, ks, *r))
 
             e_start = term_energies()                     # PLAN 4.13 S5; the drive field is 0 at the cycle start
             sample()
