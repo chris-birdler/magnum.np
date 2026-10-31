@@ -8839,6 +8839,106 @@ them.
 
 **Open for Chris.** The next step after class 1 (options in the chat of 2026-10-29); the dispatcher patch.
 
+### 7.143 PLAN 4.18, step 1 (cause test, local CPU): verdict "not determined"; the correction tilts the thin cut cells, and large angles between full cells next to the cut layer occur in all arms (2026-10-30/31)
+
+**Terms.** Volume fraction f: the share of a cell inside the sphere (multiples of 1/512 from 8³ sub-samples). Cut
+cell: 0 < f < 1. Full cell: f = 1. Thin cell: a cut cell with f below l_ex/dx (1/3 at dx 3 l_ex). Tilt of a cell: its
+angle to the sum of m over the full cells of the same particle in the 5 × 5 × 5 block around it. Large-angle pair: two
+neighbour cells of one particle with an angle between their m of more than 90°. Field ratio ρ of a cut cell: the
+stray-field component normal to m in the aligned state, divided by the exchange term of its pair coupling (definition
+in PLAN 4.18). Arms (PLAN 4.18): B8 = production model (fraction surface with the correction, pair q 8, p 3,
+centroid; the arguments of T3Pc8, the GPU runs of the staircase study with this model); C8t = B8 without the
+correction, from the same start (transfer of D15, the relaxed states of the staircase study at dx 1.5 l_ex); C8h =
+C8t, but from the relaxed B8 state; T4 and T16 = B8 with the exchange of each pair with a cut cell multiplied by 4
+and 16 (`--diag_k_cut`), from the relaxed B8 state. k* = the factor for the arm Dk of step 3. Staircase geometry:
+d/l_ex 96 nominal (92.2 used), dx 3 l_ex, mesh 48³, φ 0.55, seeds 941 … 944, relaxation only (`--prep_only
+--diag_fields`).
+
+**Run.** Local CPU (Ryzen 7 PRO 8700GE, two slots of 4 threads), single precision as on the GPU, code
+diag/sliver-coupling 7fd245a (E1 … E4, tests 10 of 10 passed). 20 relaxations and one timing run, 2026-10-30 09:40 …
+23:36 (about 27 h of slot time, 14 h of wall time). All exit codes 0; all 20 relaxations converged (3500 … 20500
+iterations). The start states of C8h, T4 and T16 have the md5 of B8_s<seed>/init.pt. Raw data local (runs/plan418,
+322 MiB; md5 list results/plan418_step1_md5.txt on the diag branch). Evaluation: eval_418.py and
+plan418_step1_pairs.py, diag branch e34abfe; results/plan418_step1.json, plan418_step1.md and plan418_step1_pairs.md
+(copies on this branch).
+
+**Deviations from PLAN 4.18.**
+- E3 has its own option `--diag_samples` (the plan named no option). `diag_k_cut` is an initial-state key and is free
+  in a transfer. Step 1 does not use E3.
+- The timing run of T16 s941 ran beside a B8 run. The projection of the CPU time (6 … 26 h) was below the measured
+  slot time (about 27 h); both are below the limit of 60 h.
+
+**Method checks.**
+- 1.0 (CPU B8 against the GPU states T3Pc8, s941 and s944): passed. Overlap at least 0.9999984 in each particle;
+  largest cut-cell tilt 72.9° against 73.3° and 82.1° against 82.1°; 99th percentile equal within 0.001°; cut cells
+  above 45° (9, 12) and large-angle pairs (5, 6) equal.
+- fp32 stop noise: in the examined traces (B8, T4, T16), |dE|/(K_d V) per block of 500 iterations varies between
+  2e-11 and 3e-9 around the stop value 3e-10 after the state is steady. Thus the stop iteration is random (B8 s941
+  3500 on the CPU against 7000 on the GPU; s944 10000 against 7500; T4 s944 20500). The rule stays as in production.
+- Residual torque |m × h| at the stop (A/m; from diag_fields.npz, h = sum of all field terms; the "torque max" of the
+  run logs is a different measure): T16 95 … 134 A/m, at the cut cell with f 0.084 (full cells at most 27 A/m); B8
+  s941 171 A/m; all other runs at most 3.4 A/m. B8 s941 shows the effect on the readings: its tilts equal those of
+  the GPU state within 0.35° (largest) and 0.001° (99th percentile).
+- Overlap per particle against B8 (check of the plan assumption that only the cut layer responds; no limit was
+  fixed): C8h 0.9836 … 0.9947, T4 0.9881 … 0.9993, T16 0.9829 … 0.9977. The assumption holds only approximately: the
+  full cells also change (largest full-cell tilt B8 30.2 … 31.0°, T4 35.6 … 37.0°, T16 32.6 … 33.2°).
+
+**Result** (n 4 seeds; range or counts per seed):
+
+| arm | largest cut-cell tilt | cut cells above 45° | large-angle pairs | largest angle, two full cells |
+|---|---|---|---|---|
+| B8 | 72.9 … 82.1° | 6 … 12 | 2 … 6 | 77 … 84° |
+| C8t | 22.1 … 25.6° | 0 | 0 | 70 … 75° |
+| C8h | 22.1 … 25.6° | 0 | 0 | 70 … 75° |
+| T4 | 30.2 … 32.5° | 0 | 0 | 84 … 88° |
+| T16 | 20.4 … 21.5° | 0 | 0, 1, 0, 2 | 85 … 96° |
+
+- 1a (field side): holds in 4 of 4 seeds. Without the correction no cut cell is above 45° and no pair is above 90°.
+- C8h equals C8t within 0.0002° in each angle reading and within 1e-6 in the overlap per particle. Thus the relaxed
+  state without the correction does not depend on the start state (tilted B8 state or transfer). The correction
+  field holds the tilt.
+- The tilted cells are the thinnest cells: all 38 cut cells of B8 above 45° (4 seeds) have f 0.006 … 0.16; each B8
+  pair above 90° has a cell with f at most 0.084.
+- 1b (coupling side): T4 meets its prediction in 4 of 4 seeds, T16 in 2 of 4. T16 has no cut cell above 45° in each
+  seed, but 1 large-angle pair in s942 (95.6°) and 2 in s944 (90.4° and 93.2°). The pair at 90.4° is near the
+  limit; without it the verdict is the same.
+- 1c (formation): the start reading leaves out the 3552 cut cells without a voxel source in the transfer (f at most
+  0.16). All 38 cut cells of B8 above 45° are among them; thus 1c does not give their start tilt. In the other cut
+  cells the start state has a largest tilt of 48.0 … 50.5°, 3 … 4 cells above 45° and no large-angle pair. The
+  formation follows from B8 against C8t from the same start: B8 tilts the thin cells to 73 … 82°, C8t keeps all cut
+  cells at or below 25.6°.
+- 1d (field ratio, support reading): Spearman rank correlation of tilt and ρ over the cut cells of B8, 0.67 … 0.71
+  (prediction at least 0.5); slope a 0.70 (seeds 941, 942), check medians 1.01 and 0.98 (seeds 943, 944; band
+  0.67 … 1.5).
+- **Verdict of step 1 (rule of the plan): "not determined"; k* = 4.** 1.0 passes and 1a holds in each seed, but T16
+  meets its prediction in only 2 seeds (3 needed). "Refuted" does not apply (C8t and T16 keep no cut cell above 45°).
+
+**Finding outside the predictions (results/plan418_step1_pairs.md).**
+- The three T16 pairs above 90° join two full cells. All pairs above 90° of B8 have a cut cell; C8t, C8h, T4 and T16
+  have no pair with a cut cell above 90°.
+- Pairs of two full cells above 60° occur in all arms (sum over 4 seeds: B8 79, C8t 90, C8h 90, T4 116, T16 104).
+  Each of them has a cell at a distance of 1 cell from a cut cell, thus in the first full layer below the cut layer.
+- With a stronger coupling at the cut cells, the cut-cell tilt goes down, but the largest angle between full cells
+  next to the cut layer goes up: B8 77 … 84°, T4 84 … 88° (above B8 in 4 of 4 seeds), T16 85 … 96° (above T4 in 3 of
+  4 seeds).
+- Share of these pairs in which one cell is nearly along the surface normal (|m · r̂| above 0.7, r̂ from the particle
+  centre) and the other is nearly in the surface plane (below 0.5): B8 0 %, C8t 4 %, T4 22 %, T16 64 %. Whether these
+  are vortex cores (the centre of a swirl of m, where m turns along the normal) is not tested.
+- In T4, each seed also has 31 … 32 pairs of two cut cells above 60° (up to 84.5 … 85.8°), each with a thin cell,
+  although the largest cut-cell tilt of T4 is 32.5°.
+- Bloch-point detection (cube_charge_t, bloch_mask_t) uses only the directions of m and the particle index, not f. A
+  nearly empty cut cell counts in it as much as a full cell.
+
+**What step 1 shows and what it does not show.**
+- Shown (n 4, staircase geometry, dx 3 l_ex, relaxed states): the correction tilts the thin cut cells to 73 … 82° and
+  makes all large-angle pairs of B8. The tilt correlates with ρ (support reading).
+- Not shown: that these pairs make the Bloch points of arm D in the cycles of 4.16. Large angles between full cells
+  next to the cut layer are a second candidate place; they occur also without the correction.
+
+**Decision of Chris (2026-10-31, option 1 of the report).** Step 3 runs now, with a new reading 3g that separates
+Bloch points at thin cut cells from Bloch points between full cells; step 2 stays in the plan without a go. PLAN 4.18,
+amendment 1. The run waits for the go of Chris on the amended plan.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

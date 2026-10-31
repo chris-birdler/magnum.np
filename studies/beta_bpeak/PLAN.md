@@ -2328,6 +2328,91 @@ of the small time step of D; the remedies; other geometries; a class for the los
   above 45°, 5 and 6 pairs above 90°; a test).
 - Step 1 runs with two slots of 4 threads each on the 8 cores of the local CPU (Ryzen 7 PRO 8700GE); the timing run of
   T16 s941 runs in a slot beside a B8 run, thus with the load of the production runs. Start 2026-10-30 09:40.
+- Timing gate passed: T16 s941, 500 iterations in 1161 s (2.32 s per iteration beside a B8 run); projection of step 1
+  6 … 26 h of CPU time (sum over the slots), below 60 h. Measured: about 27 h of slot time, 14 h of wall time (end
+  2026-10-30 23:36); T16 1.3 … 2.2 s per iteration, T4 0.35 … 0.56 s per iteration.
+- 1.0 passed (s941 and s944): overlap at least 0.9999984 in each particle; largest cut-cell tilt CPU against GPU 72.9°
+  against 73.3° and 82.1° against 82.1°; 99th percentile equal within 0.001°; 9 and 12 cut cells above 45° and 5 and
+  6 large-angle pairs, equal.
+- fp32 stop noise (finding, the rule stays as in production): in the examined traces (B8, T4, T16), |dE|/(K_d V) per
+  block of 500 iterations varies between 2e-11 and 3e-9 around the stop value 3e-10 after the state is steady, so the
+  stop iteration is random (B8 s941 3500 on the CPU against 7000 on the GPU, s944 10000 against 7500; T4 s944 20500).
+  A monitoring script flagged T4 s944 at 15000 iterations (22:30); no action was necessary, because T4 costs
+  0.35 … 0.56 s per iteration.
+- All 20 relaxations converged, exit code 0. The start states of C8h, T4 and T16 have the md5 of B8_s<seed>/init.pt.
+- Residual torque |m × h| at the stop (A/m; from diag_fields.npz, h = sum of all field terms; the "torque max" of the
+  run logs is a different measure): T16 95 … 134 A/m, at the cut cell with f 0.084 (full cells at most 27 A/m); B8
+  s941 171 A/m; the other runs at most 3.4 A/m. B8 s941 shows the effect on the readings: its tilts equal those of the
+  GPU state within 0.35° (largest) and 0.001° (99th percentile).
+- Result of step 1 (results/plan418_step1.json and .md; eval_418.py on diag/sliver-coupling e34abfe): verdict "not
+  determined", k* = 4. 1a holds in 4 of 4 seeds (B8 6 … 12 cut cells above 45° and 2 … 6 large-angle pairs; C8t 0 and
+  0). C8h equals C8t within 0.0002° in each angle reading and within 1e-6 in the overlap per particle. T4 meets its
+  prediction in 4 of 4 seeds, T16 in 2 of 4: T16 has 0 cut cells above 45° in each seed, but 1 large-angle pair in
+  s942 (95.6°) and 2 in s944 (90.4° and 93.2°). The pair at 90.4° is near the limit; without it the verdict is the
+  same. 1d: Spearman 0.67 … 0.71; slope a 0.70, check medians 1.01 and 0.98.
+- Overlap per particle against B8 (the check of the assumption that only the cut layer responds; the plan fixed no
+  limit): C8h 0.9836 … 0.9947, T4 0.9881 … 0.9993, T16 0.9829 … 0.9977. The assumption holds only approximately: the
+  full cells also change (largest full-cell tilt B8 30.2 … 31.0°, T4 35.6 … 37.0°, T16 32.6 … 33.2°; and the finding
+  below).
+- 1c: the start reading leaves out the 3552 cut cells without a voxel source in the transfer (f at most 0.16). All 38
+  cut cells of B8 above 45° (4 seeds; f 0.006 … 0.16) are among them. Thus 1c does not give their start tilt; the
+  formation follows only from B8 against C8t from the same start.
+- Finding outside the predictions (results/plan418_step1_pairs.md): the three T16 pairs join two full cells; at least
+  one of the cells touches a cut cell. Pairs of two full cells above 60° are in all arms (4 seeds: B8 79, C8t 90,
+  T4 116, T16 104), each at a distance of 1 cell from a cut cell; their largest angle per seed is B8 77 … 84°, C8t
+  70 … 75°, T4 84 … 88° (above B8 in 4 of 4 seeds), T16 85 … 96° (above T4 in 3 of 4 seeds). All pairs above 90° of
+  B8 have a cut cell; C8t, C8h, T4 and T16 have no pair with a cut cell above 90°. Share of these pairs in which one
+  cell is nearly along the surface normal (|m · r̂| above 0.7, r̂ from the particle centre) and the other is nearly
+  in the surface plane (below 0.5): B8 0 %, C8t 4 %, T4 22 %, T16 64 %. Whether these are vortex cores (the centre of
+  a swirl of m, where m turns along the normal) is not tested.
+- Gate: step 1 is not "confirmed", thus no box. Report with options to Chris on 2026-10-30.
+- 2026-10-31, decision of Chris ("Go" to option 1 of the report): step 3 now, with a reading that separates Bloch
+  points at thin cut cells from Bloch points between full cells; step 2 stays in the plan without a go. Amendment 1
+  below.
+
+**Amendment 1 (2026-10-31; proposal, the run waits for the go of Chris on this text).**
+- Why: step 1 shows two places of large angles at dx 3 l_ex. Place 1: thin cut cells that the correction tilts (B8:
+  all 38 cut cells above 45° have f at most 0.16; each pair above 90° has a cell with f at most 0.084; C8t, C8h, T4
+  and T16 have no pair with a cut cell above 90°). Place 2: pairs of two full cells at a distance of 1 cell from a cut
+  cell, in all arms, also without the correction (largest angle per seed: B8 77 … 84°, C8t 70 … 75°, T4 84 … 88°,
+  T16 85 … 96°). Reading 3a ("a cut cell in the cube of the Bloch point") does not separate the two places, because
+  the cube of a Bloch point at place 2 can contain cut cells. The remedy depends on the place: place 1, a treatment
+  of the thin cells; place 2, a finer mesh or a finer m near the surface.
+- Thin cell (Terms): this amendment uses the thin cell in reading 3g. For step 3 it replaces the sentence "Only a
+  descriptive class … no reading or intervention of this plan uses it". 3g is fixed before the data of step 3.
+- Gate: step 3 runs although step 1 is "not determined" (decision of Chris). The verdict of step 1 stays "not
+  determined". Step 2 stays in the plan without a go.
+- k* = 4 (T4 met its prediction in 4 of 4 seeds). Known risks from step 1 (staircase geometry, dx 3 l_ex): in T4,
+  pairs of two full cells next to the cut layer reach 84 … 88°, and each seed has 31 … 32 pairs of two cut cells
+  above 60° (up to 84.5 … 85.8°), each with a thin cell, although the cut-cell tilt of T4 is at most 32.5°. Thus Dk
+  can have Bloch points of both types without the tilt of place 1.
+- E3 extension (code on diag/sliver-coupling before the run): each row of bloch_pos_<nn>_<stage>.csv gets 3 more
+  columns: the f of the two cells of the largest-angle edge of the cube (smaller value first) and the smallest f of
+  the 8 corners, each with 6 decimals (f is a multiple of 1/512, so f = 1 is exact). If two edges have the same
+  largest angle, the first in the loop order of cube_max_angle_t counts. Tests: a synthetic hedgehog in a known f
+  field gives the correct values; the 10 tests of test_plan418.py pass.
+- New reading 3g (place of the Bloch points; fixed before the data). Unit: one Bloch-point row (one Bloch point at one
+  sample; 3a counts samples). Each row in the cycles ≥ 1 of C, D and Dk has exactly one type:
+  - "thin": a cell of the largest-angle edge has f below l_ex/dx (1/3);
+  - "full": both cells of the largest-angle edge have f = 1;
+  - "cut": all other rows (the edge has a cut cell, and both cells have f of at least 1/3).
+  Reported: the number of rows of each type per arm and seed, and pooled; as information also the number of events
+  (rows of the same cube at successive samples count as one event). Reading for D (the type is per row, the place is
+  the reading per arm): it needs at least 2 seeds with at least 5 rows, else "not determined". "Place 1" if at least
+  80 % of the rows are "thin", pooled and in each seed with at least 5 rows; "place 2" if at least 80 % are "full" in
+  the same way; else "mixed". The rows of one Bloch point at successive samples are not independent; the per-seed
+  condition limits, but does not remove, this effect. The counts of Dk and C are information only (risks above).
+- 3g does not change the verdict of step 3 (3a, 3b, 3c as fixed). 3g selects the first remedy for the plan of the
+  remedies: "place 1" → treatment of the thin cells (merge or remove); "place 2" → finer mesh or finer m near the
+  surface; "mixed" or "not determined" → report with options. If the verdict of step 3 and 3g do not agree (for
+  example "confirmed" and "place 2"), both are reported, and the plan of the remedies starts with options for both
+  places.
+- Total verdict: step 1 is not "confirmed" and step 2 does not run, thus "Shown" cannot occur. "Cause refuted" is
+  still possible, if step 3 is refuted. Else step 3 is reported with its verdict, 3a … 3g and the numbers.
+- Cost of step 3 alone (estimate from the items of "Cost" above, k* = 4): preparations 3 × 0.3 … 0.43 h, C 3 × 0.5 …
+  0.6 h, D 3 × 1.8 … 2.6 h, Dk 3 × 3 … 9 h; sum 17 … 38 GPU-h; at most 0.08 $ per GPU-h 1.4 … 3.0 $, with the set-up
+  up to about 3.5 $. On a box with 4 GPUs about 10 … 12 h of wall time (the longest Dk job). Box under the rent rule
+  of Chris as in "Box" above; destroyed only with his go, after the download with md5.
 
 ## 5. Optional step 3: mesh control (separate go)
 
