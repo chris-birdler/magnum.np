@@ -2429,9 +2429,10 @@ of the small time step of D; the remedies; other geometries; a class for the los
   GPU-h). GPU load check: pass (no foreign process; 13.5 and 13.6 TFLOPS, 824 and 823 GB/s). Set-up 5344a8e: pass.
   Speed check off156 (box 11: 3.699 ms per stage): GPU 0 4.219 and 4.197 ms (ratio 1.141 and 1.135, n 2): fail;
   GPU 1 3.840 ms (ratio 1.038, n 1): pass. The tries per sample interval are 21.15 on both GPUs, equal to box 11.
-  Cause: GPU 0 ran in software thermal slowdown during the full measurement (SM clock median 982 MHz, maximum
-  1530 MHz; 150 W against 230 W on GPU 1). No job started. The box stayed rented without load for about 12 h
-  until the decision (about 2.7 $).
+  GPU 0 ran in software thermal slowdown during the full measurement (SM clock median 982 MHz, maximum
+  1530 MHz; 150 W against 230 W on GPU 1). The cause of the slow GPU is not known: box 58614025 (below) had the same
+  ratio without a slowdown. No job started. The box stayed rented without load for about 12 h until the decision
+  (about 2.7 $).
 - 2026-11-01, decision of Chris: destroy (done; the diagnostic logs are local with md5; credit 6.64 $). Rule from
   now on: a box that fails a box test (GPU load, throughput, speed, ssh) is destroyed at once. No watcher runs; no box.
 - 2026-11-01, go of Chris ("Ok") on an automatic box: the script auto418.py rents a V100 box (0.094 $ per GPU-h or
@@ -2443,6 +2444,13 @@ of the small time step of D; the remedies; other geometries; a class for the los
   only a GPU more than 10 % slower than box 11 fails; a GPU more than 10 % faster is recorded and passes, because the
   check is there to find slow boxes. A GPU that slows down later during production (logged each minute in
   gpu_log.csv) is reported, not stopped, because the results do not depend on the speed.
+- 2026-11-01, auto418.py rented instance 58614025 (machine 154925, host 382033, 2 × V100-SXM2 32 GB, 0.086 $ per
+  GPU-h). ssh, GPU load (no foreign process; 14.3 and 14.1 TFLOPS, 817 GB/s) and upload: pass. Speed check: GPU 0
+  4.196 ms (ratio 1.134), GPU 1 4.226 ms (ratio 1.142): fail, without a thermal slowdown (SM clock 1530 MHz, at most
+  64 °C). Destroyed at once (0.54 h, 0.10 $; logs local with md5). Speed ratios measured up to now: box 11 1.00
+  (n 3), 4.16 box 1.02, 58529564 1.04 and 1.13 … 1.14, 58614025 1.13 and 1.14. The set-up on 58614025 needed 1244 s
+  against 930 s on 58529564; a share of the host CPU in the off156 time is possible, not shown.
+- 2026-11-01, decision of Chris: the speed limit stays at 10 %. auto418.py continues with this limit.
 
 ## 5. Optional step 3: mesh control (separate go)
 
