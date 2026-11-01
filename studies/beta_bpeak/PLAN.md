@@ -2434,6 +2434,15 @@ of the small time step of D; the remedies; other geometries; a class for the los
   until the decision (about 2.7 $).
 - 2026-11-01, decision of Chris: destroy (done; the diagnostic logs are local with md5; credit 6.64 $). Rule from
   now on: a box that fails a box test (GPU load, throughput, speed, ssh) is destroyed at once. No watcher runs; no box.
+- 2026-11-01, go of Chris ("Ok") on an automatic box: the script auto418.py rents a V100 box (0.094 $ per GPU-h or
+  less, 2 … 4 GPUs, rule of the watcher; machines 147583, 152226, 152674 and host 381795 excluded), tests it and
+  destroys it at once when a test fails, then rents the next one, until the failed boxes cost 1 $. Tests: ssh in
+  30 min; no foreign process, utilization at most 5 %, at least 11.5 TFLOPS and 700 GB/s on each GPU; upload of the
+  start state with equal md5; set-up; speed check off156 on each GPU (before: GPU 0 only). A box that passes all
+  tests starts step 3 at once (dispatcher, preparation jobs). Deviation from the 4.16 speed rule, with its reason:
+  only a GPU more than 10 % slower than box 11 fails; a GPU more than 10 % faster is recorded and passes, because the
+  check is there to find slow boxes. A GPU that slows down later during production (logged each minute in
+  gpu_log.csv) is reported, not stopped, because the results do not depend on the speed.
 
 ## 5. Optional step 3: mesh control (separate go)
 
