@@ -2425,6 +2425,15 @@ of the small time step of D; the remedies; other geometries; a class for the los
   used, no data. Decision of Chris: destroy (done 2026-10-31, credit 9.33 $), the watcher waits for a V100 at
   0.094 $ per GPU-h or less with 2 … 4 GPUs (not machine 152226, not host 381795). After a rent: a GPU load check
   (no foreign process, throughput) before the set-up.
+- 2026-10-31, the watcher rented instance 58529564 (machine 152674, host 513108, 2 × V100-SXM2 16 GB, 0.094 $ per
+  GPU-h). GPU load check: pass (no foreign process; 13.5 and 13.6 TFLOPS, 824 and 823 GB/s). Set-up 5344a8e: pass.
+  Speed check off156 (box 11: 3.699 ms per stage): GPU 0 4.219 and 4.197 ms (ratio 1.141 and 1.135, n 2): fail;
+  GPU 1 3.840 ms (ratio 1.038, n 1): pass. The tries per sample interval are 21.15 on both GPUs, equal to box 11.
+  Cause: GPU 0 ran in software thermal slowdown during the full measurement (SM clock median 982 MHz, maximum
+  1530 MHz; 150 W against 230 W on GPU 1). No job started. The box stayed rented without load for about 12 h
+  until the decision (about 2.7 $).
+- 2026-11-01, decision of Chris: destroy (done; the diagnostic logs are local with md5; credit 6.64 $). Rule from
+  now on: a box that fails a box test (GPU load, throughput, speed, ssh) is destroyed at once. No watcher runs; no box.
 
 ## 5. Optional step 3: mesh control (separate go)
 
