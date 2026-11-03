@@ -2451,6 +2451,8 @@ of the small time step of D; the remedies; other geometries; a class for the los
   (n 3), 4.16 box 1.02, 58529564 1.04 and 1.13 … 1.14, 58614025 1.13 and 1.14. The set-up on 58614025 needed 1244 s
   against 930 s on 58529564; a share of the host CPU in the off156 time is possible, not shown.
 - 2026-11-01, decision of Chris: the speed limit stays at 10 %. auto418.py continues with this limit.
+- 2026-11-03: no offer at 0.094 $ per GPU-h or less in 60 h (the cheapest valid offer: 0.16 $ per GPU-h). Decision
+  of Chris: price limit 0.10 $ per GPU-h. auto418.py started again with this limit (spent on failed boxes: 0.10 $).
 
 ## 5. Optional step 3: mesh control (separate go)
 
