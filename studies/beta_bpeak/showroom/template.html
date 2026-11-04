@@ -8,7 +8,8 @@ window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
 <style>
-/* Layout: one reading column; the equation in a ruled panel; the trend plots in a two-column grid that stacks on a phone. */
+/* Layout: one column; the equations in a ruled panel; three variable tables; the trend plots in a two-column
+   grid that stacks on a phone. No prose (Chris 2026-11-04): equations, variables and plots only. */
 :root {
   --bg: #f5f7f9;
   --surface: #ffffff;
@@ -39,34 +40,26 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-body); 
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 40px 64px; display: flex; flex-direction: column; gap: 40px;
 }
-.prose { max-width: 68ch; }
 header { display: flex; flex-direction: column; gap: 10px; }
 .eyebrow { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 h1 { font: 600 clamp(30px, 4.5vw, 44px)/1.1 var(--font-display); margin: 0; text-wrap: balance; }
 h2 { font: 600 26px/1.2 var(--font-display); margin: 0 0 12px; text-wrap: balance; }
 h3 { font: 600 17px/1.3 var(--font-body); margin: 0; }
 p { margin: 0; }
-.lead { color: var(--muted); font-size: 17px; }
 section { display: flex; flex-direction: column; gap: 14px; }
+.table-title { font: 600 15.5px/1.3 var(--font-body); margin: 6px 0 0; }
 .equation {
   background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
   padding: 28px max(16px, 3vw); overflow-x: auto; display: flex; flex-direction: column; gap: 22px;
 }
-.equation .main { font-size: 21px; }
-.parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.part { border-top: 3px solid var(--c); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.part .name { font: 600 14px/1.3 var(--font-body); color: var(--ink); }
-.part p { color: var(--muted); font-size: 14px; }
-.part.contact { --c: var(--contact); }
-.part.hyst { --c: var(--hyst); }
-.part.eddy { --c: var(--eddy); }
+.equation .main { font-size: 18px; }
 .sub { overflow-x: auto; font-size: 17px; }
 .table-box { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
 th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 th { font: 600 12px/1.3 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 tr:last-child td { border-bottom: 0; }
-.inputs td:nth-child(4), .consts td:nth-child(3) { font-family: var(--font-mono); font-size: 13.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inputs td:nth-child(4), .consts td:nth-child(3), .derived td:nth-child(4) { font-family: var(--font-mono); font-size: 13.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .card {
   margin: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px;
@@ -75,143 +68,96 @@ tr:last-child td { border-bottom: 0; }
 .card figcaption { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .card .law { color: var(--accent); overflow-x: auto; font-size: 15px; }
 .card .law mjx-container { margin: 2px 0 !important; }
-.card p { color: var(--muted); font-size: 14.5px; }
 .plot img { width: 100%; height: auto; display: block; }
-.fig-dark { display: none; }
+.plot .fig-dark { display: none; }   /* .plot img sets display: block; this rule must be more specific */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .fig-light { display: none; }
-  :root:not([data-theme="light"]) .fig-dark { display: block; }
+  :root:not([data-theme="light"]) .plot .fig-light { display: none; }
+  :root:not([data-theme="light"]) .plot .fig-dark { display: block; }
 }
-:root[data-theme="dark"] .fig-light { display: none; }
-:root[data-theme="dark"] .fig-dark { display: block; }
-.notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.note { border-left: 2px solid var(--rule); padding-left: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.note h3 { font-size: 15.5px; }
-.note p { color: var(--muted); font-size: 14.5px; }
+:root[data-theme="dark"] .plot .fig-light { display: none; }
+:root[data-theme="dark"] .plot .fig-dark { display: block; }
 .dopt { border-top: 1px solid var(--rule); padding-top: 16px; display: flex; flex-direction: column; gap: 6px; }
 .dopt .name { font: 600 14px/1.3 var(--font-body); }
-.dopt p { color: var(--muted); font-size: 14px; max-width: 80ch; }
-.aside { border: 1px dashed var(--rule); border-radius: 6px; padding: 18px max(16px, 2vw); display: flex; flex-direction: column; gap: 10px; }
-.aside h3 { font-size: 15.5px; }
-.aside p { color: var(--muted); font-size: 14.5px; max-width: 80ch; }
-ol.sources { margin: 0; padding-left: 22px; color: var(--muted); font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
 a { color: var(--accent); }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.base { font-family: var(--font-mono); font-size: 13.5px; color: var(--muted); }
 @media (max-width: 760px) {
-  .parts, .grid, .notes { grid-template-columns: minmax(0, 1fr); }
-  .equation .main { font-size: 17px; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .equation .main { font-size: 15px; }
 }
 </style>
 
 <div class="wrap">
-  <header class="prose">
-    <span class="eyebrow">Soft magnetic powder cores · loss per volume</span>
+  <header>
+    <span class="eyebrow">Soft magnetic powder cores · loss per volume of particle material</span>
     <h1>Powder Core Loss Equation</h1>
-    <p class="lead">One equation that shows how each material and process parameter moves the power loss.
-      It gives the direction and the strength of each trend. It does not give exact loss values.</p>
   </header>
 
   <section>
-    <h2>The equation</h2>
+    <h2>Equations</h2>
     <div class="equation">
       <div class="main">\[
-        P \;=\; \underbrace{\Big[\,1 + p_\mathrm{c}\,\big(\kappa_0 + \kappa_a\,a_\mathrm{c}\big)\Big]}_{\text{contacts}}
+        P \;=\; \underbrace{\Big[\,1 + p_\mathrm{c}\,\big(\kappa_0 + \kappa_\mathrm{a}\,a_\mathrm{c}\big)\Big]}_{\text{contacts}}
         \;\Bigg[\;\underbrace{c_\mathrm{m}\, f\, K_\mathrm{eff}\,
-        \underbrace{\big(1 + \gamma_\mathrm{h}\,h\big)}_{\text{homogeneity}}
+        \underbrace{\big(1 + \gamma_\mathrm{h}\,h\big)}_{\text{inhomogeneity}}
         \underbrace{\big(1 + \gamma_\mathrm{s}\,\varphi_\mathrm{s}\big)}_{\text{surface}}
         \left(\frac{B_\mathrm{peak}}{J_\mathrm{s}}\right)^{\!\beta}
-        \underbrace{\left[1 + \left(\frac{f}{f_\mathrm{r}}\right)^{\!\alpha - 1}\right]}_{\text{static + dynamic}}}_{\text{magnetic}}
-        \;+\;\underbrace{\frac{\pi^{2}\,d^{2}\,f^{2}\,B_\mathrm{peak}^{2}}{20\,\rho}}_{\text{eddy current}}\;\Bigg]
+        \underbrace{\left[1 + \left(\frac{f}{f_\mathrm{r}}\right)^{\!\alpha - 1}\right]}_{\text{static + dynamic}}}_{\text{magnetic part } P_\mathrm{m}}
+        \;+\;\underbrace{\frac{\pi^{2}\,d^{2}\,f^{2}\,B_\mathrm{peak}^{2}}{20\,\rho}}_{\text{eddy current part } P_\mathrm{e}}\;\Bigg]
       \]</div>
       <div class="dopt">
-        <span class="name">Resonance frequency (Snoek), with the permeability from \(K_\mathrm{eff}\)</span>
-        <div class="sub">\[
-          f_\mathrm{r} \;=\; \frac{\gamma\, J_\mathrm{s}}{3\pi\,\big(\mu_\mathrm{r} - 1\big)},
-          \qquad \mu_\mathrm{r} - 1 \;=\; \frac{J_\mathrm{s}^{2}}{3\,\mu_0\, K_\mathrm{eff}}
-          \qquad\Rightarrow\qquad f_\mathrm{r} \;=\; \frac{\gamma\,\mu_0\, K_\mathrm{eff}}{\pi\, J_\mathrm{s}}
-        \]</div>
-        <p>Far below \(f_\mathrm{r}\) the magnetic part is the static hysteresis (a fixed loss per cycle). Towards
-          \(f_\mathrm{r}\) a dynamic part adds. Its exponent \(\alpha\) of 1.5 is a shape borrowed from the excess loss
-          of wall motion [10, 12]; a linear damping relaxation gives at most 2. The permeability \(\mu_\mathrm{r}\) of
-          the particle material is not a separate input: in the same rotation model, it follows from
-          \(K_\mathrm{eff}\) and \(J_\mathrm{s}\). It is not the permeability of the core, which is 26 to 60 for
-          typical powder cores [9]. A small effective anisotropy gives a high permeability and a low resonance
-          frequency; at the base values (stress-free grains) \(\mu_\mathrm{r}\) is about 10⁵ and \(f_\mathrm{r}\)
-          about 225 kHz [11, 13].</p>
+        <span class="name">Permeability of the particle material</span>
+        <div class="sub">\[ \mu_\mathrm{r} - 1 \;=\; \frac{J_\mathrm{s}^{2}}{3\,\mu_0\, K_\mathrm{eff}} \]</div>
       </div>
       <div class="dopt">
-        <span class="name">Volume fraction of the surface layer (sphere of diameter \(d\), layer thickness \(\delta_\mathrm{s}\))</span>
-        <div class="sub">\[
-          \varphi_\mathrm{s} \;=\; 1 - \left(1 - \frac{2\,\delta_\mathrm{s}}{d}\right)^{\!3}
-          \;\approx\; \delta_\mathrm{s}\,\frac{S}{V} \;=\; \frac{6\,\delta_\mathrm{s}}{d}
-        \]</div>
-        <p>For a thin layer, \(\varphi_\mathrm{s}\) is the layer thickness times the surface-to-volume ratio
-          \(S/V\) of the particle. When the particle diameter comes down to twice the layer thickness, the whole
-          particle is surface layer: \(\varphi_\mathrm{s}\) is then 1 and the loss stops rising.</p>
+        <span class="name">Resonance frequency (Snoek)</span>
+        <div class="sub">\[ f_\mathrm{r} \;=\; \frac{\gamma\, J_\mathrm{s}}{3\pi\,\big(\mu_\mathrm{r} - 1\big)}
+          \;=\; \frac{\gamma\,\mu_0\, K_\mathrm{eff}}{\pi\, J_\mathrm{s}} \]</div>
       </div>
       <div class="dopt">
-        <span class="name">Minimum of \(P\) over the particle diameter (from the equation; exponent \(\beta\) of 2,
-          thin layer)</span>
-        <div class="sub">\[
-          d_\mathrm{opt} \;\approx\; \left(\frac{60\,\gamma_\mathrm{s}\,\delta_\mathrm{s}\, c_\mathrm{m}\, K_\mathrm{eff}\,
+        <span class="name">Volume fraction of the surface layer</span>
+        <div class="sub">\[ \varphi_\mathrm{s} \;=\; 1 - \left(1 - \frac{2\,\delta_\mathrm{s}}{d}\right)^{\!3}
+          \;\approx\; \delta_\mathrm{s}\,\frac{S}{V} \;=\; \frac{6\,\delta_\mathrm{s}}{d} \]</div>
+      </div>
+      <div class="dopt">
+        <span class="name">Optimum particle diameter (thin layer, \(\beta\) 2)</span>
+        <div class="sub">\[ d_\mathrm{opt}^{3} \;\approx\; \frac{60\,\gamma_\mathrm{s}\,\delta_\mathrm{s}\, c_\mathrm{m}\, K_\mathrm{eff}\,
           \big(1 + \gamma_\mathrm{h} h\big)\, \rho}{\pi^{2}\, J_\mathrm{s}^{2}\, f}
-          \left[1 + \left(\frac{f}{f_\mathrm{r}}\right)^{\!\alpha - 1}\right]\right)^{\!1/3}
-        \]</div>
-        <p>\(d_\mathrm{opt}\) is not an extra input: it follows from the surface factor and the eddy current term,
-          which change in opposite directions with \(d\). Finer powders are better only down to \(d_\mathrm{opt}\).</p>
+          \left[1 + \left(\frac{f}{f_\mathrm{r}}\right)^{\!\alpha - 1}\right] \]</div>
       </div>
-      <div class="parts">
-        <div class="part contact">
-          <span class="name">Contact factor</span>
-          <p>Particles that touch increase both parts: currents cross the contacts, and the flux concentrates in the
-            contact necks. The increase is linear in the contact probability; the contact area makes this slope
-            steeper, also linearly.</p>
-        </div>
-        <div class="part hyst">
-          <span class="name">Magnetic part with homogeneity and surface</span>
-          <p>Static hysteresis plus a dynamic part that grows towards the resonance frequency. The effective
-            anisotropy sets the loss per cycle; spatial fluctuations
-            of the anisotropy and the disturbed surface layer of small particles increase it. The drive level sets how
-            far the material goes towards saturation.</p>
-        </div>
-        <div class="part eddy">
-          <span class="name">Eddy current part (classical sphere)</span>
-          <p>Currents inside each particle. They increase with the particle size and the frequency, and decrease with
-            the resistivity.</p>
-        </div>
+      <div class="dopt">
+        <span class="name">Nanocrystalline material (Herzer)</span>
+        <div class="sub">\[ K_\mathrm{eff} \;=\; \frac{K_1^{4}\,D^{6}}{A^{3}} \;=\; K_1\left(\frac{D}{L_0}\right)^{\!6},
+          \qquad L_0 \;=\; \sqrt{\frac{A}{K_1}} \]</div>
       </div>
-    </div>
-    <div class="aside">
-      <h3>\(K_\mathrm{eff}\) of a nanocrystalline material (Herzer averaging, outside the equation)</h3>
-      <div class="sub">\[
-        K_\mathrm{eff} \;=\; \frac{K_1^{4}\,D^{6}}{A^{3}} \;=\; K_1\left(\frac{D}{L_0}\right)^{\!6},
-        \qquad L_0 \;=\; \sqrt{\frac{A}{K_1}}
-      \]</div>
-      <p>In a nanocrystalline material, the exchange averages the crystal anisotropy \(K_1\) of the grains over the
-        length \(L_0\). The grain size \(D\) and the exchange constant \(A\) set the remaining effective anisotropy.
-        This applies while \(D\) is smaller than \(L_0\); for larger grains the coercivity falls again, in inverse
-        proportion to \(D\) [1]. With \(K_1\) of 8 kJ/m³, \(A\) of 10 pJ/m and \(D\) of
-        10 nm, the result is about 4 J/m³ (the base value, stress-free grains); \(L_0\) is about 35 nm. A magnetoelastic anisotropy from
-        magnetostriction and stress adds to \(K_\mathrm{eff}\).</p>
     </div>
   </section>
 
   <section>
-    <h2>Inputs</h2>
+    <h2>Variables</h2>
+    <h3 class="table-title">Inputs</h3>
     <div class="table-box">
       <table class="inputs">
-        <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th>Base value</th><th>Base value from</th></tr></thead>
+        <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th>Base value</th></tr></thead>
         <tbody>
 {{INPUTS}}
         </tbody>
       </table>
     </div>
+    <h3 class="table-title">Constants</h3>
     <div class="table-box">
       <table class="consts">
-        <thead><tr><th>Constant</th><th>Meaning</th><th>Value</th><th>Status</th></tr></thead>
+        <thead><tr><th>Symbol</th><th>Meaning</th><th>Value</th></tr></thead>
         <tbody>
 {{CONSTS}}
+        </tbody>
+      </table>
+    </div>
+    <h3 class="table-title">Derived quantities</h3>
+    <div class="table-box">
+      <table class="derived">
+        <thead><tr><th>Symbol</th><th>Meaning</th><th>Unit</th><th>At the base point</th></tr></thead>
+        <tbody>
+{{DERIVED}}
         </tbody>
       </table>
     </div>
@@ -219,142 +165,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   <section>
     <h2>Trends</h2>
-    <p class="prose">Each plot changes one input and keeps all other inputs at their base values. The vertical axis is
-      the loss relative to the base point (the dot); 1 means the same loss as at the base point. At the base point the
-      magnetic part is about 61 % and the eddy current part about 39 % of the loss (this split follows from the
-      illustrative constants). The resonance frequency is about 225 kHz and the optimum diameter about 3.6 µm.</p>
     <div class="grid">
 {{CARDS}}
     </div>
-  </section>
-
-  <section>
-    <h2>Limits</h2>
-    <div class="notes">
-      <div class="note">
-        <h3>Trends, not values</h3>
-        <p>The constants \(c_\mathrm{m}\), \(\alpha\), \(\gamma_\mathrm{h}\), \(\gamma_\mathrm{s}\), \(\kappa_0\) and
-          \(\kappa_a\) and the layer thickness \(\delta_\mathrm{s}\) are illustrative. The equation shows the
-          direction and the power of each trend. The split between the magnetic and the eddy current part at the base
-          point follows from the illustrative \(c_\mathrm{m}\). A real core needs a fit of the constants to
-          measurements.</p>
-      </div>
-      <div class="note">
-        <h3>Loss per volume of particle material</h3>
-        <p>\(P\) is the loss per volume of the particle material at the core flux density \(B_\mathrm{peak}\), as on
-          datasheets. For the loss per core volume, multiply by the packing fraction. In our micromagnetic model (old
-          setup, packing fraction 0.55 to 0.69, at a fixed core flux density) the packing fraction had no clear effect on
-          the loss per volume of particle material. Inside the particles the flux density is higher than in the core.</p>
-      </div>
-      <div class="note">
-        <h3>Homogeneity term</h3>
-        <p>Spatial fluctuations of the anisotropy (stress, composition, defects) hold the magnetization back; in the
-          pinning theories of domain walls the coercive field increases with their amplitude. The linear form is a set
-          rule for this showroom.</p>
-      </div>
-      <div class="note">
-        <h3>Particle size</h3>
-        <p>Measured powder cores show the same trade-off: coarser powders have a lower coercive field and less
-          hysteresis loss, finer powders less eddy current loss; a median size of 124 µm was near the minimum of the
-          loss at 50 to 300 Hz [6]; other studies report the same trade-off [5, 7] (not checked for this page). The mixture of a particle core and a surface layer with its own loss is a set
-          rule. Our micromagnetic model has no disturbed surface layer and gives no evidence for this term.</p>
-      </div>
-      <div class="note">
-        <h3>Eddy currents in a real core</h3>
-        <p>The eddy current term is the classical loss of a single sphere [2]. With imperfect insulation, a real core
-          also has a macroscopic eddy current loss at the scale of the core cross-section; its correction coefficient
-          depends on the material [4]. In FeSi powder cores, an additional eddy current loss that depends on the grain size was
-          measured [2]. For flake-shaped particles, the flake thickness replaces the diameter, with the factor 6 in
-          place of 20.</p>
-      </div>
-      <div class="note">
-        <h3>Contact term</h3>
-        <p>Contacts act on both parts. Conducting contacts let eddy currents flow across particle boundaries, so the
-          current loops become larger. The flux concentrates in the contact necks, which increases the magnetic and
-          the eddy current part. The linear form in the contact probability and in the contact area is a set rule for
-          this showroom. Eddy currents through contacts at the scale of the core cross-section grow with the core size
-          [4]; a factor on the particle terms cannot show this.</p>
-      </div>
-      <div class="note">
-        <h3>Exponents</h3>
-        <p>The dynamic part grows with the exponent \(\alpha\). The value 1.5 is a shape borrowed from the excess loss of
-          wall motion [10, 12], which is an eddy current loss with its own dependence on \(\rho\) and on the flux
-          density; a linear damping relaxation gives at most 2. The flux density exponent \(\beta\) is usually 2 to 3 [8], 1.6 for a
-          powder core datasheet [9] and 3 in the Rayleigh range at low fields. Our micromagnetic model (particles of
-          about 1 µm, no eddy currents, \(K_\mathrm{eff}\) 1 to 6 kJ/m³, coarse mesh) gives \(\beta\) of 1.9 to 2.3
-          for the total rate-dependent loss at 30 MHz (4 design points). There, the loss depends on the rate at all
-          tested flux densities: between 15 and 60 MHz its frequency exponent is about 1 to 4 (one design point, old
-          setup, 3 seeds). The
-          plots use 1.5 for \(\alpha\) and 2 for \(\beta\).</p>
-      </div>
-      <div class="note">
-        <h3>Resonance and permeability</h3>
-        <p>\(f_\mathrm{r}\) marks the frequency where the dynamic part becomes as large as the static part; the
-          equation has no resonance peak and no fall above \(f_\mathrm{r}\). The permeability is the one of the particle
-          material, from the same rotation model as the Snoek relation. In a powder core, the resonance of the composite
-          moves to higher frequencies [13]; the resonance of the particle material does not move, and we take it to set
-          the loss at a given flux density in the particles (our inference). The \(f_\mathrm{r}\) formula equals the
-          anisotropy-field frequency of our record. With the \(K_\mathrm{eff}\) of our micromagnetic model (1 to
-          6 kJ/m³) it gives 47 to 290 MHz, the same order as the onset of the rate dependence there (42 to 85 MHz at
-          9 mT, one design point). Whether \(f_\mathrm{r}\) sets this onset is open.</p>
-      </div>
-      <div class="note">
-        <h3>Mechanism</h3>
-        <p>The Herzer model describes the averaging of the anisotropy in exchange-coupled grains. In our micromagnetic powder
-          model, moving vortex cores are the main regions of the loss outside the drive frequency; the mesh does not
-          resolve them. Our data do not yet confirm the single-factor trends of this page; their directions come from the
-          literature.</p>
-      </div>
-      <div class="note">
-        <h3>Not in the equation</h3>
-        <p>DC bias: a direct current in the winding moves the operating point towards saturation and decreases the
-          permeability; the Steinmetz form ignores it [10]. Temperature: it acts through \(K_\mathrm{eff}\), \(J_\mathrm{s}\) and \(\rho\). Waveform:
-          the equation applies to a sinusoidal flux; other waveforms need a generalized Steinmetz form [10].</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="prose">
-    <h2>Sources</h2>
-    <ol class="sources">
-      <li>G. Herzer, “Grain size dependence of coercivity and permeability in nanocrystalline ferromagnets”,
-        IEEE Transactions on Magnetics 26 (1990) 1397–1402. Averaged anisotropy and the sixth power of the grain size.
-        The values of \(K_1\) and \(A\) in the box are the values for Fe–Si grains used with this model; they were not
-        checked against the paper for this page.</li>
-      <li>S. Takemoto and T. Saito (Daido Steel), Powder Metallurgy World Congress 2006: classical eddy current loss of a
-        spherical particle and an eddy current loss that depends on the grain size in FeSi powder cores,
-        <a href="https://koreascience.kr/article/CFKO200617317791333.pdf" target="_blank" rel="noopener">koreascience.kr/article/CFKO200617317791333</a>.</li>
-      <li>FeSiBNbCu annealed at 550 °C: grain size 10.7 nm, resistivity 117 µΩ·cm,
-        <a href="https://kjmm.org/kjmm/ArticleDetail/RD_R/444079" target="_blank" rel="noopener">kjmm.org/kjmm/ArticleDetail/RD_R/444079</a>.</li>
-      <li>C. Appino, O. de la Barrière, F. Fiorillo et al., classical loss in soft magnetic composites,
-        Journal of Applied Physics (2013),
-        <a href="https://satie.ens-paris-saclay.fr/en/node/2261" target="_blank" rel="noopener">satie.ens-paris-saclay.fr/en/node/2261</a>.</li>
-      <li>Particle size and core loss of soft magnetic composites: optimum particle size for the smallest total loss,
-        <a href="https://orca.cardiff.ac.uk/172434" target="_blank" rel="noopener">orca.cardiff.ac.uk/172434</a>.</li>
-      <li>Soft magnetic composite cores with 63, 124 and 188 µm powders, 50 to 300 Hz,
-        <a href="https://journals.pan.pl//Content/89765/PDF/10172%20Volume%2060%20Issue%202-158%20paper.%20pdf.pdf" target="_blank" rel="noopener">journals.pan.pl (Volume 60, Issue 2)</a>.</li>
-      <li>FeSiAl powder cores, mean particle size 144 to 15 µm: higher coercivity and hysteresis loss for the finer
-        powder, <a href="https://link.springer.com/article/10.1007/s10854-021-07355-7" target="_blank" rel="noopener">link.springer.com/article/10.1007/s10854-021-07355-7</a>.</li>
-      <li>Steinmetz's equation: \(\alpha\) usually 1 to 2, \(\beta\) usually 2 to 3,
-        <a href="https://en.wikipedia.org/wiki/Steinmetz%27s_equation" target="_blank" rel="noopener">en.wikipedia.org/wiki/Steinmetz's_equation</a>.</li>
-      <li>Magnetics, Kool Mµ Ultra powder cores, product bulletin: loss fit with the flux density exponent 1.602 and the
-        frequency exponent 1.000 below 100 kHz and about 1.4 above,
-        <a href="https://p7f.vogel.de/companies/67/5b/675b10f06a9a6/magnetics-kool-m---ultra-bulletin-en.pdf" target="_blank" rel="noopener">p7f.vogel.de (Kool Mµ Ultra bulletin)</a>.</li>
-      <li>C. R. Sullivan et al., core loss prediction for non-sinusoidal waveforms (slides): excess loss of wall-motion
-        models with the exponent 1.5 or 2, the Steinmetz form ignores DC bias, generalized Steinmetz equation,
-        <a href="https://web.eecs.utk.edu/~dcostine/ECE482/materials/magnetics/Sullivan_APEC_2012.pdf" target="_blank" rel="noopener">web.eecs.utk.edu (Sullivan_APEC_2012.pdf)</a>.</li>
-      <li>J. L. Snoek, “Dispersion and absorption in magnetic ferrites at frequencies above one Mc/s”, Physica 14
-        (1948) 207–217. Relation between permeability and resonance frequency.</li>
-      <li>G. Bertotti, “General properties of power losses in soft ferromagnetic materials”, IEEE Transactions on
-        Magnetics 24 (1988) 621–630. Loss separation; excess loss.</li>
-      <li>Resonance of magnetic composites (the composite resonance moves above that of the particles) and the Snoek
-        relation,
-        <a href="https://arxiv.org/pdf/1908.00603" target="_blank" rel="noopener">arxiv.org/pdf/1908.00603</a>.</li>
-    </ol>
-    <p class="base">Plots: plots.py (matplotlib). Base point: \(f\) 100 kHz, \(B_\mathrm{peak}\) 100 mT,
-      \(J_\mathrm{s}\) 1.25 T, \(K_\mathrm{eff}\) 4 J/m³, \(h\) 0.2, \(d\) 10 µm, \(\delta_\mathrm{s}\) 0.1 µm,
-      \(\gamma_\mathrm{s}\) 1.2, \(\rho\) 1.2 µΩ·m, \(\alpha\) 1.5, \(\beta\) 2, \(c_\mathrm{m}\) 1,
-      \(\gamma_\mathrm{h}\) 2, \(p_\mathrm{c}\) 0.2, \(a_\mathrm{c}\) 0.05, \(\kappa_0\) 1, \(\kappa_a\) 20. Derived:
-      \(\mu_\mathrm{r}\) about 1.0·10⁵, \(f_\mathrm{r}\) about 225 kHz.</p>
   </section>
 </div>
