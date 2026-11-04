@@ -9046,8 +9046,33 @@ Samples per run: 1799 (D s921, 7 cycles ≥ 1) or 1542 (6 cycles ≥ 1).
    occur and "cause refuted" does not occur; the steps are reported with their numbers. 3g gives place 1: the first
    remedy is a treatment of the thin cells (merge or remove), per amendment 1.
 
-**Open for Chris.** The plan of the remedies (place 1: merge or remove the thin cells; options to be proposed); the
-CPU check of the cells of the Dk pairs; whether step 2 runs; PLAN 4.17 stays on hold.
+**Addendum: cells of the pairs above 60° and 90° (local CPU check after the verdict, go of Chris 2026-11-04).**
+Script plan418_step3_pairs.py and results/plan418_step3_pairs.md (diag branch 8c92122, copy of the table here). Input:
+the relaxed state init.pt of each run and its geometry (eval_418.geometry). No per-cycle states exist, and E3 records
+no pair cells, so the per-cycle counts of 3c cannot be classified. Pair types: full-full (both f = 1), cut-full,
+cut-cut; "with a thin cell" if a cell of the pair has f below 1/3. Numbers per seed s921 / s923 / s925.
+
+| arm | pairs above 90° | types of these pairs | full-full pairs above 60° (largest angle) | cut-cut pairs above 60° with a thin cell |
+|---|---|---|---|---|
+| C | 0 / 0 / 0 | – | 8 / 10 / 10 (82.9°, 73.6°, 75.8°) | 0 / 0 / 0 |
+| D | 1 / 2 / 6 | 8 cut-cut with a thin cell, 1 cut-cut without | 4 / 6 / 12 (67.3°, 75.6°, 80.4°) | 9 / 4 / 14 |
+| Dk | 1 / 2 / 2 | 2 full-full (90.8°, 93.5°), 3 cut-cut with a thin cell (up to 94.4°) | 27 / 29 / 28 (90.8°, 93.5°, 87.9°) | 9 / 4 / 17 |
+
+- Distance of the full-full pairs above 60° to the cut layer: in C and D all have a cell at a distance of 1 cell from a
+  cut cell. In Dk 24 … 28 of the 27 … 29 pairs have a cell at a distance of 1 cell. The others are at a distance of at
+  most 2 cells.
+- Pairs above 60° with a cut cell and no thin cell: C 7 … 12, D 14 … 27, Dk 0 … 1 per seed.
+- Reading (interpretation, relaxed states only, n 3 seeds): the factor 4 removes almost all pairs above 60° with a cut
+  cell and no thin cell. Two pair types keep angles above 60°: pairs of two cut cells with a thin cell, and pairs of
+  full cells next to the cut layer. Full-full pairs above 60° next to the cut layer exist already in C (8 … 10, up to
+  82.9°), but C has no Bloch point and no pair above 90°. Dk has 2.8 … 3.4 times the count of C and 2.3 … 6.8 times
+  the count of D (D 4 … 12); thus the increase comes from the factor 4, not from the correction. Both pair types that amendment 1 names as risks
+  (from T4 of step 1) occur in the relaxed Dk states. The risk itself, Bloch points in Dk, did not occur (3b). A remedy
+  only at the thin cells can leave the pairs of full cells next to the cut layer; this is not tested.
+- This closes the CPU check of reading 2.
+
+**Open for Chris.** The plan of the remedies (place 1: merge or remove the thin cells; the pairs of full cells next
+to the cut layer; options to be proposed); whether step 2 runs; PLAN 4.17 stays on hold.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
