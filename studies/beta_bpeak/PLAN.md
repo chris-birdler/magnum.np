@@ -2971,6 +2971,14 @@ layer) as a remedy target; the main study (4.17).
   - The s922 jobs of stage C wait for HFP_s922 with --init_wait_h 6 (a run-control argument).
   - The stage-A arms are AV1_s<seed> and AV2_s<seed> (jobs/plan420_stageA.txt).
 - 2026-11-04 15:42, stage A started on the local CPU (2 slots with 4 threads, runs/plan420 of the diag worktree).
+- 2026-11-04, context-free review of the box automation (chain420.sh, auto420.py, eval_420.py, watch420.py): 9 defects,
+  all fixed before any rent (diag 4d69f92). The control R0 now stops new jobs at once when it fails (before: only at
+  the end). A selection without data now gives NONE (no stage C). The dispatcher also does not rerun a job whose
+  relaxation did not stop. Selection NONE or no selection stops the jobs at once (gate 5). The q-16 jobs run beside
+  stage C (priority between stage B and stage C), still one at a time. auto420.py checks the credit (at least 17.5 $)
+  before a rent and destroys a failed box until it is gone. The spare D at 100 mT is S3D_s925 of 4.18 step 3. Seed 922
+  is paired with 4.16 only if HFP_s922 equals 4.16. A decision on a gap of the plan: a variant whose jobs ran their
+  cycles in fewer than 2 seeds is no candidate for stage C.
 
 ## 5. Optional step 3: mesh control (separate go)
 
