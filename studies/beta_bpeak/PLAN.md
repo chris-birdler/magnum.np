@@ -2453,6 +2453,24 @@ of the small time step of D; the remedies; other geometries; a class for the los
 - 2026-11-01, decision of Chris: the speed limit stays at 10 %. auto418.py continues with this limit.
 - 2026-11-03: no offer at 0.094 $ per GPU-h or less in 60 h (the cheapest valid offer: 0.16 $ per GPU-h). Decision
   of Chris: price limit 0.10 $ per GPU-h. auto418.py started again with this limit (spent on failed boxes: 0.10 $).
+- 2026-11-03, auto418.py rented instance 59021293 (machine 43024, host 310808, 4 × V100-PCIE 16 GB, 0.087 $ per
+  GPU-h). All box tests pass: no foreign process; 13.1 … 13.8 TFLOPS and 824 GB/s; upload with equal md5; speed check
+  off156 1.033 … 1.039 on the 4 GPUs. The script started the dispatcher (5344a8e) and the 4 preparations.
+- Preparations: all converged. HFP_s921, s923 and s924 equal 4.16 (relaxation iterations 15500, 15000, 20000; E/K_d
+  1.11e-4, 1.06e-4, 1.22e-4). HFP_s924 has a Bloch point again (as in 4.16); seed 925 replaces it (19500 iterations,
+  E/K_d 1.38e-4, no Bloch point). Seeds of step 3: 921, 923, 925.
+- The 3 S3Dk jobs stopped at the start with exit code 1 on the GPU: CutPairExchange.n_pairs_changed (a count for the
+  record) put the cut mask on the default device (the GPU) and A on the CPU. Step 1 ran on the CPU only, and the
+  end-to-end test of test_plan418.py forced the CPU. New starts were stopped at once (stop file). Checks on the box
+  GPU: the unit tests found the same error; small runs of C and D with the production options of step 3 ran without
+  an error. The C and D jobs (6) started on 5344a8e; the patch does not touch their code path.
+- 2026-11-04, go of Chris on the patch: diag/sliver-coupling 1968d9a (the count on the CPU; the end-to-end test also on
+  the GPU; eval_418.py step3 for the readings 3a … 3g with a test of the rules). Tests: test_plan418.py 12 passed,
+  1 skipped (CPU), the same tests on a box GPU pass; test_study.py 152 passed, 5 skipped. The 3 S3Dk jobs run on
+  1968d9a in a second queue (one job per GPU, as the dispatcher); the folders of the failed starts are kept on the box.
+  Decisions for the evaluation, not fixed by the text of 3a and 3c: 3a counts a sample as "cut" if the cube of each of
+  its Bloch points has a cut cell; 3c takes part with a seed if the largest per-cycle number of D is above that of C,
+  and compares Dk and C at the same cycle index (a cycle of Dk after the last cycle of C: the last cycle of C).
 
 ## 5. Optional step 3: mesh control (separate go)
 
