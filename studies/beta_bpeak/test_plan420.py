@@ -453,3 +453,33 @@ def test_eval_420_stage_C_rules():
     assert verdict_C(c_a(D, Dv, D16, Dv16, sp)) == "remedy fails"
     D16 = {(s, 100): _job() for s in (921, 923, 924)}
     assert c_a(D, Dv, D16, Dv16, sp)["q16"]["status"] == "not valid"
+
+
+def test_eval_420_fine_reference_and_overlap():
+    """B-b: the f-weighted block average of a fine state onto the coarse mesh (only fine cells of the same particle;
+    NaN without such a cell) and the overlap readings: a uniform state gives overlap 1 and no cell above 45 deg; a
+    cut cell turned by 90 deg counts once."""
+    from eval_420 import fine_reference, overlap_B
+    Nc, k = 4, 2
+    ids_c = -np.ones((Nc,) * 3, np.int64)
+    ids_c[1:3, 1:3, 1:3] = 0
+    frac_c = np.where(ids_c >= 0, 1.0, 0.0)
+    frac_c[1, 1, 1] = 0.5                                           # one cut cell
+    ids_f = np.repeat(np.repeat(np.repeat(ids_c, k, 0), k, 1), k, 2)
+    frac_f = np.where(ids_f >= 0, 1.0, 0.0)
+    m_f = np.zeros((Nc * k,) * 3 + (3,))
+    m_f[..., 2] = 1.0
+    m_f[2, 2, 2] = [1.0, 0.0, 0.0]                                 # one fine cell of the cut coarse cell, weight 1
+    frac_f[2, 2, 2] = 3.0                                          # weights: 3 x (1,0,0) + 7 x (0,0,1) in that block
+    ref = fine_reference(m_f, ids_f, frac_f, ids_c)
+    assert np.isnan(ref[0, 0, 0]).all()
+    v = np.array([3.0, 0.0, 7.0])
+    assert np.allclose(ref[1, 1, 1], v / np.linalg.norm(v))
+    assert np.allclose(ref[2, 2, 2], [0.0, 0.0, 1.0])
+    m = np.zeros((Nc,) * 3 + (3,))
+    m[..., 2] = 1.0
+    r = overlap_B(m, ref, ids_c, frac_c)
+    assert r["cut_gt45"] == 0 and r["cut_overlap_mean"] == pytest.approx(7.0 / np.linalg.norm(v))
+    m[1, 1, 1] = [0.0, 1.0, 0.0]
+    r = overlap_B(m, ref, ids_c, frac_c)
+    assert r["cut_gt45"] == 1 and r["full_next_gt45"] == 0 and r["cut_left_out"] == 0

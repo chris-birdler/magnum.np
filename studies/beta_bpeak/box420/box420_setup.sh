@@ -14,6 +14,7 @@ fi
 cd /root/magnum.np && git fetch -q origin && git checkout -q -f "$C"
 rc=$?; [ $rc -eq 0 ] || { log "checkout of $C failed rc $rc"; exit 1; }
 pip install -q --no-deps -e . > /root/pip.log 2>&1
+command -v rsync > /dev/null || { apt-get update -q && apt-get install -y -q rsync; } >> /root/pip.log 2>&1   # fetch420.sh
 pip install -q numpy scipy pyvista setproctitle tqdm torchdiffeq xitorch matplotlib pytest statsmodels >> /root/pip.log 2>&1
 rc=$?; [ $rc -eq 0 ] || { log "pip failed rc $rc"; exit 1; }
 python - >> $P 2>&1 <<'EOF'
