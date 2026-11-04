@@ -2477,6 +2477,234 @@ of the small time step of D; the remedies; other geometries; a class for the los
   Verdict "not determined" (3a and 3b hold, 3c fails), 3g place 1; PROTOKOLL 7.144, results/plan418_step3.json.
   Data downloaded and checked with md5 (161 files, 510.7 MB; field files 2.9 GB evaluated on the box, not
   downloaded). Box 59021293 destroyed after the check (go of Chris). Credit after the step 3.27 $.
+- 2026-11-04, go of Chris: local CPU check of the cells of the large-angle pairs in the relaxed states of step 3
+  (plan418_step3_pairs.py, diag 8c92122); PROTOKOLL 7.144, addendum.
+- 2026-11-04, decision of Chris: no remedy before a loss test on a finer mesh ("Wir müssen dem auf den Grund gehen,
+  bevor wir irgendwelche Maßnahmen machen"). Step 2 of this plan does not answer this (it measures tilts, not the
+  loss). Of three options (C and D at dx 1.5 l_ex in the 4.16 geometry; only C at dx 1.5 l_ex in the 4.16 geometry;
+  C and D on both meshes in the staircase geometry) Chris chose the second ("Ich folge deiner Empfehlung"): PLAN 4.19.
+
+### 4.19 Pilot: loss of the fraction surface without the correction at dx 1.5 l_ex, 100 mT (proposal 2026-11-04; option (b) of Chris, then option 1 "pilot with 4 seeds": "Ja, mach das so")
+
+**Why.** At dx 3 l_ex and 100 mT, the correction raises the loss: D/C × 1.44 [1.13, 1.84] (4.16, n 4, 95 % t-interval;
+7.142). PLAN 4.18 (7.143, 7.144) found the Bloch points of D at thin cut cells. The stronger coupling Dk removes them,
+but its loss does not go down: Dk/D × 1.10 [0.70, 1.73], Dk/C × 1.55 [1.03, 2.32] (n 3). Dk also changes the stiffness
+of the cut layer. Thus, on this evidence, the Bloch points alone do not explain the extra loss. It is open which arm
+at dx 3 l_ex gives the better loss. The reference is the smooth sphere, not one of the two models. A finer mesh is
+nearer to it.
+
+D at dx 1.5 l_ex does not fit a V100 (estimate: about 55 … 60 GiB). Basis: D used 11.7 GiB in nvidia-smi at 148³
+(4.16). The correction part, about 9.3 GiB (q8_156 against off156, staircase PROTOKOLL), follows the number of cut
+cells, which is 4 times larger. The other fields are 8 times larger. D at dx 1.5 l_ex is not in this plan. This plan
+runs C at dx 1.5 l_ex (C15) and compares it with the dx 3 l_ex values of C and D of the same seeds.
+
+**Purpose of the pilot.** The pilot measures the change of C with the mesh (its direction and size) with 4 seeds. It
+decides the main reading R1 only if this change is far from the middle between C and D (table in "Reachable
+intervals"). Else it gives the numbers for the next decision. The SD from 4 seeds is a wide estimate: its 95 %
+interval spans 0.57 … 3.73 times the measured value (χ² distribution, 3 degrees of freedom). A second set of seeds
+needs a new go.
+
+**Terms.**
+- C3: the arm HFC of 4.16 at 100 mT (fraction surface without the correction, dx 3 l_ex, mesh 148³). D3: the arm HFD
+  of 4.16 at 100 mT (the same with the correction: pair q 8, p 3, centroid). C15: C3 with dx 1.5 l_ex (mesh 296³).
+  C3r: a new run of C3 on the commit of this plan (control).
+- HFP state (HFP_s<seed>/init.pt): the relaxed voxel state at dx 3 l_ex from which C3, D3 and C15 start
+  (jobs/plan418_step3_prep.txt). Relaxed state: the state of a job at the end of its own relaxation.
+- P: the loss density, P = drive frequency × K_d × w (30 MHz; K_d = J_s²/(2 μ0) = 895 kJ/m³). w as in 4.16: the mean
+  w_loop of the calm tail of a complete stage (eval_418.w_tail). A difference of ln P is a difference of ln w.
+- Volume fraction f: the share of a cell inside the particle, from 8³ sample points per cell.
+- Bloch point in the cycles: a time sample of the cycles ≥ 1 with a Bloch point (rule of eval_rough.py, as in 7.142).
+  E3: the per-sample diagnostics of PLAN 4.18 (`--diag_samples`).
+- E5: the code change below. V0: the local check before the rent. B1 … B5: the box tests. R0a, R0b, R1 … R3: the
+  readings. All are defined in this section.
+
+**Arms and seeds.**
+- C15_s<seed> (new): the arguments of S3C_s<seed> (jobs/plan418_step3.txt, diag branch) with `--dx_lex 1.5`,
+  `--init_transfer HFP_s<seed>/init.pt` (E5) and `--relax_maxiter 40000`. Only the mesh changes:
+  - The particles are the same. The box edge (444 l_ex) and d (300.6 l_ex) do not depend on dx (box_edge).
+  - The anisotropy cubes are the same. L_eff is 12 l_ex. The table of cube axes follows from the seed and the
+    position. The cube faces lie on coarse cell faces: the FCC sites lie on cell vertices (N is even on both meshes)
+    and the cube offsets are multiples of 6 l_ex (anisotropy_model.cube_axes). V0 checks this.
+  - f comes from 8³ sample points per cell, as at dx 3 l_ex.
+  - `--diag_samples` stays, as in S3C.
+  - The limit of 40000 relaxation iterations is a cost limit. It acts only on a run that gives no value with both
+    limits (relax_maxiter may differ from the source: TRANSFER_FREE in run_loops.py).
+- C3 and D3 values: 4.16 (results/hf416.json, HFC_s<seed>_b100 and HFD_s<seed>_b100) for seeds 921, 923 and 924;
+  step 3 (results/plan418_step3.json, S3C_s925 and S3D_s925) for seed 925. Step 3 reproduced the 4.16 values of seeds
+  921 and 923 exactly (ratio 1.000000). There is no new D3 run, except by the rule of R0b.
+- Seeds: 921, 923, 924, 925. Their HFP states of step 3 are local (md5 in results/plan418_step3_md5.txt; 39 MB each).
+  Seed 922 is not used: its start state had a Bloch point in all arms (4.16), and its HFP state is not local. HFP_s924
+  has a Bloch point in the voxel state; C3 and D3 of 4.16 started without one.
+- Coarse gap of these seeds, D3/C3: 1.60, 1.17, 1.63, 1.47. Mean of ln 0.374, SD 0.154, × 1.45 [1.14, 1.86] (n 4). In
+  each seed D3 is above C3. P (W/cm³): C3 371, 410, 438, 334; D3 594, 477, 714, 490. D3 contains the loss of its
+  Bloch points in the cycles (7.142); no reading of this plan separates it.
+
+**Code (branch diag/sliver-coupling; one pinned commit for all runs).**
+- E5: `--init_transfer` from a coarser mesh. At present the source mesh must be finer than the run mesh or equal to
+  it (block average, PLAN 4.10). New: if the source cell size is an integer multiple k ≥ 2 of the run cell size, each
+  run cell takes the m of the source cell that contains it. As in the present transfer, a cell whose source cell has
+  another index (void or another particle) also takes the m of that source cell. The run records the number of these
+  cells in its transfer statistics. The present checks stay (equal arguments except the free keys; converged
+  source). The present path (source finer or equal) does not change.
+- Tests of E5: (1) the transfer to the finer mesh, then the present block average back, gives the source m in each
+  coarse cell (relative difference below 1e-12); (2) the recorded count equals a direct count; (3) a size ratio that
+  is not an integer stops the run with an error; (4) an end-to-end run (d_lex 24, dx 1.5 l_ex from a dx 3 l_ex source,
+  1 cycle) on the CPU, and on a box GPU before the jobs (B5). test_plan418.py and test_study.py pass.
+- eval_419.py: R0a … R3, with a test of the rules on synthetic values.
+- The box script (auto419.py, from auto418.py of 4.18) goes into the diag branch (studies/beta_bpeak/box/) before the
+  rent.
+
+**Readings (fixed before the run).** Per seed s:
+- g_s = ln P(C15) − ln P(C3): the change of C with the mesh.
+- G_s = ln P(D3) − ln P(C3): the coarse gap (above 0 in each seed).
+- u_s = 2 g_s − G_s. u_s is above 0 if C15 is nearer to D3 than to C3 in ln P.
+- v_s = 4 g_s − G_s. If the error of C decreases in proportion to dx (first order), the limit of C for dx → 0 is
+  C3 + 2 g. v_s is below 0 if this limit is nearer to C3 than to D3.
+
+R0a (commit check): C3r_s921 gives the w of 4.16 within 1e-6 relative. A fail means that the commit or the box
+environment changed the C path. Then I stop all jobs (stop file; kill of our own PIDs only, no `pkill -f`), download
+the small files, check them with md5, destroy the box and report.
+
+R0b (start check of seed 924): C3r_s924, from the local HFP_s924, gives the w of 4.16 within 1e-6 relative. Pass: the
+4.16 values of seed 924 count. Fail: D3_s924 also runs on this box. The new C3r_s924 and D3_s924 values replace the
+4.16 values of seed 924. I report the old values too.
+
+R1 (main reading; mean over the seeds with the 95 % t-interval, n − 1 degrees of freedom):
+- "Limit nearer to coarse D" if the interval of the mean of u lies above 0. Assumption: the loss of C changes
+  monotonically with dx towards its limit (any order above 0). Then the limit lies beyond C15 as seen from C3.
+- "Limit nearer to coarse C" if the interval of the mean of v lies below 0. Assumption: the same, with an order of at
+  least 1. A higher order moves the limit less, so v is the conservative test for C3.
+- Else "not determined". R1 needs at least 3 seeds with values of C15, C3 and D3; else "not determined".
+- The two results cannot occur together: u above 0 gives v above G.
+- Two meshes cannot test the assumptions.
+- R1 uses all seeds. As information, R1 is also given without the seeds that fail a check of R3 (a Bloch point in
+  the cycles of C15, or an overlap below 0.97). If the two results differ, I report both, and R1 is "not
+  determined".
+
+R2 (information): the means of g, G, u and v with their 95 % t-intervals; the SDs of g, u and v with their 95 %
+intervals (χ²); the share (mean g)/(mean G); the factors P(C15)/P(C3) and P(D3)/P(C15) per seed and as exp of the
+mean of ln; the first-order limit C3 + 2 g and the second-order limit C3 + 4 g/3 per seed and as a mean, against C3
+and D3.
+
+R3 (information and checks, per C15 run):
+- The relaxation iterations, E/K_d and the per-chunk energy change near the stop.
+- The transfer statistics: the share of particle cells whose source cell has another index (3.78 % at dx 3 l_ex in
+  4.16).
+- The overlap (mean of m · m_ref per particle) of the relaxed C15 state, block averaged onto dx 3 l_ex
+  (transfer_m), with the relaxed C3 state of the same seed (S3C init.pt for 921, 923 and 925; C3r_s924 for 924).
+  Check value 0.97 per particle (staircase study 3.15: 0.978 … 0.9997 for arms in the same state).
+- The Bloch flags and the E3 counts (Bloch-point samples, large-angle pairs per cycle). The counts of large-angle
+  pairs are not comparable between the two meshes.
+- The mean time step, the run time, and the peak GPU memory (nvidia-smi) in the relaxation and in the cycles.
+
+**Reachable intervals (estimates before the run).** The SD of g_s at 100 mT is not known. Two measured analogues
+bound it:
+- Low: the change of the m resolution alone, with the voxel geometry locked (staircase study, T15g against T3;
+  d/l_ex 96 nominal, φ 0.55, voxel model, 9 mT, n 4): SD 0.048.
+- High: the change of the voxel mesh dx 3 → 1.5 l_ex at d/l_ex 300 and 100 mT, seeds 921 … 924 (7.29, B − A): SD
+  about 0.20. This also changes the voxel surface; C15 changes the fraction surface (f on cells of half the size,
+  4 times more cut cells).
+
+R1 decides when the mean of g is outside a middle band. Limits of the band (estimate; mean of G 0.374, SD of G_s
+0.154; g and G taken as not correlated, which overestimates the width, because both contain ln P(C3)):
+
+| SD of g_s | n 4: "nearer to D" if mean g above | n 4: "nearer to C" if mean g below | n 3: above | n 3: below |
+|---|---|---|---|---|
+| 0.05 | 0.33 | −0.01 | 0.42 | −0.06 |
+| 0.10 | 0.39 | −0.08 | 0.50 | −0.17 |
+| 0.20 | 0.53 | −0.23 | 0.72 | −0.41 |
+
+If C15 equals C3 (mean g 0), R1 does not decide. If C15 is below C3, "nearer to C" is possible: the voxel refinement
+of 7.29 gave a mean change of −0.19 at 100 mT. If C15 equals D3 (mean g 0.37), R1 decides only at the low SD.
+
+**Consequences (proposals; Chris decides after the result).**
+- "Limit nearer to coarse D": the dx 3 l_ex loss of C is too low, and D3 is nearer to the limit than C3. This does not
+  show that D3 is near the limit: the limit can lie beyond D3. R2 compares the first-order limit with D3. Next:
+  options on the basis of R2.
+- "Limit nearer to coarse C": the extra loss of D at dx 3 l_ex is mainly an error of the corrected model on this
+  mesh. Next: the plan of the remedies (place 1, the thin cells). The first-order limit of C, with its interval, is
+  the reference of each remedy.
+- "Not determined": I report R1 and R2 and an estimate of the number of seeds that a decision needs, from the
+  measured SDs of u and v and their upper bounds. Options then: a second set of seeds, D at dx 1.5 l_ex on an 80-GB
+  GPU, or a stop. Each needs a new go.
+
+**Gates and order.**
+1. Code E5, eval_419.py, auto419.py and the tests (local). Commit and push on diag/sliver-coupling.
+2. V0 (local CPU, no GPU cost): the set-up of C15_s921 (geometry, f, cube axes, transfer from HFP_s921) and 20
+   relaxation iterations. Checks: the cube axis of each fine particle cell equals the axis of the coarse cell that
+   contains it (all coarse particle cells); the magnetic volume (sum of f) differs from that at dx 3 l_ex by less than
+   1e-3 relative; the share of particle cells whose source cell has another index is at most 10 %; the host peak
+   memory of one set-up. A failed check: report before the rent. Rent criterion from V0: host memory of the box at
+   least 4 times the V0 peak plus 8 GB.
+3. Rent: V100 16 or 32 GB, 2 … 4 GPUs, at most 0.10 $ per GPU-h, CUDA 12.6 or newer, not deverified; not the machines
+   147583, 152226, 152674, 154925 and not the host 381795. Box tests:
+   - B1: ssh works within 30 min.
+   - B2: no foreign process, GPU use at most 5 %, at least 11.5 TFLOPS (fp32 matrix product) and 700 GB/s on each GPU.
+   - B3: upload of the 4 HFP states; the md5 values agree.
+   - B4: set-up of the commit; speed check off156 on each GPU: at most 1.10 times the 3.699 ms per stage of box 11.
+   - B5: the E5 tests on GPU 0.
+   If B1 … B4 fails: I download the logs, check them with md5 and destroy the box at once; then the next rent, until
+   the failed boxes cost 1 $. If B5 fails, it is a code fault, not a box fault. I also download the logs and destroy
+   the box at once (no box waits for a decision), and I report with a patch proposal.
+4. Jobs (dispatcher, one job per GPU). With 4 GPUs: GPU 0 C15_s921; GPU 1 C15_s923; GPU 2 R0a, then C15_s924; GPU 3
+   R0b, then (only after a fail of R0b) D3_s924, then C15_s925. With 2 GPUs: R0a and R0b first, then the C15 jobs in
+   the order of the seeds.
+5. Early warnings (the jobs continue; I report each warning): (a) after 2000 relaxation iterations of the first C15
+   job: its time per iteration and its peak GPU memory; (b) at 20000 relaxation iterations of a C15 job without a stop
+   (the largest count of C3 at these seeds is 19500, s924): the per-chunk energy change and a projection; (c) in the
+   first cycle of the first C15 job: the peak GPU memory with the E3 arrays.
+6. Failed job: an exit code other than 0 (for example out of memory), a relaxation without a stop within 40000
+   iterations, a stage that is not complete, or a stage without a calm tail (w_tail gives no value). It gives no value
+   for its seed. I report it. No rerun without a go. The other jobs continue. If all C15 jobs fail, I download the
+   logs, check them with md5, destroy the box and report.
+7. Cost limit (decision of Chris; proposal 15 $): the box cost of this plan (set-up, tests, runs and storage). At
+   75 % of the limit I report with a projection of the end; the jobs continue. At the limit I stop the jobs, download
+   the results, check them with md5 and destroy the box. The credit must cover the limit plus 1 $ for failed boxes
+   plus 0.5 $ for the download: with 15 $, Chris adds about 14 $ before the rent (credit now 3.25 $).
+8. After the last job: eval_419.py on the box; download of the small files (logs, CSV, json) and of the relaxed states
+   of C15, C3r and D3 (init.pt; 0.31 GB for each C15 state, about 1.3 GB in all); check with md5; report. Then I
+   destroy the box: a go on this plan includes this destroy after the md5 check. I do not download the stage
+   checkpoints.
+
+**Cost (estimates, except where marked as measured).**
+- Measured basis (V100 16 GB, 148³): C3 relaxation 11000 … 19500 iterations (step 3 and 4.16 for these seeds); in
+  step 3, 1005 … 1096 s for 11000 … 15000 iterations; C3 run 0.55 … 0.58 h with 7 cycles (about 140 s per cycle).
+- Scale to 296³: 8 times the cells; a time step about 3.5 times smaller (staircase PROTOKOLL: 6.6 ps at dx 3 l_ex,
+  1.9 ps at dx 1.5 l_ex, at the stability limit of the exchange). A relaxation iteration is 1e-11 s of physical time
+  at α 1. Thus each iteration and each cycle costs about 28 times as much: about 2.2 s per iteration and 1.1 h per
+  cycle. Section 5 measured 1.87 h per cycle at dx 1.5 l_ex and d/l_ex 300 with an older code (speed ratio to the
+  present code not measured). I use 1.1 … 1.9 h per cycle.
+- The number of relaxation iterations to the stop at dx 1.5 l_ex is not known. The stop needs two successive chunks
+  of 500 iterations with |ΔE|/(K_d V) of at most 3e-10, and at dx 3 l_ex this is a random event of the
+  single-precision noise (7.143). With the counts of C3: 6.8 … 12.1 h. At the limit of 40000 iterations: about 25 h.
+- C15 run: 15 … 27 h with 7 … 8 cycles; up to about 40 h with 15 cycles or a long relaxation.
+- R0a and R0b: about 0.6 h each. D3_s924 (only after a fail of R0b): about 2.5 h.
+- GPU memory of C15 (estimate): off156 with AS5 had a peak of 1.06 GiB allocated (staircase PROTOKOLL). Times 6.8
+  for 296³ gives 7.2 GiB. nvidia-smi shows about 1.2 times the allocated peak (q16_156: 13349 MiB against 11.08 GiB),
+  thus about 9 GiB. 7.29 ran the voxel model at dx 1.5 l_ex and d/l_ex 300 on the V100 boxes of that time (16 or
+  32 GB, not recorded).
+- Box with 4 GPUs: wall time about 17 … 29 h (with 1 h for the set-up and the tests); about 7 … 12 $ with storage.
+  With 2 GPUs: about 32 … 56 h, about the same cost.
+- Cost limit options: 15 $ covers the expected range and stops the long cases (a relaxation near 40000 iterations
+  with many cycles). 20 $ also covers these cases (about 40 h of wall time with 4 GPUs).
+- My work: E5, eval_419.py, auto419.py, the tests, the job lines and V0: about 3 … 4 h; about 0.5 … 1 M tokens.
+
+**Data.** Raw data (states, CSV, logs) stay local with an md5 list. Only the evaluations are committed. The results
+go to the next free PROTOKOLL section at the time of the write.
+
+**Not in this plan.** D at dx 1.5 l_ex; a third mesh; other amplitudes; a second set of seeds; the remedies; the
+tilt readings of 4.18 step 2.
+
+**Record.**
+- 2026-11-04, first draft. A context-free review found: with 4 seeds R1 probably gives "not determined" (SD of g at
+  100 mT about 0.20 in 7.29, not 0.05); "nearer to coarse C" needs an assumption on the convergence order; the stop of
+  the relaxation is a noise event, so the fine relaxation can be long; and gaps in the rules (controls first, failed
+  jobs, Bloch points, cost limit, host memory). Report to Chris with three options (pilot with 4 seeds; 8 seeds at
+  once; no run). Decision of Chris: option 1, the pilot ("Ja, mach das so").
+- 2026-11-04, second context-free review of the revised text: the cost limit contradicted the iteration limit (now
+  40000 iterations and a cost limit for Chris to choose); the decision band on the mean of g replaces a statement that
+  was true only for one case; the assumptions of R1, the overlap check, the box tests and the seed numbers are now
+  explicit. The run waits for the go of Chris on this text and on the cost limit.
 
 ## 5. Optional step 3: mesh control (separate go)
 
