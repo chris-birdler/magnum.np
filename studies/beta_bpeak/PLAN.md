@@ -2712,7 +2712,7 @@ tilt readings of 4.18 step 2.
   Bloch points. Thus the question of this plan (C against D) does not decide the production model, and PLAN 4.19 does
   not run. Next: a plan for a remedy of the Bloch points of D, with a fine-mesh check.
 
-### 4.20 Remedy of the Bloch points of D: tied cut cells, two variants, with a fine-mesh reference (proposal 2026-11-04; Chris on the concept: "Ja, mach das bitte genauso. Super Plan."; the go on this text is open)
+### 4.20 Remedy of the Bloch points of D: tied cut cells, two variants, with a fine-mesh reference (proposal 2026-11-04; Chris on the concept: "Ja, mach das bitte genauso. Super Plan."; go on this text 2026-11-04: "Ja, gebe ich alles frei.", with option 2 and the cost limit 16 $)
 
 **Why.** Two basic requirements hold for the production model. (i) The near-field correction of the stray field:
 without it, the error of the surface is a median of 91 % of |E_K|; with q 8 it is 13 % (36 % of the points below the
@@ -2952,6 +2952,9 @@ layer) as a remedy target; the main study (4.17).
   a spare seed and "not determined" for C-a; the q-16 arm defined (f from 16³ points, D16 as positive control); host
   memory for q 16; the cost limit as a decision for Chris, with totals per option; the V2 field wording; F8 times from
   the measured D times; terms and geometries defined.
+- 2026-11-04, Chris: "Ja, gebe ich alles frei." Go on this text, on option 2 (C(q 8) and C(q 16) at 100 mT) and on
+  the cost limit (a) 16 $. The go includes the rents under these rules, the start of stage C by the selection rule and
+  the destroy after the md5 check. Before the rent, Chris adds about 15 $ credit (credit at least 17.5 $).
 
 ## 5. Optional step 3: mesh control (separate go)
 
