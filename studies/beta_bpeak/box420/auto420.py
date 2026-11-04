@@ -2,7 +2,7 @@
 """PLAN 4.20, automatic box (go of Chris 2026-11-04 on PLAN 4.20, option 2, cost limit 16 $): rent a V100 box with
 watch_rent420.rent_one(), test it and destroy it at once when a box test B1 ... B4 fails; then rent the next one, until
 the failed boxes cost 1 $. A fail of B5 (the E6 tests on GPU 0) is a code fault: logs, destroy, stop, report. A box that
-passes all tests starts the dispatcher (no automatic retry: --retries 0) and chain420.sh (stage B, the selection, stage
+passes all tests starts the dispatcher (no automatic rerun: --retries 0 --gate_maxiter 0) and chain420.sh (stage B, the selection, stage
 C). Then this script exits.
 Box tests (PLAN 4.20, gates 3, as B1 ... B5 of PLAN 4.19):
   B1 running and ssh within 30 min (direct port of the container first, then the vast proxy);
@@ -23,6 +23,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 LOG = HERE / "auto420.log"
 STATE = HERE / "auto420_state.json"
 BUDGET = 1.0                    # $ for failed boxes (PLAN 4.20, gates 3)
+CREDIT_MIN = 17.5               # $ before a rent: the cost limit 16 $ plus 1.5 $ (PLAN 4.20, gates 8)
 D15 = "/home/christoph/Documents/code/magnum.np-staircase/studies/staircase_correction/remote_20261020_box1/runs"
 HFP = ("/home/christoph/Documents/code/magnum.np-diag/studies/beta_bpeak/runs/plan418_step3_box/x/magnum.np/studies/"
        "beta_bpeak/runs")
@@ -57,17 +58,26 @@ def save_state(s):
 
 
 def inst(iid):
-    r = subprocess.run([W.V, "show", "instance", str(iid), "--raw"], capture_output=True, text=True, timeout=90)
     try:
+        r = subprocess.run([W.V, "show", "instance", str(iid), "--raw"], capture_output=True, text=True, timeout=90)
         return json.loads(r.stdout)
+    except Exception:          # also subprocess.TimeoutExpired: the caller tries again later
+        return None
+
+
+def credit():
+    """The credit of the account in $, or None on an error."""
+    try:
+        r = subprocess.run([W.V, "show", "user", "--raw"], capture_output=True, text=True, timeout=90)
+        return float(json.loads(r.stdout)["credit"])
     except Exception:
         return None
 
 
 def instance_ids():
     """ids of all instances of the account, or None on an error"""
-    r = subprocess.run([W.V, "show", "instances-v1", "--raw"], capture_output=True, text=True, timeout=90)
     try:
+        r = subprocess.run([W.V, "show", "instances-v1", "--raw"], capture_output=True, text=True, timeout=90)
         j = json.loads(r.stdout)
         return [int(x["id"]) for x in j["instances"]] if j.get("success") else None
     except Exception:
@@ -222,7 +232,8 @@ def t5_tests(tg):
 def start_chain(tg, gate, mode):
     """Move the start states into runs/, start the GPU log, the dispatcher without retries and chain420.sh."""
     cmds = ("cd /root; cp -r /root/upload/runs/. %sruns/ && ls %sruns/; "
-            "sed -i 's/--retries 1/--retries 0/' /root/dispatcher.sh; grep -c 'retries 0' /root/dispatcher.sh; "
+            "sed -i 's/--retries 1/--retries 0 --gate_maxiter 0/' /root/dispatcher.sh; "
+            "grep -c 'retries 0 --gate_maxiter 0' /root/dispatcher.sh; "
             "setsid nohup nvidia-smi --query-gpu=timestamp,index,clocks.sm,temperature.gpu,power.draw,"
             "utilization.gpu,clocks_event_reasons.active --format=csv -l 60 >> /root/gpu_log.csv 2>&1 < /dev/null "
             "& disown; setsid nohup bash /root/dispatcher.sh >> /root/disp.out 2>&1 < /dev/null & disown; sleep 20; "
@@ -244,11 +255,19 @@ def fail_box(st, iid, d0, tg, why, offer, t_rent):
         if scp_from(tg, "/root/diag%s.tgz" % iid, dst, 120) == 0:
             f = dst / ("diag%s.tgz" % iid)
             log("logs %s md5 %s" % (f, hashlib.md5(f.read_bytes()).hexdigest()))
-    r = subprocess.run([W.V, "destroy", "instance", str(iid), "-y"], capture_output=True, text=True, timeout=120)
-    log("destroy %s rc %d: %s" % (iid, r.returncode, r.stdout.strip()[:120]))
-    time.sleep(10)
-    ids = instance_ids()
-    gone = ids is not None and int(iid) not in ids
+    gone = False
+    for k in range(5):         # destroy until the instance is gone (5 tries); else the caller stops
+        try:
+            r = subprocess.run([W.V, "destroy", "instance", str(iid), "-y"], capture_output=True, text=True,
+                               timeout=120)
+            log("destroy %s (try %d) rc %d: %s" % (iid, k + 1, r.returncode, r.stdout.strip()[:120]))
+        except subprocess.TimeoutExpired:
+            log("destroy %s (try %d): timeout" % (iid, k + 1))
+        time.sleep(15)
+        ids = instance_ids()
+        gone = ids is not None and int(iid) not in ids
+        if gone:
+            break
     d = dict(d0 or {})
     for k in ("machine_id", "host_id", "dph_total"):
         d[k] = d.get(k) or offer.get(k)
@@ -262,6 +281,7 @@ def fail_box(st, iid, d0, tg, why, offer, t_rent):
     save_state(st)
     log("FAILED box %s (machine %s, %s): %.2f h, %.3f $; spent %.3f of %.2f $; instance gone %s"
         % (iid, d.get("machine_id"), why, hours, cost, st["spent"], BUDGET, gone))
+    return gone
 
 
 def main():
@@ -271,6 +291,11 @@ def main():
     log("auto420 start: commit %s, gate A variants %s, budget %.2f $ for failed boxes, spent %.3f, failed machines %s"
         % (COMMIT, gate, BUDGET, st["spent"], st["failed_machines"]))
     while st["spent"] < BUDGET:
+        cr = credit()
+        if cr is None or cr < CREDIT_MIN:
+            log("STOP: credit %s below %.2f $ (PLAN 4.20 gates 8: the cost limit plus 1.5 $)" % (cr, CREDIT_MIN))
+            print("RESULT NO_CREDIT %s" % cr)
+            return 5
         r = W.rent_one(excluded=st["failed_machines"])
         if r is None:
             log("STOP: no offer")
@@ -283,11 +308,10 @@ def main():
         log("rented %s: machine %s host %s, %d GPUs, %.3f $/h, host memory %.0f GB (q16 mode %s)" % (
             iid, offer.get("machine_id"), offer.get("host_id"), offer["num_gpus"], offer["dph_total"], ram_gb, mode))
         time.sleep(20)
-        d0 = inst(iid)
-        tg = t1_ssh(iid)
-        d0 = inst(iid) or d0
-        why = None
+        d0, tg, why = inst(iid), None, None
         try:
+            tg = t1_ssh(iid)
+            d0 = inst(iid) or d0
             if tg is None:
                 why = "B1 no ssh"
             elif not t2_gpu(tg, offer["num_gpus"]):
@@ -299,7 +323,10 @@ def main():
         except Exception as e:  # an error of this script: the box is not usable without a check
             why = "error in the test: %r" % e
         if why:
-            fail_box(st, iid, d0, tg, why, offer, t_rent)
+            if not fail_box(st, iid, d0, tg, why, offer, t_rent):
+                log("STOP: instance %s is not gone after the destroy" % iid)
+                print("RESULT DESTROY_CHECK %s" % iid)
+                return 6
             continue
         if not t5_tests(tg):
             fail_box(st, iid, d0, tg, "B5 E6 tests (code fault)", offer, t_rent)

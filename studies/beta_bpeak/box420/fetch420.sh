@@ -14,7 +14,7 @@ mkdir -p $L
 if [ "$ST" = B ]; then SEL='C8_s* D8_s* D8V1_s* D8V2_s* F8_s*'; else
     SEL='R0_s* HFP_s922 DV1_s* DV2_s* D16_s* DV116_s* DV216_s* D_s925_*'; fi
 SSHO="-o ConnectTimeout=20 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes"
-ssh $SSHO -p $P $H "cd $B && for r in $SEL; do [ -d \$r ] || continue; find \$r -maxdepth 1 -type f ! -name 'checkpoint*.pt' ! -name 'ckpt_*.pt' ! -name '*.vti' ! -name '*.tmp*' -print0 | xargs -0 -r md5sum; done; ls chain420.log SELECTED CHAIN420_END plan420_stage*.json plan420_stage*.md 2>/dev/null | xargs -r md5sum" > $T/remote.md5
+ssh $SSHO -p $P $H "cd $B && for r in $SEL; do [ -d \$r ] || continue; find \$r -maxdepth 1 -type f ! -name 'checkpoint*.pt' ! -name 'ckpt_*.pt' ! -name '*.vti' ! -name '*.tmp*' -print0 | xargs -0 -r md5sum; done; ls $( [ $ST = C ] && echo chain420.log ) SELECTED CHAIN420_END R0_FAIL plan420_stage*.json plan420_stage*.md 2>/dev/null | xargs -r md5sum" > $T/remote.md5
 rc=$?; [ $rc -eq 0 ] || { echo "remote md5 failed rc $rc"; exit 1; }
 cut -c35- $T/remote.md5 > $T/files.txt
 rsync -a -e "ssh $SSHO -p $P" --files-from=$T/files.txt $H:$B/ $L/

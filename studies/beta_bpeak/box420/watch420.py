@@ -9,6 +9,8 @@ Events (PLAN 4.20, gates 4 ... 8):
   credit     the credit is below the rest of the cost limit plus 1 $;
   f8warn     an F8 job at 20000 relaxation iterations without a stop (early warning);
   failed     a job failed (dispatcher status);
+  r0         the control R0 failed (runs/R0_FAIL; the chain stops new jobs): download, md5, destroy, report;
+  dispatcher the dispatcher has ended or has disabled a GPU (run_queue status);
   selected   the selection of stage B is written (runs/SELECTED);
   end        the chain has ended (runs/CHAIN420_END);
   nossh      no ssh for 60 min;
@@ -40,9 +42,9 @@ def credit():
 def box_state(tg):
     cmd = ("cat %sruns/chain420.log 2>/dev/null | tail -n 30; echo '@@STATUS'; cat %s 2>/dev/null; echo '@@F8'; "
            "for f in %sruns/F8_s94?/stdout.log; do [ -f $f ] && echo \"$f $(grep -c '^\\[relax\\] it' $f) "
-           "$(grep -c 'virgin state: converged' $f)\"; done; echo '@@END'; "
-           "cat %sruns/SELECTED %sruns/CHAIN420_END 2>/dev/null; echo '@@DONE'; ls %sruns/*/DONE 2>/dev/null | wc -l"
-           % (B, STATUS, B, B, B, B))
+           "$(grep -c 'virgin state: converged' $f) $(grep '^\\[relax\\] it' $f | tail -n 1 | cut -c1-110)\"; "
+           "done; echo '@@END'; cat %sruns/SELECTED %sruns/CHAIN420_END %sruns/R0_FAIL 2>/dev/null; echo '@@DONE'; "
+           "ls %sruns/*/DONE 2>/dev/null | wc -l" % (B, STATUS, B, B, B, B, B))
     rc, out = A.ssh(tg, cmd, timeout=120)
     if rc != 0 or "@@DONE" not in out:
         return None
@@ -61,10 +63,10 @@ def parse_state(out):
         status = {}
     f8it = {}
     for line in f8.strip().splitlines():
-        m = re.match(r"\S*/(F8_s\d+)/stdout.log (\d+) (\d+)", line)
+        m = re.match(r"\S*/(F8_s\d+)/stdout.log (\d+) (\d+) ?(.*)", line)
         if m:
-            # chunks of 500 iterations (--relax_chunk 500); the stop line of the relaxation
-            f8it[m.group(1)] = (int(m.group(2)) * 500, int(m.group(3)) > 0)
+            # chunks of 500 iterations (--relax_chunk 500); the stop line of the relaxation; the last chunk line
+            f8it[m.group(1)] = (int(m.group(2)) * 500, int(m.group(3)) > 0, m.group(4))
     return {"log": log.strip(), "status": status, "f8_iterations": f8it, "end": end.strip(),
             "n_done": int(ndone.strip() or 0)}
 
@@ -83,8 +85,10 @@ def main():
 
     while True:
         d = A.inst(iid) or {}
-        dph = float(d.get("dph_total") or 0.0)
-        t0 = float(d.get("start_date") or time.time())
+        if d.get("dph_total") and d.get("start_date"):          # keep the last known values if the call fails
+            S["dph"], S["t0"] = float(d["dph_total"]), float(d["start_date"])
+        dph = float(S.get("dph") or 0.0)
+        t0 = float(S.get("t0") or time.time())
         hours = (time.time() - t0) / 3600.0
         cost = spent_failed + hours * dph
         cr = credit()
@@ -107,9 +111,17 @@ def main():
             for n in sorted((st.get("failed") or {})):
                 if "failed:" + n not in S["reported"]:
                     event("failed:" + n, "%s: %s; %s" % (n, st["failed"][n], info))
-            for n, (it, stopped) in sorted(bs["f8_iterations"].items()):
+            if "R0 failed" in bs["end"] and "r0" not in S["reported"]:
+                event("r0", "%s; %s" % (bs["end"].replace("\n", " | "), info))
+            if (st.get("final") or st.get("disabled_gpus")) and "dispatcher" not in S["reported"]:
+                event("dispatcher", "final %s, disabled GPUs %s; %s" % (st.get("final"), st.get("disabled_gpus"), info))
+            for n, (it, stopped, last) in sorted(bs["f8_iterations"].items()):
                 if it >= F8_WARN and not stopped and "f8warn:" + n not in S["reported"]:
-                    event("f8warn:" + n, "%s at %d relaxation iterations without a stop; %s" % (n, it, info))
+                    h = (st.get("running") or {}).get(n, {}).get("hours")
+                    event("f8warn:" + n, "%s at %d relaxation iterations without a stop after %s h (%s s per iteration; "
+                          "projection to the limit 80000: %s h more); last chunk: %s; %s" % (
+                              n, it, "%.2f" % h if h else "?", "%.3f" % (3600 * h / it) if h else "?",
+                              "%.1f" % (h / it * (80000 - it)) if h else "?", last, info))
             if bs["end"]:
                 first = bs["end"].splitlines()[0]
                 if first in ("V1", "V2", "NONE") and "selected" not in S["reported"]:

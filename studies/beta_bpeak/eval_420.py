@@ -14,6 +14,8 @@ large-angle pair is a pair of neighbour cells of one particle with an angle abov
     eval_420.py stageC <runs dir> --variant V1|V2 --ref416 results/hf416.json [--out results/plan420_stageC]
         readings C-a, C-b and the verdict (Dv jobs D<v>_s<seed>_b<mT>, q-16 jobs D16_s<seed>, D<v>16_s<seed>, spare
         seed 925; R0_s921 and HFP_s922 checks)
+    eval_420.py r0 <runs dir> --ref416 results/hf416.json
+        the control R0: exit code 0 if w of R0_s921 equals w of HFD_s921_b100 of 4.16 within 1e-6 relative, else 1
 
 Bloch flags of a job (rule of eval_rough.py, all cycles from cycle 0, as in 7.142): (its relaxed state has a Bloch
 point, a time sample of the cycles has a Bloch point). Bloch samples: the samples of all cycles with a Bloch point.
@@ -252,14 +254,21 @@ def b_a(J, variants):
     return out
 
 
+MIN_SEEDS_RAN = 2
+
+
 def select(ba, bb, gate_variants):
     """The variant for stage C: of the variants that pass B-a (all of gate A if B-a is not valid), the one with the
     larger mean B-b cut-cell overlap; V1 if the absolute mean paired difference is smaller than its SE or B-b is not
-    valid; NONE if no variant passes B-a."""
+    valid; NONE if no variant passes B-a. A variant whose jobs ran their cycles in fewer than 2 seeds is no candidate
+    (stage B incomplete; the plan does not cover it, so it gets no stage C)."""
+    ran = [v for v in gate_variants if len(ba["variants"][v]["seeds_ran"]) >= MIN_SEEDS_RAN]
+    if not ran:
+        return "NONE", "stage B incomplete: no variant ran its cycles in %d seeds" % MIN_SEEDS_RAN
     if ba["valid"]:
-        cand = [v for v in gate_variants if ba["variants"][v]["passes"]]
+        cand = [v for v in ran if ba["variants"][v]["passes"]]
     else:
-        cand = list(gate_variants)
+        cand = list(ran)
     if not cand:
         return "NONE", "no variant passes B-a"
     if len(cand) == 1:
@@ -360,6 +369,9 @@ def fmt_stageB(res):
 SEEDS_C = (921, 922, 923, 924)
 COUNTED = (921, 923, 924)
 AMPS = (9, 50, 100)
+# D at 100 mT of the spare seed 925: S3D_s925 of PLAN 4.18 step 3 (summary.json: bloch_virgin [0, 0], 31000 relaxation
+# iterations; Bloch samples in 13 cycles >= 1, results/plan418_step3.json)
+D_S925_B100 = {"bloch_relaxed": False}
 
 
 def c_a(D, Dv, D16=None, Dv16=None, spare=None):
@@ -418,14 +430,23 @@ def stageC(runs, variant, ref416):
     sp = {"Dv": {(925, a): load_job(runs / ("D%s_s925_b%d" % (variant, a))) for a in AMPS},
           "D": {(925, a): load_job(runs / ("D_s925_b%d" % a)) for a in (9, 50)}}
     sp["D"] = {k: v for k, v in sp["D"].items() if v is not None}
+    sp["D"][(925, 100)] = D_S925_B100
     ca = c_a(D, Dv, D16 if have16 else None, Dv16 if have16 else None, sp)
     res = {"variant": variant, "Ca": ca, "verdict": verdict_C(ca)}
+    p = runs / "HFP_s922" / "summary.json"
+    if p.exists():
+        i = json.loads(p.read_text())["init"]
+        res["HFP_s922"] = {"relax_iterations": i.get("relax_iterations"), "E_over_Kd": i.get("E_over_Kd"),
+                           "equal_416": bool(i.get("relax_iterations") == 25500
+                                             and abs(i.get("E_over_Kd", 0) / 1.6218e-4 - 1.0) < 1e-3)}
+    # seed 922 is paired with 4.16 only if its start state was made again as in 4.16
+    seeds_b = [s for s in SEEDS_C if s != 922 or res.get("HFP_s922", {}).get("equal_416")]
     # C-b: Bloch samples, ln w and beta against D and C of 4.16
     res["bloch"] = {"Dv": {"%d_%d" % k: (j["bloch_samples"] if j else None) for k, j in Dv.items()}}
     lw = {}
     for ref, W in (("D", {k: v["w"] for k, v in D.items()}), ("C", Cr)):
         for a in AMPS:
-            pairs = {s: (Dv[(s, a)]["w"], W[(s, a)]) for s in SEEDS_C
+            pairs = {s: (Dv[(s, a)]["w"], W[(s, a)]) for s in seeds_b
                      if Dv.get((s, a)) and Dv[(s, a)]["w"] and W.get((s, a))}
             if pairs:
                 lw["Dv/%s_%dmT" % (ref, a)] = log_factor(pairs)
@@ -434,7 +455,7 @@ def stageC(runs, variant, ref416):
     for ref, W in (("D", {k: v["w"] for k, v in D.items()}), ("C", Cr)):
         for a0, a1 in ((9, 50), (50, 100), (9, 100)):
             x = []
-            for s in SEEDS_C:
+            for s in seeds_b:
                 v = [Dv.get((s, a)) and Dv[(s, a)]["w"] for a in (a0, a1)]
                 r = [W.get((s, a)) for a in (a0, a1)]
                 if all(v) and all(r):
@@ -447,20 +468,20 @@ def stageC(runs, variant, ref416):
     res["d_beta"] = beta
     if have16:
         res["q16"] = {"D16": {str(k[0]): j for k, j in D16.items()}, "Dv16": {str(k[0]): j for k, j in Dv16.items()}}
-    r0 = load_job(runs / "R0_s921")
-    if r0 is not None and "HFD_s921_b100" in R:
-        w0 = R["HFD_s921_b100"]["w"]
-        res["R0"] = {"w": r0["w"], "w_416": w0,
-                     "rel": abs(r0["w"] / w0 - 1.0) if r0["w"] else None,
-                     "passes": bool(r0["w"] and abs(r0["w"] / w0 - 1.0) <= 1e-6)}
-    p = runs / "HFP_s922" / "summary.json"
-    if p.exists():
-        i = json.loads(p.read_text())["init"]
-        res["HFP_s922"] = {"relax_iterations": i.get("relax_iterations"), "E_over_Kd": i.get("E_over_Kd"),
-                           "equal_416": bool(i.get("relax_iterations") == 25500
-                                             and abs(i.get("E_over_Kd", 0) / 1.6218e-4 - 1.0) < 1e-3)}
+    if (runs / "R0_s921" / "summary.json").exists():
+        res["R0"] = r0_check(runs, ref416)
     res["jobs"] = {"D%s_s%d_b%d" % (variant, s, a): j for (s, a), j in Dv.items()}
     return res
+
+
+def r0_check(runs, ref416):
+    """The control R0 (PLAN 4.20): w of R0_s921 (the 4.16 arguments of HFD_s921_b100 on the commit of this plan)
+    against w of HFD_s921_b100 of 4.16, within 1e-6 relative. A job without w fails."""
+    w0 = json.loads(pathlib.Path(ref416).read_text())["jobs"]["HFD_s921_b100"]["w"]
+    j = load_job(pathlib.Path(runs) / "R0_s921")
+    w = j["w"] if j else None
+    rel = abs(w / w0 - 1.0) if w else None
+    return {"w": w, "w_416": w0, "rel": rel, "passes": bool(rel is not None and rel <= 1e-6)}
 
 
 def fmt_stageC(res):
@@ -517,7 +538,15 @@ def main(argv=None):
     c.add_argument("--variant", required=True, choices=list(VARIANTS))
     c.add_argument("--ref416", default=str(HERE / "results" / "hf416.json"))
     c.add_argument("--out", default=str(HERE / "results" / "plan420_stageC"))
+    r = sub.add_parser("r0")
+    r.add_argument("runs")
+    r.add_argument("--ref416", default=str(HERE / "results" / "hf416.json"))
     args = p.parse_args(argv)
+    if args.cmd == "r0":
+        res = r0_check(args.runs, args.ref416)
+        print("R0: w %s against %.8g of 4.16, relative %s: %s" % (res["w"], res["w_416"], res["rel"],
+                                                               "passes" if res["passes"] else "FAILS"))
+        sys.exit(0 if res["passes"] else 1)
     if args.cmd == "stageB":
         res = stageB(args.runs, [v for v in args.gateA.split(",") if v])
         pathlib.Path(args.out + ".json").write_text(json.dumps(res, indent=1))

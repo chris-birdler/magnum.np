@@ -483,3 +483,35 @@ def test_eval_420_fine_reference_and_overlap():
     m[1, 1, 1] = [0.0, 1.0, 0.0]
     r = overlap_B(m, ref, ids_c, frac_c)
     assert r["cut_gt45"] == 1 and r["full_next_gt45"] == 0 and r["cut_left_out"] == 0
+
+
+def test_eval_420_review_fixes(tmp_path):
+    """Rules added after the review of the box automation: no stage C when no variant ran its cycles in 2 seeds; the
+    control R0 against HFD_s921_b100 of 4.16 (1e-6 relative; a job without w fails); the spare D at 100 mT counts."""
+    from eval_420 import b_a, select, r0_check, c_a, D_S925_B100
+    J = {"D8": {s: None for s in (941, 942, 943, 944)},
+         "D8V1": {941: _job(), 942: None, 943: None, 944: None}, "D8V2": {s: None for s in (941, 942, 943, 944)}}
+    sel, why = select(b_a(J, ["V1", "V2"]), None, ["V1", "V2"])
+    assert sel == "NONE" and "incomplete" in why
+    ref = tmp_path / "hf416.json"
+    ref.write_text(json.dumps({"jobs": {"HFD_s921_b100": {"w": 2.2130246112398354e-05}}}))
+    run = tmp_path / "runs" / "R0_s921"
+    run.mkdir(parents=True)
+    st = {"init": {"relax_converged": True, "bloch_virgin": [0, 0]},
+          "stages": [{"complete": True, "calm_tail": 2, "cycles": [{"w_loop": 1.0, "mean_dt": 1e-13, "wall_s": 1.0},
+                                                                 {"w_loop": 2.2130246112398354e-05, "mean_dt": 1e-13, "wall_s": 1.0},
+                                                                 {"w_loop": 2.2130246112398354e-05, "mean_dt": 1e-13, "wall_s": 1.0}]}]}
+    (run / "summary.json").write_text(json.dumps(st))
+    assert r0_check(tmp_path / "runs", ref)["passes"] is True
+    st["stages"][0]["cycles"][-1]["w_loop"] *= 1.00001
+    (run / "summary.json").write_text(json.dumps(st))
+    assert r0_check(tmp_path / "runs", ref)["passes"] is False
+    st["stages"][0]["complete"] = False
+    (run / "summary.json").write_text(json.dumps(st))
+    assert r0_check(tmp_path / "runs", ref)["passes"] is False
+    D = {(s, a): {"bloch_relaxed": False} for s in (921, 922, 923, 924) for a in (9, 50, 100)}
+    Dv = {(s, a): (_job(ran=False) if s == 921 else _job()) for s in (921, 922, 923, 924) for a in (9, 50, 100)}
+    sp = {"Dv": {(925, a): _job(samples=1 if a == 100 else 0) for a in (9, 50, 100)},
+          "D": {(925, 9): {"bloch_relaxed": False}, (925, 50): {"bloch_relaxed": False}, (925, 100): D_S925_B100}}
+    ca = c_a(D, Dv, spare=sp)
+    assert [925, 100] in ca["q8"]["counted"] and [925, 100] in ca["q8"]["fail"] and ca["q8"]["status"] == "fails"
