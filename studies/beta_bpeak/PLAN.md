@@ -2955,6 +2955,22 @@ layer) as a remedy target; the main study (4.17).
 - 2026-11-04, Chris: "Ja, gebe ich alles frei." Go on this text, on option 2 (C(q 8) and C(q 16) at 100 mT) and on
   the cost limit (a) 16 $. The go includes the rents under these rules, the start of stage C by the selection rule and
   the destroy after the md5 check. Before the rent, Chris adds about 15 $ credit (credit at least 17.5 $).
+- 2026-11-04, code E6 done (diag/sliver-coupling 77a1b5a). Tests: test_plan420 17 passed (the GPU case of test 6 runs
+  as B5 on the box), test_plan418 12 passed, test_study 152 passed. Tie counts at 48^3 (staircase geometry, q 8): V1
+  7104 tied cells (sum of f 918.9), longest chain 2, no fall-back; V2 8256 tied cells (sum of f 1395.0), no fall-back,
+  smallest trilinear weight sum before the renormalisation 0.049. Decisions in the code (no change of the physics):
+  - step: the solver step, then normalise, then tie (the text said "tie, then normalise"); the tie output has unit
+    length, and the state is then an exact fixed point of the tie (test 2 bitwise for V1 and V2).
+  - Test 6: the energy balance |w_dis/w_loop - 1| of the first cycle is no criterion. That cycle is not closed: on the
+    test mesh D without the tie gave 1.70 (closure 0.35), V1 1034 (w_loop 1.3e-7), V2 0.037. New test 6a instead:
+    p_dis of run_loops (with h* and the group moment D_k) equals -dE/dt within 1e-3 relative, at alpha 0.1 with
+    precession and a constant field, for D, V1 and V2 (fp64). Test 6 keeps the fixed point and the GPU repeat.
+  - The box dispatcher runs with --retries 0 (gates 7: no rerun without a go).
+  - q-16 jobs (option 2): host memory of the box at least 128 GB: one q-16 set-up at a time (the next job starts when
+    the set-up of the one before has ended); below 128 GB: one q-16 job at a time. chain420.sh does this on the box.
+  - The s922 jobs of stage C wait for HFP_s922 with --init_wait_h 6 (a run-control argument).
+  - The stage-A arms are AV1_s<seed> and AV2_s<seed> (jobs/plan420_stageA.txt).
+- 2026-11-04 15:42, stage A started on the local CPU (2 slots with 4 threads, runs/plan420 of the diag worktree).
 
 ## 5. Optional step 3: mesh control (separate go)
 
