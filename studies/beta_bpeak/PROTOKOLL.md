@@ -8939,6 +8939,116 @@ plan418_step1_pairs.py, diag branch e34abfe; results/plan418_step1.json, plan418
 Bloch points at thin cut cells from Bloch points between full cells; step 2 stays in the plan without a go. PLAN 4.18,
 amendment 1. The run waits for the go of Chris on the amended plan.
 
+### 7.144 PLAN 4.18, step 3 (4.16 geometry at 100 mT, box): verdict "not determined"; all Bloch points of D occur at thin cut cells and the stronger coupling Dk has none in all 3 seeds, but Dk keeps 0.4 … 0.7 of the large-angle pairs of D (2026-11-03/04)
+
+**Terms.** As in 7.143 and PLAN 4.18 with amendment 1. Arms at 100 mT (b 0.066667): C = HFC (fraction surface
+without the correction), D = HFD (fraction surface with the correction q 8, plus `--diag_fields`), Dk = D with the
+exchange of each pair with a cut cell multiplied by 4 (`--diag_k_cut 4`, k* of step 1). E3 (`--diag_samples`) in all
+arms. Bloch-point sample: a sample of the cycles ≥ 1 with at least one Bloch point. Bloch-point row: one Bloch point
+at one sample. Types of a Bloch-point row (reading 3g): "thin" if a cell of the largest-angle edge of its cube has f
+below 1/3, "full" if both cells of that edge have f of 1, else "cut". Event: the rows of one cube at successive
+samples. Per-cycle count: the largest number of large-angle pairs of a sample in a cycle. P: loss density per core
+volume, P = f · K_d · w with f 30 MHz and K_d 895 kJ/m³ (J_s 1.5 T).
+
+**Run.** Box 59021293 (machine 43024, 4 × V100-PCIE 16 GB, 0.087 $ per GPU-h), rented by auto418.py. All box tests
+passed: no foreign process, 13.1 … 13.8 TFLOPS, 824 GB/s, speed check off156 1.033 … 1.039 of box 11. Preparations
+HFP_s921, s923, s924 and s925 (code 5344a8e), all converged. s921, s923 and s924 equal 4.16 (relaxation iterations
+15500, 15000, 20000; E/K_d 1.11e-4, 1.06e-4, 1.22e-4). HFP_s924 again has a Bloch point. Seed 925 replaces it
+(19500 iterations, E/K_d 1.38e-4, no Bloch point). Seeds of step 3: 921, 923, 925. C and D ran on 5344a8e. The 3 Dk
+jobs first stopped at the start: a count for the record mixed GPU and CPU tensors. They ran on the patch 1968d9a (go
+of Chris; one line of code, `.cpu()`) in a second queue. Times: C 0.55 … 0.58 h, D 1.88 … 2.71 h, Dk 3.53 … 5.19 h.
+All 9 relaxations converged and all 9 stages are complete. No other failed job. Check of the reproduction: w of C and
+D at s921 and s923 equals 4.16 (ratio 1.000000). Evaluation: eval_418.py step3 (59c5c45, diag branch) on the box,
+with the field files. Results: results/plan418_step3.json and plan418_step3.md (diag branch, copies here). Raw data
+local: runs/plan418_step3_box on the diag worktree (archive 510.7 MB, md5 db2b8e73…; 161 files, each checked against
+the box md5; list results/plan418_step3_md5.txt). Not downloaded: checkpoint.pt and diag_fields.npz (2.9 GB,
+evaluated on the box). The box was destroyed on 2026-11-04 after the download and the md5 check (go of Chris). Cost of
+the box about 3.3 $ (about 9.2 h at 0.36 $/h with storage).
+
+**Deviations from PLAN 4.18.**
+- Box: 4 × V100 at 0.087 $ per GPU-h through auto418.py (price limit 0.10 $ per GPU-h, Chris 2026-11-03), not under
+  0.08 $ per GPU-h.
+- Dk ran on 1968d9a, C and D on 5344a8e. The patch changes only the count of the changed pairs (record) and the
+  tests. The Dk physics path is the same.
+- Fixed before the D and Dk data (PLAN record 6731e83, 2026-11-04 00:48 UTC; then only C s921 and s923 were done):
+  3a counts a sample as "cut" if the cube of each of its Bloch points has a cut cell; 3c takes a seed if the largest
+  per-cycle count of D (cycles ≥ 1) is above that of C, and compares Dk with C at the same cycle index.
+- w rule changed after the C and D data, before the Dk data (59c5c45, 02:19 UTC; all C and D jobs were done at 02:17,
+  the first Dk job was done at 05:01). Before, the code gave w only for a stage with the steady flag. Then C, D and Dk would each
+  have at most 2 values and 3f n of at most 2. Now: mean w_loop of the calm tail of a complete stage, as in 4.16 (PLAN
+  3f: "steady tail of 4.16"; the 4.16 evaluation gives a value for all 36 jobs, also with steady False). Check: the 4
+  runs that 4.16 also has give the 4.16 values exactly (ratio 1.000000). Steady flag False: C s923, D s921, D s925,
+  Dk s921. D s921 has a calm tail of 2 cycles, all other runs 5 cycles. D s921 has the most Bloch-point samples (48)
+  and the largest D/C (1.60).
+
+**Results** (n 3 seeds per arm; cycles ≥ 1 unless stated).
+
+| arm | seed | relaxation iterations | Bloch-point samples, cycles ≥ 1 (cycles ≥ 2) | per-cycle count | mean time step (ps) | P (W/cm³) |
+|---|---|---|---|---|---|---|
+| C | 921 / 923 / 925 | 11000 / 15000 / 14000 | 0 / 0 / 0 | 0 … 1 / 1 / 1 … 2 | 5.87 / 5.85 / 5.85 | 371 / 410 / 334 |
+| D | 921 / 923 / 925 | 25500 / 15500 / 31000 | 48 (37) / 5 (4) / 13 (12) | 9 … 12 / 8 … 9 / 7 … 10 | 2.91 / 3.74 / 3.41 | 594 / 477 / 491 |
+| Dk | 921 / 923 / 925 | 12500 / 6000 / 26500 | 0 / 0 / 0 | 4 … 5 / 6 … 7 / 3 … 4 | 2.39 / 2.39 / 2.41 | 684 / 617 / 444 |
+
+Samples per run: 1799 (D s921, 7 cycles ≥ 1) or 1542 (6 cycles ≥ 1).
+
+- 3a holds: 66 Bloch-point samples in D (48, 5, 13). In each of them every Bloch-point cube has a cut cell (100 %,
+  also in each seed). Base rate in the counted cubes (plan418_basis/cube_base.py): 7.7 % with a cut cell, 3.0 % with
+  a thin cell. All 66 samples also have a large-angle pair in the cube.
+- 3b holds: D has Bloch points in the cycles ≥ 2 in all 3 seeds. Dk has no Bloch point in any cycle of any seed,
+  cycle 0 included (3 of 3 seeds, no fail).
+- 3c fails in all 3 seeds. The per-cycle count of Dk is above the count of C plus 1 in each cycle of s921 and s923
+  and in 5 of 6 cycles of s925. Mean per-cycle count of Dk relative to D: 0.42, 0.73, 0.42.
+- 3d (information): mean time step C 5.85 … 5.87 ps, D 2.91 … 3.74 ps, Dk 2.39 … 2.41 ps.
+- 3e (information, relaxed states from diag_fields):
+
+| reading | D (s921 / s923 / s925) | Dk (s921 / s923 / s925) |
+|---|---|---|
+| largest cut-cell tilt | 74.8° / 69.9° / 71.6° | 40.5° / 42.8° / 41.0° |
+| cut cells above 45° | 10 / 2 / 15 | 0 / 0 / 0 |
+| large-angle pairs (largest angle) | 1 (146.8°) / 2 (137.6°) / 6 (139.8°) | 1 (90.8°) / 2 (93.5°) / 2 (94.4°) |
+| largest tilt of a full cell | 29.2° / 37.9° / 37.9° | 53.1° / 52.8° / 37.9° |
+| Spearman rank correlation of ρ and the tilt | 0.67 / 0.66 / 0.68 | 0.70 / 0.68 / 0.71 |
+| median tilt / (a ρ), a 0.696 of step 1 | 1.21 / 1.19 / 1.23 | 0.65 / 0.63 / 0.65 |
+
+  The ratio of Dk is not on the basis of a: rho_theta uses the pair coupling without the factor 4. With the Dk
+  coupling ρ is about 4 times smaller and the ratio about 4 times larger. The Spearman correlation does not change.
+- 3f (information; factor = exp of the mean ln over the seeds, SE of ln, 95 % t-interval, n 3):
+
+| factor | value [95 % interval] | SE of ln | per seed (s921, s923, s925) |
+|---|---|---|---|
+| D/C | × 1.40 [0.93, 2.11] | 0.095 | 1.60, 1.17, 1.47 |
+| Dk/C | × 1.55 [1.03, 2.32] | 0.095 | 1.84, 1.51, 1.33 |
+| Dk/D | × 1.10 [0.70, 1.73] | 0.105 | 1.15, 1.29, 0.91 |
+
+  Reference: 4.16 at 100 mT gave D/C × 1.44 [1.13, 1.84] (n 4; Δ ln w +0.365, results/hf416.md, 7.142). Step 3 agrees;
+  s921 and s923 are the same runs.
+- 3g: D has 66 Bloch-point rows (47 events), all "thin" (per seed 48, 5, 13 rows): place 1. s923 is exactly at the
+  limit of 5 rows. The rows of one Bloch point at successive samples are not independent (66 rows are 47 events). C
+  and Dk have no Bloch-point row.
+- Verdict of step 3 (rule of PLAN 4.18): not determined. 3a and 3b hold, 3c fails. "Refuted" would need 3a below 50 %
+  or a fail of 3b in at least 2 seeds. Neither occurs.
+
+**Reading.**
+1. The Bloch points of D (4.16 geometry, 100 mT) occur at thin cut cells (3a, 3g). Dk, with a stronger coupling of
+   the pairs with a cut cell (factor 4), has no Bloch point in all 3 seeds (3b). PLAN 4.18 notes that 3a cannot
+   separate an artefact from a real Bloch point that enters through the surface; 3b and 3c carry that part, and 3c
+   fails.
+2. Interpretation: the large-angle pairs have a second part that the stronger coupling does not remove. Dk keeps
+   3 … 7 pairs per cycle (C 0 … 2). In the relaxed Dk states of s921 and s923 the largest tilt moves from the cut cells
+   to the full cells (full cells up to 53°); in s925 it does not (full cells 37.9° as in D). This fits the two risks
+   that amendment 1 names from T4 of step 1 (large angles between full cells next to the cut layer, and pairs of two
+   cut cells with a thin cell). E3 does not record the cells of the Dk pairs. The init.pt files are local; a CPU check
+   of the pair cells is possible.
+3. Loss: between Dk and D no difference is shown (Dk/D × 1.10 [0.70, 1.73], n 3). Dk/C is × 1.55 [1.03, 2.32].
+   Interpretation: the absence of the Bloch points does not lower the loss of Dk; Dk also changes the stiffness and
+   the full-cell tilt. Dk is a diagnostic model, not a candidate.
+4. Total verdict of PLAN 4.18: step 1 "not determined", step 2 not run, step 3 "not determined". Thus "shown" cannot
+   occur and "cause refuted" does not occur; the steps are reported with their numbers. 3g gives place 1: the first
+   remedy is a treatment of the thin cells (merge or remove), per amendment 1.
+
+**Open for Chris.** The plan of the remedies (place 1: merge or remove the thin cells; options to be proposed); the
+CPU check of the cells of the Dk pairs; whether step 2 runs; PLAN 4.17 stays on hold.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

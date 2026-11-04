@@ -2471,6 +2471,12 @@ of the small time step of D; the remedies; other geometries; a class for the los
   Decisions for the evaluation, not fixed by the text of 3a and 3c: 3a counts a sample as "cut" if the cube of each of
   its Bloch points has a cut cell; 3c takes part with a seed if the largest per-cycle number of D is above that of C,
   and compares Dk and C at the same cycle index (a cycle of Dk after the last cycle of C: the last cycle of C).
+- 2026-11-04, w rule of the evaluation changed after the C and D data, before the Dk data (59c5c45): w as in 4.16
+  (calm tail of a complete stage, steady flag no gate); details in PROTOKOLL 7.144.
+- 2026-11-04, step 3 done: all 9 jobs converged and complete (C 0.55 … 0.58 h, D 1.88 … 2.71 h, Dk 3.53 … 5.19 h).
+  Verdict "not determined" (3a and 3b hold, 3c fails), 3g place 1; PROTOKOLL 7.144, results/plan418_step3.json.
+  Data downloaded and checked with md5 (161 files, 510.7 MB; field files 2.9 GB evaluated on the box, not
+  downloaded). Box 59021293 destroyed after the check (go of Chris). Credit after the step 3.27 $.
 
 ## 5. Optional step 3: mesh control (separate go)
 
