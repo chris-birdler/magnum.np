@@ -78,7 +78,7 @@ def test_cut_pair_exchange_count_energy_and_locality(fp64):
     assert t[4.0].n_pairs_changed(st.material["A"]) == direct > 0
     E = {K: float(tm.E(st)) for K, tm in t.items()}
     assert E[4.0] - E[1.0] == pytest.approx(3.0 * (E[2.0] - E[1.0]), rel=1e-9)
-    dh = (t[4.0].h(st) - t[1.0].h(st)).norm(dim=-1).numpy()
+    dh = (t[4.0].h(st) - t[1.0].h(st)).norm(dim=-1).cpu().numpy()
     near = cut.copy()
     for ax in range(3):
         for sh in (1, -1):
@@ -210,8 +210,8 @@ def test_diag_init_error_rules():
     assert "converge" in diag_init_error(dict(c, init={"relax_converged": False}), cfg, N, geo, geo_of)
 
 
-def _run(args, out, timeout=900):
-    env = dict(os.environ, CUDA_DEVICE="-1")
+def _run(args, out, timeout=900, device="-1"):
+    env = dict(os.environ, CUDA_DEVICE=device)
     return subprocess.run([sys.executable, str(HERE / "run_loops.py"), "--out", str(out)] + args, cwd=HERE, env=env,
                           capture_output=True, text=True, timeout=timeout)
 
@@ -221,16 +221,19 @@ BASE = ("--d_lex 24 --phi 0.3 --Leff_lex 12 --dx_lex 3 --surface fraction --prot
         "--precision double").split()
 
 
-def test_run_loops_diag_end_to_end(tmp_path):
-    """E1, E2, E4 and E3 in run_loops on a small fraction-surface mesh: (A) a relaxed state; (B) the start from it with
+@pytest.mark.parametrize("device", ["-1", pytest.param("0", marks=pytest.mark.skipif(
+    not torch.cuda.is_available(), reason="no GPU"))])
+def test_run_loops_diag_end_to_end(tmp_path, device):
+    """E1, E2, E4 and E3 in run_loops on a small fraction-surface mesh, on the CPU (device -1) and on the GPU (device 0;
+    step 3 of PLAN 4.18 failed on the GPU only): (A) a relaxed state; (B) the start from it with
     --diag_init_state, --diag_k_cut 4 and --diag_fields and no relaxation step: the start m equals the file, the record
     names the source, diag_fields.npz holds both states and all term fields; (C) a source of another mesh stops the
     run; (D) one cycle with --diag_samples writes the per-sample file (one row per sample) and the Bloch-point file."""
     a, b, c, d = (tmp_path / x for x in "abcd")
-    r = _run(BASE + ["--relax_maxiter", "5000", "--prep_only"], a)
+    r = _run(BASE + ["--relax_maxiter", "5000", "--prep_only"], a, device=device)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     r = _run(BASE + ["--relax_maxiter", "0", "--allow_unconverged", "--prep_only", "--diag_k_cut", "4",
-                     "--diag_fields", "--diag_init_state", str(a / "init.pt")], b)
+                     "--diag_fields", "--diag_init_state", str(a / "init.pt")], b, device=device)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     ca, cb = (torch.load(str(x / "init.pt"), weights_only=False) for x in (a, b))
     assert torch.equal(ca["m"], cb["m"])
@@ -244,10 +247,11 @@ def test_run_loops_diag_end_to_end(tmp_path):
             assert z["h_%s_%s" % (tag, nm)].shape == z["m_relaxed"].shape
     assert np.allclose(z["m_relaxed"], ca["m"].numpy(), atol=1e-6)
     other = ["--d_lex", "36"] + BASE[2:]                  # another box, thus another mesh
-    r = _run(other + ["--relax_maxiter", "0", "--prep_only", "--diag_init_state", str(a / "init.pt")], c)
+    r = _run(other + ["--relax_maxiter", "0", "--prep_only", "--diag_init_state", str(a / "init.pt")], c,
+             device=device)
     assert r.returncode != 0 and "--diag_init_state" in (r.stdout + r.stderr)
     r = _run(BASE + ["--relax_maxiter", "5000", "--init_from", str(a / "init.pt"), "--max_cycles", "1",
-                     "--diag_samples"], d)
+                     "--diag_samples"], d, device=device)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     rows = [x for x in (d / "diag_00_amp00.csv").read_text().splitlines() if not x.startswith("#")]
     assert len(rows) == 9 and all(len(x.split(",")) == 4 for x in rows)
@@ -289,3 +293,61 @@ def test_eval_418_verdict_rules():
     assert E.verdict(R5, True)["step1"] == "not determined"
     R6 = dict(R, T16={941: rd(0), 942: rd(0)})                                   # T16 with 2 values only
     assert E.verdict(R6, True)["step1"] == "not determined"
+
+
+def test_eval_418_step3_rules():
+    """eval_418 step 3: 3a, 3b, 3c, the 3g types and place, the events and the verdict (PLAN 4.18 with amendment 1)
+    on synthetic run data."""
+    import eval_418 as E
+
+    def row(c, k, i=5, f=(1.0, 1.0, 1.0), ang=100.0):          # one Bloch row: cycle, sample, cube, f_lo, f_hi, f_min
+        return [c, k, i, 5, 5, 1, 0, ang, f[0], f[1], f[2]]
+
+    def run(rows=(), bloch_cycles=(), n90=None):
+        b = [[c, k, 1 if (c, k) in bloch_cycles else 0, 0] for c in range(4) for k in range(10)]
+        return {"rows": list(rows), "bloch": b, "n90": n90 or [[c, k, 0, 10.0] for c in range(4) for k in range(10)]}
+
+    thin, full, cut = (0.1, 1.0, 0.1), (1.0, 1.0, 1.0), (0.5, 1.0, 0.5)
+    # 3a: 10 samples per seed, 9 with a cut cell in the cube -> 90 % holds; cycle 0 does not count
+    rows = [row(1, k, f=thin if k else full) for k in range(10)] + [row(0, 0, f=full)]
+    D = {s: run(rows) for s in (1, 2, 3)}
+    a = E.reading_3a(D)
+    assert a["samples"] == 30 and a["pooled_share_cut"] == pytest.approx(0.9) and a["holds"] is True
+    rows8 = [row(1, k, f=thin if k < 8 else full) for k in range(10)]
+    assert E.reading_3a({1: run(rows8), 2: run(rows), 3: run(rows)})["holds"] is False      # one seed at 80 %
+    assert E.reading_3a({1: run([])})["holds"] is None
+    # 3b: D has Bloch points in cycle 2 in 2 seeds; Dk none -> holds; Dk keeps one in 2 seeds -> 2 fails
+    Db = {1: run(bloch_cycles={(2, 3)}), 2: run(bloch_cycles={(3, 0)}), 3: run(bloch_cycles={(1, 0)})}
+    Dk0 = {s: run() for s in (1, 2, 3)}
+    b = E.reading_3b(Db, Dk0)
+    assert set(b["seeds"]) == {1, 2} and b["holds"] is True and b["fails"] == 0
+    b2 = E.reading_3b(Db, {1: run(bloch_cycles={(2, 0)}), 2: run(bloch_cycles={(3, 5)}), 3: run()})
+    assert b2["holds"] is False and b2["fails"] == 2
+    assert E.reading_3b({1: Db[1]}, Dk0)["holds"] is None                                  # 1 seed only
+    # 3c: C 2 pairs, D 6, Dk 3 -> passes (at most C + 1); Dk 4 -> fails
+    nn = lambda v: [[c, k, v, 10.0] for c in range(4) for k in range(10)]
+    C3 = {s: run(n90=nn(2)) for s in (1, 2)}
+    D3 = {s: run(n90=nn(6)) for s in (1, 2)}
+    assert E.reading_3c(C3, D3, {s: run(n90=nn(3)) for s in (1, 2)})["holds"] is True
+    assert E.reading_3c(C3, D3, {s: run(n90=nn(4)) for s in (1, 2)})["holds"] is False
+    assert E.reading_3c(C3, {s: run(n90=nn(2)) for s in (1, 2)}, D3)["holds"] is None      # D not above C
+    # 3g: types, events and the place
+    assert [E.row_type(row(1, 0, f=x)) for x in (thin, full, cut)] == ["thin", "full", "cut"]
+    assert E.row_type(row(1, 0, f=(1.0 / 3.0, 1.0, 1.0 / 3.0))) == "cut"                # f = 1/3 is not thin
+    assert E.n_events([row(1, 3), row(1, 4), row(1, 6), row(1, 6, i=7)], 10) == 3
+    g = E.reading_3g({"D": {s: run([row(1, k, f=thin if k < 9 else cut) for k in range(10)]) for s in (1, 2)}})
+    assert g["place_D"] == "place 1" and g["D"]["pooled"] == {"thin": 18, "full": 0, "cut": 2, "rows": 20, "events": 2}
+    g = E.reading_3g({"D": {s: run([row(1, k, f=full) for k in range(10)]) for s in (1, 2)}})
+    assert g["place_D"] == "place 2"
+    g = E.reading_3g({"D": {1: run([row(1, k, f=thin) for k in range(5)]),
+                            2: run([row(1, k, f=full) for k in range(5)])}})
+    assert g["place_D"] == "mixed"
+    assert E.reading_3g({"D": {1: run([row(1, k, f=thin) for k in range(5)]), 2: run()}})["place_D"] == \
+        "not determined"
+    # verdict
+    A, B, Cc = {"pooled_share_cut": 0.95, "holds": True}, {"fails": 0, "holds": True}, {"holds": True}
+    assert E.verdict3(A, B, Cc, []) == "confirmed"
+    assert E.verdict3(A, B, Cc, ["Dk"]) == "not determined"
+    assert E.verdict3({"pooled_share_cut": 0.4, "holds": False}, B, Cc, []) == "refuted"
+    assert E.verdict3(A, {"fails": 2, "holds": False}, Cc, []) == "refuted"
+    assert E.verdict3(A, {"fails": 1, "holds": False}, Cc, []) == "not determined"

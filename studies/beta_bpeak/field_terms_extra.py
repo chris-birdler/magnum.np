@@ -75,7 +75,7 @@ class CutPairExchange(LinearFieldTerm):
 
     def n_pairs_changed(self, A):
         """Number of pairs with a cut cell and a nonzero coupling (both cells carry A)."""
-        c = torch.as_tensor(self._cut)
+        c = torch.as_tensor(self._cut).cpu()            # the default device of magnumnp can be the GPU
         a = torch.as_tensor(A).detach().cpu().reshape(c.shape) > 0
         return int(sum(int(((c | torch.roll(c, 1, dims=ax)) & a & torch.roll(a, 1, dims=ax)).sum()) for ax in range(3)))
 
