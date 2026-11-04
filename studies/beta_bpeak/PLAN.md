@@ -2979,6 +2979,18 @@ layer) as a remedy target; the main study (4.17).
   before a rent and destroys a failed box until it is gone. The spare D at 100 mT is S3D_s925 of 4.18 step 3. Seed 922
   is paired with 4.16 only if HFP_s922 equals 4.16. A decision on a gap of the plan: a variant whose jobs ran their
   cycles in fewer than 2 seeds is no candidate for stage C.
+- 2026-11-04 18:27, stage A done: 8 relaxations, all exit 0, all converged (V1 4000 … 15000 iterations, V2 6500 …
+  27000). Results: diag 4aa0939 (results/plan420_stageA.{json,md}); raw data local in runs/plan420 of the diag
+  worktree (137 MB, MANIFEST_plan420_stageA.md5, 51 files). No Bloch point in the 8 states. Largest tilt of a free cut
+  cell: V1 38.4 … 40.9°, V2 38.5 … 42.2° (B8 72.9 … 82.1°, C8t 22.1 … 25.6°); no free cut cell above 45° (B8 6 … 12).
+  Overlap with B8 per particle 0.9993 … 0.9999. Largest pair angle per seed 941 / 942 / 943 / 944: V1 92.50 / 90.41 /
+  86.69 / 89.35°, V2 90.05 / 89.50 / 85.82 / 89.28° (B8 102.1 … 133.7°, C8t 69.7 … 75.0°). Each pair above 90° is one
+  cut-cut pair without a thin cell and without a tied cell.
+- Gate A: V2 passes (seeds 942, 943, 944), V1 fails (seeds 943, 944). The decision rests on small margins: the
+  largest pair angle of all 8 states lies between 85.8° and 92.5°, and the seed that decides (942) gives V1 90.41°
+  and V2 89.50°. Thus gate A does not show that V2 is better than V1. It shows that both variants remove the pairs
+  with a thin cell and leave cut-cut pairs near 90°. Stage B runs with V2 only (rule of gate A): arms F8, D8, D8V2,
+  C8.
 
 ## 5. Optional step 3: mesh control (separate go)
 
