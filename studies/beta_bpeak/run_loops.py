@@ -108,7 +108,8 @@ NEW_KEYS = {"min_calm": 0, "calm_tol": 0.20, "cycles_last_amp": None,   # added 
             "h_sat": None,                                        # 2026-10-20, PLAN 4.15 C1 (default 1 - phi)
             "staircase": "none", "staircase_q": 2, "staircase_p": 3,  # 2026-10-20, staircase correction (Chris)
             "staircase_centroid": False,
-            "diag_k_cut": None}                                   # 2026-10-30, PLAN 4.18 E1 (diagnostic)
+            "diag_k_cut": None,                                   # 2026-10-30, PLAN 4.18 E1 (diagnostic)
+            "tie_cells": None}                                    # 2026-11-04, PLAN 4.20 E6
 #                                                                    strayfield: 2026-10-15, PROTOKOLL 7.105)
 RUN_CONTROL = {"out", "max_cycles", "vti", "keep_stage_ckpt", "no_resume", "init_from", "init_stage", "timer", "prep_only", "sat_check",
                "allow_new_commit", "allow_unconverged", "init_wait_h", "relax_maxiter",
@@ -122,7 +123,7 @@ INIT_KEYS = ["d_lex", "dx_lex", "phi", "a_quant", "surface", "Leff_lex", "Q_eff"
              "relax_chunk", "relax_tol_E", "relax_confirm", "precision", "atol", "strayfield", "strayfield_shells",
              "geom_dx_lex", "relax_tol_E_abs", "predemag_h", "predemag_q", "init_mode",
              "bloch_free_tries", "bloch_smooth", "sat_static", "h_sat", "staircase", "staircase_q", "staircase_p",
-             "staircase_centroid", "diag_k_cut"]
+             "staircase_centroid", "diag_k_cut", "tie_cells"]
 
 
 def init_key_diff(src_config, config, converged, late_predemag=False, late_smooth=False, late_sat=False):
@@ -366,6 +367,12 @@ def parse_args(argv=None):
     g.add_argument("--diag_init_state", type=str, default=None,
                    help="E4: start the relaxation from the m of a relaxed state file (init.pt) of the same mesh and the "
                         "same geometry (ids and f); only the arguments in DIAG_INIT_FREE can differ")
+    g = p.add_argument_group("tied cut cells of PLAN 4.20 (E6; remedy test of the Bloch points of the correction)")
+    g.add_argument("--tie_cells", choices=["thin_face", "ghost_mirror"], default=None,
+                   help="tie cut cells to free cells of the same particle (field_terms_extra.TiedLLGSolver): thin_face = "
+                        "each thin cell (f below l_ex/dx) follows the face neighbour with the largest shared occupied "
+                        "face at --staircase_q; ghost_mirror = each cut cell with the centre outside its sphere takes m "
+                        "at the mirror point of its centre (trilinear). Needs --staircase pair or local")
     a = p.parse_args(argv)
     if a.predemag_h is not None and len(a.predemag_h) == 1:
         a.predemag_h = a.predemag_h[0]                    # one pass: the scalar of the configs before the list
@@ -464,10 +471,11 @@ def surface_sub(args):
 # 3.11; PLAN 4.16) the surface model, the locked geometry and the preparation (the source state is already prepared)
 TRANSFER_FREE = ("dx_lex", "relax_maxiter", "surface", "staircase", "staircase_q", "staircase_p", "staircase_centroid",
                  "geom_dx_lex", "predemag_h", "predemag_q", "bloch_free_tries", "bloch_smooth", "init_mode",
-                 "diag_k_cut")
+                 "diag_k_cut", "tie_cells")
 # INIT_KEYS that may differ between a --diag_init_state source and the run (PLAN 4.18 E4): the surface model on the same
 # cells (the correction and the coupling factor); the geometry itself is checked with the ids and f arrays
-DIAG_INIT_FREE = ("relax_maxiter", "staircase", "staircase_q", "staircase_p", "staircase_centroid", "diag_k_cut")
+DIAG_INIT_FREE = ("relax_maxiter", "staircase", "staircase_q", "staircase_p", "staircase_centroid", "diag_k_cut",
+                  "tie_cells")
 
 
 def transfer_source_error(src_config):
@@ -1016,6 +1024,9 @@ def main(argv=None):
                                  or args.protocol != "virgin_asc" or args.relax_mode != "converge"):
         sys.exit("ERROR: --diag_init_state excludes --init_transfer, --init_from and --init_stage and needs --protocol "
                  "virgin_asc and --relax_mode converge")
+    if args.tie_cells and (args.staircase not in ("pair", "local")
+                           or (args.protocol == "virgin_asc" and args.relax_mode != "converge")):
+        sys.exit("ERROR: --tie_cells needs --staircase pair or local and (virgin_asc) --relax_mode converge")
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -1030,7 +1041,7 @@ def main(argv=None):
 
     from geometry import fcc_box
     from anisotropy_model import box_edge, cube_axes, particle_axes, CUBE_QUANT
-    from field_terms_extra import SinusoidalDrive
+    from field_terms_extra import SinusoidalDrive, TiedLLGSolver, tie_thin_face, tie_ghost_mirror
 
     # --- units -------------------------------------------------------------
     U = units(args.Js, args.A)
@@ -1086,6 +1097,7 @@ def main(argv=None):
     terms = [strayfield, ExchangeField()]
     term_names = ["demag", "exchange"]                    # PLAN 4.13 S5: names of the energy terms, same order
     diag_info = {}
+    tie = None                                            # PLAN 4.20 E6: TieMap with --tie_cells
     if args.diag_k_cut is not None:                       # PLAN 4.18 E1: diagnostic coupling of the cut cells
         from field_terms_extra import CutPairExchange
         terms[1] = CutPairExchange(mag & (geo["frac"] < 1.0), args.diag_k_cut)
@@ -1110,7 +1122,14 @@ def main(argv=None):
             terms.insert(1, DemagStaircaseCorrection(n_s, occ_s, q_s, args.staircase_p, Ms, form=args.staircase,
                                                      centroid=args.staircase_centroid, demag=strayfield))
             term_names.insert(1, "demag_corr")
+        if args.tie_cells == "thin_face":                 # PLAN 4.20 E6 V1: the shared faces from the sub-cells
+            tie = tie_thin_face(ids, geo["frac"], args.dx_lex, occ_s, q_s)
+        elif args.tie_cells == "ghost_mirror":            # PLAN 4.20 E6 V2
+            tie = tie_ghost_mirror(ids, geo["frac"], N, d, dx)
         del n_s, pid_s, occ_s
+    if tie is not None:
+        diag_info["tie"] = tie.info
+        print("[tie] %s" % json.dumps(tie.info), flush=True)
     n_cubes = [0, 0, 0, 0]
     if K_eff > 0.0:
         ax_c, n_cubes = locked_cube_axes(ids, rep, args.dx_lex, a_lex, d_lex, L, args.seed)
@@ -1142,7 +1161,11 @@ def main(argv=None):
     drive = SinusoidalDrive(state, tuple(e_d))
     terms.append(drive)
     term_names.append("drive")
-    llg = LLGSolver(terms, atol=args.atol)
+    def make_llg(**kw):
+        """LLGSolver of the terms, or with --tie_cells TiedLLGSolver (PLAN 4.20 E6)."""
+        return LLGSolver(terms, **kw) if tie is None else TiedLLGSolver(terms, tie, state.material["Ms"], **kw)
+
+    llg = make_llg(atol=args.atol)
 
     def term_energies():
         """PLAN 4.13 S5: energy of each field term / (K_d V), fp64 sums (the swapped stray-field term included)."""
@@ -1167,14 +1190,17 @@ def main(argv=None):
 
     @torch.no_grad()
     def diagnostics():
+        if tie is None:
+            H, p_w = accumulate_h(term.h(state) for term in terms), Ms_t
+        else:                                    # PLAN 4.20 E6: the master field with the group moment, 0 if tied
+            H, p_w = llg.field_p(state)
         m = state.m
         Mvec = (Ms_t * m).double().mean(dim=(0, 1, 2))
         Mpar = float(torch.dot(Mvec, e_t))
         m_par = (m.double() * e_t).sum(-1).reshape(-1) * Ms_t.double().reshape(-1)
         Mp = torch.bincount(ids_t, weights=m_par, minlength=5)[1:] / counts
-        H = accumulate_h(term.h(state) for term in terms)
         mxH = torch.linalg.cross(m, H)
-        p_cell = p_coef * Ms_t * (mxH * mxH).sum(-1, keepdim=True)
+        p_cell = p_coef * p_w * (mxH * mxH).sum(-1, keepdim=True)
         last_p["p"] = p_cell
         p_dis = float(p_cell.double().mean())
         cmin, n60 = 1.0, 0
@@ -1229,6 +1255,8 @@ def main(argv=None):
             for _ in range(args.relax_chunk):
                 state.t, state.m = llg._solver.step(state.t, state.m, 1e-11, state=state, alpha=1.0)
             normalize(state.m)
+            if tie is not None:
+                llg.tie_state(state)             # PLAN 4.20 E6: before the energy and the Bloch points
             it += args.relax_chunk
             with torch.no_grad():
                 tq = (llg.dm(state.t, state.m, state=state, alpha=1.0).double().norm(dim=-1).reshape(-1)[magf]
@@ -1547,6 +1575,8 @@ def main(argv=None):
                                   direction=e_d))
         state.t = torch.tensor(0.0, dtype=torch.float64, device=dev)
         drive.H_amp = 0.0
+        if tie is not None:
+            llg.tie_state(state)                 # PLAN 4.20 E6: the start state tied
         t_w = time.time()
         if args.protocol == "virgin_asc" and args.relax_mode == "converge":
             # T = 0 analogue of cooling in zero field: random m, relaxed at alpha = 1 in chunks until the
@@ -1626,6 +1656,8 @@ def main(argv=None):
             save_atomic({"m": state.m.detach().cpu(), "init": summary["init"],
                          "config": {k: config.get(k) for k in INIT_KEYS}}, init_file)
 
+    if tie is not None:
+        llg.tie_state(state)                     # PLAN 4.20 E6: a loaded state (a tied state does not change)
     if args.diag_fields and not resume and not args.init_stage and args.protocol == "virgin_asc":
         write_diag_fields()                       # PLAN 4.18 E2 (also for a relaxation that did not converge)
     # hard gate: the protocol requires a converged virgin state
@@ -1649,7 +1681,7 @@ def main(argv=None):
         strayfield = sf_cyc
         print("[cycles] strayfield %s" % args.strayfield_cycles, flush=True)
     if kw_cyc is not None or sf_cyc is not None:
-        llg = LLGSolver(terms, **(kw_cyc or {"atol": args.atol}))   # p_dis and the diagnostics use the terms
+        llg = make_llg(**(kw_cyc or {"atol": args.atol}))   # p_dis and the diagnostics use the terms
         if kw_cyc is not None:
             print("[cycles] RKF45 %s" % " ".join("%s %g" % kv for kv in sorted(kw_cyc.items())), flush=True)
     cycles_done = sum(len(s["cycles"]) for s in summary["stages"])
