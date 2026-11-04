@@ -417,10 +417,11 @@ def reading_3g(arms):
 
 
 def w_tail(stage):
-    """w of a run as in 4.16: mean w_loop over the calm tail (the last calm_tail cycles); None if not steady."""
+    """w of a run as in 4.16: mean w_loop over the calm tail (the last calm_tail cycles) of a complete stage; None
+    without a calm tail. The steady flag is no gate (4.16 gave a value for all 36 jobs, also with steady False)."""
     c = stage["cycles"]
     t = int(stage.get("calm_tail") or 0)
-    return float(np.mean([x["w_loop"] for x in c[-t:]])) if t and stage.get("steady") else None
+    return float(np.mean([x["w_loop"] for x in c[-t:]])) if t and stage.get("complete") else None
 
 
 def log_factor(pairs):
@@ -489,7 +490,8 @@ def step3(runs, seeds=S3_SEEDS, slope_a=None, ref416=None, fields=True):
                 e.setdefault(a, {})[s] = v
         res["3e"] = {"slope_a": slope_a, "arms": e}
     w = {a: {s: w_tail(r["stage"]) for s, r in data[a].items()} for a in S3_ARMS}
-    res["3f"] = {"w": w}
+    res["3f"] = {"w": w, "flags": {a: {s: {k: r["stage"].get(k) for k in ("steady", "calm_tail", "complete")}
+                                        for s, r in data[a].items()} for a in S3_ARMS}}
     for num, den in (("D", "C"), ("Dk", "C"), ("Dk", "D")):
         pairs = {s: (w[num][s], w[den][s]) for s in seeds if w[num].get(s) and w[den].get(s)}
         res["3f"]["%s/%s" % (num, den)] = log_factor(pairs)

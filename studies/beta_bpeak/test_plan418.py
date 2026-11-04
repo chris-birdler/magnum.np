@@ -351,3 +351,7 @@ def test_eval_418_step3_rules():
     assert E.verdict3({"pooled_share_cut": 0.4, "holds": False}, B, Cc, []) == "refuted"
     assert E.verdict3(A, {"fails": 2, "holds": False}, Cc, []) == "refuted"
     assert E.verdict3(A, {"fails": 1, "holds": False}, Cc, []) == "not determined"
+    # w as in 4.16: mean w_loop of the calm tail, also when the stage is not steady
+    st = {"cycles": [{"w_loop": v} for v in (9.0, 1.0, 2.0, 3.0)], "calm_tail": 2, "complete": True, "steady": False}
+    assert E.w_tail(st) == pytest.approx(2.5)
+    assert E.w_tail(dict(st, calm_tail=0)) is None
