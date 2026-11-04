@@ -2712,6 +2712,247 @@ tilt readings of 4.18 step 2.
   Bloch points. Thus the question of this plan (C against D) does not decide the production model, and PLAN 4.19 does
   not run. Next: a plan for a remedy of the Bloch points of D, with a fine-mesh check.
 
+### 4.20 Remedy of the Bloch points of D: tied cut cells, two variants, with a fine-mesh reference (proposal 2026-11-04; Chris on the concept: "Ja, mach das bitte genauso. Super Plan."; the go on this text is open)
+
+**Why.** Two basic requirements hold for the production model. (i) The near-field correction of the stray field:
+without it, the error of the surface is a median of 91 % of |E_K|; with q 8 it is 13 % (36 % of the points below the
+10 % rule), with q 16 it is 7 % (68 % below; staircase PROTOKOLL 3.34). PLAN 4.17 sets q 16 for production. (ii) No
+Bloch points. D (the correction at q 8) fails (ii). In 4.16, D had Bloch points in the cycles in 5 of the 6 jobs at
+50 and 100 mT whose relaxed state had none, and in 0 of 3 at 9 mT. At 100 mT (seeds 921, 923, 925) all Bloch points
+of D sit at thin cut cells (7.144, reading 3g). The correction tilts the thin cut cells by up to 72.9 … 82.1° (7.143,
+48³)
+and 69.9 … 74.8° (7.144, 148³). In the continuum, a part of the particle that is thinner than l_ex cannot carry its
+own direction of m: exchange binds it to the material behind it. For a flat cut parallel to a cell face, the inside
+part of a cell is thinner than l_ex if f is below l_ex/dx (1/3 at dx 3 l_ex). For a curved cut this is a heuristic.
+The fine mesh is not for production (Chris); here it is a reference for the remedy.
+
+**Terms.**
+- q: the number of sub-cells per cell edge of the correction (`--staircase_q`). K_d = J_s²/(2 μ0); E_K: the
+  anisotropy energy. The 10 % rule (staircase PROTOKOLL 3.1): the error of the surface energy below 10 % of |E_K|.
+- Staircase geometry: d/l_ex 96 nominal (92.2 used), φ 0.55, box edge 144 l_ex, 4 particles on FCC sites; mesh 48³ at
+  dx 3 l_ex, 96³ at dx 1.5 l_ex. 4.16 geometry: d/l_ex 300 (300.6 used), φ 0.65, box edge 444 l_ex, mesh 148³ at dx 3
+  l_ex. fcc_box has no seed: all seeds of a geometry share the particles; they differ in the anisotropy cubes and in
+  the start state.
+- Cut cell: a particle cell with 0 < f < 1 (f: volume fraction from q³ sample points; 8³ without the correction). Thin
+  cell: a cut cell with f
+  below l_ex/dx. Full cell: f = 1.
+- Tied cell: a cell without its own degree of freedom. Its m is set from free cells of the same particle (its
+  masters): m_j = s_j/|s_j| with s_j = Σ_k w_jk m_k.
+- Moment weight: μ = M_s f (all cells have the same volume).
+- Tilt of a cell, large-angle pair, overlap: as in 7.143 and 7.144. P: the loss density, P = drive frequency × K_d × w,
+  with w the mean w_loop of the calm tail of a complete stage (eval_418.w_tail; the calm tail: the consecutive cycles
+  at the end of the stage that meet the rule |w_dis/w_loop − 1| ≤ 0.20).
+- Bloch flags of a job: (its relaxed state has a Bloch point, a time sample of the cycles has a Bloch point); rule of
+  eval_rough.py, all cycles from cycle 0, as in 7.142. Bloch samples: the number of time samples of all cycles,
+  cycle 0 included, with a Bloch point (E3, `--diag_samples`).
+- Start state: the state from which a job starts its relaxation (D15 or HFP, below). Relaxed state: the state at the
+  end of the relaxation of a job.
+
+**The two variants (code E6, option `--tie_cells`).**
+- V1 (`thin_face`): each thin cell is tied to one face neighbour of the same particle: the one with the largest
+  shared occupied face (the number of pairs of occupied sub-cells across the face, at the q of the run, from
+  geometry.fcc_subcells).
+  If that neighbour is thin, the tie follows its master. A thin cell without an occupied shared face, a cycle, or a
+  chain longer than 3 cells takes the nearest free cell of the same particle (centre distance). Weight 1.
+- V2 (`ghost_mirror`, a mirror tie; the idea comes from García-Cervera, Gimbutas & E, J. Comput. Phys. 184, 37
+  (2003), Sect. 3.1): each cut cell whose centre lies outside its sphere (r > R from the particle centre, minimum
+  image) is tied. Its m is m at the mirror point of its centre across the sphere surface, along the radial normal:
+  trilinear weights of the 8 cell centres around the mirror point, only cells of the same particle with the centre
+  inside; weights renormalised; no such cell: the nearest one. This gives dm/dn = 0 on the true surface
+  approximately (first order). Differences to García-Cervera et al.: they use a fourth-order polynomial with the
+  Neumann condition in 2D; their exterior points carry no moment, and the ghost values enter the interior Laplacian
+  with the full A. In V2 the tied cell stays a magnetic cut cell with its moment, its f-weighted exchange A_ij and its
+  stray field, and its field goes back to the masters (below). Thus V2 is derived from an energy, and the relaxation
+  and its energy stop rule stay valid.
+- Counts (geometry.fcc_box, sub 8): every thin cell has its centre outside its sphere (also at q 16), so V1 ties a
+  subset of the V2 cells. Tied cells at 48³: V1 7104, V2 8256 (of 15584 cut cells). At 148³: V1 65568, V2 82752 (of
+  165920 cut cells;
+  82752 is also the 7.142 count of cells without a voxel source). At 96³: 61856 cut cells. At 148³ and q 16 (sub
+  16): 177920 cut cells, 72288 thin, 89952 with the centre outside, smallest f 1/4096.
+- Both: the tied cells keep their place, f, sub-cells and moment. The geometry, the stray field and the correction
+  do not change.
+
+**Code (branch diag/sliver-coupling; one pinned commit for all runs of a stage).** magnumnp/solvers/llg.py stays as
+it is. New: a subclass TiedLLGSolver (studies/beta_bpeak/field_terms_extra.py). run_loops.py uses it at both places
+where it makes an LLGSolver (the relaxation and the cycles, line ~1145 and ~1652) when `--tie_cells` is set.
+- dm(t, x): tie x; evaluate all field terms on the tied state; replace the field of each master k by
+  h_k* = (μ_k h_k + Σ_j w_jk μ_j P_j h_j / |s_j|) / (μ_k + Σ_j w_jk μ_j), with P_j = I − m_j m_jᵀ; dm of the masters
+  from the LLG with h_k*; dm of the tied cells 0. The numerator is the exact chain rule, −(1/μ0) ∂E/∂m_k. The
+  denominator D_k is the moment of the group. For V1 (one master, w 1, |s_j| 1) the group is rigid, and the dynamics
+  are exact. For V2, D_k is a lumped moment: the precession is approximate, the energy decrease holds. p_dis uses the
+  same D_k. For V2 the tie normalises m first, then forms s_j.
+- The relaxation loop of run_loops.py (relax_converge) calls the ODE solver directly and normalises once per chunk of
+  500 iterations. With `--tie_cells` it ties at the end of each chunk, before the energy and the Bloch-point check.
+  dm ties its input, so the solver steps need no extra tie.
+- llg.step (cycles): tie after each step, then normalise.
+- diagnostics(): p_dis comes from m × H of each cell. A tied cell has a torque that does no work. With `--tie_cells`,
+  p_dis of a master uses h_k* with the group moment, and p_dis of a tied cell is 0. Thus the balance w_dis/w_loop stays
+  valid.
+- E(state), E2, E3 and the Bloch-point counter use the tied state.
+- `tie_cells` goes into INIT_KEYS, NEW_KEYS (default None), TRANSFER_FREE and DIAG_INIT_FREE.
+- Record per run: the number of tied cells, their sum of f, the longest chain (V1), the fall-back cases.
+- Tests: (1) without `--tie_cells` the code path is that of D (bitwise equal dm, 20 steps, p_dis); (2) after 100 steps
+  each tied cell equals its tie value (V1 bitwise, V2 within 1e-6); (3) V1 and V2: the master field equals the
+  numerical derivative of the energy with respect to the free m: D_k h_k* against −(1/μ0) ∂E/∂m_k, tangential part
+  (fp64, relative 1e-6); (4) at α 1, in fp64, from a
+  start far from equilibrium, the energy decreases in each of 200 steps (V1, V2; synthetic spheres, d_lex 24, with the
+  correction); (5) the tie maps of a synthetic sphere: V1 masters are face neighbours with the largest shared face;
+  V2 mirror points lie inside; the counts equal a direct count; (6) end-to-end runs (d_lex 24, 1 cycle) on the CPU and
+  on a box GPU before the jobs (box test B5): the energy balance |w_dis/w_loop − 1| of the cycle and the tie values at
+  its end. test_plan418.py and test_study.py pass.
+- eval_420.py: the readings below, with a test of the rules on synthetic values. Job lines jobs/plan420_*.txt. The box
+  script auto420.py (from auto418.py) goes into the diag branch before the first rent.
+
+**Stage A (local CPU, no GPU cost; staircase geometry, 48³, seeds 941 … 944).** Arms V1 and V2: the arguments of B8
+(jobs/plan418_step1.txt) without `--init_transfer`, with `--tie_cells` and `--diag_init_state B8_s<seed>/init.pt`
+(the relaxed B8 state of 4.18 step 1), `--prep_only --diag_fields`. 8 relaxations. Readings per seed, against B8
+and C8t of 4.18: the largest tilt of a free cut cell; the free cut cells above 45°; the pairs above 90° by type
+(full-full, cut-full, cut-cut, with or without a thin cell; also pairs with tied cells); Bloch points in the relaxed
+state; the overlap with B8 per particle; the relaxation iterations.
+Gate A: a variant goes on to stage B if, in at least 3 of 4 seeds, its relaxed state has no pair above 90° and no
+Bloch point. (B8 had pairs above 90° only with a thin cell; T16 and Dk of 4.18 had pairs of two full cells above
+90°.) A variant that fails is reported and stops. If both fail: report, no box.
+
+**Stage B (box; staircase geometry, 100 mT, seeds 941 … 944).** All arms start from D15_s<seed>/init.pt (the relaxed
+voxel state at dx 1.5 l_ex of the staircase study; no Bloch point; md5 as remote_20261021_box6/d15_init.md5), with
+`--b_list 0.066667`, without `--prep_only`, the cycle arguments of 4.16 (7 cycles, at least 2 calm, at most 15),
+`--diag_samples --diag_fields`:
+- C8: the arguments of C8t (fraction surface without the correction), dx 3 l_ex.
+- D8: the arguments of B8 (with the correction q 8), dx 3 l_ex. Positive control for the Bloch points.
+- D8V1, D8V2: D8 with `--tie_cells` (only the variants that passed gate A), dx 3 l_ex.
+- F8: D8 with `--dx_lex 1.5` (96³; transfer at equal mesh). The fine reference.
+Readings:
+- B-0 (validity of F8): F8 is a valid reference if it has values in at least 3 seeds and no Bloch sample in any seed.
+  Its tilt and pairs at dx 1.5
+  l_ex are reported (at dx 1.5 l_ex the thin threshold is f below 2/3: 38784 of 61856 cut cells). If F8 has Bloch
+  samples, B-b is not valid, and this is a finding for Chris: the Bloch points of D then also occur on the finer mesh.
+- B-a (decisive for each variant): a variant passes if it has no Bloch sample in any seed (every job that ran its
+  cycles counts, calm or not). B-a needs at least 2 seeds in which D8 has Bloch samples; else B-a is "not valid"
+  (this geometry does not show the effect) and stage C decides alone. C8 is information.
+- B-b (agreement with the fine reference; only with a valid F8): the relaxed state of F8, averaged onto 48³ with the
+  weights f of the fine cells, is the reference; coarse cells without a fine cell of their particle are left out. Per
+  arm and seed: the mean of m · m_ref over the coarse cut cells, per particle; the number of coarse cut cells with an
+  angle above 45° to the reference; the same for the full cells next to the cut layer.
+- B-c (information): P at 100 mT per arm; the factors against F8 and D8 per seed and as exp of the mean of ln with the
+  95 % t-interval (n 4); the mean time step; the run time. The accuracy of P is not a criterion of this plan.
+- Selection for stage C: of the variants that pass B-a (or all that passed gate A, if B-a is not valid), the one with
+  the
+  larger mean B-b cut-cell overlap over the seeds. If the absolute mean paired difference of the two overlaps is
+  smaller than its standard error, or if B-b is not valid: V1 (less code, no interpolation). If no variant passes B-a:
+  report, no stage C.
+
+**Stage C (the same box; 4.16 geometry, seeds 921 … 924).** The chosen variant Dv: the arguments of HFD of 4.16
+(jobs/hf416.txt) with `--tie_cells` and `--diag_samples` (E3 does not change w: step 3 reproduced 4.16 with it). Start
+states HFP_s<seed>: 921, 923 and 924 from step 3 of 4.18 (local, md5 list); 922 made again on the box with the 4.16
+arguments (check: 25500 relaxation iterations and E/K_d 1.622e-4 as in 4.16; a difference is reported, and the 4.16
+values of seed 922 are then not paired). Control R0: D at 100 mT, seed 921, on the commit of this stage without
+`--tie_cells`: w equals HFD_s921_b100 of 4.16 within 1e-6 relative (a fail: the jobs stop; download, md5, destroy,
+report).
+- C(q 8): Dv at q 8, at 9, 50 and 100 mT, seeds 921 … 924: 12 jobs, paired with C and D of 4.16.
+- C(q 16) (decision of Chris, below): D16 and Dv16 (the same with `--staircase_q 16`) at 100 mT, seeds 921, 923, 924:
+  6 jobs. 100 mT is the amplitude at which D had Bloch points in all 3 seeds. At q 16, f comes from 16³ sample points,
+  so the cut cells, the thin cells and the tied cells differ from q 8 (counts above). Thus D16 against D changes f and
+  q together; only Dv16 against D16 is a clean pair. D16 is the positive control: the Dv16 reading needs at least 2
+  seeds in which D16 has Bloch samples; else it is "not valid".
+Readings:
+- C-a (decisive): counted are the jobs of seeds 921, 923 and 924 (q 8: 9 jobs; with C(q 16): 3 Dv16 jobs) whose D
+  job (4.16, or D16) has a relaxed state without a Bloch point. A counted Dv job fails if its relaxed state or any time
+  sample of its cycles has a Bloch point. The relaxation does not depend on the amplitude, so a Bloch point in the
+  relaxed state of a seed fails all its jobs. Every job that ran its cycles counts, calm or not. C-a holds if no
+  counted job fails and at least 7 of the 9 q-8 jobs (2 of the 3 Dv16 jobs) ran their cycles. If fewer ran (exit code
+  other than 0 before the cycles), the jobs of seed 925 run as spares (HFP local; D at 9 and 50 mT runs with them, D
+  at 100 mT is in step 3). Else C-a is "not determined". Seed 922 starts with a Bloch point in all arms of 4.16; it is
+  reported separately.
+- C-b (information): the Bloch samples of D and Dv per job (4.16 D: 74 Bloch samples in the cycles ≥ 1 of these 9
+  jobs); Δ ln w of Dv against D and C of 4.16 per amplitude; β 9 → 50, 50 → 100 and 9 → 100 of Dv against D and C
+  (paired by seed, mean ± SE with the 95 % t-interval, n 4; as results/hf416.md; there D − C gave Δβ 9 → 50 of
+  −0.13 ± 0.03 and 50 → 100 of +0.39 ± 0.20). With C(q 16): D16 against D, Dv16 against Dv, at 100 mT.
+- Verdict: "no Bloch points in these runs" if C-a holds; "remedy fails" if a counted job fails. The runs
+  are deterministic and the rate of D depends on the amplitude (0 of 3, 2 of 3, 3 of 3), so C-a is a statement about
+  these runs, not a rate. C-a also cannot separate "removed" from "rare": HFD_s924_b50 had only one Bloch sample.
+  Thus C-b reports the Bloch samples of D next to those of Dv.
+
+**Decision of Chris before the go: the stage C mesh of the correction.**
+Totals for stages B and C (box with 4 GPUs, billed 4 GPUs × wall time at 0.087 … 0.10 $ per GPU-h, with storage):
+1. C(q 8) only: work about 51 … 94 GPU-h, wall time about 17 … 31 h, about 6 … 13 $. Paired with all data of 4.16.
+   Whether the remedy works at q 16 stays an assumption for production.
+2. C(q 8) and C(q 16) at 100 mT (recommended): 6 more jobs (about 15 … 20 GPU-h); work about 66 … 114 GPU-h, wall
+   time about 21 … 36 h, about 8 … 15 $. Tests the production setting at the amplitude with the most Bloch points.
+3. C at q 16 only, at 9, 50 and 100 mT (Dv16 12 jobs, D16 9 jobs): work about 76 … 133 GPU-h, wall time about
+   23 … 41 h, about 9 … 17 $. Not paired with 4.16.
+q 16 needs about 34.5 GiB host memory for each set-up (staircase PROTOKOLL, q16_156) and about 13 GiB GPU memory in
+nvidia-smi (fits 16 GB with a small margin).
+
+**Decision of Chris before the go: the cost limit.** (a) 16 $ (covers the estimate of option 2); (b) 20 $ (covers
+all options). Recommended: (a) with option 2.
+
+**Consequences (proposals; Chris decides).** "No Bloch points in these runs": a plan to take the variant into the
+production model (a new version of PLAN 4.17, which its own precondition stopped), with the change of P and β from
+C-b. "Remedy fails" or no variant passes stage B:
+report with the readings and options (for example place 2, the full cells next to the cut layer).
+
+**Gates and order.**
+1. Code E6, eval_420.py, the job lines, auto420.py and the tests (local). Commit and push on diag/sliver-coupling.
+2. Stage A (local), gate A. Report.
+3. Stage B: rent under the rules of 4.19 (V100 16 or 32 GB, 2 … 4 GPUs, at most 0.10 $ per GPU-h, CUDA 12.6 or newer,
+   not deverified, the excluded machines and host; box tests B1 … B5 as written in 4.19; B3 with the 4 D15 states and
+   the 3 HFP states; B5 the E6 tests). Host memory of the box: at least 64 GB (4.16: 11.41 GiB container memory for
+   2 D jobs at 148³ at the same time); with C(q 16) at least 128 GB, or the q-16 jobs run one at a time in a separate
+   queue on one GPU (the dispatcher has no memory gate). A failed B1 … B4: logs with
+   md5, destroy at once, next rent, until the failed boxes cost 1 $. A failed B5: logs with md5, destroy at once,
+   report with a patch proposal.
+4. Stage B jobs: F8 first (the longest), then D8, the variants and C8. R0, HFP_s922 and (with option 2 or 3) the D16
+   jobs do not depend on the selection: they fill the GPUs in the tail of stage B (no idle GPU). Early warning (the
+   jobs continue): F8 at 20000 relaxation iterations without a stop; the projection of its run time. After the last
+   job: eval_420.py on the box,
+   download (small files, relaxed states, field files; about 1 GB), md5.
+5. Selection (rule above), on the box. If a variant is selected, stage C starts on the same box at once, without a
+   new go; I tell Chris. Else: destroy, report.
+6. Stage C jobs: R0 and HFP_s922 first, then the Dv jobs (and the q-16 jobs). No field files. Download (small files and
+   relaxed states, about 0.8 GB), md5, destroy. Report and PROTOKOLL.
+7. Failed job: an exit code other than 0, a relaxation without a stop within 80000 iterations, a stage that is not
+   complete, or a stage without a calm tail. It gives no value for P and β. Its Bloch samples still count for B-a and
+   C-a if it ran its cycles. Reported; no rerun without a go. An F8 seed without a value: B-0 counts the other seeds.
+8. Cost limit (decision of Chris, above) for stages B and C together (box cost with set-up, tests, runs and storage).
+   At 75 % I report with a projection; the jobs continue. At the limit: stop, download, md5, destroy. Before the rent
+   the credit must be at least the limit plus 1.5 $ (now 3.25 $): with 16 $, Chris adds about 15 $. If the credit
+   falls below the cost of the remaining jobs plus 1 $,
+   I report at once.
+9. A go on this plan includes the rents under these rules, the start of stage C by the selection rule, and the
+   destroy of the box after the md5 check.
+
+**Cost (estimates).**
+- Stage A: 8 relaxations from the B8 states on the local CPU (T4 of 4.18 from the same states: 0.35 … 0.56 s per
+  iteration); about 0.5 … 1.5 days of wall time with 2 slots.
+- Stage B: per seed C8 about 0.5 … 1 h; D8, D8V1, D8V2 about 2 … 3 h each (T3Pc8 at 9 mT: estimate 1.6 … 2 h, and D
+  has a smaller time step at 100 mT, 4.16); F8: relaxation 5000 … 45000 iterations at about 0.1 … 0.2 s (D at 148³:
+  0.096 … 0.111 s per iteration, measured; F8 has 0.27 times the cells and an about 3.5 times smaller time step) plus
+  7 … 8 cycles at about 0.2 … 0.5 h (the cycles of D at 148³ scaled in the same way): about 1.6 … 6.5 h. Sum about
+  32 … 60 GPU-h. GPU memory of F8: about 4 GiB (estimate: q8_156 minus off156 of the staircase PROTOKOLL, about
+  9.3 GiB, scaled by the cut cells, 61856/165920, plus the other fields).
+- Stage C(q 8): R0 about 2.5 h, HFP_s922 about 0.4 h, 12 Dv jobs at 1.34 … 2.60 h (D of 4.16): about 20 … 35 GPU-h,
+  on 4 GPUs about 7 … 12 h. C(q 16): about 15 … 20 GPU-h more (the time per stage at q 16 is 1.028 times that at
+  q 8, staircase PROTOKOLL 3.46; the q-16 set-up takes about 34 min).
+- Box cost: the totals of the three options above.
+- My work: V1 with the solver class about 1 day, V2 about 2 more days, eval_420.py, the jobs and the box script about
+  1 day: about 4 days and about 2 … 4 M tokens.
+
+**Data.** Raw data local with an md5 list; only evaluations are committed. Results go to the next free PROTOKOLL
+section at the time of the write.
+
+**Not in this plan.** Production with the fine mesh (excluded by Chris); place 2 (the full cells next to the cut
+layer) as a remedy target; the main study (4.17).
+
+**Record.**
+- 2026-11-04, first draft; context-free review. Applied: the q-8 premise (now a decision for Chris on q 16); the tie
+  also in the cycle solver and in p_dis; C-a on the relaxed state of each job, every job with cycles counts; the exact
+  V2 field; a validity rule for F8 and an f-weighted reference; full-full pairs in gate A; the binomial statement
+  replaced; one box for stages B and C; credit, host memory and download sizes.
+- 2026-11-04, second context-free review. Applied: a Bloch point in a Dv relaxed state fails the seed, cycle 0 counts,
+  a spare seed and "not determined" for C-a; the q-16 arm defined (f from 16³ points, D16 as positive control); host
+  memory for q 16; the cost limit as a decision for Chris, with totals per option; the V2 field wording; F8 times from
+  the measured D times; terms and geometries defined.
+
 ## 5. Optional step 3: mesh control (separate go)
 
 **Superseded 2026-10-06 by the mesh-check rule of PLAN 4.0** (trigger,
