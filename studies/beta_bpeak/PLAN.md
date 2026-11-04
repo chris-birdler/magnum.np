@@ -2705,10 +2705,12 @@ tilt readings of 4.18 step 2.
   40000 iterations and a cost limit for Chris to choose); the decision band on the mean of g replaces a statement that
   was true only for one case; the assumptions of R1, the overlap check, the box tests and the seed numbers are now
   explicit. The run waits for the go of Chris on this text and on the cost limit.
-- 2026-11-04, decision of Chris: no runs on the fine mesh, also not on own GPUs ("Also ich werde sicher nie auf dem
-  feinen Netz rechnen"). PLAN 4.19 does not run. Both basic requirements stay: the correction (the stray-field error of
-  the surface below the 10 % rule; staircase PROTOKOLL 3.34) and no Bloch points. Next: options for a remedy of the
-  Bloch points of D on the coarse mesh.
+- 2026-11-04, decision of Chris: no fine mesh in production, also not on own GPUs. A fine mesh is permitted as a check,
+  to verify a theory or to find the best remedy of the Bloch points ("in der Produktion gibt es kein feines Mesh").
+  (My first record of this decision said "no runs on the fine mesh"; Chris corrected it.) Both basic requirements
+  stay: the correction (the stray-field error of the surface below the 10 % rule; staircase PROTOKOLL 3.34) and no
+  Bloch points. Thus the question of this plan (C against D) does not decide the production model, and PLAN 4.19 does
+  not run. Next: a plan for a remedy of the Bloch points of D, with a fine-mesh check.
 
 ## 5. Optional step 3: mesh control (separate go)
 
