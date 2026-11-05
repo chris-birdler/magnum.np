@@ -3005,6 +3005,25 @@ layer) as a remedy target; the main study (4.17).
   - F8/D8: 2.05 [0.20, 21.2] (n 3; per seed 1.69, 5.71, 0.90). B-b: the mean cut-cell overlap with F8 is 0.79 …
     0.92 for D8V2 and 0.80 … 0.93 for D8; single particles 0.30 … 0.61 in all coarse arms.
   - Selection: V2 (only V2 passed gate A). Stage C (12 jobs) started at 03:44 UTC without a new go (gates 5).
+- 2026-11-05 06:39 UTC, R0 passed: w of R0_s921 equals HFD_s921_b100 of 4.16 (relative difference 0). HFP_s922 equals
+  4.16 (25500 iterations, E/K_d 1.622e-4).
+- 2026-11-05 15:06 UTC, stage C done (36 jobs on the box, none failed, no spare seed). Download: 181 files, 1.5 GB,
+  md5 check passed, and the box logs (boxlogs420.tgz, md5 6f63e3a0bc07519c012f7ed63ac3285f). Box 59178207 destroyed
+  at 15:25 UTC; no instance left. Cost of the plan: 6.09 $ (credit 28.25 $ before, 22.16 $ after). Results: diag
+  e018329 (results/plan420_stageC.{json,md}, md5 list).
+  - C-a holds. q 8: 9 counted jobs ran their cycles, none with a Bloch point (4.16 D: Bloch samples in 5 of these 9
+    jobs). q 16 at 100 mT: 3 counted Dv16 jobs without a Bloch point; D16 has 97 … 153 Bloch samples in each of the
+    3 seeds. Verdict: "no Bloch points in these runs".
+  - Seed 922 (start state with a Bloch point in all arms of 4.16): Dv has Bloch samples only in cycle 0 (150, 67, 55
+    at 9, 50, 100 mT); the Bloch point leaves in cycle 0. In 4.16, D kept it in all 7 cycles at 100 mT.
+  - C-b, factor on P of Dv against D of 4.16 (n 4, 95 % t-interval): 9 mT 0.934 [0.890, 0.979], 50 mT 1.029 [0.969,
+    1.094], 100 mT 0.968 [0.901, 1.039]. Dv against C at 100 mT: 1.394 [1.129, 1.722]. Δβ of Dv − D (mean ± SE, n 4):
+    9 → 50 +0.057 ± 0.010, 50 → 100 −0.089 ± 0.038, 9 → 100 +0.015 ± 0.010.
+  - C-b at q 16, 100 mT (n 3, 95 % t-interval; computed from plan420_stageC.json and hf416.json by a one-off script,
+    because eval_420.py does not print these comparisons of the plan): Dv16/D16 0.954 [0.788, 1.155]; D16/D 1.244
+    [0.773, 2.003]; Dv16/Dv 1.240 [0.963, 1.597]; Dv16/C 1.719 [1.440, 2.053].
+  - Findings on eval_420.py (no fix without a go): (1) stageC does not print the q-16 comparisons of C-b; (2) the
+    R0 line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0).
 
 ## 5. Optional step 3: mesh control (separate go)
 
