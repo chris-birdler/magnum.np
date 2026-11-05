@@ -2995,6 +2995,16 @@ layer) as a remedy target; the main study (4.17).
   310808, 4 GPUs V100, 0.375 $/h, host memory 202 GB, thus q-16 mode "setup"). B1 … B5 passed: GPU 13.1 … 13.8 TFLOPS,
   824 GB/s; 9 uploads with equal md5; speed ratio to box 11 1.032 … 1.034; B5 (the E6 end-to-end test on GPU 0) 1
   passed. 2026-11-05 00:35 UTC, the chain started: stage B (16 jobs), the tail of stage B (R0, HFP_s922), D16_s921.
+- 2026-11-05 03:44 UTC, stage B done (about 3.2 h, faster than the estimate: D8 and D8V2 0.36 … 0.54 h, F8 1.42 …
+  2.17 h). F8_s942 gave the early warning at 23000 relaxation iterations and stopped at 28000. Results: diag 862d66a
+  (results/plan420_stageB.{json,md}, md5 list); raw data local in runs/plan420_box (163 files, 747 MB, md5 check
+  passed).
+  - B-0: valid; F8 has w in 3 seeds (F8_s941 ran 15 cycles without a steady tail) and no Bloch point.
+  - B-a: valid; D8 has Bloch samples in seeds 941 (42), 942 (1), 944 (24). D8V2: no Bloch sample in the 4 seeds.
+  - Factor on P, D8V2/D8: 0.983 [0.871, 1.109] (n 4, 95 % t-interval; per seed 0.89, 1.03, 1.05, 0.98).
+  - F8/D8: 2.05 [0.20, 21.2] (n 3; per seed 1.69, 5.71, 0.90). B-b: the mean cut-cell overlap with F8 is 0.79 …
+    0.92 for D8V2 and 0.80 … 0.93 for D8; single particles 0.30 … 0.61 in all coarse arms.
+  - Selection: V2 (only V2 passed gate A). Stage C (12 jobs) started at 03:44 UTC without a new go (gates 5).
 
 ## 5. Optional step 3: mesh control (separate go)
 
