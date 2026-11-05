@@ -2991,6 +2991,10 @@ layer) as a remedy target; the main study (4.17).
   and V2 89.50°. Thus gate A does not show that V2 is better than V1. It shows that both variants remove the pairs
   with a thin cell and leave cut-cut pairs near 90°. Stage B runs with V2 only (rule of gate A): arms F8, D8, D8V2,
   C8.
+- 2026-11-04 23:44 UTC, Chris added credit (28.25 $). auto420.py 4aa0939 V2 rented box 59178207 (machine 43024, host
+  310808, 4 GPUs V100, 0.375 $/h, host memory 202 GB, thus q-16 mode "setup"). B1 … B5 passed: GPU 13.1 … 13.8 TFLOPS,
+  824 GB/s; 9 uploads with equal md5; speed ratio to box 11 1.032 … 1.034; B5 (the E6 end-to-end test on GPU 0) 1
+  passed. 2026-11-05 00:35 UTC, the chain started: stage B (16 jobs), the tail of stage B (R0, HFP_s922), D16_s921.
 
 ## 5. Optional step 3: mesh control (separate go)
 
