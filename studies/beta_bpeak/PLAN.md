@@ -3378,7 +3378,8 @@ condition. Outside cut cell: a cut cell whose centre lies outside its sphere (th
 **Decisions for Chris.**
 - D0 The tie of the cut cells (new after gate 1, see "Gate 1" and "D0" above): (a) nearest master, (b) dominant
   weight, (c) no normalisation, (d) V1 of 4.20. Recommendation (d); if you choose it, you release the gate-A result
-  of V1. D1 … D6 apply to the revised plan after D0.
+  of V1. D1 … D6 apply to the revised plan after D0. **Decided 2026-11-06: (d) V1, with the release of the gate-A
+  result of V1** (see the record).
 - D1 Positive control. (a) None: 4.20 showed that D16 (the correction at q 16 without V2) has 97 … 153 Bloch samples
   per seed at 100 mT, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Cost of (a): the test
   does not show that V2 removes Bloch points at the corners, only that the production line with V2 runs clean.
@@ -3445,6 +3446,10 @@ offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange o
   results/plan421_d0_counts.json (diag 03d8fe6). One context-free review (9 "must fix", 9 "should fix"), applied.
   Not changed (outside the go): the sentence "the exterior points carry no moment" in 7.146 part 1 and in 4.20 (see
   "Why the cut cells need a tie").
+- 2026-11-06, Chris ("Go") on my proposal: D0 (d) V1, with his release of the gate-A result of V1 (the rule of gate A
+  stays as it was), and steps (1) and (2) of "After a go on D0": the change with tests on the diag branch, then gate 1
+  again, local, at L_eff/l_ex 6 and 12. Not covered: the revised PLAN 4.21, a rent, the correction of the sentence
+  above. 4.21 thus has no part of the exchange of García-Cervera et al.; that exchange needs a separate plan.
 
 ## 5. Optional step 3: mesh control (separate go)
 
