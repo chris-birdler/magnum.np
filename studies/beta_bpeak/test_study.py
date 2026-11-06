@@ -53,6 +53,77 @@ def test_fcc_box_rejects_overlap_and_contact():
     _check_no_contact(ids)
 
 
+def test_fraction_contact_rule():
+    """PLAN 4.21 (Chris 2026-11-06): with the fraction surface (faces_only) a face contact is still rejected; edge and
+    corner contacts are accepted and counted (cell pairs)."""
+    from geometry import _check_no_contact
+    ids = -np.ones((6, 6, 6), np.int8)
+    ids[1, 1, 1], ids[2, 1, 1] = 0, 1    # face contact
+    with pytest.raises(ValueError):
+        _check_no_contact(ids, faces_only=True)
+    ids[2, 1, 1] = -1; ids[2, 2, 1] = 1  # edge contact
+    assert _check_no_contact(ids, faces_only=True) == 1
+    ids[2, 2, 1] = -1; ids[2, 2, 2] = 1  # corner contact
+    assert _check_no_contact(ids, faces_only=True) == 1
+    ids[2, 2, 2] = -1; ids[3, 1, 1] = 1  # no contact
+    assert _check_no_contact(ids, faces_only=True) == 0
+
+
+def _k3_geometry(sub):
+    """N, d, dx and fcc_box of corner K3 (jobs/sobol_corners.txt, the arithmetic of run_loops)."""
+    import shlex
+    import run_loops as RL
+    here = pathlib.Path(__file__).resolve().parent
+    line = next(l for l in (here / "jobs" / "sobol_corners.txt").read_text().splitlines() if l.startswith("K3_0 "))
+    a = RL.parse_args(shlex.split(line.split(None, 1)[1]) + ["--out", "unused"])
+    lex = RL.units(a.Js, a.A)["l_ex"]
+    a_lex, d_lex = box_edge(a.d_lex, a.phi, a.a_quant)
+    N = int(round(a_lex / a.dx_lex))
+    return N, d_lex * lex, a.dx_lex * lex, fcc_box(N, d_lex * lex, a.dx_lex * lex, sub=sub)
+
+
+def test_fraction_surface_k3_contacts():
+    """PLAN 4.21: at K3 (gap 1.71 cells) the cut cells of the fraction surface touch at edges and corners (the scan of
+    2026-11-06 at q 8: 1920 edge and 3408 corner pairs), never at a face; the voxel surface has no contact."""
+    N, d, dx, g = _k3_geometry(8)
+    assert N == 104 and abs(g["gap_nom"] / dx - 1.71) < 0.01
+    assert g["n_touch"] == 1920 + 3408
+    ids = g["ids"]
+    for ax in range(3):                  # face neighbours with f > 0 on both sides belong to one particle
+        nb = np.roll(ids, 1, axis=ax)
+        assert not np.any((ids >= 0) & (nb >= 0) & (ids != nb))
+    assert fcc_box(N, d, dx)["n_touch"] == 0
+
+
+def test_exchange_no_coupling_across_touch_k3():
+    """PLAN 4.21: the exchange of magnum.np couples face neighbours only. At K3 with the fraction surface (material as
+    run_loops: A = f A, Ms = max(f Ms, ms_void Ms)), a new m in particle 0 leaves the exchange field of every cell of
+    the other particles bitwise unchanged, although cut cells of particle 0 touch them at edges and corners."""
+    import torch
+    from magnumnp import Mesh, State, ExchangeField
+    N, d, dx, g = _k3_geometry(8)
+    assert g["n_touch"] > 0
+    ids, frac = g["ids"], g["frac"].astype(np.float64)
+    state = State(Mesh((N, N, N), (dx, dx, dx), pbc=(4, 4, 4)))   # the pbc of newell_ext, 4 shells: periodic exchange
+    T = lambda a: torch.tensor(a, dtype=state.dtype, device=state.device)
+    Ms, A, ms_void = 1.1937e6, 1e-11, 1e-8
+    mag4, f4 = (ids >= 0)[..., None], frac[..., None]
+    state.material = {"Ms": T(np.where(mag4, np.maximum(f4 * Ms, ms_void * Ms), ms_void * Ms)),
+                      "A": T(np.where(mag4, f4 * A, 0.0))}
+    rng = np.random.default_rng(5)
+    m = rng.normal(size=(N, N, N, 3))
+    m /= np.linalg.norm(m, axis=-1, keepdims=True)
+    state.m = T(m)
+    h1 = ExchangeField().h(state).clone()
+    m2 = m.copy()
+    m2[ids == 0] = -m2[ids == 0][:, ::-1]               # a new m in particle 0 (unit length kept)
+    state.m = T(m2)
+    h2 = ExchangeField().h(state)
+    p0, other = torch.tensor(ids == 0), torch.tensor(ids != 0)
+    assert not torch.equal(h1[p0], h2[p0])
+    assert torch.equal(h1[other], h2[other])
+
+
 def test_drive_value_matches_field():
     import torch
     from magnumnp import Mesh, State

@@ -1416,6 +1416,7 @@ def main(argv=None):
     config.update({"magnumnp_path": str(pathlib.Path(magnumnp.__file__).resolve().parent), "units": U, "N_used": N, "n_cells": N**3, "phi_vox": phi, "phi_nom": geo["phi_nom"],
                    "a_lex": a_lex, "d_lex_used": d_lex, "d": d, "dx": dx, "a": geo["a"],
                    "gap_nom_lex": geo["gap_nom"] / lex, "gap_cells": geo["gap_nom"] / dx,
+                   "n_touch": geo["n_touch"],           # PLAN 4.21: cell pairs of two particles at an edge or a corner
                    "freq": freq, "anisotropy": aniso_info, "stages": stages, "git_commit": git_commit(),
                    "torch": torch.__version__, "device": str(dev),
                    "gpu": torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"})

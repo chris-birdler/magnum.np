@@ -58,6 +58,8 @@ def fcc_box(N, d, dx, sub=0):
         "d_cells"   sphere diameter in cells
         "frac"      float32 array [N,N,N]: magnetic volume fraction per cell
                     (0 or 1 for sub = 0)
+        "n_touch"   cell pairs of two particles that touch at an edge or a corner
+                    (allowed only for sub > 0; always 0 for sub = 0)
     """
     a = N * dx
     gap = a / math.sqrt(2.0) - d
@@ -102,13 +104,14 @@ def fcc_box(N, d, dx, sub=0):
             frac[inside] = 1.0
         ids[inside] = p
 
-    _check_no_contact(ids)
+    n_touch = _check_no_contact(ids, faces_only=sub > 0)
 
     return {"ids": ids,
             "a": a,
             "phi_nom": phi_from(d, a),
             "phi_vox": float(np.mean(frac)),
             "gap_nom": gap,
+            "n_touch": n_touch,
             "d_cells": d / dx,
             "frac": frac}
 
@@ -168,9 +171,15 @@ def fcc_subcells(N, d, dx, q, chunk=1 << 22):
     return n, pid, occ
 
 
-def _check_no_contact(ids):
+def _check_no_contact(ids, faces_only=False):
     """Fail if voxels of different particles touch at a face, an edge or a
-    corner (26-neighbourhood, periodic)."""
+    corner (26-neighbourhood, periodic).
+    faces_only (the fraction surface, sub > 0; PLAN 4.21, Chris 2026-11-06): fail only at a
+    face contact. The exchange couples face neighbours only, so cells of two particles that
+    touch at an edge or a corner have no exchange; the cut cells reach up to 0.87 cells beyond
+    the sphere and touch so at a gap below about 3.2 cells.
+    Returns the number of cell pairs of different particles that touch at an edge or a corner."""
+    n = 0
     for sx in (-1, 0, 1):
         for sy in (-1, 0, 1):
             for sz in (-1, 0, 1):
@@ -179,6 +188,9 @@ def _check_no_contact(ids):
                 nb = np.roll(ids, (sx, sy, sz), axis=(0, 1, 2))
                 contact = (ids >= 0) & (nb >= 0) & (ids != nb)
                 if np.any(contact):
-                    raise ValueError("Particles touch on the voxel grid (shift %s, %d cells). "
-                                     "Use a smaller d or a finer dx." % ((sx, sy, sz), int(contact.sum())))
+                    if not faces_only or abs(sx) + abs(sy) + abs(sz) == 1:
+                        raise ValueError("Particles touch on the voxel grid (shift %s, %d cells). "
+                                         "Use a smaller d or a finer dx." % ((sx, sy, sz), int(contact.sum())))
+                    n += int(contact.sum())
+    return n // 2
 
