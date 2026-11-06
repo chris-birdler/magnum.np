@@ -9305,7 +9305,7 @@ and the state time does not advance, at full CPU load.
   seed 2041; mesh 24³, gap 1.60 cells, 1344 contact pairs; 2240 of the 9856 particle cells are tied, 22.7 %; K3 at
   q 16: 47 136 of 823 200, 5.7 %), single precision, CPU. Code: the runs at L_eff/l_ex 6 and 12 used the tree of
   7557c4f before that commit (config.json: e823a8e-dirty); the instrumented copy used 0653d7a-dirty (0653d7a changes
-  only a docstring). The preparation has 41 half cycles (h 2 down to 2.3e-4).
+  only a docstring). The preparation has 41 half cycles (h 2 down to 2.7e-4).
 - L_eff/l_ex 6 (the plan value): set-up 1929 s; the half cycles 0 … 13 (h 2 … 0.11) ended, each with 0 Bloch points;
   then half cycle 14 (h 0.088) gave no output for 50 min (the last line of the log at 08:42:44, my stop at 09:33:05,
   both CET), with 27 half cycles still to come. I then changed the geometry to L_eff/l_ex 12 with an unmeasured cause
@@ -9315,8 +9315,8 @@ and the state time does not advance, at full CPU load.
   Bloch points (up to +4 −4; at most 14 in a half cycle); then a stall in half cycle 8 (h 0.34): no output from 10:02
   until my stop at 13:09 CET (3 h). The same line without the fraction surface, the correction and V2 (K5v, L_eff/l_ex 6)
   ran all 41 half cycles, and each ended with 0 Bloch points; the whole run took about 25 min.
-- Measurement: a copy of the L_eff/l_ex 12 run with read-only instrumentation (a scratch script; no change of the
-  code; a sample every 30 s; md5 list local; the CPU was shared with the stalled run) stalled at the same time,
+- Measurement: a copy of the L_eff/l_ex 12 run with read-only instrumentation (diag_stall421.py; no change of the
+  model; a sample every 30 s; the CPU was shared with the stalled run) stalled at the same time,
   125.66 ns (0.66 ns into half cycle 8). Before the stall (65 samples, 6 of them in the relaxation in the static
   field): the last RKF45 step of each sample 5.0 ps (median; 0.99 … 7.2 ps; the smallest step 3.5e-15 s, after which
   the run recovered), smallest |s_j| 0.999 (median), largest master field 1.1e6 A/m (median), 6 % rejected steps. In
@@ -9340,6 +9340,8 @@ and the state time does not advance, at full CPU load.
   state). The stall needs one tied cell only. K3 has 27 360 tied cells that permit s_j = 0 (K5: 1664), and its runs are
   much longer. Thus the smaller tied share of the production does not show a smaller risk. Whether the stall occurs at
   the production points is not determined. The stall at L_eff/l_ex 6 probably has the same cause (not measured).
+- Numbers: eval_gate421.py, results/plan421_gate1.json (diag 3752ca0). Raw data local in runs/plan421_gate1 of the
+  diag worktree (logs, configs, run geometry; md5 list k5_md5_all.txt).
 - Consequence: PLAN 4.21 cannot start with V2 as it is. The patch options are in PLAN 4.21 ("Gate 1", decision D0);
   they wait for the decision of Chris.
 
