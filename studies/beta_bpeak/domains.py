@@ -150,8 +150,9 @@ def run_geometry(run, cfg=None):
 
 def geometry_from_config(cfg):
     """The geometry of run_geometry from config.json: the mesh and the surface model of run_loops (locked_geometry
-    with surface_sub), mu = max(f, ms_void) on the particle cells (M_s of run_loops / M_s), and with --tie_cells
-    ghost_mirror the moment weight of the tie (TieMap.moment_weight)."""
+    with surface_sub), mu = max(f, ms_void) on the particle cells (M_s of run_loops / M_s), and with --tie_cells the
+    moment weight of the tie (TieMap.moment_weight): V1 thin_face from the sub-cells at staircase_q, as run_loops (the
+    sub-cell array has N^3 q^3 values: 4.6 GB at N 104, q 16); V2 ghost_mirror."""
     import types
     import run_loops as RL
     a = types.SimpleNamespace(surface=cfg.get("surface", "voxel"), staircase=cfg.get("staircase", "none"),
@@ -166,10 +167,16 @@ def geometry_from_config(cfg):
     mu = np.where(ids >= 0, np.maximum(frac.astype(np.float64), ms_void), ms_void)
     tie = cfg.get("tie_cells")
     if tie:
-        if tie != "ghost_mirror":
-            raise ValueError("geometry_from_config: --tie_cells %s needs the geometry.npz of the run" % tie)
-        from field_terms_extra import tie_ghost_mirror
-        mu = tie_ghost_mirror(ids, frac, N, d, dx).moment_weight(mu).reshape(N, N, N)
+        from field_terms_extra import tie_thin_face, tie_ghost_mirror
+        if tie == "thin_face":
+            from geometry import fcc_subcells
+            q = int(cfg["staircase_q"])
+            tm = tie_thin_face(ids, frac, cfg["dx_lex"], fcc_subcells(N, d, dx, q)[2], q)
+        elif tie == "ghost_mirror":
+            tm = tie_ghost_mirror(ids, frac, N, d, dx)
+        else:
+            raise ValueError("geometry_from_config: --tie_cells %s is not known" % tie)
+        mu = tm.moment_weight(mu).reshape(N, N, N)
     return {"ids": ids, "frac": frac, "mu": mu.astype(np.float32), "inside": inside}
 
 

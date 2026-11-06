@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 """
-PLAN 4.21 (gap test of V2 with the production line): the readings R1 ... R5, the information and the verdict, fixed in
-PLAN 4.21 before the data. Input: the downloaded run folders K<c>_<k>_v16 (runs/plan421_box) and the phase 1 partners
-K<c>_<k>_sat (runs of the study worktree).
+PLAN 4.21 (gap test of V1 with the production line; D0 of Chris 2026-11-06): the readings R1 ... R5, the information
+and the verdict, fixed in PLAN 4.21 before the data. Input: the downloaded run folders K<c>_<k>_v16 (runs/plan421_box)
+and the phase 1 partners K<c>_<k>_sat (runs of the study worktree).
   R1  Bloch samples per run and stage (bloch_<i>_<stage>.csv, all cycles from cycle 0), split by the place of the Bloch
       points (bloch_pos_<i>_<stage>.csv of E3): a sample with a Bloch point in an interior cube (the 8 cells have the
-      centre inside the sphere) and a sample with one in a cut-layer cube (a cube with a tied cell); a sample can be in
-      both classes. For the cut layer also the longest run of consecutive Bloch samples. R1 holds at K1, K3 or K4 if no
-      run of that corner has a Bloch sample and at least 2 of its 3 runs ran all 7 stages. K2: information (D2 (a)).
+      centre inside the sphere) and a sample with one in a cut-layer cube (a counted cube with a cell whose centre is
+      outside); a sample can be in both classes. For the cut layer also the longest run of consecutive Bloch samples.
+      R1 holds at K1, K3 or K4 if no run of that corner has a Bloch sample and at least 2 of its 3 runs ran all 7
+      stages. K2: information (D2 (a)).
   R2  passes of the preparation and the Bloch points after each pass (summary.json); R2 holds at K1, K3 or K4 if each
       run of that corner has a clean prepared state within 3 passes; it fails for a run with 3 converged passes and a
       Bloch point after the third; a run that stopped before (no summary.json, a relaxation without a stop) is not
@@ -19,8 +20,8 @@ K<c>_<k>_sat (runs of the study worktree).
       resources, PLAN 4.21 K4). The times include E3 (an upper value of the production time).
   Information: ln P and β per run (eval_corners_sat.outputs, plus ln P at 150 mT) against the phase 1 partner, paired
   by seed per corner (n 3, mean ± SE, 95 % t-interval; factors on P). This is the whole surface model against the
-  voxel surface, not V2 alone.
-  Verdict: "the production line with V2 passes" if R1 and R2 hold at K1, K3 and K4, at most 2 of the 84 stages have no
+  voxel surface, not V1 alone.
+  Verdict: "the production line with V1 passes" if R1 and R2 hold at K1, K3 and K4, at most 2 of the 84 stages have no
   value and no R4 FAIL; "fails" if a run of K1, K3 or K4 has a Bloch sample or no clean prepared state after 3 passes;
   else "not determined".
 
@@ -192,8 +193,8 @@ def verdict(R):
     if r4f:
         why.append("R4 not PASS: %s" % ", ".join(r4f))
     if fail:
-        return "the production line with V2 fails", why, no_value
-    return ("the production line with V2 passes" if not why else "not determined"), why, no_value
+        return "the production line with V1 fails", why, no_value
+    return ("the production line with V1 passes" if not why else "not determined"), why, no_value
 
 
 def main():
@@ -213,7 +214,7 @@ def main():
     rows, info = information(runs_dir, phase1, names, lnF)
     res = {"verdict": v, "reasons": why, "stages_without_value": no_value, "runs": R, "info_rows": rows, "info": info}
     pathlib.Path(a.out + ".json").write_text(json.dumps(res, indent=1))
-    L = ["# PLAN 4.21: gap test of V2 with the production line (eval_421.py)", "",
+    L = ["# PLAN 4.21: gap test of V1 with the production line (eval_421.py)", "",
          "**Verdict: %s.**%s" % (v, (" Reasons: " + "; ".join(why) + ".") if why else ""), "",
          "| run | stages | passes (BPs after each) | R4 | Bloch samples per stage (interior / cut layer, longest cut run) |"
          " prep / cycles (h) | GPU / host peak (GiB) |", "|---|---|---|---|---|---|---|"]

@@ -686,13 +686,14 @@ def hf_lines(kind):
 
 PLAN421_ORDER = ("K1_0", "K3_0", "K1_1", "K3_1", "K2_0", "K2_2", "K4_0", "K2_1", "K4_1", "K4_2", "K1_2", "K3_2")
 PLAN421_ARGS = ("--surface fraction --staircase pair --staircase_q 16 --staircase_p 3 --staircase_centroid "
-                "--tie_cells ghost_mirror --diag_samples")
+                "--tie_cells thin_face --diag_samples")
 
 
 def plan421_lines():
-    """PLAN 4.21 (gap test of V2 with the production line): the corner line of 4.15 (sat_corner_lines, k 0 ... 2, the
-    seeds of phase 1) plus the correction at q 16 (as PLAN 4.17), V2 and E3. Names K<c>_<k>_v16, in the order of the
-    plan: the small runs K1 and K3 first (the first-run check), then the large runs (the longest first)."""
+    """PLAN 4.21 (gap test of V1 with the production line; D0 of Chris 2026-11-06: V1, not V2): the corner line of
+    4.15 (sat_corner_lines, k 0 ... 2, the seeds of phase 1) plus the correction at q 16 (as PLAN 4.17), V1 and E3.
+    Names K<c>_<k>_v16, in the order of the plan: the small runs K1 and K3 first (the first-run check), then the large
+    runs (the longest first)."""
     base = {n[:-len(SAT_SUFFIX)]: line for n, line in sat_corner_lines(3)}
     return [(k + "_v16", base[k] + " " + PLAN421_ARGS) for k in PLAN421_ORDER]
 

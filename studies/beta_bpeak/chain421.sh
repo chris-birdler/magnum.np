@@ -1,5 +1,5 @@
 #!/bin/bash
-# PLAN 4.21 box chain (gap test of V2 with the production line): the 12 runs of jobs/plan421.txt on the dispatcher of
+# PLAN 4.21 box chain (gap test of V1 with the production line): the 12 runs of jobs/plan421.txt on the dispatcher of
 # the box, with the checks of the plan. Runs on the box without the laptop:
 #   setsid nohup bash chain421.sh <q16 mode> <d5> > /root/chain421.out 2>&1 < /dev/null & disown
 # q16 mode: "setup" (host memory 128 GB or more: the next job is submitted when the set-up of the one before has

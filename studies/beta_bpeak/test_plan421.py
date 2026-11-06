@@ -1,6 +1,6 @@
-"""Tests of PLAN 4.21 (gap test of V2 with the production line): the box chain chain421.sh with a fake dispatcher
+"""Tests of PLAN 4.21 (gap test of V1 with the production line): the box chain chain421.sh with a fake dispatcher
 (order, set-up gate, first-run check, the stops R4 and D5), the parser of watch421.py, and the K5 end-to-end test
-(the production argument set with V2 and E3 on a small geometry with contacts, then the checks and the
+(the production argument set with V1 and E3 on a small geometry with contacts, then the checks and the
 post-processing of the chain). The K5 test on the CPU is gate 1 of the plan (slow: set RUN_K5=1); on a GPU it is the
 box test B5."""
 import json
@@ -168,7 +168,7 @@ def test_watch421_parse():
 def k5_line():
     """The K4 line of the production (sat_corner_lines) at d/l_ex 48, phi 0.55, L_eff/l_ex 6, r_p 1.5 (gap about 1.6
     cells: the cut cells of two particles touch), 2 amplitudes (9 and 50 mT, snapshots at both), at most 3 cycles,
-    plus the arguments of plan421_lines (the correction at q 16, V2, E3)."""
+    plus the arguments of plan421_lines (the correction at q 16, V1, E3)."""
     import conv_jobs as CJ
     t = shlex.split(dict(CJ.sat_corner_lines(1))["K4_0_sat"])
     for a, v in (("d_lex", ["48.0"]), ("phi", ["0.55"]), ("Leff_lex", ["6.0"]), ("r_p", ["1.5"]), ("n_amp", ["2"]),
@@ -183,7 +183,7 @@ def check_k5_folder(d):
     the post-processing steps of chain421.sh end without an error; the results are consistent."""
     import domains
     cfg = json.loads((d / "config.json").read_text())
-    assert cfg["n_touch"] > 0 and cfg["tie_cells"] == "ghost_mirror" and cfg["diag"]["tie"]["n_tied"] > 0
+    assert cfg["n_touch"] > 0 and cfg["tie_cells"] == "thin_face" and cfg["diag"]["tie"]["n_tied"] > 0
     g = domains.run_geometry(d)
     g2 = domains.geometry_from_config(cfg)
     for k in ("ids", "frac", "inside"):
@@ -286,19 +286,19 @@ def test_eval421_rules(tmp_path):
     -> not determined. The cube classes: a cube with all 8 cells inside is interior, a cube with a cell of the shell is
     in the cut layer; the longest run of consecutive cut-layer samples."""
     (v, why, nv), _ = _verdict(tmp_path / "a", {})
-    assert v == "the production line with V2 passes" and nv == 0
+    assert v == "the production line with V1 passes" and nv == 0
     (v, why, nv), R = _verdict(tmp_path / "b", {"K2_0_v16": {"bloch": {6: [(0, 3, 1), (0, 4, 1), (0, 5, 1)]},
                                                              "pos": {6: [(0, 3, 0, 0, 0), (0, 4, 0, 0, 0),
                                                                          (0, 5, 3, 3, 3)]}},
                                                "K2_1_v16": {"passes": 3, "last_bp": 1}})
-    assert v == "the production line with V2 passes"
+    assert v == "the production line with V1 passes"
     st = [s for r in R if r["run"] == "K2_0_v16" for s in r["R1"] if s["stage"] == "amp06"][0]
     assert (st["bloch_samples"], st["interior_samples"], st["cut_layer_samples"], st["longest_cut_layer_run"]) == \
         (3, 1, 2, 2)
     (v, why, nv), _ = _verdict(tmp_path / "c", {"K1_2_v16": {"bloch": {0: [(0, 1, 2)]}, "pos": {0: [(0, 1, 2, 2, 2)]}}})
-    assert v == "the production line with V2 fails" and "K1_2_v16" in why[0]
+    assert v == "the production line with V1 fails" and "K1_2_v16" in why[0]
     (v, why, nv), _ = _verdict(tmp_path / "d", {"K3_0_v16": {"passes": 3, "last_bp": 1}})
-    assert v == "the production line with V2 fails"
+    assert v == "the production line with V1 fails"
     (v, why, nv), _ = _verdict(tmp_path / "e", {"K4_1_v16": {"r4": "FAIL"}})
     assert v == "not determined"
     (v, why, nv), _ = _verdict(tmp_path / "f", {"K2_2_v16": {"calm": (True,) * 4 + (False,) * 3}})

@@ -98,7 +98,7 @@ def test_fraction_surface_k3_contacts():
 def test_plan421_lines():
     """PLAN 4.21 K1: 12 lines K<c>_<k>_v16 in the order of the plan (small runs first, then the large runs). Each line
     equals the 4.15 corner line of the same corner and k (sat_corner_lines, the seeds of phase 1) except for the
-    correction at q 16, V2 and E3. If the phase 1 run folders exist (study worktree), every argument of a line that is
+    correction at q 16, V1 and E3. If the phase 1 run folders exist (study worktree), every argument of a line that is
     not planned equals the config.json of its phase 1 partner, or is a key that newer code adds with its default."""
     import json
     import shlex
@@ -115,7 +115,7 @@ def test_plan421_lines():
         b = vars(RL.parse_args(shlex.split(base[n[:-4]]) + ["--out", "x"]))
         assert {k for k in a if a[k] != b[k]} <= planned, n
         assert (a["surface"], a["staircase"], a["staircase_q"], a["staircase_p"], a["staircase_centroid"],
-                a["tie_cells"], a["diag_samples"]) == ("fraction", "pair", 16, 3, True, "ghost_mirror", True)
+                a["tie_cells"], a["diag_samples"]) == ("fraction", "pair", 16, 3, True, "thin_face", True)
         assert a["seed"] == 2000 + 10 * int(n[1]) + int(n[3]) + 1
         cf = p1 / (n[:-4] + "_sat") / "config.json"
         if cf.exists():
@@ -145,9 +145,10 @@ def test_top_share_and_split_particles():
 
 def test_geometry_from_config_k3():
     """PLAN 4.21: domains.geometry_from_config rebuilds the run geometry as run_loops: the voxel surface (frac 1, mu
-    1 on the particle cells), the fraction surface at q 16 (fcc_box sub 16; inside = the voxel cells), and with V2 the
-    moment weight of the tie (0 at the tied cells, the group moment at the masters; the sum of mu equals the sum of
-    max(f, ms_void) over the particle cells)."""
+    1 on the particle cells), the fraction surface at q 16 (fcc_box sub 16; inside = the voxel cells), and with V2 and
+    V1 the moment weight of the tie (0 at the tied cells, the group moment at the masters; the sum of mu equals the sum
+    of max(f, ms_void) over the particle cells). V1 ties exactly the thin cells (f below l_ex/dx); inside does not
+    depend on the tie."""
     import domains
     from field_terms_extra import tie_ghost_mirror
     N, d, dx, g16 = _k3_geometry(16)
@@ -169,6 +170,14 @@ def test_geometry_from_config_k3():
     mag = (g16["ids"] >= 0).reshape(-1)
     assert abs(mu[mag].astype(np.float64).sum() / np.maximum(g16["frac"], 1e-8).reshape(-1)[mag].sum() - 1.0) < 1e-6
     assert np.array_equal(gt["inside"] & (g16["ids"] >= 0), (g16["ids"] >= 0) & (mu.reshape(N, N, N) > 0))
+    cfg["tie_cells"] = "thin_face"                            # V1 (D0 of Chris 2026-11-06)
+    g1 = domains.geometry_from_config(cfg)
+    for k in ("ids", "frac", "inside"):
+        assert np.array_equal(g1[k], gt[k]), k
+    mu1 = g1["mu"].reshape(-1)
+    thin = mag & (g16["frac"].reshape(-1) < 1.0 / 3.0)
+    assert np.all(mu1[thin] == 0.0) and np.all(mu1[mag & ~thin] > 0.0)
+    assert abs(mu1[mag].astype(np.float64).sum() / np.maximum(g16["frac"], 1e-8).reshape(-1)[mag].sum() - 1.0) < 1e-6
 
 
 def test_exchange_no_coupling_across_touch_k3():
