@@ -119,7 +119,7 @@ def main():
     style()
     run = pathlib.Path(a.run)
     cfg = json.loads((run / "config.json").read_text())
-    ids, _, N = A.geometry(cfg)
+    ids, _, N = A.geometry(cfg, run)
     census = json.loads(pathlib.Path(a.census).read_text())[run.name]
     out = pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

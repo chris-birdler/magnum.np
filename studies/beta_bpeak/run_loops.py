@@ -459,6 +459,29 @@ def geometry_rep(args):
     return rep
 
 
+def resources():
+    """PLAN 4.21 K4: the peak memory of this process so far: GPU (the reserved memory of the torch allocator, GiB;
+    None on the CPU) and host (the peak resident set, GiB)."""
+    import resource
+    import torch
+    gpu = torch.cuda.max_memory_reserved() / 2**30 if torch.cuda.is_available() else None
+    return {"gpu_peak_reserved_GiB": gpu, "host_peak_rss_GiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20}
+
+
+def write_run_geometry(path, geo, mu, N, d, dx, rep, fraction):
+    """PLAN 4.21: the geometry of the run for the evaluation (domains.run_geometry): ids (int8, the particle cells),
+    frac (float32, f), inside (the cells with the centre inside the sphere: the cells of the voxel surface) and mu
+    (float32, the moment weight of the dissipation / M_s: f, the group moment of a master, 0 of a tied cell)."""
+    import torch
+    inside = (locked_geometry(N, d, dx, rep, sub=0)["ids"] >= 0) if fraction else geo["ids"] >= 0
+    mu = mu.detach().reshape(N, N, N).to(torch.float64).cpu().numpy().astype(np.float32) if hasattr(mu, "detach") \
+        else np.asarray(mu, np.float32).reshape(N, N, N)
+    tmp = path.with_name(path.name + ".tmp.npz")
+    np.savez_compressed(tmp, ids=geo["ids"].astype(np.int8), frac=geo["frac"].astype(np.float32), inside=inside,
+                        mu=mu)
+    replace_durable(tmp, path)
+
+
 def surface_sub(args):
     """Sub-cells per cell edge for the volume fraction f of the fraction surface: q of --staircase, else 8; 0 for the
     voxel surface. At --staircase_q 8 the fraction surface with and without the correction has the same f and ids."""
@@ -1166,6 +1189,8 @@ def main(argv=None):
         return LLGSolver(terms, **kw) if tie is None else TiedLLGSolver(terms, tie, state.material["Ms"], **kw)
 
     llg = make_llg(atol=args.atol)
+    write_run_geometry(out / "geometry.npz", geo, (llg.p_weight if tie is not None else state.material["Ms"]) / Ms,
+                       N, d, dx, rep, surface_sub(args) > 0)
 
     def term_energies():
         """PLAN 4.13 S5: energy of each field term / (K_d V), fp64 sums (the swapped stray-field term included)."""
@@ -1661,6 +1686,7 @@ def main(argv=None):
         llg.tie_state(state)                     # PLAN 4.20 E6: a loaded state (a tied state does not change)
     if args.diag_fields and not resume and not args.init_stage and args.protocol == "virgin_asc":
         write_diag_fields()                       # PLAN 4.18 E2 (also for a relaxation that did not converge)
+    summary.setdefault("init", {})["resources"] = resources()   # PLAN 4.21 K4: after the set-up and the preparation
     # hard gate: the protocol requires a converged virgin state
     if (args.protocol == "virgin_asc" and not summary.get("init", {}).get("relax_converged", True)
             and not args.allow_unconverged):
@@ -1951,6 +1977,7 @@ def main(argv=None):
                   (st["name"], n, rec["acc"]["p_box_over_p_dis"]), flush=True)
             del acc
         rec["complete"] = complete
+        rec["resources"] = resources()
         summary["stages"].append(rec)
         write_atomic(summ_file, json.dumps(summary, indent=1))
         if not complete:

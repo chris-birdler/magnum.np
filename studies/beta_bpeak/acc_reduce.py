@@ -81,11 +81,14 @@ def run(d, out_dir=None):
     alpha, Ms = cfg["alpha"], cfg["Js"] / MU0
     e = np.array(cfg["direction"], float)
     e /= np.linalg.norm(e)
-    ids = domains._ids_from_config(cfg).astype(np.int8)
+    geo = domains.run_geometry(d, cfg)            # PLAN 4.21: the cells of the run (fraction surface, tie)
+    ids = geo["ids"]
     mask = ids >= 0
     N = ids.shape[0]
     dx, Leff = cfg["dx_lex"], cfg["Leff_lex"]
-    r = radii(ids, dx, N)[mask]
+    r = radii(ids, dx, N, geo["inside"])[mask]
+    mu = geo["mu"][mask].astype(np.float64)       # moment weight of the dissipation / M_s (1 for the voxel surface)
+    vol = geo["frac"][mask].astype(np.float64)    # volume fraction f (1 for the voxel surface)
     out = {"run": d.name, "stages": []}
     slices = {}
     for f in sorted(d.glob("acc_*_*.npz")):
@@ -99,22 +102,22 @@ def run(d, out_dir=None):
                                                                                                  int(mask.sum())))
         w = 2 * math.pi * float(z["freq"])
         check = float(z["p_box"]) / float(z["p_dis_samples"])
-        pf = alpha * MU0 * Ms / GAMMA * w * w * (np.abs(m1) ** 2).sum(-1) / 2.0
+        pf = alpha * MU0 * Ms / GAMMA * w * w * (np.abs(m1) ** 2).sum(-1) / 2.0 * mu
         p_dis_cellmean = p.sum() / ids.size                  # box mean (void cells dissipate nothing)
         R1 = float(pf.sum() / ids.size / p_dis_cellmean)
         a1 = (m1 * e).sum(-1)
         lag = np.angle(a1 / h1) if abs(h1) > 0 else np.zeros_like(r)
-        wgt = np.abs(a1) ** 2
+        wgt = np.abs(a1) ** 2 * mu
         full = np.zeros(ids.shape + (3,), np.float32)
         full[mask] = m0 / np.maximum(np.linalg.norm(m0, axis=-1, keepdims=True), 1e-12)
         g = domains.grad_norm(domains.smooth_m(full, ids, 0.5 * Leff / dx), ids, dx)[mask]
-        hi = g >= np.quantile(g, 0.9)
-        ptop = p >= np.quantile(p, 0.9)
+        hi = domains.top_share(g, vol, 0.9)
+        ptop = domains.top_share(domains.per_moment(p, mu), mu, 0.9)   # PLAN 4.21: the loss per moment, mu weights
         classes = {"r<0.5": r < 0.5, "0.5<=r<0.8": (r >= 0.5) & (r < 0.8), "r>=0.8": r >= 0.8,
                    "texture top 10%": hi, "rest of texture": ~hi, "p top 10%": ptop}
         harm = None
         if "mk2" in z.files:                                 # run_loops --acc_harm (PROTOKOLL 7.72), calm cycles only
-            pk = harmonic_loss(z["mk2"], alpha, Ms, w)
+            pk = harmonic_loss(z["mk2"], alpha, Ms, w) * mu[:, None]
             ph, prest = pk[:, 1:].sum(1), p - pk.sum(1)        # harmonics k = 2 … K, rest (> K w, non-repeating)
             ratio = pk.sum(1)[p > 0] / p[p > 0]               # Bessel: sum_k p_k <= p in each cell
             harm = {"K": int(pk.shape[1]), "R_k": (pk.sum(0) / p.sum()).tolist(),
@@ -124,7 +127,7 @@ def run(d, out_dir=None):
         where = {}
         for k, sel in classes.items():
             mean_lag, spread = wspread(lag[sel], wgt[sel])
-            where[k] = {"vol_share": float(sel.mean()), "p_share": float(p[sel].sum() / p.sum()),
+            where[k] = {"vol_share": float(vol[sel].sum() / vol.sum()), "p_share": float(p[sel].sum() / p.sum()),
                         "p_fund_share": float(pf[sel].sum() / pf.sum()),
                         "lag_mean_deg": math.degrees(mean_lag), "lag_spread_deg": math.degrees(spread)}
             if harm is not None:
@@ -138,7 +141,7 @@ def run(d, out_dir=None):
             if harm is not None:
                 rec.update({"R_harm": float(ph[sq].sum() / p[sq].sum()), "R_rest": float(prest[sq].sum() / p[sq].sum())})
             for k in ("r<0.5", "r>=0.8", "texture top 10%", "p top 10%"):
-                v = float(classes[k][sq].mean())
+                v = float(vol[sq & classes[k]].sum() / vol[sq].sum())
                 rec["vol " + k] = v
                 rec["c " + k] = float(p[sq & classes[k]].sum() / p[sq].sum() / v) if v > 0 else float("nan")
             particles.append(rec)

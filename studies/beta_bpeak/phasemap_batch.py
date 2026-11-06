@@ -63,6 +63,7 @@ def run(d):
         N, C = len(phases), len(cis)
         st0 = domains.load_state(cycles[cis[0]][phases[0]])
         mask = st0["mask"]
+        mu = st0["mu"][mask]                                            # moment weight / M_s (PLAN 4.21; voxel: 1)
         M = np.zeros((C, N, int(mask.sum()), 3), np.float32)          # cycles, phases, cells
         for i, ci in enumerate(cis):
             for j, ph in enumerate(phases):
@@ -72,17 +73,17 @@ def run(d):
             raise ValueError("%s: the cycles hold different phases" % stage)
         th = phase_angles(phases)                                       # drive phase of each snapshot
         F = [None] + [np.tensordot(np.exp(-1j * k * th), Mm, axes=(0, 0)) * (2.0 / N) for k in range(1, N // 2)]
-        pk = [float(coef * (k * w) ** 2 * (np.abs(F[k]) ** 2).sum(-1).sum() / 2.0) for k in range(1, N // 2)]
+        pk = [float(coef * (k * w) ** 2 * ((np.abs(F[k]) ** 2).sum(-1) * mu).sum() / 2.0) for k in range(1, N // 2)]
         dt = 1.0 / (freq * N)
         dnp = np.diff(np.concatenate([M - Mm[None], (M - Mm[None])[:, :1]], axis=1), axis=1) / dt
-        p_np = float(coef * (dnp ** 2).sum(-1).mean(axis=(0, 1)).sum())
+        p_np = float(coef * ((dnp ** 2).sum(-1).mean(axis=(0, 1)) * mu).sum())
         n_all = mask.size
         pk = [p / n_all for p in pk]
         p_np /= n_all
         # local phase lag of the fundamental along the drive (phase 0 = H = 0 rising; H = sin)
         a1 = (F[1] * e).sum(-1)                                        # complex, per cell
         lag = np.angle(a1 / (-1j))                                     # relative to sin
-        wgt = np.abs(a1) ** 2
+        wgt = np.abs(a1) ** 2 * mu
         lag_mean = float(np.angle(np.sum(wgt * np.exp(1j * lag))))
         lag_spread = float(math.sqrt(np.sum(wgt * np.angle(np.exp(1j * (lag - lag_mean))) ** 2) / np.sum(wgt)))
         csv = next(d.glob("samples_*_%s.csv" % stage))

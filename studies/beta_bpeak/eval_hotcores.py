@@ -142,15 +142,18 @@ def spectral_derivative(x, omega):
     return np.real(np.fft.ifft(c, axis=0))
 
 
-def harmonic_power(x):
+def harmonic_power(x, wt=None):
     """Mean square of harmonic k = 1 ... K of a real periodic series (n, cells, 3), summed over cells and
-    components: 2 |c_k|^2 with c_k = fft / n."""
+    components: 2 |c_k|^2 with c_k = fft / n. wt: a weight per cell (the moment weight mu; None: 1)."""
     c = np.fft.fft(x, axis=0) / x.shape[0]
-    return np.array([2.0 * float((np.abs(c[k]) ** 2).sum()) for k in range(1, K + 1)])
+    if wt is None:
+        return np.array([2.0 * float((np.abs(c[k]) ** 2).sum()) for k in range(1, K + 1)])
+    return np.array([2.0 * float((np.abs(c[k]) ** 2 * wt[:, None]).sum()) for k in range(1, K + 1)])
 
 
-def thiele(ms, Ds, part, geo, per_cycle, omega, coef):
-    """Measure 3 for each cycle: rigid and snapshot loss per harmonic (window sums of W/m³), path measures."""
+def thiele(ms, Ds, part, geo, per_cycle, omega, coef, wt=None):
+    """Measure 3 for each cycle: rigid and snapshot loss per harmonic (window sums of W/m³), path measures. wt: the
+    moment weight mu of the cells of part (PLAN 4.21; None: 1)."""
     sl, slices, path = geo["sl"], geo["slices"], geo["path"]
     out = []
     for c in range(len(ms) // per_cycle):
@@ -184,9 +187,10 @@ def thiele(ms, Ds, part, geo, per_cycle, omega, coef):
             mea.append(ms[n][part])
         rig, mea = np.array(rig), np.array(mea)
         kk = np.arange(1, K + 1)
-        out.append({"P_rigid": coef * float((rig ** 2).sum(axis=(1, 2)).mean()),
-                    "f_rigid": coef * float(harmonic_power(rig)[0]),
-                    "snap_k": coef * (kk * omega) ** 2 * harmonic_power(mea),
+        r2 = rig ** 2 if wt is None else rig ** 2 * wt[None, :, None]
+        out.append({"P_rigid": coef * float(r2.sum(axis=(1, 2)).mean()),
+                    "f_rigid": coef * float(harmonic_power(rig, wt)[0]),
+                    "snap_k": coef * (kk * omega) ** 2 * harmonic_power(mea, wt),
                     "step_max_cells": float(np.median(steps)), "amp_cells": float(np.median(amps)),
                     "v_harm_share": float(np.nanmedian(vharm)), "jump_share": jumps / len(slices)})
     return out
@@ -200,19 +204,21 @@ def stage_record(d, stage, acc, ids, cfg):
     N = ids.shape[0]
     alpha, Ms = cfg["alpha"], cfg["Js"] / MU0
     coef = alpha * MU0 * Ms / GAMMA
+    geo = domains.run_geometry(d, cfg)           # PLAN 4.21: moment weight mu and volume fraction f of the cells
+    mu = geo["mu"][mask].astype(np.float64)
     z = np.load(acc)
     omega = 2 * math.pi * float(z["freq"])
     p = z["p"].astype(np.float64)
-    pf = coef * omega ** 2 * (np.abs(z["m1"].astype(np.complex128)) ** 2).sum(-1) / 2.0
-    pk = coef * omega ** 2 * np.arange(1, K + 1) ** 2 * z["mk2"][:, :K].astype(np.float64) / 2.0 if "mk2" in z.files \
-        else None
-    regs, hot_share, _ = H.regions(p - pf, ids, mask)
+    pf = coef * omega ** 2 * (np.abs(z["m1"].astype(np.complex128)) ** 2).sum(-1) / 2.0 * mu
+    pk = coef * omega ** 2 * np.arange(1, K + 1) ** 2 * z["mk2"][:, :K].astype(np.float64) / 2.0 * mu[:, None] \
+        if "mk2" in z.files else None
+    regs, hot_share, _ = H.regions(p - pf, ids, mask, wt=mu)
 
     def put(a):
         f = np.zeros(ids.shape + a.shape[1:], a.dtype)
         f[mask] = a
         return f
-    P, PF = put(p), put(pf)
+    P, PF, MU = put(p), put(pf), put(mu)
     PK = put(pk) if pk is not None else None
     R = []
     for sel, share in regs:
@@ -224,7 +230,7 @@ def stage_record(d, stage, acc, ids, cfg):
         acc_w = {"p": float(P[w][part].sum()), "pf": float(PF[w][part].sum()),
                  "pk": PK[w][part].sum(0) if PK is not None else None}
         R.append({"share": share, "cells": int(sel.sum()), "particle": k, "w": w, "part": part, "big": big,
-                  "acc": acc_w, "ms": [], "Ds": []})
+                  "acc": acc_w, "ms": [], "Ds": [], "mu": MU[w][part]})
     files = H.snapshot_files(d, stage)
     per_cycle = {len(v) for v in files.values()}
     assert per_cycle == {16}, files.keys()
@@ -240,7 +246,7 @@ def stage_record(d, stage, acc, ids, cfg):
     out = []
     for r in R:
         rec, geo = structure(r["ms"], r["Ds"], r["part"], r["big"])
-        cyc = thiele(r["ms"], r["Ds"], r["part"], geo, 16, omega, coef)
+        cyc = thiele(r["ms"], r["Ds"], r["part"], geo, 16, omega, coef, None if np.all(r["mu"] == 1.0) else r["mu"])
         a = r["acc"]
         sk = np.mean([x["snap_k"] for x in cyc], 0)
         ak = a["pk"] if a["pk"] is not None else np.full(K, np.nan)
@@ -267,7 +273,7 @@ def run(d):
     import domains
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
-    ids = domains._ids_from_config(cfg).astype(np.int8)
+    ids = domains.run_geometry(d, cfg)["ids"]
     out = {"run": d.name, "stages": {}}
     for acc in sorted(d.glob("acc_*_*.npz")):
         stage = re.match(r"acc_\d+_(.+)\.npz", acc.name).group(1)

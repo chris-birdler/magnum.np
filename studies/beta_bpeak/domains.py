@@ -92,7 +92,8 @@ CAL = 0.85                                    # T(2 L_eff) / true wall area (sel
 # --- input -----------------------------------------------------------------
 
 def load_state(path, coarsen=1):
-    """m [N,N,N,3], ids [N,N,N] (particle index, -1 = void), mask = ids >= 0, dx, Leff (l_ex)."""
+    """m [N,N,N,3], ids [N,N,N] (particle index, -1 = void), mask = ids >= 0, dx, Leff (l_ex), and the run geometry
+    (run_geometry: frac, mu, inside)."""
     path = pathlib.Path(path)
     run = path.parent
     cfg = json.loads((run / "config.json").read_text())
@@ -100,29 +101,100 @@ def load_state(path, coarsen=1):
     if path.suffix == ".vti":
         import pyvista as pv
         m = np.asarray(pv.read(str(path)).cell_data["m"], dtype=np.float32).reshape((N, N, N, 3), order="F")
-        g = run / "geometry.vti"
-        if g.exists():
-            ids = np.rint(np.asarray(pv.read(str(g)).cell_data["particle"])).reshape((N, N, N), order="F")
-        else:
-            ids = _ids_from_config(cfg)
     else:
         import torch
         m = torch.load(str(path), map_location="cpu")["m"].float().numpy()
-        ids = _ids_from_config(cfg)
-    ids = ids.astype(np.int8)
+    g = run_geometry(run, cfg)
     if coarsen > 1:
-        m, ids = coarsen_state(m, ids, coarsen)
-        dx *= coarsen
-    return make_state(m, ids, dx, Leff, str(path))
+        if not np.all(g["frac"][g["ids"] >= 0] == 1.0):
+            raise ValueError("%s: --coarsen needs the voxel surface" % run)
+        m, ids = coarsen_state(m, g["ids"], coarsen)
+        return make_state(m, ids, dx * coarsen, Leff, str(path))
+    return make_state(m, g["ids"], dx, Leff, str(path), g["frac"], g["mu"], g["inside"])
 
 
-def make_state(m, ids, dx, Leff, name):
-    return {"m": m, "ids": ids, "mask": ids >= 0, "dx": dx, "Leff": Leff, "name": name}
+def make_state(m, ids, dx, Leff, name, frac=None, mu=None, inside=None):
+    """A state; frac (volume fraction f), mu (moment weight of the dissipation / M_s) and inside (cells with the
+    centre inside the sphere) default to the voxel surface: 1 on the particle cells, 0 in the void."""
+    mask = ids >= 0
+    one = mask.astype(np.float32)
+    return {"m": m, "ids": ids, "mask": mask, "dx": dx, "Leff": Leff, "name": name,
+            "frac": one if frac is None else frac, "mu": one if mu is None else mu,
+            "inside": mask if inside is None else inside}
+
+
+# --- the geometry of a run (PLAN 4.21) ---------------------------------------------
+# Rule for the fraction surface (decision under the mandate of Chris 2026-11-06, PLAN 4.21): the cell sets are the
+# particle cells of the run (f > 0); volume integrals and volume shares are weighted with f (the magnetic volume of
+# the cell); loss densities from m (fundamental, harmonics, phase-resolved) use the moment weight mu of the measured
+# dissipation p (f; with --tie_cells: the group moment of a master, 0 for a tied cell); smoothing, gradients and
+# labels stay cell-based inside one particle. For the voxel surface all weights are 1, so the results do not change.
+
+_GEOMETRY = {}
+
+
+def run_geometry(run, cfg=None):
+    """{"ids" int8, "frac" float32, "mu" float32, "inside" bool} of a run folder: its geometry.npz (run_loops,
+    PLAN 4.21), else rebuilt from config.json as run_loops builds it (geometry_from_config). Cached per folder."""
+    run = pathlib.Path(run).resolve()
+    if run not in _GEOMETRY:
+        f = run / "geometry.npz"
+        if f.exists():
+            with np.load(f) as z:
+                g = {k: z[k] for k in ("ids", "frac", "mu", "inside")}
+        else:
+            g = geometry_from_config(cfg if cfg is not None else json.loads((run / "config.json").read_text()))
+        _GEOMETRY[run] = g
+    return _GEOMETRY[run]
+
+
+def geometry_from_config(cfg):
+    """The geometry of run_geometry from config.json: the mesh and the surface model of run_loops (locked_geometry
+    with surface_sub), mu = max(f, ms_void) on the particle cells (M_s of run_loops / M_s), and with --tie_cells
+    ghost_mirror the moment weight of the tie (TieMap.moment_weight)."""
+    import types
+    import run_loops as RL
+    a = types.SimpleNamespace(surface=cfg.get("surface", "voxel"), staircase=cfg.get("staircase", "none"),
+                              staircase_q=cfg.get("staircase_q", 8), geom_dx_lex=cfg.get("geom_dx_lex"),
+                              dx_lex=cfg["dx_lex"])
+    N, d, dx = int(cfg["N_used"]), float(cfg["d"]), float(cfg["dx"])
+    sub, rep = RL.surface_sub(a), RL.geometry_rep(a)
+    g = RL.locked_geometry(N, d, dx, rep, sub=sub)
+    ids, frac = g["ids"].astype(np.int8), g["frac"].astype(np.float32)
+    inside = (RL.locked_geometry(N, d, dx, rep, sub=0)["ids"] >= 0) if sub > 0 else ids >= 0
+    ms_void = float(cfg.get("ms_void", 1e-8))
+    mu = np.where(ids >= 0, np.maximum(frac.astype(np.float64), ms_void), ms_void)
+    tie = cfg.get("tie_cells")
+    if tie:
+        if tie != "ghost_mirror":
+            raise ValueError("geometry_from_config: --tie_cells %s needs the geometry.npz of the run" % tie)
+        from field_terms_extra import tie_ghost_mirror
+        mu = tie_ghost_mirror(ids, frac, N, d, dx).moment_weight(mu).reshape(N, N, N)
+    return {"ids": ids, "frac": frac, "mu": mu.astype(np.float32), "inside": inside}
+
+
+def top_share(x, wt, level):
+    """The cells with the largest x that hold the share 1 - level of the weight wt (the volume f; PLAN 4.21). With
+    wt 1 everywhere: x >= the quantile at level (np.quantile, as before PLAN 4.21)."""
+    if np.all(wt == 1.0):
+        return x >= np.quantile(x, level)
+    o = np.argsort(x)[::-1]
+    c = np.cumsum(wt[o].astype(np.float64))
+    return x >= x[o][min(int(np.searchsorted(c, (1.0 - level) * c[-1])), len(o) - 1)]
+
+
+def per_moment(x, mu):
+    """x / mu (a loss per moment weight: the loss density of the magnetic volume of a cell or of a group of V2), -inf
+    where mu is 0 (a tied cell: it has no loss of its own and is never in a top class). x itself if mu is 1
+    everywhere (the voxel surface)."""
+    if np.all(mu == 1.0):
+        return x
+    return np.where(mu > 0, x / np.where(mu > 0, mu, 1.0), -np.inf)
 
 
 def _ids_from_config(cfg):
-    from geometry import fcc_box
-    return fcc_box(cfg["N_used"], cfg["d"], cfg["dx"])["ids"]
+    """The particle cells of a run from config.json (the surface model of the run)."""
+    return geometry_from_config(cfg)["ids"]
 
 
 def coarsen_state(m, ids, c):
@@ -175,16 +247,18 @@ def measures(st, widths=WIDTHS):
     widths = tuple(sorted(set(widths) | {W_WALL}))
     """Texture T(w), wall area A_w, localization P, ripple estimate of one state."""
     dx, L, mask, ids = st["dx"], st["Leff"], st["mask"], st["ids"]
-    V = float(mask.sum() * dx ** 3)
+    fr = state_frac(st)
+    V = float(fr[mask].astype(np.float64).sum() * dx ** 3)
     T = {}
     for w in widths:
         g = grad_norm(smooth_m(st["m"], ids, w * L / dx), ids, dx)
-        T[w] = float(g.sum() * dx ** 3 / math.pi)
+        T[w] = float((g * fr).sum() * dx ** 3 / math.pi)
     ms = smooth_m(st["m"], ids, W_WALL * L / dx)
     ang = np.degrees(np.arccos(np.clip((st["m"] * ms).sum(-1)[mask], -1, 1)))
+    fm = fr[mask]
     rot = rotation_angles(st, window_leff=W_ROT)
     return {"name": st["name"], "V": V, "T": T, "A_w": T[W_WALL] / CAL,
-            "ripple_rms_deg": float(np.sqrt(np.mean(ang ** 2))), "l_C": correlation_length(st),
+            "ripple_rms_deg": float(np.sqrt(np.sum(fm * ang ** 2) / np.sum(fm))), "l_C": correlation_length(st),
             "F90": float((rot > 90.0).mean()), "F60": float((rot > 60.0).mean()),
             "A_F90": float(2.0 * (rot > 90.0).mean() * V / (W_ROT * L))}
 
@@ -197,9 +271,11 @@ def correlation_length(st):
     N = ids.shape[0]
     num = np.zeros((N, N, N))
     den = np.zeros((N, N, N))
+    fr = state_frac(st)
     for p in np.unique(ids[ids >= 0]):
-        w = (ids == p).astype(np.float64)
-        dm = (st["m"] - st["m"][ids == p].mean(0)) * w[..., None]
+        w = np.where(ids == p, fr, 0.0).astype(np.float64)
+        wp = fr[ids == p]
+        dm = (st["m"] - (st["m"][ids == p] * wp[:, None]).sum(0) / wp.sum()) * w[..., None]
         for i in range(3):
             F = np.fft.rfftn(dm[..., i])
             num += np.fft.irfftn(F * np.conj(F), s=(N, N, N), axes=(0, 1, 2))
@@ -249,7 +325,12 @@ def switched_volume(sa, sb, w=W_SW):
     ma = smooth_m(sa["m"], sa["ids"], w * sa["Leff"] / sa["dx"])
     mb = smooth_m(sb["m"], sb["ids"], w * sb["Leff"] / sb["dx"])
     ang = np.arccos(np.clip((ma * mb).sum(-1), -1.0, 1.0))
-    return float((ang / math.pi)[sa["mask"]].sum() * sa["dx"] ** 3)
+    return float(((ang / math.pi) * state_frac(sa))[sa["mask"]].sum() * sa["dx"] ** 3)
+
+
+def state_frac(st):
+    """The volume fraction f of the cells of a state (1 on the particle cells for a state without "frac")."""
+    return st.get("frac", st["mask"].astype(np.float32))
 
 
 def analyze(states):

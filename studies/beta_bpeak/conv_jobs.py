@@ -684,6 +684,19 @@ def hf_lines(kind):
             for arm, surf in HF_ARMS for mT, b in reversed(HF_MT) for s in HF_SEEDS]
 
 
+PLAN421_ORDER = ("K1_0", "K3_0", "K1_1", "K3_1", "K2_0", "K2_2", "K4_0", "K2_1", "K4_1", "K4_2", "K1_2", "K3_2")
+PLAN421_ARGS = ("--surface fraction --staircase pair --staircase_q 16 --staircase_p 3 --staircase_centroid "
+                "--tie_cells ghost_mirror --diag_samples")
+
+
+def plan421_lines():
+    """PLAN 4.21 (gap test of V2 with the production line): the corner line of 4.15 (sat_corner_lines, k 0 ... 2, the
+    seeds of phase 1) plus the correction at q 16 (as PLAN 4.17), V2 and E3. Names K<c>_<k>_v16, in the order of the
+    plan: the small runs K1 and K3 first (the first-run check), then the large runs (the longest first)."""
+    base = {n[:-len(SAT_SUFFIX)]: line for n, line in sat_corner_lines(3)}
+    return [(k + "_v16", base[k] + " " + PLAN421_ARGS) for k in PLAN421_ORDER]
+
+
 def prec_lines(src="jobs/mesh212.txt"):
     """Precision test after B0 (PROTOKOLL 7.85, decision Chris 2026-10-14): the B0 line at d/l_ex 48 (8 × fewer cells
     than d/l_ex 96, the same dx / l_ex), seed 951, 9 mT, exactly 5 cycles (no steady rule: --min_calm 0,
@@ -722,6 +735,7 @@ if __name__ == "__main__":
                 satcheck_lines() if st == "satcheck" else satstatic_lines() if st == "satstatic" else
                 crep_lines() if st == "crep" else
                 hf_lines("prep") if st == "hfprep" else hf_lines("main") if st == "hf" else
+                plan421_lines() if st == "plan421" else
                 sat_corner_lines(n, "small", k0=k0) if st == "satsmall" else
                 sat_corner_lines(n, "large", k0=k0) if st == "satlarge" else
                 newell_lines(int(st)))

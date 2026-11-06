@@ -95,6 +95,82 @@ def test_fraction_surface_k3_contacts():
     assert fcc_box(N, d, dx)["n_touch"] == 0
 
 
+def test_plan421_lines():
+    """PLAN 4.21 K1: 12 lines K<c>_<k>_v16 in the order of the plan (small runs first, then the large runs). Each line
+    equals the 4.15 corner line of the same corner and k (sat_corner_lines, the seeds of phase 1) except for the
+    correction at q 16, V2 and E3. If the phase 1 run folders exist (study worktree), every argument of a line that is
+    not planned equals the config.json of its phase 1 partner, or is a key that newer code adds with its default."""
+    import json
+    import shlex
+    import conv_jobs as CJ
+    import run_loops as RL
+    lines = CJ.plan421_lines()
+    assert [n for n, _ in lines] == [k + "_v16" for k in CJ.PLAN421_ORDER]
+    assert sorted(CJ.PLAN421_ORDER) == ["K%d_%d" % (c, k) for c in (1, 2, 3, 4) for k in range(3)]
+    base = {n[:-4]: l for n, l in CJ.sat_corner_lines(3)}
+    planned = {"surface", "staircase", "staircase_q", "staircase_p", "staircase_centroid", "tie_cells", "diag_samples"}
+    p1 = pathlib.Path(__file__).resolve().parents[3] / "magnum.np-beta_bpeak" / "studies" / "beta_bpeak" / "runs"
+    for n, line in lines:
+        a = vars(RL.parse_args(shlex.split(line) + ["--out", "x"]))
+        b = vars(RL.parse_args(shlex.split(base[n[:-4]]) + ["--out", "x"]))
+        assert {k for k in a if a[k] != b[k]} <= planned, n
+        assert (a["surface"], a["staircase"], a["staircase_q"], a["staircase_p"], a["staircase_centroid"],
+                a["tie_cells"], a["diag_samples"]) == ("fraction", "pair", 16, 3, True, "ghost_mirror", True)
+        assert a["seed"] == 2000 + 10 * int(n[1]) + int(n[3]) + 1
+        cf = p1 / (n[:-4] + "_sat") / "config.json"
+        if cf.exists():
+            old = json.loads(cf.read_text())
+            diff = {k for k in a if k not in planned | {"out"} and old.get(k, RL.NEW_KEYS.get(k, a[k])) != a[k]}
+            assert not diff, (n, {k: (old.get(k), a[k]) for k in diff})
+
+
+def test_top_share_and_split_particles():
+    """PLAN 4.21: domains.top_share equals the quantile rule for unit weights and selects by volume otherwise;
+    eval_hotspots.split_particles splits a region that holds cells of two particles."""
+    import domains
+    import eval_hotspots as H
+    rng = np.random.default_rng(3)
+    x = rng.normal(size=1000)
+    assert np.array_equal(domains.top_share(x, np.ones(1000), 0.9), x >= np.quantile(x, 0.9))
+    w = np.ones(4); w[0] = 0.1
+    sel = domains.top_share(np.array([4.0, 3.0, 2.0, 1.0]), w, 0.5)     # 50 % of the volume 3.1 is reached with
+    assert sel.tolist() == [True, True, True, False]                      # cell 2 (cumulative 2.1), as the quantile
+    ids = -np.ones((5, 5, 5), np.int8)
+    ids[1, 1, 1], ids[2, 2, 2] = 0, 1                                     # corner contact of two particles
+    lab, n = H.label_periodic(ids >= 0)
+    assert n == 1
+    lab, n = H.split_particles(lab, n, ids)
+    assert n == 2 and lab[1, 1, 1] != lab[2, 2, 2]
+
+
+def test_geometry_from_config_k3():
+    """PLAN 4.21: domains.geometry_from_config rebuilds the run geometry as run_loops: the voxel surface (frac 1, mu
+    1 on the particle cells), the fraction surface at q 16 (fcc_box sub 16; inside = the voxel cells), and with V2 the
+    moment weight of the tie (0 at the tied cells, the group moment at the masters; the sum of mu equals the sum of
+    max(f, ms_void) over the particle cells)."""
+    import domains
+    from field_terms_extra import tie_ghost_mirror
+    N, d, dx, g16 = _k3_geometry(16)
+    cfg = {"N_used": N, "d": d, "dx": dx, "dx_lex": 3.0, "surface": "voxel", "ms_void": 1e-8}
+    gv = domains.geometry_from_config(cfg)
+    assert np.array_equal(gv["ids"], fcc_box(N, d, dx)["ids"])
+    assert np.all(gv["frac"][gv["ids"] >= 0] == 1.0) and np.all(gv["mu"][gv["ids"] >= 0] == 1.0)
+    assert np.array_equal(gv["inside"], gv["ids"] >= 0)
+    cfg.update(surface="fraction", staircase="pair", staircase_q=16)
+    gf = domains.geometry_from_config(cfg)
+    assert np.array_equal(gf["ids"], g16["ids"]) and np.array_equal(gf["frac"], g16["frac"])
+    assert np.array_equal(gf["inside"], gv["ids"] >= 0)
+    assert np.array_equal(gf["mu"][gf["ids"] >= 0], np.maximum(g16["frac"], 1e-8)[g16["ids"] >= 0])
+    cfg["tie_cells"] = "ghost_mirror"
+    gt = domains.geometry_from_config(cfg)
+    tie = tie_ghost_mirror(g16["ids"], g16["frac"], N, d, dx)
+    mu = gt["mu"].reshape(-1)
+    assert np.all(mu[tie.tied] == 0.0)
+    mag = (g16["ids"] >= 0).reshape(-1)
+    assert abs(mu[mag].astype(np.float64).sum() / np.maximum(g16["frac"], 1e-8).reshape(-1)[mag].sum() - 1.0) < 1e-6
+    assert np.array_equal(gt["inside"] & (g16["ids"] >= 0), (g16["ids"] >= 0) & (mu.reshape(N, N, N) > 0))
+
+
 def test_exchange_no_coupling_across_touch_k3():
     """PLAN 4.21: the exchange of magnum.np couples face neighbours only. At K3 with the fraction surface (material as
     run_loops: A = f A, Ms = max(f Ms, ms_void Ms)), a new m in particle 0 leaves the exchange field of every cell of

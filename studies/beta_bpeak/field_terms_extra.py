@@ -151,6 +151,18 @@ class TieMap(object):
         wts[g, pos] = self.w[j, k]
         return masters, rows, wts
 
+    def moment_weight(self, mu):
+        """The moment weight of each cell for the dissipation (flat, float64): mu of a free cell, the group moment
+        D_k = mu_k + sum_j w_jk mu_j of a master, 0 of a tied cell (mu: the moment weight of each cell without the
+        tie, M_s f). The weight of TiedLLGSolver and of the run geometry of the evaluation (PLAN 4.21)."""
+        mu = np.asarray(mu, np.float64).reshape(-1)
+        masters, rows, wts = self.master_table()
+        D = mu[masters] + (wts * np.append(mu[self.tied], 0.0)[rows]).sum(1)
+        weight = mu.copy()
+        weight[masters] = D
+        weight[self.tied] = 0.0
+        return weight
+
 
 def _cut_and_thin(ids, frac, dx_lex):
     cut = (ids >= 0) & (frac < 1.0)
@@ -311,11 +323,8 @@ class TiedLLGSolver(LLGSolver):
         mu = Ms.detach().reshape(-1).to(torch.float64).cpu().numpy()
         masters, rows, wts = tie.master_table()
         mu_t = mu[tie.tied]
-        mu_pad = np.append(mu_t, 0.0)
-        D = mu[masters] + (wts * mu_pad[rows]).sum(1)
-        weight = mu.copy()
-        weight[masters] = D
-        weight[tie.tied] = 0.0
+        weight = tie.moment_weight(mu)
+        D = weight[masters]
         L = lambda a: torch.as_tensor(a, dtype=torch.int64, device=dev)
         F = lambda a: torch.as_tensor(a, dtype=dt, device=dev)
         self.tie_map = tie

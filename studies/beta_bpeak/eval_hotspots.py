@@ -6,8 +6,10 @@ Input: a run folder with config.json, geometry.vti, the accumulators acc_<i>_<st
 m_<stage>_c<k>_ph<deg>.vti (16 phases x 2 cycles) of the stages with snapshots (9, 50 and 150 mT).
 Per stage:
   1. Hot spots. Loss outside f per cell q = p - p_f (p: Gilbert loss of the cell, p_f: the loss of its motion at f,
-     as acc_reduce.py). Hot cells: q >= the 99th percentile of q over the particle cells. Regions: connected hot
-     cells (26 neighbours, periodic box; the particles do not touch). Main regions: the regions with the largest q
+     as acc_reduce.py). Hot cells: q >= the 99th percentile of q over the particle cells (the fraction surface: the
+     cells with the largest q per moment weight mu that hold 1 % of the sum of mu, domains.top_share). Regions: connected hot cells (26
+     neighbours, periodic box) of one particle (with the fraction surface, cut cells of two particles can touch at an
+     edge or a corner; PLAN 4.21). Main regions: the regions with the largest q
      that together carry at least half of q of the hot cells (at most MAX_REGIONS).
   2. Structure type of a region, from the gradient tensor G_ij = sum_k (d_i m_k)(d_j m_k), summed over the region
      cells dilated by 2 cells (in the particle) and over all snapshots of the stage; eigenvalues l1 >= l2 >= l3:
@@ -163,13 +165,28 @@ def snapshot_files(d, stage):
     return {c: [f for _, f in sorted(v)] for c, v in sorted(out.items())}
 
 
-def regions(q, ids, mask, hot_q=HOT_Q):
+def split_particles(lab, n, ids):
+    """Labels that hold cells of more than one particle split into one label per particle (new labels after n)."""
+    for a in range(1, n + 1):
+        sel = lab == a
+        ps = np.unique(ids[sel])
+        for q in ps[1:]:
+            n += 1
+            lab[sel & (ids == q)] = n
+    return lab, n
+
+
+def regions(q, ids, mask, hot_q=HOT_Q, wt=None):
     """Main regions of the cell values q (on the particle cells): list of (selection, share of q of all particle
-    cells), the hot share and the number of hot regions."""
+    cells), the hot share and the number of hot regions. wt: the moment weight mu of the particle cells (PLAN 4.21;
+    None: 1). The hot cells: the largest q per moment that hold the share 1 - hot_q of the weight."""
+    from domains import top_share, per_moment
     full = np.zeros(ids.shape)
     full[mask] = q
-    hot = mask & (full >= np.quantile(q, hot_q))
-    lab, n = label_periodic(hot)
+    hot = np.zeros(ids.shape, bool)
+    w = np.ones(len(q)) if wt is None else wt
+    hot[mask] = top_share(per_moment(q, w), w, hot_q)
+    lab, n = split_particles(*label_periodic(hot), ids)
     qs = ndimage.sum(np.where(hot, full, 0.0), lab, index=np.arange(1, n + 1))
     order = np.argsort(qs)[::-1]
     tot, hot_sum = q.sum(), qs.sum()
@@ -188,16 +205,18 @@ def stage_record(d, stage, acc, ids, cfg, defects):
     mask = ids >= 0
     N = ids.shape[0]
     alpha, Ms = cfg["alpha"], cfg["Js"] / MU0
+    geo = domains.run_geometry(d, cfg)
+    mu = geo["mu"][mask].astype(np.float64)
     z = np.load(acc)
     w = 2 * math.pi * float(z["freq"])
     p = z["p"].astype(np.float64)
-    pf = alpha * MU0 * Ms / GAMMA * w * w * (np.abs(z["m1"].astype(np.complex128)) ** 2).sum(-1) / 2.0
+    pf = alpha * MU0 * Ms / GAMMA * w * w * (np.abs(z["m1"].astype(np.complex128)) ** 2).sum(-1) / 2.0 * mu
     from dissmap_batch import radii
-    rR = radii(ids, cfg["dx_lex"], N)
+    rR = radii(ids, cfg["dx_lex"], N, geo["inside"])
     dist = (1.0 - rR) * 0.5 * cfg["d_lex_used"] / cfg["dx_lex"]   # cells to the surface (the spheres do not touch)
     sets = {}
     for name, val in (("nonf", p - pf), ("f", pf)):
-        regs, hot_share, n_hot = regions(val, ids, mask)
+        regs, hot_share, n_hot = regions(val, ids, mask, wt=mu)
         full = np.zeros(ids.shape)
         full[mask] = val
         R = []
@@ -272,7 +291,7 @@ def run(d):
     import analyze_defect
     d = pathlib.Path(d)
     cfg = json.loads((d / "config.json").read_text())
-    ids = domains._ids_from_config(cfg).astype(np.int8)
+    ids = domains.run_geometry(d, cfg)["ids"]
     out = {"run": d.name, "stages": {}}
     for acc in sorted(d.glob("acc_*_*.npz")):
         stage = re.match(r"acc_\d+_(.+)\.npz", acc.name).group(1)

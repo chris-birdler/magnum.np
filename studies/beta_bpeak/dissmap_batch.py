@@ -32,8 +32,10 @@ from geometry import FCC_SITES
 MU0, GAMMA = 4e-7 * math.pi, 2.21276157e5
 
 
-def radii(ids, dx, N):
-    """r / R_p per cell (distance to the own particle centre, minimum image)."""
+def radii(ids, dx, N, inside=None):
+    """r / R_p per cell (distance to the own particle centre, minimum image). R_p: the largest r of the particle
+    cells, or of the cells with the centre inside the sphere if inside is given (the voxel cells; PLAN 4.21: so that
+    the fraction surface has the same R_p as the voxel surface, and its outer cut cells have r / R_p > 1)."""
     a = N * dx
     x = (np.arange(N) + 0.5) * dx
     X, Y, Z = np.meshgrid(x, x, x, indexing="ij")
@@ -46,7 +48,7 @@ def radii(ids, dx, N):
             dd -= a * np.round(dd / a)
             d2 = d2 + dd ** 2
         r[sel] = np.sqrt(d2)
-    rp = np.nanmax(r)
+    rp = np.nanmax(r) if inside is None else np.nanmax(r[inside])
     return r / rp
 
 
@@ -68,12 +70,13 @@ def run(d):
         S = {k: domains.load_state(v) for k, v in ph.items()}
         st = S[90]
         ids, mask = st["ids"], st["mask"]
+        mu, vol = st["mu"], st["frac"].astype(np.float64)    # PLAN 4.21 (voxel: 1 and 1; mu float32 as m: pf keeps its dtype)
         if rr is None:
-            rr = radii(ids, st["dx"], ids.shape[0])
+            rr = radii(ids, st["dx"], ids.shape[0], st["inside"])
         a = 0.5 * (S[90]["m"] - S[270]["m"])
         b = 0.5 * (S[360]["m"] - S[180]["m"])
         m1 = (a * a).sum(-1) + (b * b).sum(-1)
-        pf = np.where(mask, alpha * MU0 * Ms / GAMMA * w * w * m1 / 2.0, 0.0)
+        pf = np.where(mask, alpha * MU0 * Ms / GAMMA * w * w * m1 / 2.0 * mu, 0.0)
         p_mean = pf.mean()                                    # per unit-cell volume (as p_dis)
         csv = next(d.glob("samples_*_%s.csv" % stage))
         s = np.loadtxt(csv, delimiter=",", comments="#")
@@ -81,14 +84,15 @@ def run(d):
         p0 = cyc[:-1, 8].mean()
         tot = pf[mask].sum()
         g = domains.grad_norm(domains.smooth_m(st["m"], ids, 0.5 * st["Leff"] / st["dx"]), ids, st["dx"])
-        hi = mask & (g >= np.quantile(g[mask], 0.9))
-        top = mask & (pf >= np.quantile(pf[mask], 0.9))
+        hi, top = np.zeros(mask.shape, bool), np.zeros(mask.shape, bool)
+        hi[mask] = domains.top_share(g[mask], vol[mask], 0.9)
+        top[mask] = domains.top_share(pf[mask], vol[mask], 0.9)
         B = 1000.0 * np.abs(cyc[:, 7]).max()
         out["stages"].append({"stage": stage, "cycle": ci, "B_peak_mT": float(B), "R": float(p_mean / p0),
                               "shell_outer": float(pf[mask & (rr > 0.8)].sum() / tot),
-                              "vol_outer": float((mask & (rr > 0.8)).sum() / mask.sum()),
+                              "vol_outer": float(vol[mask & (rr > 0.8)].sum() / vol[mask].sum()),
                               "shell_inner": float(pf[mask & (rr < 0.5)].sum() / tot),
-                              "vol_inner": float((mask & (rr < 0.5)).sum() / mask.sum()),
+                              "vol_inner": float(vol[mask & (rr < 0.5)].sum() / vol[mask].sum()),
                               "texture_top10": float(pf[hi].sum() / tot), "top10": float(pf[top].sum() / tot)})
     out["stages"].sort(key=lambda r: r["B_peak_mT"])
     (d / "dissmap.json").write_text(json.dumps(out, indent=1))

@@ -25,14 +25,16 @@ from units import units
 THRESHOLDS = (90.0, 120.0, 150.0, 170.0)
 
 
-def geometry(cfg):
-    """(ids, cube axes, N) of the run of config cfg, as run_loops builds them."""
+def geometry(cfg, run=None):
+    """(ids, cube axes, N) of the run of config cfg, as run_loops builds them. The particle cells come from the
+    geometry of the run (domains.run_geometry of the run folder, or from cfg; PLAN 4.21: the surface model and the q
+    of the run; before, the fraction surface was rebuilt with 8^3 sample points also at q 16)."""
+    import domains
     lex = units(cfg["Js"], cfg["A"])["l_ex"]
     a_lex, d_lex = box_edge(cfg["d_lex"], cfg["phi"], cfg.get("a_quant"))
     N = int(round(a_lex / cfg["dx_lex"]))
     a_lex = N * cfg["dx_lex"]
-    geo = RL.locked_geometry(N, d_lex * lex, cfg["dx_lex"] * lex, 1, sub=8 if cfg.get("surface") == "fraction" else 0)
-    ids = geo["ids"]
+    ids = domains.run_geometry(run, cfg)["ids"] if run is not None else domains.geometry_from_config(cfg)["ids"]
     ax, _ = RL.locked_cube_axes(ids, 1, cfg["dx_lex"], a_lex, d_lex, cfg["Leff_lex"], cfg["seed"])
     return ids, ax, N
 
@@ -117,7 +119,7 @@ def main():
     ap.add_argument("--thr", type=float, default=150.0)
     a = ap.parse_args()
     cfg = json.loads(pathlib.Path(a.config).read_text())
-    ids, ax_cube, N = geometry(cfg)
+    ids, ax_cube, N = geometry(cfg, pathlib.Path(a.config).parent)
     for s in a.state:
         m = torch.load(s, map_location="cpu")["m"].double().numpy()
         m /= np.maximum(np.linalg.norm(m, axis=-1, keepdims=True), 1e-30)

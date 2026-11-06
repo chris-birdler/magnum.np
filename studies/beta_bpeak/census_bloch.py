@@ -44,7 +44,7 @@ def main():
     for r in a.runs:
         d = pathlib.Path(r)
         cfg = json.loads((d / "config.json").read_text())
-        ids, _, _ = A.geometry(cfg)
+        ids, _, _ = A.geometry(cfg, d)
         res[d.name] = {}
         for f in states(d):
             m = torch.load(str(f), map_location="cpu")["m"].double().numpy()
