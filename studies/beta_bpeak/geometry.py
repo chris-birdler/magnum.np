@@ -176,8 +176,9 @@ def _check_no_contact(ids, faces_only=False):
     corner (26-neighbourhood, periodic).
     faces_only (the fraction surface, sub > 0; PLAN 4.21, Chris 2026-11-06): fail only at a
     face contact. The exchange couples face neighbours only, so cells of two particles that
-    touch at an edge or a corner have no exchange; the cut cells reach up to 0.87 cells beyond
-    the sphere and touch so at a gap below about 3.2 cells.
+    touch at an edge or a corner have no exchange. The centre of a cut cell lies at most 0.866 cells
+    outside the sphere, so cut cells of two particles can touch at a gap of at most 3.46 cells
+    (scan421.py: contacts at the production points with a gap of 1.71 ... 2.72 cells, none above).
     Returns the number of cell pairs of different particles that touch at an edge or a corner."""
     n = 0
     for sx in (-1, 0, 1):
