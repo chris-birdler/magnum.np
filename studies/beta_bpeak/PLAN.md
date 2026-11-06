@@ -3258,46 +3258,127 @@ defined and not continuous, and the master field grows as 1/|s_j|: 2.2e9 A/m in 
 permit |s_j| = 0 (largest weight at most 0.5). No V2 run of 4.20 had the preparation from saturation. A lower limit of
 the step, or a switch at a small |s_j|, is no option: it hides the symptom, and the energy stays discontinuous.
 
-**D0 Patch of V2 (decision of Chris).** Each option changes the model of the tied cells. Thus the Bloch-point result
-of 4.20 does not transfer to it and must be measured again.
-- (a) Nearest master (V2n): each tied cell (the same cells as V2: f > 0, centre outside) takes the direction of one
-  master, the master nearest to the mirror point (the fall-back of tie_ghost_mirror). Pros: |m_j| = 1; the energy is
-  smooth (m_j = m_k); no free value; the change is only in the weights of the tie and in its tests: TiedLLGSolver
-  already works with one master of weight 1 (V1). Cons: the ghost value is the value at the nearest master, not at
-  the mirror point (position error at K5: at most 0.89 cells, median 0.60). Chance: it removes the cause by
-  construction. Risk: Bloch points at the cut layer, as with D (4.18, 4.20); the loss changes against V2. V1 of 4.20
-  (thin cells only, tied to the face neighbour) is no reference for this risk: it had no Bloch point in its relaxed
-  states and never ran cycles.
+**D0 The tie of the cut cells (decision of Chris).** Each option changes the model of the tied cells. Thus the
+Bloch-point result of 4.20 is not valid for the new model and must be measured again. Options (a) … (c) are patches
+of V2. Option (d) is V1 of 4.20 without a change of the tie.
+
+**Why the cut cells need a tie (the reason for D0).** Terms: base methods: the correction of the stray field of
+Donahue & McMichael, IEEE Trans. Magn. 43, 2878 (2007), and the exchange of García-Cervera et al. Ghost value: the
+value of m at a grid point outside the body; the exchange of García-Cervera et al. sets it from the Neumann
+condition. Outside cut cell: a cut cell whose centre lies outside its sphere (the cells of V2).
+- The base methods are compatible in their structure. García-Cervera et al. (Sect. 3.2) combine their exchange with a
+  stray field of a similar structure: the far field by the FFT, with each cut cell at its net moment ("the net
+  magnetization remains unchanged"), and the near field with the true cell shapes. Differences to the correction:
+  their study is 2D, and their near field uses only the nearest neighbours (their eq. 29) with exact integrals. The
+  correction uses a window of half width p 3, q³ sub-cells and a centroid term.
+- One point is not solved in either paper: the outside cut cell. For the stray field it is material with the moment
+  f·M_s. For the exchange of García-Cervera et al. it has a ghost value and no degree of freedom. The paper gives no
+  rule for the moment of such a cell in the stray field. 7.146 part 1 and 4.20 say that "the exterior points carry no
+  moment". This holds for their exchange; the paper does not say it for the stray field. Each option of D0 is one
+  answer to this question.
+- Interpretation (not measured as a cause): the mismatch is the resolution. The correction resolves the shape of a
+  cut cell below the cell size (q 8 or 16), but the exchange acts only over dx. Estimates: the field perpendicular to
+  m from one neighbour at 90° has the scale (l_ex/dx)² M_s. This is 0.11 M_s at dx 3.0 l_ex; on a thin cell, the
+  f-weighted pair gives up to 2 times this. The demagnetizing field in a thin cut part is up to about M_s (the limit
+  of a thin plate). The tests of García-Cervera et al. used dx 0.88 … 1.76 l_ex (1 µm on 200 or 100 cells; l_ex 5.7 nm
+  from their constants), thus a scale of 1.3 … 0.32 M_s. In the continuum, exchange binds a part thinner than l_ex to
+  the material behind it (4.20, "Why"). At dx 3 l_ex the correction tilts the thin cut cells of D by up to
+  72.9 … 82.1° (7.143, 48³) and 69.9 … 74.8° (7.144, 148³). At 100 mT, all Bloch points of D are at thin cut cells
+  (7.144, reading 3g: this is the place; the cause is not determined). The fine-mesh arm F8 (D8 at dx 1.5 l_ex,
+  scale 0.44 M_s) had no Bloch sample in 4 of 4 seeds; its tilts were not evaluated (7.145, finding 3).
+- Consequence: at dx 3 l_ex (no fine mesh in production), the thin cut cells need a treatment. 7.144 names "merge or
+  remove"; a tie is the merge. Neither paper ties a cell that carries a moment. A tie is a model of this study, and
+  it changes the result: V2 against D (no tie) changed P by a factor of 0.934 at 9 mT (95 % t-interval 0.890 …
+  0.979, n 4) and β (9 → 50 mT) by +0.057 ± 0.010 (mean ± SE, n 4; 7.145). No measurement compares two ties. The
+  fine-mesh reference F8 did not show that V2 is closer to it than D: the cut-cell overlap of D8V2 with F8 was lower
+  than that of D8 in 4 of 4 seeds (−0.008 ± 0.002, mean ± SE), and D8V2 had more cut cells above 45° to F8
+  (807 … 3266 against 702 … 3098; 7.145).
+
+**The options.** Counts: count_d0_421.py, results/plan421_d0_counts.json.
+- (a) Nearest master (V2n): each outside cut cell (K3 at q 16: 47 136 cells) takes the direction of one master: the
+  cell of the same particle with the centre inside that is nearest to the mirror point (the fall-back of
+  tie_ghost_mirror). Pros: |m_j| = 1; the energy is smooth (m_j = m_k); no free value; the group of a master is
+  rigid, so the dynamics are exact (as V1, 4.20). Cons: the ghost value comes from the nearest cell, not from the
+  mirror point. The position error at K3 at q 16 has a median of 0.62 cells (1.9 l_ex) and is at most 0.98 cells
+  (2.9 l_ex); at K5 0.60 and 0.89 cells. Estimate: the error of the normal derivative of m at the surface is about
+  the position error divided by dx, times |∇m|. This error does not fall with dx (zeroth order, as the staircase). For
+  V2 it falls with dx (first order). This is a formal order; the measurement did not show a gain of V2 (see above).
+  Where m turns by 90° over 3 cells at the surface (a wall or a vortex core), the error angle is about 19° at the
+  median and 29° at the largest error (estimate). Neighbouring tied cells can copy masters that are 2 cells apart. A
+  pair of tied cells then sees the change of m over 2 cells, and the energy depends on the position of a wall against
+  the pattern of the tie: an artificial pinning at the surface (plausible, not measured). Pinning sets P and β. A
+  master can carry several tied cells; its group is then larger and stiffer than in V2. Code: a new tie, its choice
+  in run_loops.py and its tests; TiedLLGSolver already works with one master of weight 1 (V1). Chance: it removes the
+  cause of the stall by construction. Risk: whether V2 removed the Bloch points by the tie itself or by the mean over
+  up to 8 masters is not determined. No tie that copies one master has run cycles. The loss changes against V2 by an
+  unknown amount and sign.
 - (b) Dominant weight (V2d): mix the trilinear weights with the nearest master, so that its weight is at least
   0.5 + c. Then |s_j| is at least 2c, and the factor 1/|s_j| is at most 1/(2c). At c 0.5 this is (a). Pros: a part of
   the mirror interpolation stays; |m_j| = 1; the energy is smooth. Cons: a free value c sets the stiffness and the
-  accuracy (with c 0.1 the field can still become 5 times larger); the model is harder to explain. Chance: nearer to
-  V2 than (a). Risk: as (a), plus the choice of c.
+  accuracy (with c 0.1 the field can still become 5 times larger); the model is harder to explain. Where the weight
+  is raised, the tie is of zeroth order, as (a); at K3 at q 16, 58 % of the tied cells have a largest weight of at
+  most 0.5 (7.146 part 6). The dynamics are approximate (a lumped moment, as V2). Code: as (a). Chance: the cells
+  whose largest weight is already at least 0.5 + c keep V2. Risk: as (a), plus the choice of c.
 - (c) No normalisation (V2u): m_j = s_j, so |m_j| is at most 1. Pros: no singularity; the trilinear value at the
   mirror point stays. Cons: where the masters disagree (for example a wall at the surface), the moment of the tied
   cell falls, and its stray-field energy changes with it. At dx 3 l_ex this change can have the same order as the
   exchange energy of its pair (estimates per cell volume: the self-energy term alone up to about 0.07 K_d for f 0.21
   and a demagnetizing factor 1/3 if the moment sits in the occupied sub-cells, as the correction assumes, else about
   0.015 K_d; the discrete exchange energy of a pair at 90° 0.22 K_d with the full A, about 0.08 K_d with the f-weighted
-  A of a tied cell with f 0.21). Chance: the accuracy of V2 stays. Risk: an artificial energy gain for disorder at the
-  surface; the Bloch-point count and the loss of a tied cell need rules for |m_j| < 1.
+  A of a tied cell with f 0.21). The dynamics are approximate (a lumped moment, as V2). Code: more than a new tie: each
+  place that assumes |m_j| = 1 (TiedLLGSolver.field with the term P_j h_j/|s_j|, the normalisation in the step and in
+  the relaxation, TieMap.moment_weight, the Bloch-point count). Chance: the formal order of V2 stays (the measurement
+  did not show a gain of V2, see above). Risk: an artificial energy gain for disorder at the surface; the Bloch-point
+  count and the loss of a tied cell need rules for |m_j| < 1.
+- (d) V1 (`thin_face` of 4.20, no change of the tie): each thin cut cell (f below l_ex/dx, that is 1/3 at dx 3 l_ex)
+  is tied with weight 1 to the face neighbour of the same particle with the largest shared occupied face (4.20). The
+  other cut cells stay free, with the f-weighted exchange of D. Tied cells: K3 at q 16 38 208 (V2: 47 136; of 92 000
+  cut cells), K5 1824 (V2: 2240). Pros: no singularity (one master, weight 1, |s_j| = 1); the group is rigid, so the
+  dynamics are exact; it is the direct form of the reason above (a part thinner than l_ex has no own direction); the
+  tie code and its tests exist (E6, test_plan420.py). Cons: it takes nothing from García-Cervera et al.: at the cut
+  cells that are not thin, the surface stays as in D (zeroth order, as the staircase). The threshold l_ex/dx is a
+  heuristic for a curved cut (4.20). The masters follow the grid (face neighbours; chains of up to 3 cells), so the
+  pinning and the stiffer group of (a) can occur in the same way (not measured). V1 did not pass gate A of 4.20: it
+  met the rule in 2 of 4 seeds, V2 in 3 of 4. Seed 942 decided (V1 90.41°, V2 89.50°), at a cut–cut pair without a
+  thin cell and without a tied cell; 7.145: gate A does not show that V2 is better than V1. Chance: the place of all
+  Bloch points of D at 100 mT (the thin cut cells) has no free cell; in stage A of 4.20 the largest tilt of a free cut
+  cell was 38.4 … 40.9° (V2 38.5 … 42.2°; B8 72.9 … 82.1°). Risk: V1 never ran stage B (no D8V1 against D8 and F8),
+  never ran at q 16, never ran cycles and never ran the preparation from saturation. The set-up time and memory of V1
+  at q 16 and production size are not measured. The free cut cells that are not thin can tilt in the cycles (not
+  measured). The loss changes against V2 by an unknown amount. If you choose (d), you release the gate-A result of
+  V1; the rule of gate A stays as it was.
 - Not an option here: the full exchange of García-Cervera et al. (the target of Chris, 7.146 part 1). It needs a new
-  build of the exchange and a rule for the moment of the outer cut cells, which their method does not have (an own
-  plan).
-- Recommendation (a): it removes the cause without a free value and without |m_j| < 1, and it is the smallest
-  change.
-- After a go on a patch: (1) the patch with tests on the diag branch (V2 stays for the old runs); (2) gate 1 again,
-  local, at L_eff/l_ex 6 (the K5 test) and 12 (the faster stall), about 2 h or more each (estimate: set-up about
-  30 min, 41 half cycles at about 1.5 min, 2 stages); (3) a local check of the new tie as 4.20 stage A (48³: the pair
-  angles and the Bloch points of the relaxed states); (4) a revised PLAN 4.21 for the go of Chris: on the box first a
-  check as 4.20 stage C with the new tie (the Bloch-point result at q 8 and q 16; 4.20 stages B and C cost 6.09 $),
-  then the 12 runs; one rent. Cost of the revised plan about 12 … 22 $ (estimate: 9 … 17 $ of this plan plus about
-  3 … 5 $ for the check). The credit (22.16 $) is less than the upper value plus 1.5 $, so D3 must be decided again,
-  or a top-up is necessary. D1 … D6 stay open until then.
+  build of the exchange and a rule for the moment of the outside cut cells, which the paper does not give (see
+  above). It needs a separate plan.
+- Recommendation (d): it is the direct form of the treatment that 7.144 names (merge the thin cells); it has no
+  singularity, no free value and no new tie code; and it ties the fewest cells (the other cut cells stay as in D,
+  whose Bloch points at 100 mT were all at thin cut cells). Its cost: no part of García-Cervera et al., and the
+  release of the gate-A result of V1. (a) keeps the place of their ghost value, but at the formal order of the
+  staircase. Only (c) keeps the formal order of V2, with |m_j| < 1. The measurement did not show a gain of the formal
+  order of V2 (see above).
+- After a go on D0: (1) the change with tests on the diag branch (V2 stays for the old runs). For (a), (b) or (c):
+  the new tie (field_terms_extra.py; the choice of `--tie_cells` and the dispatch in run_loops.py; tests as in
+  test_plan420.py; for (c) also the places named in (c)). For each option: the job lines (conv_jobs.PLAN421_ARGS,
+  jobs/plan421.txt); the K5 test of test_plan421.py and the line check of test_study.py; the run geometry of the
+  evaluation (domains.geometry_from_config accepts only ghost_mirror, and the K5 test compares it with the
+  geometry.npz of the run; for V1 it needs the sub-cell occupancy at q); the texts of eval_421.py that name V2 ("a
+  cube with a tied cell", the verdict "with V2"). The readings of eval_421.py do not change: they read the moment
+  weight of the tie from the geometry.npz of each run, and the cut-layer cube is a cube with an outside cut cell.
+  (2) Gate 1 again, local, at L_eff/l_ex 6 (the K5 test) and 12 (the faster stall), about 2 h or more each
+  (estimate: set-up about 30 min, 41 half cycles at about 1.5 min, 2 stages). (3) For (a), (b) or (c) a local check
+  of the new tie as 4.20 stage A (48³: the pair angles and the Bloch points of the relaxed states); for (d) no new
+  stage A (4.20 has it). (4) A revised PLAN 4.21 for the go of Chris: on the box first a check as 4.20 stage C with
+  the new tie (the Bloch-point result at q 8 and q 16; 4.20 stages B and C cost 6.09 $), then the 12 runs; one rent.
+  Whether a check as 4.20 stage B (the fine-mesh reference F8 and the positive control D8) also runs is a question of
+  the revised plan (stage B of 4.20: about 4 h of the box, about 1.5 $; estimate from the times in 7.145). Cost of the
+  revised plan about 12 … 22 $ (estimate: 9 … 17 $ of this plan plus about 3 … 5 $ for the check). The credit
+  (22.16 $) is less than the upper value plus 1.5 $, so D3 must be decided again, or a top-up is necessary. D1 … D6
+  stay open until then.
 
 **Decisions for Chris.**
-- D0 Patch of V2 (new after gate 1, see "Gate 1" above): (a) nearest master, (b) dominant weight, (c) no
-  normalisation. Recommendation (a). D1 … D6 apply to the revised plan after D0.
+- D0 The tie of the cut cells (new after gate 1, see "Gate 1" and "D0" above): (a) nearest master, (b) dominant
+  weight, (c) no normalisation, (d) V1 of 4.20. Recommendation (d); if you choose it, you release the gate-A result
+  of V1. D1 … D6 apply to the revised plan after D0.
 - D1 Positive control. (a) None: 4.20 showed that D16 (the correction at q 16 without V2) has 97 … 153 Bloch samples
   per seed at 100 mT, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Cost of (a): the test
   does not show that V2 removes Bloch points at the corners, only that the production line with V2 runs clean.
@@ -3357,6 +3438,13 @@ offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange o
   saturation at L_eff/l_ex 6 and 12; the cause is measured: the tie of V2 is singular at s_j = 0. My change of the K5
   geometry to L_eff/l_ex 12 under the mandate had an unmeasured cause (thin walls); it is reverted. A context-free
   review of 7.146 part 6 and of the block "Gate 1" (5 "must fix", 12 "should fix"), applied. D0 added; no rent.
+- 2026-11-06, after the report of gate 1, Chris asked how García-Cervera et al. treat the ghost value and what the
+  risk of (a) is, and he recalled V1 ("nur Randzellen, die zu dünn sind"). His go ("Ja") covered three changes of
+  D0: V1 as option (d), the reason for a tie (the resolution), and the corrected cons and risk of (a). The
+  recommendation changed from (a) to (d) (my judgement, for his review). New counts: count_d0_421.py,
+  results/plan421_d0_counts.json (diag 03d8fe6). One context-free review (9 "must fix", 9 "should fix"), applied.
+  Not changed (outside the go): the sentence "the exterior points carry no moment" in 7.146 part 1 and in 4.20 (see
+  "Why the cut cells need a tie").
 
 ## 5. Optional step 3: mesh control (separate go)
 
