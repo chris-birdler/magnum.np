@@ -9074,6 +9074,114 @@ cut-cut; "with a thin cell" if a cell of the pair has f below 1/3. Numbers per s
 **Open for Chris.** The plan of the remedies (place 1: merge or remove the thin cells; the pairs of full cells next
 to the cut layer; options to be proposed); whether step 2 runs; PLAN 4.17 stays on hold.
 
+### 7.145 PLAN 4.20, tied cut cells: V2 (ghost_mirror) passes all three stages, verdict "no Bloch points in these runs" at q 8 and at q 16; V1 fails gate A; P changes by a factor of 0.93 … 1.03 against D (2026-11-04/05)
+
+**Terms.** As in PLAN 4.20, 7.143 and 7.144 (D15, B8, C8t, HFP, HFD, β, l_ex). D: the fraction surface with the
+correction (q 8 unless stated; D16 at q 16). V1 (`thin_face`): each thin cut cell (f below l_ex/dx) is tied to its
+face neighbour with the largest shared occupied face. V2 (`ghost_mirror`): each cut cell with the centre outside its
+sphere takes m at the mirror point of its centre across the sphere surface (trilinear weights, renormalised). The tied
+cell keeps its moment, its f-weighted exchange and its stray field. Its field goes back to its masters
+(TiedLLGSolver), so the model is derived from an energy. For V2 the precession is approximate: a master moves with
+the lumped moment of its group (PLAN 4.20, code). Dv, Dv16: D and D16 with V2. C: the fraction surface without the
+correction. F8: D8 on the mesh with dx 1.5 l_ex (96³; the fine reference of stage B). Bloch sample: a time sample of
+the cycles (cycle 0 included) with a Bloch point. P: loss density, P = drive frequency × K_d × w (30 MHz, K_d 895
+kJ/m³), with w the mean w_loop of the calm tail. Factors on P: exp of the mean of the paired ln ratios, with the 95 %
+t-interval.
+
+**Run.** Code E6 on diag/sliver-coupling (77a1b5a). Stage A on the local CPU (2026-11-04, 8 relaxations, staircase
+geometry 48³, start from the relaxed B8 states of 4.18). Stages B and C on box 59178207 (machine 43024, 4 × V100,
+0.375 $/h, host memory 202 GB). auto420.py at 4aa0939 rented it on 2026-11-04 at 23:44 UTC; the box jobs ran on the
+pinned commit 4aa0939. Box tests B1 … B5 passed: 13.1 … 13.8 TFLOPS, 824 GB/s, speed ratio to box 11 1.032 … 1.034,
+and the E6 end-to-end test on GPU 0. Stage B ended on 2026-11-05 at 03:44 UTC, stage C at 15:06 UTC. 36 jobs ran on
+the box (stages B and C). No job stopped with an error, and no spare seed was necessary. One job failed by gate 7:
+F8_s941 ran 15 cycles without a calm tail (no value for P; its Bloch samples count for B-a). Early warning: F8_s942
+reached 23 000 relaxation iterations without a stop and stopped at 28 000. Downloads: stage B 163 files (747 MB),
+stage C 181 files (1.5 GB) and the box logs (boxlogs420.tgz), each checked with md5. Raw data are local in runs/plan420
+and runs/plan420_box of the diag worktree. The box was destroyed on 2026-11-05 at 15:25 UTC (go of Chris in the
+plan). Cost 6.09 $ (limit 16 $; credit 28.25 $ before, 22.16 $ after). Results: diag 4aa0939 (stage A), 862d66a
+(stage B) and e018329 (stage C), results/plan420_stage{A,B,C}.{json,md}.
+
+**Stage A (gate A; local, 48³, q 8, seeds 941 … 944).**
+- All 8 relaxations converged (V1 4000 … 15 000 iterations, V2 6500 … 27 000). No Bloch point in the 8 relaxed states.
+  Overlap with the B8 state per particle 0.9993 … 0.9999.
+- Largest tilt of a free cut cell: V1 38.4 … 40.9°, V2 38.5 … 42.2° (B8 of 4.18: 72.9 … 82.1°; C8t: 22.1 … 25.6°). No
+  free cut cell above 45° (B8: 6 … 12).
+- Largest pair angle per seed 941 / 942 / 943 / 944: V1 92.50 / 90.41 / 86.69 / 89.35°, V2 90.05 / 89.50 / 85.82 /
+  89.28° (B8 102.1 … 133.7°). Each pair above 90° is one cut-cut pair without a thin cell and without a tied cell.
+- Gate A (no pair above 90° and no Bloch point in at least 3 of 4 seeds): V2 meets the rule in seeds 942, 943 and 944
+  (it fails in 941 at 90.05°): passes. V1 meets the rule only in seeds 943 and 944 (2 of 4): fails. The margin is
+  small: seed 942 decides, with V1 90.41° and V2 89.50°. Thus gate A does not show that V2 is better than V1. It shows
+  that both remove the pairs with a thin cell.
+
+**Stage B (box; staircase geometry, 48³ and F8 on 96³, 100 mT, start D15, n 4).**
+
+| arm | Bloch samples per seed 941 / 942 / 943 / 944 | P (W/cm³) per seed | mean time step (ps) | run time (h) |
+|---|---|---|---|---|
+| C8 | 0 / 0 / 0 / 0 | 218 / 315 / 132 / 564 | 6.52 … 6.70 | 0.21 … 0.26 |
+| D8 | 42 / 1 / 0 / 24 | 2145 / 835 / 177 / 1285 | 4.36 … 6.70 | 0.36 … 0.54 |
+| D8V2 | 0 / 0 / 0 / 0 | 1901 / 856 / 186 / 1254 | 5.93 … 6.68 | 0.41 … 0.50 |
+| F8 | 0 / 0 / 0 / 0 | – / 1407 / 1008 / 1157 | 2.11 … 2.12 | 1.42 … 2.17 |
+
+- B-0: F8 is a valid reference (values in 3 seeds, no Bloch sample). The tilt and the pairs of F8 that the plan names
+  for B-0 are not reported: eval_420.py does not print them (finding 3 below).
+- B-a: valid (D8 has Bloch samples in 3 seeds). D8V2 has none: V2 passes. V1 did not run (gate A).
+- B-b (overlap of the coarse cut cells with the f-weighted F8 state): D8V2 0.79 … 0.92, D8 0.80 … 0.93; the lowest
+  particle per seed 0.30 … 0.61 in all coarse arms. The overlap of D8V2 is lower than that of D8 in 4 of 4 seeds
+  (paired difference −0.008 ± 0.002, mean ± SE, n 4), and D8V2 has more cut cells above 45° to F8 in 4 of 4 seeds
+  (807 … 3266 against 702 … 3098).
+- B-c, factors on P: D8V2/D8 0.983 [0.871, 1.109] (n 4; per seed 0.89, 1.03, 1.05, 0.98); F8/D8 2.05 [0.20, 21.2]
+  (n 3; per seed 1.69, 5.71, 0.90); D8V2/F8 0.495 [0.053, 4.673] (n 3); C8/D8 0.335 [0.087, 1.294] (n 4).
+- Selection for stage C: V2 (the only candidate).
+
+**Stage C (box; 4.16 geometry, d/l_ex 300, 148³, seeds 921 … 924; start states HFP_s921, s923 and s924 of 4.18 step
+3, HFP_s922 made again on the box).**
+- Control R0 (D at 100 mT, seed 921, without the tie): w equals HFD_s921_b100 of 4.16 (relative difference 0).
+  HFP_s922 equals 4.16 (25 500 iterations, E/K_d 1.622e-4).
+- C-a (decisive): q 8: the 9 counted Dv jobs (seeds 921, 923 and 924 at 9, 50 and 100 mT) ran their cycles. None has
+  a Bloch point in its relaxed state or a Bloch sample. D of 4.16 has Bloch samples in 5 of these 9 jobs (74 in the
+  cycles ≥ 1, PLAN 4.20 C-b). q 16 at 100 mT: the 3 Dv16 jobs have none; D16 has 97 … 153 Bloch samples in each of the
+  3 seeds (the positive control is valid). Verdict: "no Bloch points in these runs". The plan states the limit: the
+  runs are deterministic, so C-a is a statement about these runs and not a rate, and it cannot separate "removed" from
+  "rare" (HFD_s924_b50 had 1 Bloch sample; at 9 mT D had none in the counted seeds).
+- Seed 922 (its start state has a Bloch point in all arms of 4.16): the relaxed Dv state of s922 keeps the Bloch point
+  (all 3 jobs). It leaves in cycle 0 (150, 67 and 55 Bloch samples at 9, 50 and 100 mT, all in cycle 0). In 4.16, D
+  kept it in all 7 cycles at 100 mT.
+
+| comparison (C-b) | factor on P | 95 % t-interval | n |
+|---|---|---|---|
+| Dv / D, 9 mT | 0.934 | [0.890, 0.979] | 4 |
+| Dv / D, 50 mT | 1.029 | [0.969, 1.094] | 4 |
+| Dv / D, 100 mT | 0.968 | [0.901, 1.039] | 4 |
+| Dv / C, 9 mT | 1.276 | [0.772, 2.109] | 4 |
+| Dv / C, 50 mT | 1.135 | [0.753, 1.712] | 4 |
+| Dv / C, 100 mT | 1.394 | [1.129, 1.722] | 4 |
+| Dv16 / D16, 100 mT | 0.954 | [0.788, 1.155] | 3 |
+| D16 / D, 100 mT | 1.244 | [0.773, 2.003] | 3 |
+| Dv16 / Dv, 100 mT | 1.240 | [0.963, 1.597] | 3 |
+| Dv16 / C, 100 mT | 1.719 | [1.440, 2.053] | 3 |
+
+| Δβ (mean ± SE, 95 % t-interval, n 4) | 9 → 50 mT | 50 → 100 mT | 9 → 100 mT |
+|---|---|---|---|
+| Dv − D | +0.057 ± 0.010 [+0.024, +0.090] | −0.089 ± 0.038 [−0.211, +0.033] | +0.015 ± 0.010 [−0.018, +0.048] |
+| Dv − C | −0.068 ± 0.032 [−0.170, +0.033] | +0.296 ± 0.164 [−0.224, +0.817] | +0.037 ± 0.055 [−0.140, +0.213] |
+
+- Interpretation: the factor of 0.934 at 9 mT comes from the tie itself, not from removed Bloch points. D had no
+  Bloch point at 9 mT in seeds 921, 923 and 924, and the per-seed ratios are 0.976, 0.914, 0.927 and 0.919 (921 …
+  924). The interval of Δβ 9 → 50 mT of Dv − D does not contain 0.
+- The q-16 rows come from plan420_stageC.json and hf416.json by a one-off script, because eval_420.py does not print
+  them (finding 1 below).
+
+**Findings on eval_420.py (no fix without a go).** (1) stageC does not print the q-16 comparisons of C-b. (2) The R0
+line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0). (3) stageB does not
+print the tilt and the pairs of F8 (B-0).
+
+**Conclusion.** In these runs V2 gives no Bloch point, at q 8 and at q 16, in the two geometries and at the
+amplitudes of the test (n 3 … 4 per point). The factor on P against D is 0.93 … 1.03 at q 8 and 0.95 at q 16
+(interval 0.79 … 1.16). The test does not show that D + V2 is closer to the fine reference F8 than D: F8/D8 is 2.05
+(interval 0.20 … 21), and the cut-cell overlap with F8 is slightly lower for D8V2 than for D8 (−0.008 ± 0.002). V2
+against the exchange of García-Cervera et al.: 7.146, item 1. Chris chose a gap test of the production line before the
+production (PLAN 4.21, 7.146); its go is open.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls
