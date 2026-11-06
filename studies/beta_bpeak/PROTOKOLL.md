@@ -9182,6 +9182,170 @@ amplitudes of the test (n 3 … 4 per point). The factor on P against D is 0.93 
 against the exchange of García-Cervera et al.: 7.146, item 1. Chris chose a gap test of the production line before the
 production (PLAN 4.21, 7.146); its go is open.
 
+### 7.146 Preparation of PLAN 4.21: V2 against the exchange of García-Cervera et al.; cut cells of two particles touch at 16 production points (contact rule changed, go of Chris); the post-processing of the fraction surface was not usable (patched, go of Chris); gate 1 not passed: the tie of V2 is singular when the directions of its masters cancel (2026-11-06)
+
+**Terms.** As in 7.145 and PLAN 4.21. q: the sub-cells per cell edge of the correction; the volume fraction f comes
+from q³ sample points. Fraction surface: each cut cell (0 < f < 1) carries its volume fraction f, and M_s, A, K_eff and
+K_p are scaled with f; all cells with f > 0 belong to the particle. Voxel surface: a cell belongs to the particle if
+its centre is inside the sphere. Inner cell: a particle cell with the centre inside the sphere; inner cut cell: an
+inner cell with f < 1. Gap: the smallest distance between the surfaces of two neighbour spheres, a/√2 − d, in cells.
+Contact: two cells of different particles that touch at an edge or a corner (as PLAN 4.21); the old rule of
+geometry.fcc_box also rejected face contacts and all 26 neighbours. Moment weight μ: the weight of the measured
+dissipation p of a cell divided by M_s (f; with V2 the group moment of a master, 0 for a tied cell; PLAN 4.20 uses
+μ = M_s f). R_p: the particle radius of the location classes r/R_p (acc_reduce.py).
+
+**1. V2 against the exchange of García-Cervera, Gimbutas & E, J. Comput. Phys. 184, 37 (2003) (counts of
+scan421.py, results/plan421_scan.json, 4.16 geometry, 148³).** Their exchange imposes the Neumann condition (the
+normal derivative of m is zero on the true surface) with ghost values: values of m at the grid points outside the
+body, chosen so that the condition holds. Chris on 2026-11-06: "ich wollte immer, dass das Streufeld mit der
+Donaio-Lösung gerechnet wird, aber eben für den Austausch wollten wir die Garcia-Severa-Methode verwenden". V2 takes
+their ghost value (m at the mirror point across the true surface; the V2 tied cell is the ghost), but not their
+coupling. Outer face: a face of an inner cell to a cell that is not an inner cell of the same particle. Full A: the
+exchange constant without the f weight.
+- The pair of an inner cell and its ghost keeps the f-weighted exchange (the harmonic mean of f·A). Its weight has a
+  median of 0.34 of the full A, and 10 % of the pairs are below 0.05 (q 8; q 16: 0.34 and 0.035). García-Cervera et
+  al. use the full A.
+- 25 056 of the 189 408 outer faces (13 %) border on an empty cell (f = 0) at q 8, and 19 200 (10 %) at q 16. These
+  faces have no ghost, so the surface there stays the staircase face.
+- V2 is of first order (trilinear values at the mirror point). García-Cervera et al. use a polynomial of fourth
+  order (2D).
+- The inner cut cells (83 168 at q 8) keep f·A. Their pairs have a median weight of 0.92 of the full A (a small
+  difference).
+- One difference is by design: at García-Cervera et al. the exterior points carry no moment. In V2 the tied cells
+  keep the moment f·M_s and their stray field, because the correction needs them. V2 is derived from an energy, so
+  the stop rule of the relaxation stays valid away from s_j = 0 (part 6: there the energy is not defined).
+Chris then asked whether the present model meets the requirements (no Bloch points, the correction at q 16, dx 3
+l_ex). My answer: at the measured points of 4.20 yes (no Bloch points in these runs; q 16 only at 100 mT, n 3, from
+a relaxed state), but not shown for the production range. Chris: "Ja, dann mach diese Lückenläufe. Dafür mit eine
+Box." (PLAN 4.21). PLAN 4.21 does not include a new build of the exchange.
+
+**2. Contacts of cut cells (finding of the first review of PLAN 4.21).**
+- Finding (counts of scan421.py, results/plan421_scan.json): at K3 (d/l_ex 215.5, φ 0.69, gap 1.71 cells)
+  geometry.fcc_box with the fraction surface stopped ("Particles touch on the voxel grid"; at q 8: 852 cells at the
+  shift (−1, −1, −1), at q 16: 1020). The voxel surface passes. Scan of all 108 production points of PLAN 4.17 (96
+  Sobol points, 8 centre points, 4 corners): only a gap of at most 3.5 cells allows a contact (25 points).
+- Result: contacts at 16 points at q 16 (15 Sobol points and K3; K3: 2256 edge pairs and 4080 corner pairs) and at
+  12 points at q 8. No point has a face contact or a cell of two particles. The contacts occur at gaps of 1.71 … 2.72
+  cells; the 9 points with gaps of 2.77 … 3.49 cells have none.
+- Cause: the centre of a cut cell lies at most 0.866 cells outside the sphere, so cut cells of two particles can
+  touch at a gap of at most 3.46 cells. The contact rule (26 neighbours) was made for the voxel surface. The same
+  finding at a test geometry: staircase PROTOKOLL 3.5, D2 (there the test geometry was changed).
+- Physics check (Chris: no exchange between particles must be possible):
+  - The exchange of magnum.np couples face neighbours only (magnumnp/field_terms/exchange.py). Thus a contact has no
+    exchange.
+  - The correction uses the sub-cells only. It uses the particle id only for its check that each cell holds one
+    particle.
+  - V2 ties only to cells of the same particle, and the anisotropy uses the particle id.
+  - At K3 (q 16) all 6336 contact pairs are pairs of two tied cells. The Bloch count uses cubes of one particle only
+    (by design, bloch_mask_t).
+- Decision of Chris ("Ok" on option 1): the fraction surface accepts edge and corner contacts. Face contacts and
+  cells of two particles stay forbidden, and the voxel rule does not change. Patch e823a8e (diag/sliver-coupling)
+  changes geometry.fcc_box, and config.json records the count `n_touch`.
+- Tests: the rule on synthetic cells; K3 at q 8 (5328 pairs, no face contact; the voxel surface has none); the
+  exchange at K3 (a new m in particle 0 leaves the exchange field of all other cells bitwise unchanged). At K3 and q 16
+  (local check): the sub-cells of the correction agree with the geometry, and V2 ties 47 136 cells without a
+  fall-back. test_study, test_plan420 and test_plan418: 185 passed, 7 skipped.
+
+**3. The post-processing of the fraction surface (finding of the second review of PLAN 4.21).**
+- Finding: the post-processing had never run with the fraction surface (4.16 and 4.20 ran without accumulators).
+  acc_reduce.py, eval_hotspots.py, eval_hotcores.py and the domain analysis of the state files rebuilt the particle
+  cells from the voxel geometry. acc_reduce.py stopped at each such run (K3, q 16: 823 200 cells of the run against
+  776 064 voxel cells). The losses at the drive frequency and of the harmonics used the full M_s also in the cut
+  cells. The hot-spot regions (26 neighbours) could join two particles at a contact. analyze_defect.py (the Bloch
+  census) rebuilt the fraction surface with 8³ sample points also at q 16.
+- Chris: "Ja, boah, bitte alle nötigen Patches. Wir brauchen natürlich auch die Auswertungen. Ich möchte Oberwellen
+  auswerten können. Ich möchte alle Auswertungen haben, so wie wir sie auch in der Voxelgeometrie machen konnten."
+  Then, before a flight: "bitte bringe diese Arbeit eigenständig fertig".
+- Rule of the patch (my decision under this mandate, for the review of Chris):
+  - The cell sets are the particle cells of the run.
+  - Volume integrals and volume shares are weighted with f.
+  - The loss parts from m use the moment weight μ, the weight of p.
+  - The texture "top 10 %" class holds 10 % of the volume. The classes ranked by a loss rank by the loss per moment
+    weight and hold 10 % (the hot cells: 1 %) of the sum of μ. A tied cell is never in them.
+  - R_p comes from the inner cells.
+  - A hot-spot region is split into one region per particle.
+  - Smoothing and gradients stay cell-based inside one particle.
+  - run_loops.py writes the geometry of the run (geometry.npz). The evaluation reads it, or rebuilds it from
+    config.json for older runs. For the voxel surface all weights are 1.
+- Other decisions under the mandate (PLAN 4.21): the queue of the box runs without a retry (a retry starts the stage
+  again and overwrites its Bloch files) and with a job timeout of 40 h; a stage has a value if it has a calm tail of
+  2 cycles (calm_ok; the flag "steady" is False in 3 of the 84 phase 1 stages); decision D6 (the box) is new.
+- Tests: check421_voxel_regression.sh compares e823a8e with the patch on two copies of a small voxel run with the
+  production line (the K5 geometry of PLAN 4.21, 2 amplitudes). All outputs of the post-processing are bitwise equal
+  (acc.json, phasemap, phase_extra, domains, hot spots, hot cores, census, acc_slices, slices). The legacy 4-phase
+  dissipation map (on a copy with 4 phases) is compared with a tolerance of 1e-6 relative: its R differs by 6e-8,
+  because two equal float32 arrays at different memory alignments gave means 1 rounding step apart (numpy 2.5.4).
+  The K5 test of the fraction surface with V2 (gate 1) did not pass (part 6); it is one of the skipped tests below,
+  because it runs on the CPU only with RUN_K5=1. Unit tests: the rebuild at K3 against fcc_box at q 16 and the tie,
+  the volume classes, the region split, the job lines of 4.21, the chain of the box with a fake dispatcher, and the
+  rules of eval_421.py on synthetic folders. test_study, test_plan420, test_plan418 and test_plan421: 193 passed,
+  9 skipped (commit 7557c4f).
+
+**4. The box chain (second and third review).** The marker of chain420.sh for the end of a q-16 set-up does not
+occur in the log of a run with the saturation preparation. Thus all 12 runs of 4.21 would have run one after the
+other (about 105 … 155 h). chain421.sh waits for the line "[relax] virgin state". The third review found two hangs
+of the chain (a job in the queue at a stop; no small run with an R4 PASS) and two failures of eval_421.py (a run
+without summary.json; R2 before 3 converged passes). I fixed them, and the tests (a fake dispatcher, synthetic run
+folders) cover them. The three reviews of PLAN 4.21 had 4 + 10, 4 + 8 and 5 + 6 findings ("must fix" + "should fix");
+all are applied.
+
+**5. Readings and cost of PLAN 4.21.** The phase 1 partners have 0 Bloch samples in all 63 stages of K1, K3 and K4,
+and K2 has Bloch samples in the cycles from 50 mT (K2_1, K2_2) or 150 mT (K2_0). Estimate 105 V100-h (upper 155),
+9 … 17 $; credit 22.16 $. Market on 2026-11-06 at about 07:00 UTC (search only): 4 × V100 32 GB at most 0.10 $ per
+GPU-h: one offer at 0.067 $ per GPU-h, deverified (excluded); the next at 0.160 … 0.211 $ per GPU-h; one 8 × V100
+32 GB at 0.107 $ per GPU-h (verified). V100 16 GB: 0.094 $ per GPU-h. PLAN 4.21 D6 asks Chris to choose.
+
+
+**6. Gate 1 of PLAN 4.21 (the K5 test, local CPU): not passed. The tie of V2 is singular, and the preparation from
+saturation reaches the singularity.** Terms: master: a free cell whose m sets the m of tied cells. s_j = Σ_k w_jk m̂_k:
+the weighted sum of the master directions at the mirror point of the tied cell j (trilinear weights w_jk, sum 1); V2
+sets m_j = s_j/|s_j|. h: the amplitude of the applied field divided by M_s (no unit). Stall: the run gives no output,
+and the state time does not advance, at full CPU load.
+- Run: the K5 line of test_plan421.py (the production argument set with V2 and E3 at d/l_ex 48, φ 0.55, r_p 1.5,
+  seed 2041; mesh 24³, gap 1.60 cells, 1344 contact pairs; 2240 of the 9856 particle cells are tied, 22.7 %; K3 at
+  q 16: 47 136 of 823 200, 5.7 %), single precision, CPU. Code: the runs at L_eff/l_ex 6 and 12 used the tree of
+  7557c4f before that commit (config.json: e823a8e-dirty); the instrumented copy used 0653d7a-dirty (0653d7a changes
+  only a docstring). The preparation has 41 half cycles (h 2 down to 2.3e-4).
+- L_eff/l_ex 6 (the plan value): set-up 1929 s; the half cycles 0 … 13 (h 2 … 0.11) ended, each with 0 Bloch points;
+  then half cycle 14 (h 0.088) gave no output for 50 min (the last line of the log at 08:42:44, my stop at 09:33:05,
+  both CET), with 27 half cycles still to come. I then changed the geometry to L_eff/l_ex 12 with an unmeasured cause
+  (the walls are thinner than 2 cells). That cause was wrong: L_eff/l_ex 12 stalls too. The change is reverted;
+  test_plan421.py keeps L_eff/l_ex 6.
+- L_eff/l_ex 12: set-up 1731 s; the half cycles 0 … 7 (h 2 … 0.42) took about 13 min, and 6 of them ended with
+  Bloch points (up to +4 −4; at most 14 in a half cycle); then a stall in half cycle 8 (h 0.34): no output from 10:02
+  until my stop at 13:09 CET (3 h). The same line without the fraction surface, the correction and V2 (K5v, L_eff/l_ex 6)
+  ran all 41 half cycles, and each ended with 0 Bloch points; the whole run took about 25 min.
+- Measurement: a copy of the L_eff/l_ex 12 run with read-only instrumentation (a scratch script; no change of the
+  code; a sample every 30 s; md5 list local; the CPU was shared with the stalled run) stalled at the same time,
+  125.66 ns (0.66 ns into half cycle 8). Before the stall (65 samples, 6 of them in the relaxation in the static
+  field): the last RKF45 step of each sample 5.0 ps (median; 0.99 … 7.2 ps; the smallest step 3.5e-15 s, after which
+  the run recovered), smallest |s_j| 0.999 (median), largest master field 1.1e6 A/m (median), 6 % rejected steps. In
+  the stall (31 samples, 15 min): the last step 5e-18 s (median; 3.9e-19 … 6.5e-17 s), smallest |s_j| 3.8e-6
+  (2.8e-6 … 8.6e-5), always at the same tied cell, largest master field 2.2e9 A/m (median; at most 3.6e9 A/m), equal
+  to the largest field of all cells (before the stall the largest field was outside the masters), 32 % rejected steps;
+  the state time advanced by at most about 1e-13 s (the print resolution) in 15 min. Before the stall, |s_j| fell
+  below 0.1 in 6 samples (to 0.023), and the run continued.
+- The tied cell: (7, 15, 5) of particle 3, f 0.21, centre 0.24 cells outside the sphere; 7 masters with weights
+  0.03 … 0.31.
+- Cause (measured): |s_j| of one tied cell is about 4e-6, the master field is about 2000 times larger, and the RKF45
+  step is about 1e6 times smaller. At s_j = 0, m_j is not defined: its limit depends on the direction from which s_j
+  approaches 0. Thus the energy is not continuous there, and the chain-rule term of the master field grows as 1/|s_j|
+  (TiedLLGSolver.field). Not measured: which masters cancel, their pattern (for example a wall core or a Bloch point
+  at the mirror point), and why |s_j| stays small for 15 min.
+- This is a property of the normalised mean, not of one cell: unit vectors with weights w_k can give a sum of 0 if
+  and only if the largest weight is at most the sum of the other weights, that is, w_max is at most 0.5, because the
+  weights add up to 1; else |s_j| is at least 2 w_max − 1. Tied cells with w_max at most 0.5: K5 1664 of 2240 (74 %);
+  K3 at q 16 27 360 of 47 136 (58 %).
+- 4.20 did not show the stall: no V2 run of 4.20 had the preparation from saturation (all started from a relaxed
+  state). The stall needs one tied cell only. K3 has 27 360 tied cells that permit s_j = 0 (K5: 1664), and its runs are
+  much longer. Thus the smaller tied share of the production does not show a smaller risk. Whether the stall occurs at
+  the production points is not determined. The stall at L_eff/l_ex 6 probably has the same cause (not measured).
+- Consequence: PLAN 4.21 cannot start with V2 as it is. The patch options are in PLAN 4.21 ("Gate 1", decision D0);
+  they wait for the decision of Chris.
+
+**Status.** PLAN 4.21 is on hold until Chris decides D0, the patch of V2 (PLAN 4.21, "Gate 1"); D1 … D6 stay open. No
+box was rented.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

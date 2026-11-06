@@ -3025,7 +3025,7 @@ layer) as a remedy target; the main study (4.17).
   - Findings on eval_420.py (no fix without a go): (1) stageC does not print the q-16 comparisons of C-b; (2) the
     R0 line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0).
 
-### 4.21 Gap test of V2 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert")
+### 4.21 Gap test of V2 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; on hold after gate 1 (2026-11-06), decision D0)
 
 **Why.** PLAN 4.20 showed "no Bloch points in these runs" for V2 in two geometries, with a start from a relaxed
 state: the staircase geometry (48³, q 8, 100 mT, n 4) and the 4.16 geometry (d/l_ex 300, φ 0.65, L_eff/l_ex 12,
@@ -3248,7 +3248,56 @@ contact rule and the evaluation patch (it needs the merge of the diag branch to 
 on the merged commit: the K5 run gives the same w within 1e-6), with the times of R5. "Fails" or "not determined":
 report with the readings and options.
 
+**Gate 1 (2026-11-06): not passed; PLAN 4.21 is on hold until decision D0.** Both K5 runs with V2 stall in the
+preparation from saturation (L_eff/l_ex 6 in half cycle 14 of 41, L_eff/l_ex 12 in half cycle 8): no output, and the
+state time does not advance, at full CPU load. The same line without the fraction surface, the correction and V2
+runs through. Cause (measured, PROTOKOLL 7.146 part 6): V2 sets m_j = s_j/|s_j|, with s_j the weighted sum of the
+master directions at the mirror point. When these directions cancel, |s_j| goes to 0. At s_j = 0 the energy is not
+defined and not continuous, and the master field grows as 1/|s_j|: 2.2e9 A/m in the stall against 1.1e6 A/m before
+(medians), and the RKF45 step falls from 5 ps to 5e-18 s. At K3 (q 16), 58 % of the tied cells have weights that
+permit |s_j| = 0 (largest weight at most 0.5). No V2 run of 4.20 had the preparation from saturation. A lower limit of
+the step, or a switch at a small |s_j|, is no option: it hides the symptom, and the energy stays discontinuous.
+
+**D0 Patch of V2 (decision of Chris).** Each option changes the model of the tied cells. Thus the Bloch-point result
+of 4.20 does not transfer to it and must be measured again.
+- (a) Nearest master (V2n): each tied cell (the same cells as V2: f > 0, centre outside) takes the direction of one
+  master, the master nearest to the mirror point (the fall-back of tie_ghost_mirror). Pros: |m_j| = 1; the energy is
+  smooth (m_j = m_k); no free value; the change is only in the weights of the tie and in its tests: TiedLLGSolver
+  already works with one master of weight 1 (V1). Cons: the ghost value is the value at the nearest master, not at
+  the mirror point (position error at K5: at most 0.89 cells, median 0.60). Chance: it removes the cause by
+  construction. Risk: Bloch points at the cut layer, as with D (4.18, 4.20); the loss changes against V2. V1 of 4.20
+  (thin cells only, tied to the face neighbour) is no reference for this risk: it had no Bloch point in its relaxed
+  states and never ran cycles.
+- (b) Dominant weight (V2d): mix the trilinear weights with the nearest master, so that its weight is at least
+  0.5 + c. Then |s_j| is at least 2c, and the factor 1/|s_j| is at most 1/(2c). At c 0.5 this is (a). Pros: a part of
+  the mirror interpolation stays; |m_j| = 1; the energy is smooth. Cons: a free value c sets the stiffness and the
+  accuracy (with c 0.1 the field can still become 5 times larger); the model is harder to explain. Chance: nearer to
+  V2 than (a). Risk: as (a), plus the choice of c.
+- (c) No normalisation (V2u): m_j = s_j, so |m_j| is at most 1. Pros: no singularity; the trilinear value at the
+  mirror point stays. Cons: where the masters disagree (for example a wall at the surface), the moment of the tied
+  cell falls, and its stray-field energy changes with it. At dx 3 l_ex this change can have the same order as the
+  exchange energy of its pair (estimates per cell volume: the self-energy term alone up to about 0.07 K_d for f 0.21
+  and a demagnetizing factor 1/3 if the moment sits in the occupied sub-cells, as the correction assumes, else about
+  0.015 K_d; the discrete exchange energy of a pair at 90° 0.22 K_d with the full A, about 0.08 K_d with the f-weighted
+  A of a tied cell with f 0.21). Chance: the accuracy of V2 stays. Risk: an artificial energy gain for disorder at the
+  surface; the Bloch-point count and the loss of a tied cell need rules for |m_j| < 1.
+- Not an option here: the full exchange of García-Cervera et al. (the target of Chris, 7.146 part 1). It needs a new
+  build of the exchange and a rule for the moment of the outer cut cells, which their method does not have (an own
+  plan).
+- Recommendation (a): it removes the cause without a free value and without |m_j| < 1, and it is the smallest
+  change.
+- After a go on a patch: (1) the patch with tests on the diag branch (V2 stays for the old runs); (2) gate 1 again,
+  local, at L_eff/l_ex 6 (the K5 test) and 12 (the faster stall), about 2 h or more each (estimate: set-up about
+  30 min, 41 half cycles at about 1.5 min, 2 stages); (3) a local check of the new tie as 4.20 stage A (48³: the pair
+  angles and the Bloch points of the relaxed states); (4) a revised PLAN 4.21 for the go of Chris: on the box first a
+  check as 4.20 stage C with the new tie (the Bloch-point result at q 8 and q 16; 4.20 stages B and C cost 6.09 $),
+  then the 12 runs; one rent. Cost of the revised plan about 12 … 22 $ (estimate: 9 … 17 $ of this plan plus about
+  3 … 5 $ for the check). The credit (22.16 $) is less than the upper value plus 1.5 $, so D3 must be decided again,
+  or a top-up is necessary. D1 … D6 stay open until then.
+
 **Decisions for Chris.**
+- D0 Patch of V2 (new after gate 1, see "Gate 1" above): (a) nearest master, (b) dominant weight, (c) no
+  normalisation. Recommendation (a). D1 … D6 apply to the revised plan after D0.
 - D1 Positive control. (a) None: 4.20 showed that D16 (the correction at q 16 without V2) has 97 … 153 Bloch samples
   per seed at 100 mT, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Cost of (a): the test
   does not show that V2 removes Bloch points at the corners, only that the production line with V2 runs clean.
@@ -3304,6 +3353,10 @@ offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange o
   0, the download of kept files, the restart; the FAIL lines of the K5 test; the queue check of auto421.py, the rent
   wait of 24 h, the container memory, the third pass and the process check of the watcher; one definition of the
   cut-layer cube; the reach of the verdict. Voxel regression: PASS (see "Evaluation").
+- 2026-11-06, gate 1 (local CPU): not passed (PROTOKOLL 7.146 part 6). V2 stalls in the preparation from
+  saturation at L_eff/l_ex 6 and 12; the cause is measured: the tie of V2 is singular at s_j = 0. My change of the K5
+  geometry to L_eff/l_ex 12 under the mandate had an unmeasured cause (thin walls); it is reverted. A context-free
+  review of 7.146 part 6 and of the block "Gate 1" (5 "must fix", 12 "should fix"), applied. D0 added; no rent.
 
 ## 5. Optional step 3: mesh control (separate go)
 
