@@ -23,7 +23,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 LOG = HERE / "auto420.log"
 STATE = HERE / "auto420_state.json"
 BUDGET = 1.0                    # $ for failed boxes (PLAN 4.20, gates 3)
-CREDIT_MIN = 17.5               # $ before a rent: the cost limit 16 $ plus 1.5 $ (PLAN 4.20, gates 8)
+CREDIT_MIN = 17.5               # $: below this credit (the cost limit 16 $ plus 1.5 $) the log has a warning; the
+                                # rent continues (rule of Chris 2026-11-07: a low credit never stops or blocks a rent)
 D15 = "/home/christoph/Documents/code/magnum.np-staircase/studies/staircase_correction/remote_20261020_box1/runs"
 HFP = ("/home/christoph/Documents/code/magnum.np-diag/studies/beta_bpeak/runs/plan418_step3_box/x/magnum.np/studies/"
        "beta_bpeak/runs")
@@ -293,9 +294,9 @@ def main():
     while st["spent"] < BUDGET:
         cr = credit()
         if cr is None or cr < CREDIT_MIN:
-            log("STOP: credit %s below %.2f $ (PLAN 4.20 gates 8: the cost limit plus 1.5 $)" % (cr, CREDIT_MIN))
-            print("RESULT NO_CREDIT %s" % cr)
-            return 5
+            log("WARNING: credit %s below %.2f $ (the cost limit plus 1.5 $); the rent continues, Chris tops up"
+                % (cr, CREDIT_MIN))
+            print("WARNING LOW_CREDIT %s" % cr, flush=True)
         r = W.rent_one(excluded=st["failed_machines"])
         if r is None:
             log("STOP: no offer")

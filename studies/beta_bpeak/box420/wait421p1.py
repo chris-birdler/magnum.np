@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """PLAN 4.21 Part 1: wait for an offer under the rent rules of watch_rent420.py (read only: search and credit, no rent).
 Every 20 min one log line (box420/wait421p1.log): the offers, the eligible offers and the credit. The script ends with
-one line "EVENT offer ..." when an offer meets the rules, or "EVENT timeout" after the given hours, so that the
-session decides about the rent with the credit of that time (auto420.py checks the credit only before rent_one, which
-can wait up to 72 h). Usage: wait421p1.py [hours, default 24]"""
+one line "EVENT offer ..." when an offer meets the rules, or "EVENT timeout" after the given hours. At the offer the
+session starts auto420.py; a low credit does not stop the rent (rule of Chris 2026-11-07), the session tells Chris the
+credit. Usage: wait421p1.py [hours, default 24]"""
 import json
 import subprocess
 import sys

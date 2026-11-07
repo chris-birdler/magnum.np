@@ -279,16 +279,17 @@ def main():
     COMMIT, limit, d5 = sys.argv[1], float(sys.argv[2]), sys.argv[3]
     if d5 not in ("a", "b"):
         sys.exit("usage: auto421.py <commit> <cost limit $> <a|b>")
-    credit_min = limit + 1.5                  # PLAN 4.21, cost limit: the credit before a rent
+    credit_min = limit + 1.5                  # below this credit the log has a warning; the rent continues
+                                              # (rule of Chris 2026-11-07: a low credit never stops or blocks a rent)
     st = load_state()
     log("auto421 start: commit %s, cost limit %.2f $, D5 %s, budget %.2f $ for failed boxes, spent %.3f, failed "
         "machines %s" % (COMMIT, limit, d5, BUDGET, st["spent"], st["failed_machines"]))
     while st["spent"] < BUDGET:
         cr = credit()
         if cr is None or cr < credit_min:
-            log("STOP: credit %s below %.2f $ (PLAN 4.21: the cost limit plus 1.5 $)" % (cr, credit_min))
-            print("RESULT NO_CREDIT %s" % cr)
-            return 5
+            log("WARNING: credit %s below %.2f $ (the cost limit plus 1.5 $); the rent continues, Chris tops up"
+                % (cr, credit_min))
+            print("WARNING LOW_CREDIT %s" % cr, flush=True)
         r = W.rent_one(excluded=st["failed_machines"], max_hours=RENT_HOURS)
         if r is None:
             log("STOP: no offer")
