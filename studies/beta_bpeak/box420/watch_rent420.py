@@ -10,7 +10,8 @@ import json, pathlib, subprocess, sys, time
 
 V = "/home/christoph/Documents/.venv/bin/vastai"
 LOG = pathlib.Path(__file__).with_suffix(".log")  # watch_rent420.log
-QUERY = ("gpu_name in [Tesla_V100,V100_SXM2,Tesla_V100S] num_gpus>=2 num_gpus<=4 gpu_ram>=15 rentable=true verified=any "
+# PLAN 4.21 Part 1, decision P1 (b) of Chris 2026-11-07: exactly 2 GPUs (one q-16 job at a time below 128 GB: no idle GPU)
+QUERY = ("gpu_name in [Tesla_V100,V100_SXM2,Tesla_V100S] num_gpus=2 gpu_ram>=15 rentable=true verified=any "
          "reliability>=0.98 disk_space>=200 cuda_max_good>=12.6 inet_down>=100")
 LIMIT = 0.1005        # $ per GPU-h (dph_total of the search, default storage); 0.10 (Chris 2026-11-03; before 0.094)
 RAM_MIN_GB = 64.0     # host memory in GB (PLAN 4.20: at least 64 GB; 4.16: 11.41 GiB for 2 D jobs at 148^3); cpu_ram in MiB
