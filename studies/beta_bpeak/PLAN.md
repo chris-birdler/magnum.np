@@ -3025,7 +3025,7 @@ layer) as a remedy target; the main study (4.17).
   - Findings on eval_420.py (no fix without a go): (1) stageC does not print the q-16 comparisons of C-b; (2) the
     R0 line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0).
 
-### 4.21 Gap test of V1 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; gate 1 with V2 not passed, D0 decided (d) V1, gate 1 with V1 passed 2026-11-07; revised 2026-11-07 for V1; the revised plan waits for the go of Chris)
+### 4.21 Gap test of V1 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; gate 1 with V2 not passed, D0 decided (d) V1, gate 1 with V1 passed 2026-11-07; revised 2026-11-07 for V1; go of Chris for Part 1 on 2026-11-07, Part 2 needs a separate go)
 
 **Why.** PLAN 4.20 showed "no Bloch points in these runs" for V2 in two geometries, with a start from a relaxed
 state. The production of 4.17 differs in four points that no run has tested together with a tie: (i) q 16 at all
@@ -3143,11 +3143,11 @@ box tests B1 … B5 and the readings B-0 … C-b of 4.20.
   watch420_state.json, auto420.log, watch_rent420.log) go to box420/archive_plan420/ with md5, because the watcher
   would read the old rent time and the old events. The local evaluations of Part 1 write to results/plan421p1_*
   (results/plan420_* are the committed 4.20 results).
-- Start: `auto420.py <commit> V1`. The script rents under the rules of 4.20: V100 16 or 32 GB, 2 … 4 GPUs (decision
-  P1), at most 0.10 $ per GPU-h, host memory at least 64 GB, disk 200 GB, CUDA 12.6 or newer, not deverified, not the
-  excluded machines and host of 4.19. It waits up to 72 h for an offer; I report after 24 h without an offer. It runs
-  the box tests B1 … B5 of 4.20 (B3: the states D15_s941 … 944, HFP_s921, 923, 924 and 925, and K4_2_sat, with md5; B5:
-  test 6 of test_plan420.py on GPU 0, the end-to-end runs of D, V1 and V2 with 1 cycle at d/l_ex 24; the bitwise
+- Start: `auto420.py <commit> V1`. The script rents under the rules of 4.20: V100 16 or 32 GB, exactly 2 GPUs (decision
+  P1 (b)), at most 0.10 $ per GPU-h, host memory at least 64 GB, disk 200 GB, CUDA 12.6 or newer, not deverified, not
+  the excluded machines and host of 4.19. It waits up to 72 h for an offer; I report after 24 h without an offer. It
+  runs the box tests B1 … B5 of 4.20 (B3: the states D15_s941 … 944, HFP_s921, 923, 924 and 925, and K4_2_sat, with md5;
+  B5: test 6 of test_plan420.py on GPU 0, the end-to-end runs of D, V1 and V2 with 1 cycle at d/l_ex 24; the bitwise
   repeat on the GPU is for V2 only). Then it starts the dispatcher (no retry) and chain420.sh with the gate-A variant
   V1. watch420.py runs on the mini PC every 20 min.
 - Jobs (the lines of 4.20: jobs/plan420_stageB.txt, plan420_tailB.txt, plan420_q16_D16.txt, plan420_stageC_V1.txt,
@@ -3310,10 +3310,10 @@ Market on 2026-11-07, 07:08 … 07:12 UTC (search only, no rent; box421/market_2
 - 4 × V100 32 GB: 0.067 $ per GPU-h (two offers, deverified; one on the excluded host 381795), 0.107 $ (verified, on
   the excluded host 381795), 0.120 $ (deverified), 0.160 $ (verified, machine 150948, 126 GiB) and 0.174 $ (verified).
   No offer meets the rules of Part 2 now. 8 × V100 32 GB: only deverified offers.
-- For Part 1 (search again at 08:04 UTC with the query of watch_rent420.py, market_p1.json): two offers meet the
-  rules of 4.20. Machine 150124: 3 × V100 16 GB at 0.0937 $ per GPU-h (0.281 $ per h), 67 GB, unverified; the script
-  takes it first (the lowest price per GPU-h). Machine 43024: 2 × V100 16 GB at 0.094 $ per GPU-h (0.188 $ per h),
-  101 GB, unverified; the machine of the 4.20 box.
+- For Part 1 (search again at 08:04 UTC with the query of watch_rent420.py, market_p1.json): two offers meet the rules
+  of 4.20. Machine 150124: 3 × V100 16 GB at 0.0937 $ per GPU-h (0.281 $ per h), 67 GB, unverified; the query of 4.20
+  takes it first (the lowest price per GPU-h), the query of P1 (b) does not take it. Machine 43024: 2 × V100 16 GB at
+  0.094 $ per GPU-h (0.188 $ per h), 101 GB, unverified; the machine of the 4.20 box.
 
 **Order of the jobs of Part 2.** GPU 0 … 3 start with the small runs K1_0, K3_0, K1_1 and K3_1 (as 4.15: large runs
 only after the first-run check). After the R4 PASS of the first finished run: K2_0, K2_2, K4_0, K2_1, K4_1, K4_2 (the
@@ -3324,7 +3324,7 @@ longest first), then K1_2 and K3_2. End about 28 h after the start (estimate).
 - An R4 FAIL: the chain starts no new jobs. When the jobs in progress end: download, md5, destroy (no box waits).
 - A prepared state that needs a third pass (its second pass ended with a Bloch point); a failed job; a GPU above 28
   GiB (memory.used); less than 8 GB of container memory available; chain421.sh or dispatcher.sh not running without
-  an end marker; 75 % of the cost limit: report, the jobs continue.
+  an end marker; 75 % of the cost limit; the credit event (see "Cost limit"): report, the jobs continue.
 
 **Cost of Part 2 (estimates).** From the phase 1 partners (V100, without the correction; cycle wall time and the time
 from the start to DONE in stdout.log): cycles K1 and K3 about 1.5 h, K2 3.8 h, K4 4.2 h; one pass about 1.0 h (K1, K3)
@@ -3336,13 +3336,22 @@ no run with V1 and the correction ran at the corners, and a tie can change the r
 15000 iterations, V2 6500 … 27000); the time step of the correction at 150 mT is not measured; a run can need more
 passes than its partner. Wall time on 4 GPUs about 28 … 41 h with the box tests. Box cost = wall time × price per
 hour + storage: at 0.32 … 0.40 $ per h (at most 0.10 $ per GPU-h) about 9 … 17 $; at 0.64 $ per h (0.160 $ per GPU-h,
-the cheapest offer now) about 18 … 27 $. Credit: 22.16 $ now; after Part 1 about 14 … 17 $.
+the cheapest offer now) about 18 … 27 $. Credit: 17.83 $ on 2026-11-07 at 11:34 UTC; it falls by about 0.8 $ per h,
+because three instances of another session run on the account. Thus the credit after Part 1 depends on these
+instances and on the top-up of Chris.
 My work: none on the code; the reports and the PROTOKOLL.
 
 **Cost limit (decision D3).** For each rent (box cost with failed boxes, tests, runs and storage). At 75 % I report
-with a projection; the jobs continue. At the limit: stop, download, md5, destroy. Before a rent the credit must be at
-least the limit plus 1.5 $. If the credit falls below the cost of the remaining jobs plus 1 $, I report at once.
-Part 1: the values of the scripts of 4.20 (cost limit 16 $, credit at least 17.5 $; estimate 5 … 8 $).
+with a projection; the jobs continue. At the limit: stop, download, md5, destroy. Credit: I do not stop, delay or
+block a rent or a box because of a low credit (rule of Chris 2026-11-07; Chris tops up the credit). Below a credit
+of 17.5 $, auto420.py writes a warning and rents (diag b7406d0; auto421.py the same below the limit plus 1.5 $). I
+tell Chris the credit, its fall per hour and the time until it is empty: at the start of each part, in each status
+of the watcher, and at once at the credit event of the watcher (the credit below the rest of the cost limit plus
+1 $). vast.ai stops all instances of the account when the credit reaches zero, and the storage cost continues (vast.ai
+billing documentation, docs.vast.ai/guides/reference/billing). The account has no automatic top-up (2026-11-07:
+autobill amount and threshold not set, credit only). If vast.ai stops the box or refuses a rent for lack of credit
+(watch_rent420.log, line "create rc"), I report it at once; the next step for the box is a decision of Chris.
+Part 1: the cost limit of the scripts of 4.20 (16 $; estimate 5 … 6.5 $ with 2 GPUs).
 
 **Data and end.** Part 1: see Part 1. Part 2: download of the small files, the E3 files, the run geometry, the
 results of the post-processing and of the checks, and the state files (init.pt and the 7 stage states; about 3 … 4 GB
@@ -3363,10 +3372,10 @@ and the change of the loss of V1 from C-b. "Fails" or "not determined": report w
 **Decisions for Chris.**
 - D0 The tie of the cut cells: **decided 2026-11-06: (d) V1, with the release of the gate-A result of V1** (see
   "Background" and the record).
-- For the go on Part 1, these points are part of the go:
+- For the go on Part 1 (given 2026-11-07), these points are part of the go:
   - Stage B and all references of 4.20 run again (chain420.sh always runs stage B; 11.4 of the 53.7 GPU-h in 4.20,
     about 1 $). Stage C alone needs a change of the script.
-  - The cost limit 16 $ and the budget of 1 $ for failed boxes of the 4.20 scripts (estimate 5 … 8 $).
+  - The cost limit 16 $ and the budget of 1 $ for failed boxes of the 4.20 scripts (estimate 5 … 6.5 $ with 2 GPUs).
   - Two rents instead of one box ("Lückenläufe auf einer Box", option 2): one box for both parts needs new code
     (the chains of 4.20 and 4.21 share the spool folder), and Part 2 needs a box with 32 GB, which has no offer now.
   - The q-16 condition of the gate of Part 1 (new against 4.20).
@@ -3375,7 +3384,7 @@ and the change of the loss of V1 from C-b. "Fails" or "not determined": report w
     change. Con: idle GPUs on a rented box. (b) Exactly 2 GPUs: one value in the search query of watch_rent420.py
     (num_gpus=2); now machine 43024, about 5 … 6.5 $, about 25 … 32 h, about 1 … 3 idle GPU-h. Pro: the cheapest; no
     idle GPU. Con: about 5 h longer; one changed value. (c) 4 GPUs with at least 128 GB (two values): about 4.5 … 7 $,
-    about 12 … 16 h. Con: no offer now. Recommendation (b).
+    about 12 … 16 h. Con: no offer now. Recommendation (b). **Decided 2026-11-07: (b)** (see the record).
 - For the go of Part 2 (after the report of Part 1; my recommendation now, open to change by the result of Part 1):
   - D1 Positive control in Part 2. (a) None: Part 1 shows the Bloch points of D and D16 next to V1 at the 4.16
     geometry, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Con: Part 2 then shows only
@@ -3388,10 +3397,11 @@ and the change of the loss of V1 from C-b. "Fails" or "not determined": report w
     cut-layer Bloch point in more than a fixed share of its samples. Con of (b): no measured value gives that share.
     Recommendation (a): K2 has Bloch points in the cycles also without the correction (phase 1: from 50 mT on, after
     a clean prepared state), and no measured value gives a threshold that separates them from the signature of D.
-  - D3 Cost limit of Part 2. The credit after Part 1 is about 14 … 17 $, so without a top-up the limit is at most
-    about 12.5 … 15.5 $. (i) That limit: no top-up; the upper estimate (17 $ plus up to 1 $ for failed boxes) is above
-    it, so the last runs can stop at the limit, with the verdict "not determined" at their corner. (ii) 18 $ with a
-    top-up of about 3 … 6 $: it covers the upper estimate at most 0.10 $ per GPU-h. Recommendation (ii).
+  - D3 Cost limit of Part 2. A low credit does not stop a rent; Chris tops up (rule of 2026-11-07). (i) A limit
+    below the upper estimate, for example 15 $. Pro: less money at risk, a smaller top-up. Con: the last runs can
+    stop at the limit, with the verdict "not determined" at their corner. (ii) The upper estimate plus up to 1 $ for
+    failed boxes: 18 $ with D6 (a), about 28 $ with D6 (b). Pro: all runs end. Con: a larger top-up.
+    Recommendation (ii).
   - D4 Use of the test runs in the production. (a) No: the runs use the diag commit and V100 GPUs; the production
     uses one commit of main on the A100. (b) Yes, as k = 0 … 2 of the corners: 12 runs less in production, but
     paired with other hardware and another commit. Recommendation (a).
@@ -3402,7 +3412,8 @@ and the change of the loss of V1 from C-b. "Fails" or "not determined": report w
   - D6 Box of Part 2. (a) The rules as written: auto421.py waits up to 24 h for a 4 × V100 32 GB at most 0.10 $ per
     GPU-h (then it stops with "no offer"). Pro: the cheapest. Con: no such offer on 2026-11-06 and 2026-11-07. Risk:
     a wait of days. (b) 4 × V100 32 GB at most 0.17 $ per GPU-h (now 0.160 $): about 18 … 27 $. Pro: an offer now.
-    Con: a top-up of about 13 … 15 $ before the rent. Recommendation (a), and a new report after 24 h without an offer.
+    Con: about 9 … 10 $ more than (a) (estimates); it needs D3 at about 28 $ and a larger top-up. Recommendation (a),
+    and a new report after 24 h without an offer.
   - D7 Split of the cut-layer Bloch samples of R1 by a tied cell in the cube (from μ in geometry.npz; information).
     (a) Yes: it shows whether a Bloch point sits at the tie or at a free cut cell. Con: new code in eval_421.py
     (about 1 h with a test). (b) No: R1 as written; Part 1 gives the tilt of the free cut cells (relaxed states).
@@ -3636,6 +3647,17 @@ condition.
   account (not touched). Chris: "Warte auf gute Instanzen die unser Preis Leistungsniveau haben das wir wollen".
   box420/wait421p1.py (read only) searches every 20 min for up to 24 h; at an offer I check the credit before
   auto420.py rents. No rent.
+- 2026-11-07, two answers of Chris. (1) "Ok" on my recommendation to stay with V100 (other GPU types: R0 compares w with
+  HFD_s921_b100 of 4.16 on V100 within 1e-6, and no verified 2-GPU offer of another type gives more memory bandwidth per
+  $). (2) On the credit: "Du mietest, egal wie viel Guthaben ist. … du brichst sicher keine Miete ab oder verhinderst
+  sie, nur weil kein Guthaben da ist." Thus a low credit never stops, delays or blocks a rent; I tell Chris the credit
+  (rule in "Cost limit"). diag b7406d0: auto420.py and auto421.py write a warning below their credit minimum and rent
+  (check with stubs: at a credit of 1 $ and without a credit value, both call rent_one). The pinned commit of Part 1
+  stays 63ad71f: the change is in the local rent scripts only, the box clones 63ad71f. A context-free review of this
+  change (3 must-fix, 6 nice-to-have; all applied but a clause in the Background block, which is history): D3 and D6 (b)
+  linked, D3 (i) with pro and con, the stop of the instances by vast.ai at zero credit, the notices to Chris as the
+  watcher gives them, P1 marked decided. Credit 17.67 $ at 11:46 UTC; with the 2-GPU box it would be empty after about
+  18 h (estimate), Part 1 needs about 25 … 32 h. No rent (no eligible offer).
 
 ## 5. Optional step 3: mesh control (separate go)
 
