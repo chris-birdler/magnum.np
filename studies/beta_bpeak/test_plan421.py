@@ -298,7 +298,11 @@ def test_acc_reduce_weights_the_harmonics_as_p(tmp_path):
     multiplies the harmonic losses p_k with mu of geometry.npz. For an exactly periodic motion with harmonics up to K
     only, sum_k p_k = p in each cell (Parseval): in the free cut cells and in the masters as in the full cells. Thus the
     largest ratio sum_k p_k / p is 1 and the rest is 0, in the box and in each particle. Controls: a weight that is
-    missing on one side gives a largest ratio above 1 by more than 100 times the tolerance."""
+    missing on one side gives a largest ratio above 1 by more than 100 times the tolerance.
+    The fundamental p_f of acc_reduce (from m1 of all samples) carries mu too: for this motion p_f / p is the same in
+    each cell, k^2 a_k^2 of k 1 over the sum of the harmonics (0.09 / 0.1238). Thus R1 of the box and of each particle
+    has this value, and the share of p_f equals the share of p in each class. Control: the evaluation without mu
+    gives an R1 of the box that differs from this value by more than 100 times the tolerance."""
     pytest.importorskip("torch")
     import domains
     import acc_reduce as AR
@@ -317,15 +321,21 @@ def test_acc_reduce_weights_the_harmonics_as_p(tmp_path):
         st = json.loads((d / "acc.json").read_text())["stages"][0]
         assert st["check_ok"]
         bmax, rest = st["harm"]["bessel_max"], [st["harm"]["R_rest"]] + [q["R_rest"] for q in st["particles"]]
-        print("%s: bessel_max - 1 %.3e, |R_rest| box %.2e, largest of a particle %.2e" % (
-            name, bmax - 1.0, abs(rest[0]), max(abs(x) for x in rest[1:])))
-        return bmax, rest
+        r1 = [st["R1"] / r1_exact - 1.0] + [q["R1"] / r1_exact - 1.0 for q in st["particles"]]
+        share = max(abs(c["p_fund_share"] - c["p_share"]) for c in st["where"].values())
+        print("%s: bessel_max - 1 %.3e, |R_rest| box %.2e, largest of a particle %.2e; R1 / exact - 1 box %.2e, "
+              "largest of a particle %.2e, largest |p_f share - p share| of a class %.2e" % (
+                  name, bmax - 1.0, abs(rest[0]), max(abs(x) for x in rest[1:]), r1[0], max(abs(x) for x in r1[1:]),
+                  share))
+        return bmax, rest, r1, share
 
-    bmax, rest = harm("right", mu, mu)
+    r1_exact = 0.30 ** 2 / (0.30 ** 2 + 4 * 0.04 ** 2 + 9 * 0.05 ** 2 + 49 * 0.01 ** 2)   # the amps of _harm_folder
+    bmax, rest, r1, share = harm("right", mu, mu)
     assert abs(bmax - 1.0) < tol and max(abs(x) for x in rest) < tol, (bmax, rest)
-    bmax, _ = harm("evaluation_without_mu", mu, np.ones_like(mu))    # p_k as on the voxel surface: ratio 1 / mu
-    assert bmax > 1.0 + 100 * tol, bmax
-    bmax, _ = harm("run_without_tie", mu_no_tie, mu)                 # masters: ratio group moment / f
+    assert max(abs(x) for x in r1) < tol and share < tol, (r1, share)
+    bmax, _, r1, _ = harm("evaluation_without_mu", mu, np.ones_like(mu))    # p_k, p_f as on the voxel surface: 1 / mu
+    assert bmax > 1.0 + 100 * tol and abs(r1[0]) > 100 * tol, (bmax, r1)
+    bmax, _, _, _ = harm("run_without_tie", mu_no_tie, mu)                  # masters: ratio group moment / f
     assert bmax > 1.0 + 100 * tol, bmax
 
 

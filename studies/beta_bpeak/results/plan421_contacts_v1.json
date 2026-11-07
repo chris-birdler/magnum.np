@@ -1,0 +1,33 @@
+{
+ "run": "K3_0_v16",
+ "N": 104,
+ "q": 16,
+ "tie": {
+  "n_cut": 92000,
+  "n_thin": 38208,
+  "sum_f_tied": 4087.4765625,
+  "longest_chain": 2,
+  "n_fallback_no_face": 0,
+  "n_fallback_chain": 0,
+  "q": 16,
+  "thin_below_f": 0.3333333333333333,
+  "kind": "thin_face",
+  "n_tied": 38208
+ },
+ "masters_of_another_particle": 0,
+ "pairs": {
+  "face": 0,
+  "edge": 2256,
+  "corner": 4080
+ },
+ "pairs_by_tied_cells": {
+  "0": 0,
+  "1": 0,
+  "2": 6336
+ },
+ "pairs_by_outside_cut_cells": {
+  "0": 0,
+  "1": 0,
+  "2": 6336
+ }
+}
