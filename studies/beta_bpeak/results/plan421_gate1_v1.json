@@ -1,0 +1,126 @@
+{
+ "runs": {
+  "K5f": {
+   "Leff_lex": 6.0,
+   "tie": {
+    "n_cut": 4160,
+    "n_thin": 1824,
+    "sum_f_tied": 201.4453125,
+    "longest_chain": 1,
+    "n_fallback_no_face": 0,
+    "n_fallback_chain": 0,
+    "q": 16,
+    "thin_below_f": 0.3333333333333333,
+    "kind": "thin_face",
+    "n_tied": 1824
+   },
+   "passes": 1,
+   "bloch_points_after_pass": [
+    0
+   ],
+   "half_cycles": {
+    "n_ended": 41,
+    "h_last": 0.0002658,
+    "n_ended_with_bloch": 0
+   },
+   "prep_h": 1.720849511490928,
+   "stage_h": [
+    0.20279939379956988,
+    0.16067262291908263
+   ],
+   "bloch": {
+    "bloch_00_amp00.csv": {
+     "samples": 1028,
+     "with_bloch_point": 0
+    },
+    "bloch_01_amp01.csv": {
+     "samples": 1028,
+     "with_bloch_point": 0
+    }
+   },
+   "bessel": {
+    "amp00": {
+     "bessel_max": 1.1099021929666106,
+     "share_above_1.001": 0.1924800796812749,
+     "sum_rule_dev": 0.0
+    },
+    "amp01": {
+     "bessel_max": 0.8591507637837069,
+     "share_above_1.001": 0.0,
+     "sum_rule_dev": 0.0
+    }
+   }
+  },
+  "K5f12": {
+   "Leff_lex": 12.0,
+   "tie": {
+    "n_cut": 4160,
+    "n_thin": 1824,
+    "sum_f_tied": 201.4453125,
+    "longest_chain": 1,
+    "n_fallback_no_face": 0,
+    "n_fallback_chain": 0,
+    "q": 16,
+    "thin_below_f": 0.3333333333333333,
+    "kind": "thin_face",
+    "n_tied": 1824
+   },
+   "passes": 1,
+   "bloch_points_after_pass": [
+    0
+   ],
+   "half_cycles": {
+    "n_ended": 41,
+    "h_last": 0.0002658,
+    "n_ended_with_bloch": 6
+   },
+   "prep_h": 1.7338110665480295,
+   "stage_h": [
+    0.21046168526013692,
+    0.14853861643208396
+   ],
+   "bloch": {
+    "bloch_00_amp00.csv": {
+     "samples": 1028,
+     "with_bloch_point": 0
+    },
+    "bloch_01_amp01.csv": {
+     "samples": 771,
+     "with_bloch_point": 0
+    }
+   },
+   "bessel": {
+    "amp00": {
+     "bessel_max": 1.0186297158861155,
+     "share_above_1.001": 0.20642430278884463,
+     "sum_rule_dev": 2.4424906541753444e-15
+    },
+    "amp01": {
+     "bessel_max": 0.9388629608928195,
+     "share_above_1.001": 0.0,
+     "sum_rule_dev": -3.3306690738754696e-16
+    }
+   }
+  }
+ },
+ "control_K5v": {
+  "amp00": {
+   "bessel_max": 1.0127783417322325,
+   "share_above_1.001": 0.1796218487394958,
+   "sum_rule_dev": -3.1086244689504383e-15
+  },
+  "amp01": {
+   "bessel_max": 0.8223991757804417,
+   "share_above_1.001": 0.0,
+   "sum_rule_dev": -2.220446049250313e-16
+  }
+ },
+ "phase1": {
+  "n_runs": 37,
+  "n_stages": 259,
+  "stages_above_1.01": 104,
+  "amp00_stages": 37,
+  "amp00_above_1.01": 35,
+  "max": 6.288432106720529
+ }
+}

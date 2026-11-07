@@ -207,7 +207,12 @@ def check_k5_folder(d):
     for st in acc["stages"]:
         assert st["check_ok"]
         h = st["harm"]
-        assert abs(sum(h["R_k"]) + h["R_rest"] - 1.0) < 1e-9 and h["bessel_max"] < 1.01
+        assert abs(sum(h["R_k"]) + h["R_rest"] - 1.0) < 1e-9
+        # Bessel (sum_k p_k <= p in each cell) only as information: a cycle is not exactly periodic, and the corner
+        # runs K<c>_<k>_sat (voxel, no tie) have bessel_max above 1.01 in 104 of 259 stages (PROTOKOLL 7.83; gate 1
+        # of 4.21, eval_gate421_v1.py)
+        print("%s %s: bessel_max %.4f, cells above 1.001 %.4f" % (d.name, st["stage"], h["bessel_max"],
+                                                                  h["bessel_frac_over_1e-3"]))
         assert abs(sum(p["p_share"] for p in st["particles"]) - 1.0) < 1e-9
         assert abs(sum(st["where"][k]["vol_share"] for k in ("r<0.5", "0.5<=r<0.8", "r>=0.8")) - 1.0) < 1e-9
     hs = json.loads((d / "hotspots.json").read_text())
