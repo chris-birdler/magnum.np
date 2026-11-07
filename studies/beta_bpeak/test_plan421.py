@@ -316,7 +316,10 @@ def test_acc_reduce_weights_the_harmonics_as_p(tmp_path):
         AR.run(d)
         st = json.loads((d / "acc.json").read_text())["stages"][0]
         assert st["check_ok"]
-        return st["harm"]["bessel_max"], [st["harm"]["R_rest"]] + [q["R_rest"] for q in st["particles"]]
+        bmax, rest = st["harm"]["bessel_max"], [st["harm"]["R_rest"]] + [q["R_rest"] for q in st["particles"]]
+        print("%s: bessel_max - 1 %.3e, |R_rest| box %.2e, largest of a particle %.2e" % (
+            name, bmax - 1.0, abs(rest[0]), max(abs(x) for x in rest[1:])))
+        return bmax, rest
 
     bmax, rest = harm("right", mu, mu)
     assert abs(bmax - 1.0) < tol and max(abs(x) for x in rest) < tol, (bmax, rest)
