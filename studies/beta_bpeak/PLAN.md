@@ -3627,6 +3627,15 @@ condition.
   (Chris "Go" 2026-11-07 on my patch proposal, diag 31330a6). The four test files: all four pass, exit code 0 each:
   test_plan421.py 6 passed, 2 skipped; test_plan418.py 12 passed, 1 skipped; test_plan420.py 18 passed, 1 skipped;
   test_study.py 158 passed, 5 skipped (logs local in runs/plan421_gate1_v1/tests4_2026-11-07, md5_tests4.txt). No rent.
+- 2026-11-07, Chris ("Ja, bitte, mach weiter") on the go for Part 1 with P1 (b), exactly 2 GPUs: diag 63ad71f (the
+  rent query of watch_rent420.py; the pinned commit of Part 1). Before the start: runs/plan420_box moved to
+  runs/plan420_box_V2 (md5 of both manifests checked), the state and log files of the 4.20 box scripts moved to
+  box420/archive_plan420/ (MD5SUMS); the sources of the uploads exist with their md5. Two findings before the rent:
+  machine 43024 became "deverified" (08:04 UTC unverified), so no 2-GPU offer meets the rules; the credit is 19.5 $
+  and falls by about 0.7 … 0.9 $ per h, because three instances of another session (label frost-norm) run on the
+  account (not touched). Chris: "Warte auf gute Instanzen die unser Preis Leistungsniveau haben das wir wollen".
+  box420/wait421p1.py (read only) searches every 20 min for up to 24 h; at an offer I check the credit before
+  auto420.py rents. No rent.
 
 ## 5. Optional step 3: mesh control (separate go)
 
