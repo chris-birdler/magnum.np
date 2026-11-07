@@ -1,0 +1,21 @@
+{
+ "run": "K3_0_v16",
+ "N": 104,
+ "q": 16,
+ "fcc_box_s": 2.574544668197632,
+ "fcc_subcells_s": 10.942427396774292,
+ "tie_thin_face_s": 0.21977448463439941,
+ "tie": {
+  "n_cut": 92000,
+  "n_thin": 38208,
+  "sum_f_tied": 4087.4765625,
+  "longest_chain": 2,
+  "n_fallback_no_face": 0,
+  "n_fallback_chain": 0,
+  "q": 16,
+  "thin_below_f": 0.3333333333333333,
+  "kind": "thin_face",
+  "n_tied": 38208
+ },
+ "peak_rss_GiB": 5.730812072753906
+}

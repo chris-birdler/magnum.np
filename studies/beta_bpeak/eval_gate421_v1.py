@@ -2,9 +2,11 @@
 """
 Numbers of gate 1 of PLAN 4.21 again with V1 (D0 of Chris 2026-11-06), written to results/plan421_gate1_v1.json:
   runs     per K5 run of runs/plan421_gate1_v1 (L_eff/l_ex 6 and 12): the tie counts, the passes of the preparation and
-           the Bloch points after each, the preparation half cycles that ended, the hours of the preparation and of
-           the stages, the Bloch samples per stage, and the Bessel numbers of acc.json (bessel_max, the share of the
-           cells with sum_k p_k above 1.001 p) with the sum rule
+           the Bloch points after each, the preparation half cycles that ended, the hours of the set-up (init.wall_s:
+           from the start of the solver to the end of the first diagnostics; the saturated start has no relaxation
+           there), of each pass of the preparation and of the stages, the Bloch samples per stage, and the Bessel
+           numbers of acc.json (bessel_max, the share of the cells with sum_k p_k above 1.001 p) with the identity
+           sum_k R_k + R_rest = 1 (true by the definition of R_rest)
   control  the same Bessel numbers for the voxel run K5v of the first gate 1 (runs/plan421_gate1: the same K5 line
            without the fraction surface, the correction and a tie), from acc_reduce on a copy of its accumulators (the
            original folder is not changed)
@@ -28,7 +30,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 def bessel(acc):
     return {st["stage"]: {"bessel_max": st["harm"]["bessel_max"],
                           "share_above_1.001": st["harm"]["bessel_frac_over_1e-3"],
-                          "sum_rule_dev": sum(st["harm"]["R_k"]) + st["harm"]["R_rest"] - 1.0} for st in acc["stages"]}
+                          "identity_dev": sum(st["harm"]["R_k"]) + st["harm"]["R_rest"] - 1.0} for st in acc["stages"]}
 
 
 def bloch_samples(f):
@@ -43,7 +45,7 @@ def run_numbers(d):
     return {"Leff_lex": cfg["Leff_lex"], "tie": cfg["diag"]["tie"], "passes": len(pp),
             "bloch_points_after_pass": [len(p["bloch_points"]) for p in pp],
             "half_cycles": half_cycles(d.parent / (d.name + ".log")),
-            "prep_h": s["init"]["wall_s"] / 3600.0,
+            "setup_h": s["init"]["wall_s"] / 3600.0, "pass_h": [p["wall_s"] / 3600.0 for p in pp],
             "stage_h": [sum(c["wall_s"] for c in st["cycles"]) / 3600.0 for st in s["stages"]],
             "bloch": {f.name: bloch_samples(f) for f in sorted(d.glob("bloch_[0-9]*_amp*.csv"))},
             "bessel": bessel(json.loads((d / "acc.json").read_text()))}

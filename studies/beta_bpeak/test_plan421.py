@@ -2,8 +2,9 @@
 (order, set-up gate, first-run check, the stops R4 and D5), the parser of watch421.py, and the K5 end-to-end test
 (the production argument set with V1 and E3 on a small geometry with contacts, then the checks and the
 post-processing of the chain). The K5 test on the CPU is gate 1 of the plan (slow: set RUN_K5=1); on a GPU it is the
-box test B5."""
+box test B5. Also the harmonic split of acc_reduce with the moment weight on the K5 geometry."""
 import json
+import math
 import os
 import pathlib
 import shlex
@@ -207,10 +208,10 @@ def check_k5_folder(d):
     for st in acc["stages"]:
         assert st["check_ok"]
         h = st["harm"]
-        assert abs(sum(h["R_k"]) + h["R_rest"] - 1.0) < 1e-9
-        # Bessel (sum_k p_k <= p in each cell) only as information: a cycle is not exactly periodic, and the corner
-        # runs K<c>_<k>_sat (voxel, no tie) have bessel_max above 1.01 in 104 of 259 stages (PROTOKOLL 7.83; gate 1
-        # of 4.21, eval_gate421_v1.py)
+        assert abs(sum(h["R_k"]) + h["R_rest"] - 1.0) < 1e-9     # an identity (R_rest = 1 - sum_k R_k): arithmetic only
+        # Bessel's inequality (sum_k p_k <= p in each cell) only as information: the measured cycles are not exactly
+        # periodic, and the corner runs K<c>_<k>_sat (voxel, no tie) have bessel_max above 1.01 in 104 of 259 stages
+        # (PROTOKOLL 7.83; gate 1 of 4.21, eval_gate421_v1.py). The moment weight of p_k: test_acc_reduce_weights_*
         print("%s %s: bessel_max %.4f, cells above 1.001 %.4f" % (d.name, st["stage"], h["bessel_max"],
                                                                   h["bessel_frac_over_1e-3"]))
         assert abs(sum(p["p_share"] for p in st["particles"]) - 1.0) < 1e-9
@@ -239,6 +240,90 @@ def test_k5_end_to_end(tmp_path, device):
                        env=env, cwd=str(HERE), capture_output=True, text=True, timeout=5400)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     check_k5_folder(d)
+
+
+# --- acc_reduce: the moment weight of the harmonic losses ---------------------------------------------------------
+
+def _k5_geometry_cfg():
+    """The geometry entries of config.json of the K5 runs of gate 1 (24^3 cells, phi 0.55, the fraction surface with
+    the correction at q 16, V1): 9856 particle cells, 1824 of them tied, as in those runs."""
+    dx, N = 1e-8, 24
+    return {"N_used": N, "d": N * dx * (6 * 0.55 / (4 * math.pi)) ** (1 / 3), "dx": dx, "dx_lex": 3.0,
+            "surface": "fraction", "staircase": "pair", "staircase_q": 16, "tie_cells": "thin_face", "ms_void": 1e-8}
+
+
+def _harm_folder(d, cfg, g, mu_p, mu_file):
+    """A run folder for acc_reduce.run with one stage of an exactly periodic motion: in each cell a constant plus the
+    harmonics k 1, 2, 3 and 7, with an amplitude factor of the cell (0.5 ... 1.5). run_loops.HarmAcc accumulates m and
+    the local loss p = alpha mu0 M_s / gamma |dm/dt|^2 mu_p (run_loops: p_coef p_w |m x h|^2 with p_w = M_s mu, the same
+    loss, test_dissipation_formulas_agree); the acc file has the arrays of run_loops (--acc --acc_harm 7); geometry.npz
+    (run_loops.write_run_geometry) has the moment weight mu_file."""
+    import torch
+    import run_loops as RL
+    import acc_reduce as AR
+    K, n, N = 7, 256, cfg["N_used"]
+    d.mkdir()
+    full = dict(cfg, alpha=0.1, Js=1.5, direction=[1.0, 0.0, 0.0], Leff_lex=6.0)
+    (d / "config.json").write_text(json.dumps(full))
+    RL.write_run_geometry(d / "geometry.npz", g, mu_file, N, cfg["d"], cfg["dx"], 1, True)
+    mask = g["ids"] >= 0
+    w, Ms = 2 * math.pi * 3.0e7, full["Js"] / AR.MU0
+    c = np.random.default_rng(5).uniform(0.5, 1.5, mask.shape)
+    amps = [(1, 0, 0.30, 0.2), (2, 1, 0.04, 0.3), (3, 1, 0.05, -1.0), (7, 2, 0.01, 2.0)]
+    h = RL.HarmAcc((N, N, N, 3), K, "cpu", torch.as_tensor(mask))
+    for j in range(n):
+        th = 2 * math.pi * (j + 1) / n
+        m = np.zeros((N, N, N, 3)) + np.array([0.1, -0.2, 0.3])
+        dm = np.zeros_like(m)
+        for k, comp, a, ph in amps:
+            m[..., comp] += c * a * math.cos(k * th + ph)
+            dm[..., comp] -= c * a * k * math.sin(k * th + ph)
+        p = full["alpha"] * AR.MU0 * Ms / AR.GAMMA * w * w * (dm ** 2).sum(-1) * mu_p
+        h.add(torch.as_tensor(m), torch.as_tensor(p), th, math.cos(th), float(p.mean()))
+    h.end_cycle(True, 2)
+    mt, s = h.mask, h.s_n
+    np.savez(d / "acc_00_amp00.npz", p=(h.s["p"][mt] / s).float().numpy(), m0=(h.s["m0"][mt] / s).float().numpy(),
+             m1=((h.s["re"][mt] + 1j * h.s["im"][mt]) * (2.0 / s)).to(torch.complex64).numpy(),
+             h1=np.complex128(h.s_h1 * 2.0 / s), n_samples=s, cycles_from=2,
+             p_box=float(h.s["p"].sum()) / s / h.s["p"].numel(), p_dis_samples=h.s_psum / s, freq=w / (2 * math.pi),
+             mk2=(h.s_mk2[:, mt] / len(h.kept)).T.contiguous().numpy(), cycles_kept=np.array(h.kept),
+             cycles_acc=h.n_cycles)
+    (d / "samples_00_amp00.csv").write_text("# t,...,B\n" + "".join(",".join(["0"] * 7 + [b, "0"]) + "\n"
+                                                                  for b in ("0.009", "-0.009")))
+
+
+def test_acc_reduce_weights_the_harmonics_as_p(tmp_path):
+    """The harmonic split of acc_reduce on the fraction surface with V1 (PLAN 4.21 K6): the loss p of the run carries
+    the moment weight mu (run_loops gives the same tensor to the dissipation and to geometry.npz), and acc_reduce
+    multiplies the harmonic losses p_k with mu of geometry.npz. For an exactly periodic motion with harmonics up to K
+    only, sum_k p_k = p in each cell (Parseval): in the free cut cells and in the masters as in the full cells. Thus the
+    largest ratio sum_k p_k / p is 1 and the rest is 0, in the box and in each particle. Controls: a weight that is
+    missing on one side gives a largest ratio above 1 by more than 100 times the tolerance."""
+    pytest.importorskip("torch")
+    import domains
+    import acc_reduce as AR
+    cfg = _k5_geometry_cfg()
+    g = domains.geometry_from_config(cfg)
+    mask, mu, frac = g["ids"] >= 0, g["mu"], g["frac"]
+    assert int(mask.sum()) == 9856 and int((mask & (mu == 0)).sum()) == 1824
+    assert (mask & (mu > frac * 1.001)).any() and (mask & (frac < 1) & (mu > 0) & (mu < 1)).any()  # masters, cut cells
+    mu_no_tie = domains.geometry_from_config(dict(cfg, tie_cells=None))["mu"]
+    tol = 1e-5
+
+    def harm(name, mu_p, mu_file):
+        d = tmp_path / name
+        _harm_folder(d, cfg, g, mu_p, mu_file)
+        AR.run(d)
+        st = json.loads((d / "acc.json").read_text())["stages"][0]
+        assert st["check_ok"]
+        return st["harm"]["bessel_max"], [st["harm"]["R_rest"]] + [q["R_rest"] for q in st["particles"]]
+
+    bmax, rest = harm("right", mu, mu)
+    assert abs(bmax - 1.0) < tol and max(abs(x) for x in rest) < tol, (bmax, rest)
+    bmax, _ = harm("evaluation_without_mu", mu, np.ones_like(mu))    # p_k as on the voxel surface: ratio 1 / mu
+    assert bmax > 1.0 + 100 * tol, bmax
+    bmax, _ = harm("run_without_tie", mu_no_tie, mu)                 # masters: ratio group moment / f
+    assert bmax > 1.0 + 100 * tol, bmax
 
 
 # --- eval_421: the rules on synthetic run folders -----------------------------------------------------------------
