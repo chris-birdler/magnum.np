@@ -10,10 +10,9 @@ import json, pathlib, subprocess, sys, time
 
 V = "/home/christoph/Documents/.venv/bin/vastai"
 LOG = pathlib.Path(__file__).with_suffix(".log")  # watch_rent420.log
-# PLAN 4.21 Part 1, decision of Chris 2026-11-07 ("B"): the 4-GPU offer of machine 148664 (host 381795, 202 GB host
-# memory: the q-16 set-ups run in parallel, as P1 (c)), deverified; before: P1 (b), num_gpus=2 and all machines
-QUERY = ("gpu_name in [Tesla_V100,V100_SXM2,Tesla_V100S] machine_id=148664 num_gpus=4 gpu_ram>=15 rentable=true "
-         "verified=any reliability>=0.98 disk_space>=200 cuda_max_good>=12.6 inet_down>=100")
+# PLAN 4.21 Part 1, decision P1 (b) of Chris 2026-11-07: exactly 2 GPUs (one q-16 job at a time below 128 GB: no idle GPU)
+QUERY = ("gpu_name in [Tesla_V100,V100_SXM2,Tesla_V100S] num_gpus=2 gpu_ram>=15 rentable=true verified=any "
+         "reliability>=0.98 disk_space>=200 cuda_max_good>=12.6 inet_down>=100")
 LIMIT = 0.1005        # $ per GPU-h (dph_total of the search, default storage); 0.10 (Chris 2026-11-03; before 0.094)
 RAM_MIN_GB = 64.0     # host memory in GB (PLAN 4.20: at least 64 GB; 4.16: 11.41 GiB for 2 D jobs at 148^3); cpu_ram in MiB
 IMAGE = "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-devel"
@@ -22,9 +21,8 @@ LABEL = "beta-plan420"
 MAX_HOURS = 72
 POLL = 120
 EXCLUDED = {147583, 152226, 152674, 154925}  # 147583: could not pull IMAGE (2026-10-27); 152226: foreign GPU load; 152674: GPU 0 thermal slowdown (2026-10-31); 154925: speed check failed (2026-11-01)
-EXCLUDED_HOSTS = set()  # 381795 (one public IP, 166.113.48.43; image pull failed on 147583, 2026-10-27) excluded by
-                        # Chris 2026-10-28; tried again on his decision 2026-11-07 (machine 148664)
-ALLOW_DEVERIFIED = {148664}  # a deverified machine that Chris released for one rent (2026-11-07)
+EXCLUDED_HOSTS = {381795}  # all machines of this host (one public IP, 166.113.48.43): same network (Chris, 2026-10-28);
+                           # tried again 2026-11-07 (machine 148664, instance 59587038): the image pull hung again, B1 fail
 
 
 def log(msg):
@@ -53,8 +51,7 @@ def rent_one(excluded=(), max_hours=MAX_HOURS):
         if offers is not None:
             ok = [x for x in offers if x["dph_total"] / x["num_gpus"] < LIMIT
                   and x.get("cpu_ram", 0) * 2**20 / 1e9 >= RAM_MIN_GB
-                  and (x.get("verification") != "deverified"    # a host that lost its verification: not rented,
-                       or x.get("machine_id") in ALLOW_DEVERIFIED)]  # unless Chris released it
+                  and x.get("verification") != "deverified"]   # a host that lost its verification: not rented
             ok = [x for x in ok if x.get("machine_id") not in excl and x.get("host_id") not in EXCLUDED_HOSTS]
             ok.sort(key=lambda x: (x["dph_total"] / x["num_gpus"], -x["num_gpus"]))
             best = min((x["dph_total"] / x["num_gpus"] for x in offers), default=float("nan"))
