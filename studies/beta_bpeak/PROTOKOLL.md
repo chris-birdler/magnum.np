@@ -9348,6 +9348,153 @@ and the state time does not advance, at full CPU load.
 **Status.** PLAN 4.21 is on hold until Chris decides D0, the patch of V2 (PLAN 4.21, "Gate 1"); D1 … D6 stay open. No
 box was rented.
 
+### 7.147 PLAN 4.21, decision D0 and gate 1 again: V1 (thin_face) replaces V2; with V1 the K5 runs have no stall and no Bloch sample; the harmonic condition of K5 was wrong and a test of the moment weight replaces it (2026-11-06/07)
+
+**Terms.** As in 7.146.
+- V1 (thin_face, 4.20): a thin cut cell (f below l_ex/dx, that is 1/3 at dx 3 l_ex) takes the m of one master with
+  weight 1. The master is the face neighbour of the same particle with the most pairs of occupied sub-cells across the
+  face. Chains of up to 3 cells are permitted. The fall-back is the nearest free cell, when no shared face exists or
+  a chain is longer than 3 cells.
+- Harmonic loss p_k (k 1 … 7; k 1 is the fundamental): the loss of the motion at k ω in one cell
+  (acc_reduce.harmonic_loss), with the moment weight μ of the cell.
+- Bessel's inequality: Σ_k p_k ≤ p in each cell. It holds for an exactly periodic motion that the 256 samples per
+  cycle resolve. bessel_max: the largest ratio Σ_k p_k / p over the cells with p > 0 in one stage.
+- The identity Σ_k R_k + R_rest = 1: R_k is the box sum of p_k over the box sum of p, and acc_reduce.py defines
+  R_rest as 1 − Σ_k R_k. Thus the identity cannot fail; it tests only the arithmetic.
+- Assertion: one assert of test_plan421.check_k5_folder. Pass condition: one condition of the K5 block of PLAN 4.21.
+
+**1. Decision D0.**
+- Chris chose option (d), V1 ("Go", 2026-11-06, on my recommendation). With it he released the gate-A result of V1
+  in 4.20: V1 met the rule of gate A in 2 of 4 seeds. The rule of gate A stays as it was. The options and the reason
+  are in PLAN 4.21 (D0; study af02854 and 307264b). Thus 4.21 has no part of the exchange of García-Cervera et al.;
+  that exchange needs a separate plan.
+- His go covered the change with tests and gate 1 again. It did not cover the revised plan, a rent, or the correction
+  of the sentence "the exterior points carry no moment" (7.146 part 1, PLAN 4.20).
+
+**2. The change (diag 0ad4d75).**
+- The production line takes `--tie_cells thin_face` instead of `ghost_mirror` (conv_jobs.PLAN421_ARGS,
+  jobs/plan421.txt). domains.geometry_from_config rebuilds the V1 tie from the sub-cells at q (geometry.fcc_subcells,
+  as run_loops). The K5 check, the line check of test_study.py and the texts of eval_421.py name V1.
+  test_geometry_from_config_k3 also checks V1 at K3 at q 16: μ is 0 at exactly the thin cells and above 0 at all
+  other particle cells, and the sum of μ equals the sum of f over the particle cells (relative 1e-6). V2 stays in the
+  code for the runs of 4.20.
+- Tests: test_plan421.py and test_study.py: 163 passed, 5 skipped, 2 deselected (the K5 tests), exit code 0.
+  test_plan420.py and test_plan418.py did not run again: they import none of the changed files (checked by two
+  context-free reviews). A first run of all four files stopped at its time limit of 90 min (2 threads; another
+  session used most of the CPU; 11 tests passed, no failure). The K5 block of PLAN 4.21 asks that all four files
+  pass; the full run of the four files is open before the box.
+- Time and memory at K3 (104³ cells, q 16; time_tie421.py, results/plan421_tie_time.json, diag 2a45802; one process,
+  one thread, one measurement): the fraction surface (fcc_box) 2.6 s, the sub-cells 10.9 s, the V1 tie 0.22 s, peak
+  resident memory 5.73 GiB; 38 208 tied cells (the count of D0), longest chain 2 cells, no fall-back. An earlier
+  measurement, while another session used up to 14 of the 16 cores, gave 59 s for the sub-cells and 3.1 s for the tie
+  (not in a file). A run builds the sub-cells for the correction also without a tie (run_loops.py, `--staircase`),
+  and V1 uses them. The set-up with q 16 at 156³ needs about 34.5 GiB host memory (measured on a V100 box; PLAN 4.21
+  "Box"). The extra memory of V1 in a run at 152³ and 156³ is not measured. Estimate for a process that rebuilds the
+  V1 geometry (domains.geometry_from_config, for example an evaluation without geometry.npz): the measured peak scaled
+  with N³ (the sub-cell array is 4.3 of the 5.73 GiB), about 18 GiB at 152³ and 19 GiB at 156³.
+
+**3. Gate 1 again (local CPU, 2026-11-07).**
+- Runs: the K5 line of test_plan421.py with V1, and the same line with `--Leff_lex 12`; single precision; one thread
+  for each run, because another session used up to 14 of the 16 cores. Provenance: runs/plan421_gate1_v1/start.txt
+  (commit 0ad4d75 and both lines) and config.json (git_commit 0ad4d75). 1824 of the 9856 particle cells are tied
+  (18.5 %). The master of each thin cell is its direct face neighbour (longest chain 1 cell); no fall-back. The steps
+  of test_k5_end_to_end ran outside pytest: with one thread a run takes longer than the time limit of the test
+  (5400 s). The steps are the same: run_loops.py with the K5 line, then check_k5_folder on the folder.
+- Both runs wrote DONE and a summary.json with 2 complete stages, without a stall. For the K5 line, DONE is the last
+  write of run_loops.py (line 1993), and all stops on an error come before it. DONE is also written after a stage
+  that is not complete; thus summary.json was checked for the 2 complete stages. The logs have no ERROR line and no
+  traceback; K5f.log has two warnings of the K5 line (L_eff below 3 cells, local wall width below 2 cells). Duration
+  3.76 h and 3.67 h (start 00:15, DONE 04:00 and 03:55). The exit code was not recorded: the runs were started
+  detached, and the wait script checked only whether the processes still ran. Chris accepted DONE and a log without
+  an error as the evidence for the pass condition "exit code 0" ("Ok zu allem", 2026-11-07).
+- Set-up 1.72 h and 1.73 h (summary.json init.wall_s: from the start of the solver to the end of the first
+  diagnostics, that is the first evaluation of the field; the saturated start has no relaxation there). The first
+  gate 1 measured the same interval with V2 as 1929 s and 1731 s, and K5v (no correction) as 46 s (logs of
+  runs/plan421_gate1). Thus with V1 it is longer by a factor of 3.2 and 3.6. The thread count of those runs is not
+  recorded. The cause of the factor (one thread, the CPU load, or V1) is not determined.
+- The 41 half cycles of the preparation pass from saturation took 1.57 h and 1.48 h (2.3 and 2.2 min per half cycle;
+  the static relaxation before them and the relaxation at H 0 after them are not in this time, run_loops.py:1363 …
+  1382). The estimates of D0 step 2 were: set-up about 30 min, 1.5 min per half cycle, about 2 h or more per run.
+- After the pass, the prepared state had no Bloch point in both runs. During the half cycles both runs had Bloch
+  points (at most 8 at L_eff/l_ex 6, at most 16 at 12). At L_eff/l_ex 12, half cycles 0 … 5 (h 2 … 0.66) ended with
+  Bloch points, and all later half cycles ended without; at L_eff/l_ex 6 no half cycle ended with one.
+- In the two stages (9 and 50 mT), no sample had a Bloch point: 0 of 1028 + 1028 (L_eff/l_ex 6) and 0 of 1028 + 771
+  (L_eff/l_ex 12). This is information only: K5 is a 24³ mesh, not the production geometry, and n is 1 for each
+  L_eff.
+- check_k5_folder: all assertions before the acc.json loop hold (geometry, E3 files, check_sat_run.py, hot spots, hot
+  cores, census, instance_postproc). In the loop, the assertion "bessel_max below 1.01" fails at 9 mT: bessel_max
+  1.110 (L_eff/l_ex 6) and 1.019 (L_eff/l_ex 12); at 50 mT 0.859 and 0.939. The assertions after it were not reached.
+
+**4. Finding 1: the limit 1.01 was wrong (patch, go of Chris "Ok"; diag 45eea5a).**
+- I added the limit in the patch of the evaluation (diag 7557c4f). It puts a number on a sentence of PLAN 4.21
+  ("Evaluation": "the sum rule Σ p_k ≤ p holds in each cell"); the K5 pass condition asks that "the sum rules of the
+  harmonics hold". That sentence is wrong for the measured cycles. In 7.72 criterion 5 failed (8.4 % of the cells at
+  9 mT, largest ratio 2.22), and Chris released O2 although it failed. In 7.83, 6 … 38 % of the cells had Σ_k p_k
+  above 1.001 p. Possible causes (7.83): a drift within a cycle, or motion between the samples. The cause is not
+  determined.
+- All voxel corner runs K<c>_<k>_sat of the study worktree (K1_0 … 12, K2_0 … 5, K3_0 … 7, K4_0 … 9; the 4.15 corner
+  line, no fraction surface, no tie; 37 runs with 7 stages each): bessel_max is above 1 in 254 and above the limit
+  1.01 in 104 of the 259 stages; above 1.01 at amp00 (9 mT) in 35 of 37 runs. The largest value is 6.29 (K4_6_sat,
+  150 mT). Also the box form, Σ_k R_k at most 1, fails in 8 of the 259 stages (largest excess 0.052, K4_8_sat,
+  150 mT).
+- The control K5v (the same K5 line without the fraction surface, the correction and a tie; 7.146 part 6;
+  acc_reduce.py on a copy of its accumulators, the original folder unchanged) has bessel_max 1.013 at 9 mT. The cells
+  with a ratio above 1.001 at 9 mT: 18.0 % in K5v (1368 of 7616 voxel cells), 19.2 % with V1 at L_eff/l_ex 6 (1546
+  of 8032 free cells), and 20.6 % at L_eff/l_ex 12 (1658 of 8032; no control run). These are cell counts without
+  weights. The largest value of one cell is larger with V1 at L_eff/l_ex 6 (1.110 against 1.013). n is 1 for each
+  run, thus no effect is claimed.
+- The patch: check_k5_folder prints bessel_max and the share above 1.001 as information, and keeps the identity. I
+  told Chris that "the sum rule holds exactly". That was wrong: the identity tests only the arithmetic. Thus after
+  45eea5a the K5 check had no condition on the harmonics.
+- The check ran again on copies of the two folders (the check writes files): it passed; the exit code was not
+  recorded. instance_postproc of the first check had deleted the accumulator and snapshot files (as in the chain).
+  Thus acc_reduce did not run again (acc.json is from the first check), and the hot spots and hot cores had no input
+  and wrote no stages; the assertion "each hot-spot region in one particle" then passed without data. Only the census
+  had its input (the state files). Checked by hand on the hotspots.json of the first check: 4 regions (L_eff/l_ex 6)
+  and 5 regions (12), each in one particle.
+
+**5. Finding 2: a test of the moment weight replaces the condition (patch, go of Chris "Ok zu allem"; diag 2a45802 and d2946b4).**
+- What the condition must catch: the run puts μ into p, and acc_reduce.py multiplies p_k with μ of geometry.npz.
+  These are two code paths for one weight. If they do not agree, the shares R_k are wrong in the cut cells, where
+  4.21 measures.
+- test_plan421.py::test_acc_reduce_weights_the_harmonics_as_p is a unit test with a synthetic, exactly periodic
+  motion on the K5 geometry; it does not use the K5 run data. The geometry with V1 comes from
+  domains.geometry_from_config (9856 particle cells, 1824 tied, masters and free cut cells present). run_loops.HarmAcc
+  accumulates in each cell a constant plus the harmonics 1, 2, 3 and 7, with an amplitude factor of the cell
+  (0.5 … 1.5), and the loss p with the weight μ, which the test computes from the analytic dm/dt. The test writes the
+  files as run_loops.py does and runs acc_reduce.py. For such a motion, Σ_k p_k = p in each cell (Parseval). Pass:
+  bessel_max is 1, and R_rest is 0 in the box and in each particle, within 1e-5 (as the Parseval test of 7.72).
+- Result (runs/plan421_gate1_v1/test_plan421_2026-11-07.log, md5 list md5_tests.txt): bessel_max − 1 is 5.2e-7,
+  |R_rest| 7.2e-10 in the box and at most 1.4e-9 in a particle: pass. Controls on the same geometry: the evaluation
+  without μ gives bessel_max 2.94 (the ratio 1/μ in the cut cells); a p without the tie weight gives 1.45 (the
+  masters). Both are above 1 by more than 100 times the tolerance.
+- Reach: the test detects a missing weight in acc_reduce.py and a p without the tie weight. The run side is a code
+  reading: run_loops.py gives the same tensor to the dissipation and to geometry.npz (run_loops.py:1192 and 1221;
+  field_terms_extra.py, TiedLLGSolver.p_weight); the test does not run run_loops.py. The K5 values 1.11 and 1.02
+  exclude only the case "acc_reduce without μ" (about 3). The test covers p_k only. The fundamental p_f
+  (acc_reduce.py:105) and the phase-resolved loss also carry μ; no test covers them on the fraction surface.
+- Tests: test_plan421.py and test_study.py: 164 passed, 7 skipped (the 5 of before and the 2 K5 tests: no RUN_K5, no
+  GPU), exit code 0 (2a45802). test_plan421.py with the print of the values (d2946b4): 6 passed, 2 skipped, exit
+  code 0 (the log above).
+- Also in diag 2a45802: the comment at the identity in check_k5_folder names it an identity; eval_gate421_v1.py has
+  the set-up time as setup_h and the time of the half cycles of each pass as pass_h (before, the set-up had the wrong
+  label prep_h), and the key identity_dev (before sum_rule_dev); results/plan421_gate1_v1.json made again (all other
+  values equal); time_tie421.py and results/plan421_tie_time.json (part 2).
+
+**6. Result.** Gate 1 of PLAN 4.21 is passed with V1, with the two decisions of Chris above: DONE and a log without
+an error as the evidence of the exit code, and the test of the moment weight in place of Bessel's inequality.
+- Numbers: eval_gate421_v1.py, results/plan421_gate1_v1.json (diag 2a45802). Raw data local in runs/plan421_gate1_v1
+  of the diag worktree (md5 lists md5_all.txt and md5_tests.txt); the accumulator and snapshot files are deleted
+  (instance_postproc, as in the chain).
+
+**Status.** Covered for D0 (d) by gate 1: V1 at q 16 in the K5 line, through the preparation from saturation and 2
+stages, without a stall and without a Bloch sample (K5 only, n 1 for each L_eff). Open: a check as 4.20 stage B
+(the fine-mesh reference) and as stage C with V1; the set-up time and the memory at 152³ and 156³; the tilts of the
+free cut cells; the change of the loss against V2; a test of the weight of p_f and of the phase-resolved loss; the
+full run of the four test files. PLAN 4.21 still names V2 and holds the wrong sentence of "Evaluation" and the K5
+condition; the revised plan changes them. Next: the revised PLAN 4.21 for the go of Chris (on the box first a check
+as 4.20 stage C with V1, then the 12 runs; D1 … D6). No box was rented.
+
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
 Tool `domains.py` (PLAN 3f). Reference: synthetic spheres with known walls

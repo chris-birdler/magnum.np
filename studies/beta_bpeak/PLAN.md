@@ -3025,7 +3025,7 @@ layer) as a remedy target; the main study (4.17).
   - Findings on eval_420.py (no fix without a go): (1) stageC does not print the q-16 comparisons of C-b; (2) the
     R0 line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0).
 
-### 4.21 Gap test of V2 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; on hold after gate 1 (2026-11-06), decision D0)
+### 4.21 Gap test of V2 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; on hold after gate 1 (2026-11-06), decision D0; D0 decided: V1; gate 1 with V1 passed 2026-11-07; the revised plan waits for the go of Chris)
 
 **Why.** PLAN 4.20 showed "no Bloch points in these runs" for V2 in two geometries, with a start from a relaxed
 state: the staircase geometry (48³, q 8, 100 mT, n 4) and the 4.16 geometry (d/l_ex 300, φ 0.65, L_eff/l_ex 12,
@@ -3375,6 +3375,24 @@ condition. Outside cut cell: a cut cell whose centre lies outside its sphere (th
   (22.16 $) is less than the upper value plus 1.5 $, so D3 must be decided again, or a top-up is necessary. D1 … D6
   stay open until then.
 
+**Gate 1 again with V1 (2026-11-07): passed (PROTOKOLL 7.147).** After D0 (d), both K5 runs with V1 (L_eff/l_ex 6 and
+12; local CPU, one thread, diag 0ad4d75) ran through the preparation from saturation and 2 stages, without a stall and
+without a Bloch sample (information only: K5 is a 24³ mesh). Two pass conditions of K5 changed, each with a go of
+Chris:
+- "The sum rules of the harmonics hold": Bessel's inequality (Σ p_k ≤ p in each cell, the sentence of "Evaluation")
+  does not hold for the measured cycles: in the voxel corner runs, bessel_max is above 1 in 254 and above the limit
+  1.01 in 104 of the 259 stages. The identity Σ_k R_k + R_rest = 1 holds by the definition of R_rest and tests only
+  the arithmetic. In their place: a unit test of the moment weight of the harmonic losses p_k in acc_reduce.py, with a
+  synthetic, exactly periodic motion on the K5 geometry with V1 (test_plan421.py, diag 2a45802; it does not use the
+  K5 run data). It does not cover the fundamental and the phase-resolved loss, and the run side is a code reading.
+- "Exit code 0": the exit code was not recorded. DONE and 2 complete stages in summary.json, and a log without an
+  error, are the evidence.
+Set-up 1.72 h and 1.73 h with one thread (V2 in the first gate 1: 1929 s and 1731 s, thread count not recorded; the
+cause of the factor is not determined; estimate in D0: about 30 min); the 41 half cycles 1.57 h and 1.48 h.
+test_plan418.py and test_plan420.py did not run again (they import none of the changed files); their run is open
+before the box. The revised plan changes V2 to V1 in this text, and corrects the sentence of "Evaluation" and the K5
+condition.
+
 **Decisions for Chris.**
 - D0 The tie of the cut cells (new after gate 1, see "Gate 1" and "D0" above): (a) nearest master, (b) dominant
   weight, (c) no normalisation, (d) V1 of 4.20. Recommendation (d); if you choose it, you release the gate-A result
@@ -3450,6 +3468,14 @@ offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange o
   stays as it was), and steps (1) and (2) of "After a go on D0": the change with tests on the diag branch, then gate 1
   again, local, at L_eff/l_ex 6 and 12. Not covered: the revised PLAN 4.21, a rent, the correction of the sentence
   above. 4.21 thus has no part of the exchange of García-Cervera et al.; that exchange needs a separate plan.
+- 2026-11-07, gate 1 again with V1 (PROTOKOLL 7.147): passed, see "Gate 1 again with V1". Finding 1: the limit
+  bessel_max < 1.01 of my evaluation patch (diag 7557c4f) is wrong; Chris ("Ok") made it information only (diag
+  45eea5a). I told him then that "the sum rule holds exactly"; that was wrong, because the identity that the check
+  keeps holds by definition. Thus the K5 check had no condition on the harmonics; also the exit code of the runs was
+  not recorded. Finding 2 (patch): Chris ("Ok zu allem") approved the unit test of the moment weight (diag 2a45802,
+  d2946b4) and DONE with a log without an error as the evidence of the exit code. Not covered: the revised PLAN 4.21,
+  a rent, the correction of the sentence "the exterior points carry no moment". Two context-free reviews of 7.147
+  and of this block (7 + 7 "must fix", 8 + 11 "should fix"), applied. No rent.
 
 ## 5. Optional step 3: mesh control (separate go)
 
