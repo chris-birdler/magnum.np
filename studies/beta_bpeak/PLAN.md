@@ -3025,29 +3025,43 @@ layer) as a remedy target; the main study (4.17).
   - Findings on eval_420.py (no fix without a go): (1) stageC does not print the q-16 comparisons of C-b; (2) the
     R0 line of plan420_stageC.md prints "relative nan" for a difference of exactly 0 (the json has 0.0).
 
-### 4.21 Gap test of V2 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; on hold after gate 1 (2026-11-06), decision D0; D0 decided: V1; gate 1 with V1 passed 2026-11-07; the revised plan waits for the go of Chris)
+### 4.21 Gap test of V1 with the production line before the A100 production (proposal 2026-11-06; Chris chose option 2 "Lückenläufe auf einer Box": "Ich will zuerst alles verifizieren und sicher sein, dass es funktioniert"; gate 1 with V2 not passed, D0 decided (d) V1, gate 1 with V1 passed 2026-11-07; revised 2026-11-07 for V1; the revised plan waits for the go of Chris)
 
 **Why.** PLAN 4.20 showed "no Bloch points in these runs" for V2 in two geometries, with a start from a relaxed
-state: the staircase geometry (48³, q 8, 100 mT, n 4) and the 4.16 geometry (d/l_ex 300, φ 0.65, L_eff/l_ex 12,
-r_p 0; q 8 at 9, 50 and 100 mT, n 4; q 16 only at 100 mT, n 3). The production of 4.17 differs in four points that
-no run has tested together with V2: (i) q 16 at all amplitudes; (ii) 7 amplitudes up to 150 mT in one run; (iii) the
-static saturation preparation (PROTOKOLL 7.132) with the fraction surface and the correction (4.17 lists this as a
-risk); (iv) the other factor values (the corners K1 … K4). This plan runs the production line of 4.17 with V2 at the
-4 corners. It covers the gaps that Chris named: q 16 at 9 and 50 mT, amplitudes above 100 mT, the corners.
+state. The production of 4.17 differs in four points that no run has tested together with a tie: (i) q 16 at all
+amplitudes; (ii) 7 amplitudes up to 150 mT in one run; (iii) the static saturation preparation (PROTOKOLL 7.132) with
+the fraction surface and the correction (4.17 lists this as a risk); (iv) the other factor values (the corners K1 …
+K4). Gate 1 of the first version of this plan found a defect in (iii): the tie of V2 is singular when the directions
+of its masters cancel (PROTOKOLL 7.146 part 6). Chris chose V1 of 4.20 instead (decision D0 (d)), and V1 passed gate 1
+(7.147). V1 ran only the relaxations of 4.20 stage A (48³, q 8) and the two K5 runs of gate 1 (24³, CPU, 2 stages).
+V1 never ran cycles of production size on a GPU (box test B5 of 4.20 ran it for 1 cycle at d/l_ex 24), q 16 on a
+GPU, the 4.16 geometry or the corners. Thus this plan has two parts:
+- Part 1, the check of V1: does V1 remove the Bloch points of D (the correction without a tie), as V2 did? It runs
+  stages B and C of 4.20 again with V1, with the box automation of 4.20 without a change.
+- Part 2, the production line with V1 at the 4 corners. It covers the gaps that Chris named: q 16 at 9 and 50 mT,
+  amplitudes above 100 mT, the corners.
+Each part has its own rent. Part 2 needs a separate go after the report of Part 1.
 
 **Terms.**
 - Fraction surface (`--surface fraction`): each cell that the sphere surface cuts carries its volume fraction f (the
   part of its cube inside the sphere, from q³ sample points), and Ms, A, K_eff and K_p of the cell are scaled with f.
   Cut cell: 0 < f < 1. All cells with f > 0 belong to the particle, also cells whose centre is outside the sphere.
-  Voxel surface (phase 1): a cell belongs to the particle only if its centre is inside the sphere.
+  Voxel surface (phase 1): a cell belongs to the particle only if its centre is inside the sphere. Outside cut cell:
+  a cut cell whose centre lies outside its sphere.
 - Production line: the corner line of 4.15 (conv_jobs.sat_corner_lines: static saturation preparation with at most
   3 passes, newell_ext with 4 shells, the tolerances, 7 amplitudes 9, 20, 35, 50, 70, 100 and 150 mT, online stop,
   accumulators with harmonics, snapshots of the last 2 cycles at 9, 50 and 150 mT, 7 stage states) plus the correction
   at q 16 (`--surface fraction --staircase pair --staircase_q 16 --staircase_p 3 --staircase_centroid`), as in 4.17.
-- V2: `--tie_cells ghost_mirror` (4.20); its tied cells are exactly the cells with f > 0 and the centre outside the
-  sphere. Test run: the production line with V2 and `--diag_samples` (E3: the place of each Bloch point at each
-  sample; it does not change w, 4.20 stage C).
-- Phase 1 partner: the run of phase 1 of 4.15 with the same corner and seed (voxel surface, no correction, no V2;
+- V1 (`--tie_cells thin_face`, 4.20): each thin cell (a cut cell with f below l_ex/dx, that is 1/3 at dx 3 l_ex) is
+  tied with weight 1 to the face neighbour of the same particle with the largest shared occupied face (the pairs of
+  occupied sub-cells across the face, at the q of the run). If that neighbour is thin, the tie follows its master. A
+  thin cell without an occupied shared face, a cycle, or a chain longer than 3 cells takes the nearest free cell of
+  the same particle. Tied cell: its m equals the m of its master; it keeps its place, f, sub-cells and moment. Group:
+  a master and its tied cells; the group turns as one rigid moment, so the dynamics are exact (4.20). The other cut
+  cells stay free, with the f-weighted exchange of D. Every thin cell is an outside cut cell (4.20, also at q 16), so
+  the tied cells are a part of the outside cut cells. Test run: the production line with V1 and `--diag_samples`
+  (E3: the place of each Bloch point at each sample; it does not change w, 4.20 stage C).
+- Phase 1 partner: the run of phase 1 of 4.15 with the same corner and seed (voxel surface, no correction, no tie;
   local in runs/K<c>_<k>_sat of the study worktree).
 - Pass: one preparation (AC field from saturation, then the relaxation at H = 0); at most 3 passes until the prepared
   state has no Bloch point (production rule).
@@ -3055,13 +3069,13 @@ risk); (iv) the other factor values (the corners K1 … K4). This plan runs the 
   run_loops.py; the online count and the preparation gate use it). With the fraction surface the cut layer is counted;
   with the voxel surface of phase 1 it is not.
 - Interior cube: a counted cube whose 8 cells all have the centre inside the sphere (the cubes that phase 1 counts).
-  Cut-layer cube: a counted cube with at least one cell whose centre is outside the sphere (with V2: a tied cell).
+  Cut-layer cube: a counted cube with at least one outside cut cell (with V1 this cell can be tied or free).
 - Bloch sample: a time sample of a cycle with at least one Bloch point (cycle 0 included, as 4.20).
 - Stage with a value: a stage with a calm tail of at least 2 cycles within 15 cycles (summary.json `calm_ok`, the
   online rule of production; calm: |w_dis/w_loop − 1| ≤ 0.20).
 - Contact: two cells of different particles that touch at an edge or a corner.
 - Run geometry: the file geometry.npz of a run (ids, f, the cells with the centre inside, and the moment weight μ of
-  the dissipation divided by M_s: f for a free cell, the group moment of a master, 0 for a tied cell).
+  the dissipation divided by M_s: f for a free cell, the sum of f of its group for a master, 0 for a tied cell).
 
 **Contacts (decision of Chris 2026-11-06, "Ok" on option 1; code K0, e823a8e).** The centre of a cut cell lies at
 most 0.866 cells outside the sphere, so cut cells of two particles can touch at edges and corners at a gap of at most
@@ -3072,9 +3086,12 @@ two particles. geometry.fcc_box now accepts edge and corner contacts for the fra
 contacts and cells of two particles; the voxel rule does not change; config.json records the count (`n_touch`). Tests
 (test_study.py): the rule on synthetic cells; K3 at q 8 (5328 pairs, no face contact; the voxel surface has none);
 the exchange at K3: a new m in particle 0 leaves the exchange field of all other cells bitwise unchanged. At K3 and
-q 16 (local check): the sub-cells of the correction agree with the geometry (the check of run_loops.py); V2 ties
-47136 cells without a fall-back; each of the 6336 contact pairs is a pair of two tied cells; no counted cube has
-cells of two particles.
+q 16 (local check): the sub-cells of the correction agree with the geometry (the check of run_loops.py); no counted
+cube has cells of two particles. V1 at K3 and q 16 (time_tie421.py, count_contacts_v1_421.py,
+results/plan421_contacts_v1.json): 38 208 tied cells, longest chain 2 cells, no fall-back; the 6336 contact pairs
+(2256 at an edge, 4080 at a corner, none at a face) are all pairs of two tied cells (two thin outside cut cells); no
+master lies in another particle than its tied cell (tie_thin_face takes the face neighbour or the fall-back cell only
+in the same particle). Thus a tie never couples two particles, and no free cell has a contact.
 
 **Evaluation with the fraction surface (go of Chris 2026-11-06: "alle nötigen Patches … alle Auswertungen, so wie wir
 sie auch in der Voxelgeometrie machen konnten"; code K6).** Finding of the second review: the post-processing had
@@ -3088,11 +3105,15 @@ q 16. Rule of the patch (decision under the mandate, for the review of Chris):
   rebuilds it from config.json as run_loops builds it (the surface model, q, and the tie).
 - The cell sets are the particle cells of the run (f > 0). Volume integrals and volume shares are weighted with f.
 - The loss parts from m (the fundamental, the harmonics k ≤ 7, the phase-resolved loss) use the moment weight μ, the
-  same weight as the measured loss p. Thus the sum rule Σ p_k ≤ p holds in each cell, and the loss of a tied cell is
-  on its masters, as p.
+  same weight as the measured loss p (run_loops.py gives the same tensor to the dissipation and to geometry.npz). For
+  an exactly periodic motion, the sum of the harmonic losses p_k equals p in each cell (Parseval). The measured cycles
+  are not exactly periodic, and the sum of p_k can be larger than p in a cell: in the voxel corner runs, bessel_max
+  (the largest ratio of the sum of p_k to p in a cell) is above 1 in 254 of 259 stages (7.147); bessel_max is
+  information. test_plan421.py checks the weight of p_k and of the fundamental p_f with a synthetic, exactly periodic
+  motion on the K5 geometry with V1. The loss of a tied cell is on its master, as p.
 - The "top 10 %" class of the texture takes the cells with the largest value that hold 10 % of the volume (f). The
   classes ranked by a loss (the "p top 10 %" class, the hot cells of the hot spots and hot cores) rank by the loss per
-  moment weight (p/μ: the loss density of a cell or of a V2 group) and hold 10 % (1 %) of the sum of μ (which equals
+  moment weight (p/μ: the loss density of a cell or of a V1 group) and hold 10 % (1 %) of the sum of μ (which equals
   the sum of f); a tied cell (μ = 0) is never in such a class. The particle radius R_p of r/R_p comes from the cells
   with the centre inside (the voxel cells), so the outer cut cells have r/R_p > 1.
 - Smoothing, gradients and labels stay cell-based inside one particle; a hot-spot region that holds cells of two
@@ -3106,10 +3127,75 @@ and of the patch on two copies of a small voxel run with the production line (K5
 amplitudes): all outputs are bitwise equal (acc.json, phasemap, phase_extra, domains, hot spots, hot cores, census,
 acc_slices, slices); the legacy 4-phase dissipation map (dissmap_batch.py, on a copy with 4 phases) differs only in R
 by 6e-8 relative, because the float32 sum of numpy depends on the memory alignment (two equal arrays gave means 1
-rounding step apart). The K5 test (below) checks the fraction surface with V2 and contacts; unit tests of the rebuild,
+rounding step apart). The K5 test (below) checks the fraction surface with V1 and contacts; unit tests of the rebuild,
 the volume classes and the region split.
 
-**Design.** 12 test runs: corners K1 … K4, seeds k = 0, 1, 2 of phase 1 (K1 2011 … 2013, K2 2021 … 2023, K3 2031 …
+**Part 1: stages B and C of 4.20 again, with V1 (box; the box automation of 4.20).** Terms of 4.20 used here: C, D
+(the fraction surface without and with the correction at q 8, 4.16); the arms C8, D8, D8V1, D8V2 and F8 of stage B
+(staircase geometry, 48³; F8 is D8 at dx 1.5 l_ex, the fine-mesh reference); D16 (D at q 16); DV1 and DV116 (D and
+D16 with V1; DV2 and DV216 with V2); HFD (the D jobs of 4.16); HFP_s<seed> and D15_s<seed> (the start states of
+stages C and B); R0 (the control of the D path); AV1 (the V1 arm of stage A); E6 (the tie code and its tests); the
+box tests B1 … B5 and the readings B-0 … C-b of 4.20.
+- Before the start (operations, no new code): the change of test_plan421.py and count_contacts_v1_421.py committed and
+  pushed to the github remote of the diag branch; that commit is the pinned commit of Part 1. The 4.20 data move from
+  runs/plan420_box to runs/plan420_box_V2 (md5 check after the move), because fetch420.sh writes to runs/plan420_box
+  and the job names of Part 1 are the same. The state and log files of the 4.20 box scripts (auto420_state.json,
+  watch420_state.json, auto420.log, watch_rent420.log) go to box420/archive_plan420/ with md5, because the watcher
+  would read the old rent time and the old events. The local evaluations of Part 1 write to results/plan421p1_*
+  (results/plan420_* are the committed 4.20 results).
+- Start: `auto420.py <commit> V1`. The script rents under the rules of 4.20: V100 16 or 32 GB, 2 … 4 GPUs (decision
+  P1), at most 0.10 $ per GPU-h, host memory at least 64 GB, disk 200 GB, CUDA 12.6 or newer, not deverified, not the
+  excluded machines and host of 4.19. It waits up to 72 h for an offer; I report after 24 h without an offer. It runs
+  the box tests B1 … B5 of 4.20 (B3: the states D15_s941 … 944, HFP_s921, 923, 924 and 925, and K4_2_sat, with md5; B5:
+  test 6 of test_plan420.py on GPU 0, the end-to-end runs of D, V1 and V2 with 1 cycle at d/l_ex 24; the bitwise
+  repeat on the GPU is for V2 only). Then it starts the dispatcher (no retry) and chain420.sh with the gate-A variant
+  V1. watch420.py runs on the mini PC every 20 min.
+- Jobs (the lines of 4.20: jobs/plan420_stageB.txt, plan420_tailB.txt, plan420_q16_D16.txt, plan420_stageC_V1.txt,
+  plan420_q16_V1.txt, plan420_spare_V1.txt): stage B F8, D8, D8V1 and C8 (16 jobs); in its tail R0, HFP_s922 and D16
+  (5 jobs); the selection; stage C DV1 at q 8 at 9, 50 and 100 mT (12 jobs) and DV116 at 100 mT (seeds 921, 923, 924;
+  3 jobs); the 5 jobs of the spare seed 925 (D at 9 and 50 mT, DV1 at 9, 50 and 100 mT) only if fewer than 7 counted
+  q-8 jobs ran their cycles. With less than 128 GB of host memory, one q-16 job runs at a time (chain420.sh). This is
+  the job set of 4.20 with V1 in place of V2 (4.20: 36 jobs, 53.7 GPU-h). Stage B runs because chain420.sh always runs
+  it; stage C alone would need a change of the script.
+- References on the same commit and box: F8, D8, C8 and D16, and R0. References from earlier runs (other box and
+  commit): HFD of 4.16 (C-a counts a DV1 job only if its HFD job has a relaxed state without a Bloch point; C-b pairs
+  DV1 with D and C of 4.16) and S3D_s925 of 4.18 (the D job at 100 mT of the spare seed). R0 is the control of these
+  pairs: w of R0_s921 equals HFD_s921_b100 of 4.16 within 1e-6 relative (4.20: relative difference 0).
+- Readings: the rules of 4.20 without a change (B-0, B-a, B-b, B-c, the selection, C-a, C-b, the verdict), with V1 as
+  the only variant of gate A (Chris released the gate-A result of V1 with D0). The selection gives NONE (no stage C)
+  if V1 fails B-a, or if D8V1 ran its cycles in fewer than 2 seeds. If B-a is not valid (D8 with Bloch samples in fewer
+  than 2 seeds), the selection gives V1, and Part 1 has no stage-B test of V1.
+- Information after the download (local, no criterion; two one-off scripts): V1 against V2 of 4.20 per seed and
+  amplitude (other box and commit; the reruns of D8, F8, C8 and D16 show whether those references reproduce); the
+  q-16 comparisons of C-b (eval_420.py does not print them, as in 4.20); the largest tilt of a free cut cell and the
+  free cut cells above 45° in the relaxed D8V1 states (eval_420.readings_A), next to D8 of the same run (paired) and
+  AV1 of stage A (38.4 … 40.9°, none above 45°; other start states, not paired); the run time per job against 4.20.
+- Stops and warnings: those of chain420.sh and watch420.py, with the cost limit 16 $ and the budget of 1 $ for failed
+  boxes in the scripts. An R0 fail or a selection NONE stops new jobs (the stop file of the dispatcher); the jobs in
+  progress do not stop by themselves. After an R0 fail I stop them at once (their data rest on a changed D path);
+  after NONE they end (at most about 3.6 h: R0, HFP_s922 and D16 are references). A Bloch sample does not stop Part 1:
+  all jobs run, as in 4.20.
+- End: download with fetch420.sh (the small files, the relaxed states and the field files of stage B; 4.20: 0.78 GB
+  for stage B, 0.79 GB for stage C, by the md5 lists) and the box logs (as boxlogs420.tgz in 4.20), md5 check, then
+  destroy. Report and PROTOKOLL.
+- Gate of Part 1 (my reading for the report; Part 2 needs a separate go): R0 passes; the selection is V1; C-a holds at
+  q 8 and at q 16. At q 16: D16 has Bloch samples in at least 2 seeds, at least 2 of the 3 DV116 jobs ran their
+  cycles, and no counted DV116 job has a Bloch point in its relaxed state or in a sample of its cycles. eval_420.py
+  does not block its verdict "no Bloch points in these runs" when q 16 is "not valid" or "not determined"; I read q 16
+  from the stage-C json. The q-16 condition is new against 4.20 (decision of Chris with the go).
+- Cost (estimates). Work: 53.7 GPU-h with V2 in 4.20; V1 can need more or fewer relaxation iterations (stage A: V1 4000
+  … 15000, V2 6500 … 27000), so about 45 … 65 GPU-h, and about 9 GPU-h more with the spare seed. Wall time and idle
+  GPUs, from a simulation of the priorities of chain420.sh with the 4.20 job times and the V1 jobs at 0.8 … 1.3 times
+  the V2 times (it gives 13.6 h for 4.20 against 14.5 h measured):
+  - 2 GPUs (one q-16 job at a time): about 25 … 32 h, about 1 … 3 idle GPU-h.
+  - 3 GPUs (one q-16 job at a time): about 20 … 27 h, about 13 … 18 idle GPU-h.
+  - 4 GPUs with at least 128 GB (one q-16 set-up at a time): about 12 … 16 h, about 1 … 2 idle GPU-h.
+  - 4 GPUs below 128 GB: about 20 … 25 h, about 31 … 35 idle GPU-h.
+  Box cost = (wall time + about 1 h of box tests) × price per hour + storage (4.20: about 0.2 $). At 0.094 $ per GPU-h:
+  2 GPUs (0.188 $ per h) about 5 … 6.5 $; 3 GPUs (0.281 $ per h) about 6 … 8 $. At 0.32 … 0.40 $ per h (4 GPUs, at
+  least 128 GB) about 4.5 … 7 $. The spare seed adds about 1 $.
+
+**Part 2: design.** 12 test runs: corners K1 … K4, seeds k = 0, 1, 2 of phase 1 (K1 2011 … 2013, K2 2021 … 2023, K3 2031 …
 2033, K4 2041 … 2043). Names `K<c>_<k>_v16`. Meshes 108³ (K1), 152³ (K2), 104³ (K3), 156³ (K4); all at dx 3 l_ex.
 The seeds are those of the first 3 corner runs of 4.17. The later A100 runs with the same seeds give pairs that
 differ in hardware, commit and the prepared state.
@@ -3152,11 +3238,11 @@ V100 is slower than the A100, and a slow K2 run can need about 26 h). The chain 
 - Information (no criterion): P and β per corner against the phase 1 partners, paired by seed (n 3, mean ± SE, 95 %
   t-interval): ln P at 9, 50, 100 and 150 mT as factors on P; β over all amplitudes and in the windows 9-20-35,
   35-50-70 and 70-100-150 mT (the quantities of 4.15 and 4.17). This is the difference of the whole surface model
-  (fraction surface, correction at q 16 and V2) against the voxel surface, not of V2 alone.
-- Verdict (the test has no arm without V2, so it is a verdict on the production line with V2):
-  - "The production line with V2 passes" if R1 and R2 hold at K1, K3 and K4, at most 2 of the 84 stages have no
+  (fraction surface, correction at q 16 and V1) against the voxel surface, not of V1 alone.
+- Verdict (the test has no arm without V1, so it is a verdict on the production line with V1):
+  - "The production line with V1 passes" if R1 and R2 hold at K1, K3 and K4, at most 2 of the 84 stages have no
     value (R3), and R4 has no FAIL.
-  - "The production line with V2 fails" if a test run of K1, K3 or K4 has a Bloch sample in a cycle, or a run of these
+  - "The production line with V1 fails" if a test run of K1, K3 or K4 has a Bloch sample in a cycle, or a run of these
     corners has no clean prepared state after 3 passes.
   - Else "not determined" (for example fewer than 2 complete runs at a corner, a run with R2 not evaluable, more than
     2 stages without a value, or an R4 FAIL). Each case is reported with its cause.
@@ -3166,87 +3252,172 @@ V100 is slower than the A100, and a slow K2 run can need about 26 h). The chain 
 - Failed job: an exit code other than 0 (no retry), a relaxation without a stop within 80 000 iterations (no gate
   retry), or the job timeout of 40 h. It gives no value for P and β; its Bloch samples count for R1 if it ran cycles.
 
-**Code (branch diag/sliver-coupling; tests first; one pinned commit for all runs).**
-- K0 Contacts (done, e823a8e). K6 Evaluation with the fraction surface (done, see above).
-- K1 Job lines: conv_jobs.plan421_lines() (sat_corner_lines(3) plus the correction at q 16, V2 and E3);
-  jobs/plan421.txt. Test: each line differs from its 4.15 line only in these arguments, and every other argument equals
-  the config.json of its phase 1 partner (or is a key of newer code with its default).
-- K2 eval_421.py: R1 … R5, the information and the verdict; the cube classes from the run geometry and the cube
-  positions of E3. Test of the rules on synthetic run folders (test_plan421.py).
-- K3 Box scripts (box421/): watch_rent421.py, auto421.py, watch421.py, fetch421.sh, box421_setup.sh, gpucheck421.py
-  and chain421.sh. The chain submits one job at a time and waits for the end of its set-up (the line "[relax] virgin
-  state" of run_loops) before the next job, so that one q-16 set-up of about 34.5 GiB runs at a time; a job that did
-  not start before a stop does not hold the chain. For each finished run, in the background (the next job is not
-  delayed): check_sat_run.py; after a PASS eval_hotspots.py, eval_hotcores.py, census_bloch.py, and only if all three
-  end with exit code 0, instance_postproc.py for this run (it deletes the snapshots and the accumulator files); else
-  the files stay, and `fetch421.sh <host> <port> kept` downloads them (I state the size first; up to about 9 GB per
-  run). A run with R4_RESULT is not checked again after a restart of the chain. If all submitted small runs end and
-  none passes R4, the chain stops new jobs (then: download, md5, destroy, report). The post-processing loop of the
-  dispatcher does not take the `_v16` names. auto421.py checks that the queue settings are in dispatcher.sh before
-  the chain starts. Tests: the chain with a fake dispatcher (order, set-up gate, R4 gate, the stops of R4 and D5, a
-  stop with a job in the queue, no R4 PASS); the parser of the watcher.
-- K4 Resource record: run_loops.py writes the peak GPU memory (torch.cuda.max_memory_reserved) and the peak host
-  memory (resource.getrusage, ru_maxrss) into summary.json after the preparation and after each stage; watch421.py
-  also reads memory.used of each GPU from nvidia-smi, the available memory of the container (cgroup memory.max and
-  memory.current), and whether chain421.sh and dispatcher.sh still run.
-- K5 Gate 1 (local CPU) and box test B5 (GPU 0): test_plan421.py::test_k5_end_to_end. The production argument set
-  plus V2 and E3 at d/l_ex 48, φ 0.55, L_eff/l_ex 6, r_p 1.5 (mesh 24³, gap 1.6 cells, 1344 contact pairs), 2
-  amplitudes (9 and 50 mT, snapshots at both), at most 3 cycles; then the steps of the chain on its folder. Pass: exit
-  code 0; geometry.npz equals the rebuild from config.json; E3 files exist; check_sat_run.py has FAIL lines only for
-  the stage count (the test has 2 of 7 stages); hot spots, hot cores, census and the post-processing end without an
-  error; the accumulator sum check and the sum rules of the harmonics hold. A fail is a finding with a patch
-  proposal, no rent.
-- test_plan420.py, test_plan418.py, test_plan421.py and test_study.py pass.
+**Code (branch diag/sliver-coupling; one pinned commit for each part). No new box code.** Part 1 uses the code and
+the box scripts of 4.20 (E6, eval_420.py, box420/, chain420.sh); after Part 1, two local one-off evaluation scripts
+(see Part 1). For Part 2:
+- K0 Contacts (done, e823a8e). K6 Evaluation with the fraction surface (done, see above; the run geometry of V1 from
+  the sub-cells at q: 0ad4d75).
+- K1 Job lines (done, with V1: 0ad4d75): conv_jobs.plan421_lines() (sat_corner_lines(3) plus the correction at q 16,
+  V1 and E3); jobs/plan421.txt. Test: each line differs from its 4.15 line only in these arguments, and every other
+  argument equals the config.json of its phase 1 partner (or is a key of newer code with its default).
+- K2 eval_421.py (done, with V1): R1 … R5, the information and the verdict; the cube classes from the run geometry and
+  the cube positions of E3. Test of the rules on synthetic run folders (test_plan421.py).
+- K3 Box scripts (done, with V1): box421/ (watch_rent421.py, auto421.py, watch421.py, fetch421.sh, box421_setup.sh,
+  gpucheck421.py) and chain421.sh. The chain submits one job at a time and waits for the end of its set-up (the line
+  "[relax] virgin state" of run_loops) before the next job, so that one q-16 set-up of about 34.5 GiB runs at a time;
+  a job that did not start before a stop does not hold the chain. For each finished run, in the background (the next
+  job is not delayed): check_sat_run.py; after a PASS eval_hotspots.py, eval_hotcores.py, census_bloch.py, and only
+  if all three end with exit code 0, instance_postproc.py for this run (it deletes the snapshots and the accumulator
+  files); else the files stay, and `fetch421.sh <host> <port> kept` downloads them (I state the size first; up to
+  about 9 GB per run). A run with R4_RESULT is not checked again after a restart of the chain. If all submitted small
+  runs end and none passes R4, the chain stops new jobs (then: download, md5, destroy, report). The post-processing
+  loop of the dispatcher does not take the `_v16` names. auto421.py checks that the queue settings are in
+  dispatcher.sh before the chain starts. Tests: the chain with a fake dispatcher (order, set-up gate, R4 gate, the
+  stops of R4 and D5, a stop with a job in the queue, no R4 PASS); the parser of the watcher.
+- K4 Resource record (done): run_loops.py writes the peak GPU memory (torch.cuda.max_memory_reserved) and the peak
+  host memory (resource.getrusage, ru_maxrss) into summary.json after the preparation and after each stage;
+  watch421.py also reads memory.used of each GPU from nvidia-smi, the available memory of the container (cgroup
+  memory.max and memory.current), and whether chain421.sh and dispatcher.sh still run.
+- K5 Gate 1 (done; passed with V1 2026-11-07, PROTOKOLL 7.147) and box test B5 of Part 2 (GPU 0):
+  test_plan421.py::test_k5_end_to_end. The production argument set plus V1 and E3 at d/l_ex 48, φ 0.55, L_eff/l_ex 6,
+  r_p 1.5 (mesh 24³, gap 1.6 cells, 1344 contact pairs), 2 amplitudes (9 and 50 mT, snapshots at both), at most 3
+  cycles; then the steps of the chain on its folder. Pass: DONE, 2 complete stages in summary.json and a log without
+  an error (the local runs of gate 1 had no recorded exit code: decision of Chris 2026-11-07; on the box the test
+  also checks the exit code 0); geometry.npz equals the rebuild from config.json; E3 files exist; check_sat_run.py
+  has FAIL lines only for the stage count (the test has 2 of 7 stages); hot spots, hot cores, census and the
+  post-processing end without an error; the accumulator sum check holds. The moment weight of the loss parts:
+  test_acc_reduce_weights_the_harmonics_as_p (a synthetic, exactly periodic motion on the K5 geometry with V1: the
+  harmonic losses p_k and the fundamental p_f of acc_reduce.py carry μ; decisions of Chris 2026-11-07). A fail is a
+  finding with a patch proposal, no rent.
+- Tests: test_plan420.py, test_plan418.py, test_plan421.py and test_study.py pass. Run on 2026-11-07 (local CPU, 2
+  threads; d2946b4 plus the change of test_plan421.py that became 31330a6, md5 of the file equal): all four pass, exit
+  code 0 each: test_plan421.py 6 passed, 2 skipped; test_plan418.py 12 passed, 1 skipped; test_plan420.py 18 passed, 1
+  skipped; test_study.py 158 passed, 5 skipped (logs local in runs/plan421_gate1_v1/tests4_2026-11-07, md5_tests4.txt).
 
-**Box (one path; decision D6 for the market).** Changes against the rent rules of 4.20: V100 32 GB only (4.20: 16 or
-32 GB), exactly 4 GPUs (4.20: 2 … 4), host memory at least 128 GB, disk 160 GB (snapshots up to about 9 GB per run
+**Box of Part 2 (decision D6).** Changes against the rent rules of 4.20: V100 32 GB only, exactly 4 GPUs, host memory
+at least 128 GB (decimal GB, as the scripts; the offers list GiB), disk 160 GB (snapshots up to about 9 GB per run
 until the post-processing). Unchanged: at most 0.10 $ per GPU-h, CUDA 12.6 or newer, not deverified, not the excluded
 machines and host of 4.19. GPU memory at 156³ (estimate): about 13 GiB for q16_156 (staircase PLAN 16, nvidia-smi)
 plus about 1.2 GiB for the accumulators with harmonics (HarmAcc, 332 B per cell); 16 GB is not safe. Host memory: one
-q-16 set-up (34.5 GiB at 156³) beside 3 runs; the resident memory of a q-16 run after its set-up is not measured
-(assumption: at most about 25 GB each). Box tests: B1, B2 and B4 as in 4.19 (B4 needs the upload of K4_2_sat/init.pt
-with md5, as 4.20); B3 is only this upload, because the preparation starts from saturation; B5: the K5 test on GPU 0.
-A failed B1 … B4: logs with md5, destroy at once, next rent, until the failed boxes cost 1 $. A failed B5: logs with
-md5, destroy at once, report with a patch proposal.
-Market on 2026-11-06, about 07:00 UTC (search only, no rent): 4 × V100 32 GB at most 0.10 $ per GPU-h: one offer at
-0.067 $, deverified (excluded by the rule); the next 4 × V100 32 GB offers 0.160 … 0.211 $ per GPU-h; one 8 × V100
-32 GB at 0.107 $ per GPU-h (verified, 252 GB). V100 16 GB: offers at 0.094 $ per GPU-h.
+q-16 set-up (34.5 GiB at 156³, measured with the correction, without a tie) beside 3 runs; the extra memory of V1 at
+152³ and 156³ is not measured (the tie at K3: 5.73 GiB peak for the whole geometry in one process, time_tie421.py);
+the resident memory of a q-16 run after its set-up is not measured (assumption: at most about 25 GB each). Box tests:
+B1, B2 and B4 as in 4.19 (B4 needs the upload of K4_2_sat/init.pt with md5, as 4.20); B3 is only this upload,
+because the preparation starts from saturation; B5: the K5 test on GPU 0. A failed B1 … B4: logs with md5, destroy at
+once, next rent, until the failed boxes cost 1 $ (for this rent). A failed B5: logs with md5, destroy at once, report
+with a patch proposal.
+Market on 2026-11-07, 07:08 … 07:12 UTC (search only, no rent; box421/market_2026-11-07.txt, local):
+- 4 × V100 32 GB: 0.067 $ per GPU-h (two offers, deverified; one on the excluded host 381795), 0.107 $ (verified, on
+  the excluded host 381795), 0.120 $ (deverified), 0.160 $ (verified, machine 150948, 126 GiB) and 0.174 $ (verified).
+  No offer meets the rules of Part 2 now. 8 × V100 32 GB: only deverified offers.
+- For Part 1 (search again at 08:04 UTC with the query of watch_rent420.py, market_p1.json): two offers meet the
+  rules of 4.20. Machine 150124: 3 × V100 16 GB at 0.0937 $ per GPU-h (0.281 $ per h), 67 GB, unverified; the script
+  takes it first (the lowest price per GPU-h). Machine 43024: 2 × V100 16 GB at 0.094 $ per GPU-h (0.188 $ per h),
+  101 GB, unverified; the machine of the 4.20 box.
 
-**Order of the jobs.** GPU 0 … 3 start with the small runs K1_0, K3_0, K1_1 and K3_1 (as 4.15: large runs only after
-the first-run check). After the R4 PASS of the first finished run: K2_0, K2_2, K4_0, K2_1, K4_1, K4_2 (the longest
-first), then K1_2 and K3_2. End about 28 h after the start (estimate).
+**Order of the jobs of Part 2.** GPU 0 … 3 start with the small runs K1_0, K3_0, K1_1 and K3_1 (as 4.15: large runs
+only after the first-run check). After the R4 PASS of the first finished run: K2_0, K2_2, K4_0, K2_1, K4_1, K4_2 (the
+longest first), then K1_2 and K3_2. End about 28 h after the start (estimate).
 
-**Early warnings and stops (watch421.py every 20 min; I report each one at once).**
+**Early warnings and stops of Part 2 (watch421.py every 20 min; I report each one at once).**
 - A Bloch sample in a test run at K1, K3 or K4: decision D5.
 - An R4 FAIL: the chain starts no new jobs. When the jobs in progress end: download, md5, destroy (no box waits).
 - A prepared state that needs a third pass (its second pass ended with a Bloch point); a failed job; a GPU above 28
   GiB (memory.used); less than 8 GB of container memory available; chain421.sh or dispatcher.sh not running without
   an end marker; 75 % of the cost limit: report, the jobs continue.
 
-**Cost (estimates).** From the phase 1 partners (V100, without the correction; cycle wall time and the time from
-the start to DONE in stdout.log): cycles K1 and K3 about 1.5 h, K2 3.8 h, K4 4.2 h; one pass about 1.0 h (K1, K3) and
-about 2.4 … 2.7 h (K2, K4). Factor of q 16 on the time per sample interval: 1.97 at 108³ and 1.45 at 156³ (staircase
-PROTOKOLL 3.46, as in 4.17). Set-up 17.5 min at 108³ and 34 min at 156³. With the phase 1 passes of the same seeds:
-K1 and K3 about 5.2 V100-h per run; K2_0 17.6, K2_1 10.0, K2_2 13.6; K4 about 10.6 per run. Sum about 105 V100-h.
-Upper estimate about 155 V100-h: V2 needed up to 2 times the relaxation iterations in stage A of 4.20, the time step
-of the correction at 150 mT is not measured, and a run can need more passes than its partner. Wall time on 4 GPUs
-about 28 … 41 h with the box tests. Box cost at 0.32 … 0.40 $ per h: about 9 … 17 $ with storage. My work on the code
-and the plan: done (2026-11-06).
+**Cost of Part 2 (estimates).** From the phase 1 partners (V100, without the correction; cycle wall time and the time
+from the start to DONE in stdout.log): cycles K1 and K3 about 1.5 h, K2 3.8 h, K4 4.2 h; one pass about 1.0 h (K1, K3)
+and about 2.4 … 2.7 h (K2, K4). Factor of q 16 on the time per sample interval: 1.97 at 108³ and 1.45 at 156³
+(staircase PROTOKOLL 3.46, as in 4.17). Set-up 17.5 min at 108³ and 34 min at 156³ (V100, with the correction; the V1
+tie takes less than 1 s at K3 on the CPU). With the phase 1 passes of the same seeds: K1 and K3 about 5.2 V100-h per
+run; K2_0 17.6, K2_1 10.0, K2_2 13.6; K4 about 10.6 per run. Sum about 105 V100-h. Upper estimate about 155 V100-h:
+no run with V1 and the correction ran at the corners, and a tie can change the relaxation (4.20 stage A: V1 4000 …
+15000 iterations, V2 6500 … 27000); the time step of the correction at 150 mT is not measured; a run can need more
+passes than its partner. Wall time on 4 GPUs about 28 … 41 h with the box tests. Box cost = wall time × price per
+hour + storage: at 0.32 … 0.40 $ per h (at most 0.10 $ per GPU-h) about 9 … 17 $; at 0.64 $ per h (0.160 $ per GPU-h,
+the cheapest offer now) about 18 … 27 $. Credit: 22.16 $ now; after Part 1 about 14 … 17 $.
+My work: none on the code; the reports and the PROTOKOLL.
 
-**Cost limit (decision D3).** For the whole plan (box cost with failed boxes, tests, runs and storage). At 75 % I
-report with a projection; the jobs continue. At the limit: stop, download, md5, destroy. Before the rent the credit
-must be at least the limit plus 1.5 $ (now 22.16 $).
+**Cost limit (decision D3).** For each rent (box cost with failed boxes, tests, runs and storage). At 75 % I report
+with a projection; the jobs continue. At the limit: stop, download, md5, destroy. Before a rent the credit must be at
+least the limit plus 1.5 $. If the credit falls below the cost of the remaining jobs plus 1 $, I report at once.
+Part 1: the values of the scripts of 4.20 (cost limit 16 $, credit at least 17.5 $; estimate 5 … 8 $).
 
-**Data and end.** Download of the small files, the E3 files, the run geometry, the results of the post-processing
-and of the checks, and the state files (init.pt and the 7 stage states; about 3 … 4 GB in total, estimate from the
-phase 1 folders of 137 … 401 MB per run), md5 check, then destroy. Raw data local with an md5 list; only evaluations
-are committed. A go on this plan includes the rents under these rules and the destroy of the box after the md5 check.
-Results go to the next free PROTOKOLL section at the time of the write.
+**Data and end.** Part 1: see Part 1. Part 2: download of the small files, the E3 files, the run geometry, the
+results of the post-processing and of the checks, and the state files (init.pt and the 7 stage states; about 3 … 4 GB
+in total, estimate from the phase 1 folders of 137 … 401 MB per run), md5 check, then destroy. Raw data local with an
+md5 list; only evaluations are committed. A go on this plan includes the rent of Part 1 under the rules of 4.20 and
+the destroy of its box after the md5 check. Part 2 needs its own go. Results go to the next free PROTOKOLL section at
+the time of the write.
 
-**Consequences (proposals; Chris decides).** "The production line with V2 passes": a new version of 4.17 with V2, the
-contact rule and the evaluation patch (it needs the merge of the diag branch to main, with its own go, and a control
-on the merged commit: the K5 run gives the same w within 1e-6), with the times of R5. "Fails" or "not determined":
-report with the readings and options.
+**Consequences (proposals; Chris decides).** Part 1 "remedy fails" (a Bloch point in a counted V1 job): report with
+the readings and options (a new decision on the tie). "Not valid" or "not determined" (too few jobs, a positive
+control without Bloch samples): report with the cause and options (for example the spare seed or a repeat); this is
+no evidence against V1. An R0 fail: a finding on the D path of the code, report with a patch proposal. Part 1
+passes its gate: the go for Part 2 with D1 … D7. "The production line with V1 passes": a new
+version of 4.17 with V1, the contact rule and the evaluation patch (it needs the merge of the diag branch to main,
+with its own go, and a control on the merged commit: the K5 run gives the same w within 1e-6), with the times of R5
+and the change of the loss of V1 from C-b. "Fails" or "not determined": report with the readings and options.
+
+**Decisions for Chris.**
+- D0 The tie of the cut cells: **decided 2026-11-06: (d) V1, with the release of the gate-A result of V1** (see
+  "Background" and the record).
+- For the go on Part 1, these points are part of the go:
+  - Stage B and all references of 4.20 run again (chain420.sh always runs stage B; 11.4 of the 53.7 GPU-h in 4.20,
+    about 1 $). Stage C alone needs a change of the script.
+  - The cost limit 16 $ and the budget of 1 $ for failed boxes of the 4.20 scripts (estimate 5 … 8 $).
+  - Two rents instead of one box ("Lückenläufe auf einer Box", option 2): one box for both parts needs new code
+    (the chains of 4.20 and 4.21 share the spool folder), and Part 2 needs a box with 32 GB, which has no offer now.
+  - The q-16 condition of the gate of Part 1 (new against 4.20).
+  - P1 Box of Part 1. (a) The rules of 4.20 as they are (2 … 4 GPUs): the script now rents machine 150124 (3 GPUs),
+    about 6 … 8 $, about 20 … 27 h, and about 13 … 18 idle GPU-h (one q-16 job at a time below 128 GB). Pro: no
+    change. Con: idle GPUs on a rented box. (b) Exactly 2 GPUs: one value in the search query of watch_rent420.py
+    (num_gpus=2); now machine 43024, about 5 … 6.5 $, about 25 … 32 h, about 1 … 3 idle GPU-h. Pro: the cheapest; no
+    idle GPU. Con: about 5 h longer; one changed value. (c) 4 GPUs with at least 128 GB (two values): about 4.5 … 7 $,
+    about 12 … 16 h. Con: no offer now. Recommendation (b).
+- For the go of Part 2 (after the report of Part 1; my recommendation now, open to change by the result of Part 1):
+  - D1 Positive control in Part 2. (a) None: Part 1 shows the Bloch points of D and D16 next to V1 at the 4.16
+    geometry, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Con: Part 2 then shows only
+    that the production line with V1 runs clean, not that V1 removes Bloch points at the corners. (b) D16 at K2_0 and
+    K4_0 (2 more large runs, about 28 V100-h, about 2.5 … 4.5 $ by the price of the box). Pro: a positive control at
+    the corners. Risk: K2 has Bloch points also in phase 1 (voxel surface), so D16 at K2 does not separate the
+    effect of the correction. Recommendation (a).
+  - D2 Rule at K2. (a) Information only: the Bloch samples per stage in interior and cut-layer cubes, the longest run
+    of consecutive cut-layer samples, next to the phase 1 partner. (b) A strict rule: K2 fails if a stage has a
+    cut-layer Bloch point in more than a fixed share of its samples. Con of (b): no measured value gives that share.
+    Recommendation (a): K2 has Bloch points in the cycles also without the correction (phase 1: from 50 mT on, after
+    a clean prepared state), and no measured value gives a threshold that separates them from the signature of D.
+  - D3 Cost limit of Part 2. The credit after Part 1 is about 14 … 17 $, so without a top-up the limit is at most
+    about 12.5 … 15.5 $. (i) That limit: no top-up; the upper estimate (17 $ plus up to 1 $ for failed boxes) is above
+    it, so the last runs can stop at the limit, with the verdict "not determined" at their corner. (ii) 18 $ with a
+    top-up of about 3 … 6 $: it covers the upper estimate at most 0.10 $ per GPU-h. Recommendation (ii).
+  - D4 Use of the test runs in the production. (a) No: the runs use the diag commit and V100 GPUs; the production
+    uses one commit of main on the A100. (b) Yes, as k = 0 … 2 of the corners: 12 runs less in production, but
+    paired with other hardware and another commit. Recommendation (a).
+  - D5 A Bloch sample at K1, K3 or K4 (the verdict is then "fails"). (a) The chain starts no new jobs; the jobs in
+    progress end, then download, md5, destroy. (b) All jobs continue, for the readings at the other corners (about
+    the rest of the cost). Recommendation (a): the jobs that did not start cost nothing, and the jobs in progress
+    still give data of the other corners.
+  - D6 Box of Part 2. (a) The rules as written: auto421.py waits up to 24 h for a 4 × V100 32 GB at most 0.10 $ per
+    GPU-h (then it stops with "no offer"). Pro: the cheapest. Con: no such offer on 2026-11-06 and 2026-11-07. Risk:
+    a wait of days. (b) 4 × V100 32 GB at most 0.17 $ per GPU-h (now 0.160 $): about 18 … 27 $. Pro: an offer now.
+    Con: a top-up of about 13 … 15 $ before the rent. Recommendation (a), and a new report after 24 h without an offer.
+  - D7 Split of the cut-layer Bloch samples of R1 by a tied cell in the cube (from μ in geometry.npz; information).
+    (a) Yes: it shows whether a Bloch point sits at the tie or at a free cut cell. Con: new code in eval_421.py
+    (about 1 h with a test). (b) No: R1 as written; Part 1 gives the tilt of the free cut cells (relaxed states).
+    Recommendation (b), without new code; (a) if Part 1 shows Bloch points at free cut cells.
+
+**Not in this plan.** The 4.16 geometry at 150 mT (K2 and K4 at d/l_ex 300 stand in); r_p 0 at the corners (only the
+4.16 geometry has it); L_eff/l_ex 24; the Sobol points (15 of them have contacts like K3); the A100 hardware and the
+offline install (the second version of 4.17); the q 8 twins; the merge to main; the full exchange of García-Cervera et
+al.; the tilt of the free cut cells in the cycles; a test of the phase-resolved loss on the fraction surface; new box
+code.
+
+**Background (decided): gate 1 with V2, decision D0, gate 1 with V1.** These blocks record the reasons of D0. They
+name V2 where V2 ran. The risks of option (d) are the state at the time of D0; gate 1 then ran V1 at q 16 with the
+preparation from saturation and 2 stages (K5). Step (4) of "After a go on D0" (one rent, 12 … 22 $) is replaced by
+Part 1 and Part 2 of this text.
 
 **Gate 1 (2026-11-06): not passed; PLAN 4.21 is on hold until decision D0.** Both K5 runs with V2 stall in the
 preparation from saturation (L_eff/l_ex 6 in half cycle 14 of 41, L_eff/l_ex 12 in half cycle 8): no output, and the
@@ -3384,48 +3555,15 @@ Chris:
   1.01 in 104 of the 259 stages. The identity Σ_k R_k + R_rest = 1 holds by the definition of R_rest and tests only
   the arithmetic. In their place: a unit test of the moment weight of the harmonic losses p_k in acc_reduce.py, with a
   synthetic, exactly periodic motion on the K5 geometry with V1 (test_plan421.py, diag 2a45802; it does not use the
-  K5 run data). It does not cover the fundamental and the phase-resolved loss, and the run side is a code reading.
+  K5 run data); since diag 31330a6 it also checks the fundamental p_f. It does not cover the phase-resolved loss
+  (phasemap_batch.py, phase_extra.py), and the run side is a code reading.
 - "Exit code 0": the exit code was not recorded. DONE and 2 complete stages in summary.json, and a log without an
   error, are the evidence.
-Set-up 1.72 h and 1.73 h with one thread (V2 in the first gate 1: 1929 s and 1731 s, thread count not recorded; the
-cause of the factor is not determined; estimate in D0: about 30 min); the 41 half cycles 1.57 h and 1.48 h.
-test_plan418.py and test_plan420.py did not run again (they import none of the changed files); their run is open
-before the box. The revised plan changes V2 to V1 in this text, and corrects the sentence of "Evaluation" and the K5
+Set-up 1.72 h and 1.73 h with one thread (V2 in the first gate 1: 1929 s and 1731 s with 6 threads, from the launch
+commands in the session log of 2026-11-06; the runs also differ in the CPU load and the commit; the thread count alone
+is consistent with the factor 3.2 … 3.6; the cause is not determined; estimate in D0: about 30 min); the 41 half
+cycles 1.57 h and 1.48 h. test_plan418.py and test_plan420.py ran again on 2026-11-07 (see "Code", tests). The revised plan changes V2 to V1 in this text, and corrects the sentence of "Evaluation" and the K5
 condition.
-
-**Decisions for Chris.**
-- D0 The tie of the cut cells (new after gate 1, see "Gate 1" and "D0" above): (a) nearest master, (b) dominant
-  weight, (c) no normalisation, (d) V1 of 4.20. Recommendation (d); if you choose it, you release the gate-A result
-  of V1. D1 … D6 apply to the revised plan after D0. **Decided 2026-11-06: (d) V1, with the release of the gate-A
-  result of V1** (see the record).
-- D1 Positive control. (a) None: 4.20 showed that D16 (the correction at q 16 without V2) has 97 … 153 Bloch samples
-  per seed at 100 mT, and K1, K3 and K4 have a clean phase 1 reference for the interior cubes. Cost of (a): the test
-  does not show that V2 removes Bloch points at the corners, only that the production line with V2 runs clean.
-  (b) D16 at K2_0 and K4_0 (2 more large runs, about 28 V100-h, about 2.5 $). Recommendation (a): the question of this
-  plan is whether production runs clean.
-- D2 Rule at K2. (a) Information only: the Bloch samples per stage in interior and cut-layer cubes, the longest run of
-  consecutive cut-layer samples, next to the phase 1 partner. (b) A strict rule: K2 fails if a stage has a cut-layer
-  Bloch point in more than a fixed share of its samples. Recommendation (a): K2 has Bloch points in the cycles also
-  without the correction (phase 1: from 50 mT on, after a clean prepared state), and no measured value gives a
-  threshold that separates them from the signature of D.
-- D3 Cost limit. (a) 18 $ (covers the upper estimate without failed boxes). (b) 20 $ (with the failed boxes).
-  Recommendation (b). Both fit the credit without a top-up.
-- D4 Use of the test runs in the production. (a) No: the runs use the diag commit and V100 GPUs; the production
-  uses one commit of main on the A100. (b) Yes, as k = 0 … 2 of the corners. Recommendation (a).
-- D5 A Bloch sample at K1, K3 or K4 (the verdict is then "fails"). (a) The chain starts no new jobs; the jobs in
-  progress end, then download, md5, destroy. (b) All jobs continue, for the readings at the other corners.
-  Recommendation (a): the jobs that did not start cost nothing, and the jobs in progress still give data of the
-  other corners.
-- D6 Box (market of 2026-11-06 above). (a) The rule as written: auto421.py waits up to 24 h for a 4 × V100 32 GB at
-  most 0.10 $ per GPU-h (then it stops with "no offer"); no offer now. (b) Also 8 × V100 32 GB at most 0.11 $ per GPU-h (now one offer, 0.107 $):
-  with the order of the plan, 4 GPUs wait about 5 h for the first-run check, and the longest run (K2_0) ends about
-  25 h after the rent; about 21 … 30 $ (estimate), above D3. (c) 4 × V100 32 GB at most 0.17 $ per GPU-h (now
-  0.160 $): about 18 … 28 $ (estimate), above D3 (a) and up to above D3 (b). Recommendation (a): the cheapest; if no
-  offer comes in 24 h, I report, and you choose (b) or (c) with a new cost limit.
-
-**Not in this plan.** The 4.16 geometry at 150 mT (K2 and K4 at d/l_ex 300 stand in); r_p 0 at the corners (only the
-4.16 geometry has it); L_eff/l_ex 24; the Sobol points (15 of them have contacts like K3); the A100 hardware and the
-offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange of García-Cervera et al.
 
 **Record.**
 - 2026-11-06, first draft; first context-free review (4 "must fix", 10 "should fix"), applied. Finding 1: at K3 (gap
@@ -3476,6 +3614,19 @@ offline install (4.17 V2); the q 8 twins; the merge to main; the full exchange o
   d2946b4) and DONE with a log without an error as the evidence of the exit code. Not covered: the revised PLAN 4.21,
   a rent, the correction of the sentence "the exterior points carry no moment". Two context-free reviews of 7.147
   and of this block (7 + 7 "must fix", 8 + 11 "should fix"), applied. No rent.
+- 2026-11-07, revised plan for V1 (this text). A first draft had a check of V1 with new box code (a reduced job set of
+  4.20 stages B and C, a gate on the box, one box for both parts). A context-free review (10 "must fix", 15 "should
+  fix") found gaps in it (the references that the evaluation of 4.20 reads, the q-16 part of the gate, the watcher, the
+  path with one box). Chris then: "wir brauchen keinen Code mehr, das war ja alles schon gebaut". Thus Part 1 runs
+  stages B and C of 4.20 again with V1, with the box automation of 4.20, and Part 2 needs a separate go. A second
+  context-free review of this text (5 "must fix", 14 "should fix"), applied: the local target of fetch420.sh and the old
+  watcher state (moves before the start), the serial q-16 jobs on a box below 128 GB (idle GPUs; P1), the references
+  from 4.16 and 4.18, the spare seed (5 jobs), the NONE paths, the consequences of each outcome, the points of the go.
+  Correction of the record: the V2 runs of the first gate 1 ran with 6 threads, the V1 runs with 1 (7.147 had "thread
+  count not recorded"; the cause of the factor stays not determined). The test of the moment weight now also checks p_f
+  (Chris "Go" 2026-11-07 on my patch proposal, diag 31330a6). The four test files: all four pass, exit code 0 each:
+  test_plan421.py 6 passed, 2 skipped; test_plan418.py 12 passed, 1 skipped; test_plan420.py 18 passed, 1 skipped;
+  test_study.py 158 passed, 5 skipped (logs local in runs/plan421_gate1_v1/tests4_2026-11-07, md5_tests4.txt). No rent.
 
 ## 5. Optional step 3: mesh control (separate go)
 

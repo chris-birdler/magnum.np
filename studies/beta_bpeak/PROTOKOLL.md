@@ -9380,9 +9380,12 @@ box was rented.
   code for the runs of 4.20.
 - Tests: test_plan421.py and test_study.py: 163 passed, 5 skipped, 2 deselected (the K5 tests), exit code 0.
   test_plan420.py and test_plan418.py did not run again: they import none of the changed files (checked by two
-  context-free reviews). A first run of all four files stopped at its time limit of 90 min (2 threads; another
-  session used most of the CPU; 11 tests passed, no failure). The K5 block of PLAN 4.21 asks that all four files
-  pass; the full run of the four files is open before the box.
+  context-free reviews). A first run of all four files stopped at its time limit of 90 min (2 threads; another session
+  used most of the CPU; 11 tests passed, no failure). The K5 block of PLAN 4.21 asks that all four files pass. Run of
+  the four files on 2026-11-07 (2 threads; d2946b4 plus the change of test_plan421.py that became diag 31330a6): all
+  four pass, exit code 0 each: test_plan421.py 6 passed, 2 skipped; test_plan418.py 12 passed, 1 skipped;
+  test_plan420.py 18 passed, 1 skipped; test_study.py 158 passed, 5 skipped (logs local in
+  runs/plan421_gate1_v1/tests4_2026-11-07, md5_tests4.txt).
 - Time and memory at K3 (104³ cells, q 16; time_tie421.py, results/plan421_tie_time.json, diag 2a45802; one process,
   one thread, one measurement): the fraction surface (fcc_box) 2.6 s, the sub-cells 10.9 s, the V1 tie 0.22 s, peak
   resident memory 5.73 GiB; 38 208 tied cells (the count of D0), longest chain 2 cells, no fall-back. An earlier
@@ -9410,8 +9413,12 @@ box was rented.
 - Set-up 1.72 h and 1.73 h (summary.json init.wall_s: from the start of the solver to the end of the first
   diagnostics, that is the first evaluation of the field; the saturated start has no relaxation there). The first
   gate 1 measured the same interval with V2 as 1929 s and 1731 s, and K5v (no correction) as 46 s (logs of
-  runs/plan421_gate1). Thus with V1 it is longer by a factor of 3.2 and 3.6. The thread count of those runs is not
-  recorded. The cause of the factor (one thread, the CPU load, or V1) is not determined.
+  runs/plan421_gate1). Thus with V1 it is longer by a factor of 3.2 and 3.6. Correction (2026-11-07, after the first
+  version of this section): the runs differ in three points. (1) Threads: the V2 runs had 6 threads each (the launch
+  commands in the session log of 2026-11-06, copied to runs/plan421_gate1/launch_commands_from_session_log.txt, md5
+  415f3a3110caf72feec39ac8f6991af6), the V1 runs 1 thread. (2) Load: during the V1 runs another session used up to 14
+  of the 16 cores. (3) Code: the V2 runs ran on e823a8e with local changes, the V1 runs on 0ad4d75. The thread count
+  alone is consistent with the factor; the cause is not determined. The V1 tie itself takes 0.22 s at K3 (above).
 - The 41 half cycles of the preparation pass from saturation took 1.57 h and 1.48 h (2.3 and 2.2 min per half cycle;
   the static relaxation before them and the relaxation at H 0 after them are not in this time, run_loops.py:1363 …
   1382). The estimates of D0 step 2 were: set-up about 30 min, 1.5 min per half cycle, about 2 h or more per run.
@@ -9471,8 +9478,13 @@ box was rented.
 - Reach: the test detects a missing weight in acc_reduce.py and a p without the tie weight. The run side is a code
   reading: run_loops.py gives the same tensor to the dissipation and to geometry.npz (run_loops.py:1192 and 1221;
   field_terms_extra.py, TiedLLGSolver.p_weight); the test does not run run_loops.py. The K5 values 1.11 and 1.02
-  exclude only the case "acc_reduce without μ" (about 3). The test covers p_k only. The fundamental p_f
-  (acc_reduce.py:105) and the phase-resolved loss also carry μ; no test covers them on the fraction surface.
+  exclude only the case "acc_reduce without μ" (about 3). Since diag 31330a6 (go of Chris on the patch, 2026-11-07) the
+  test also checks the fundamental p_f (acc_reduce.py:105): for this motion p_f/p is the same in each cell,
+  0.09/0.1238 (0.7270). R1 of the box and of each particle differs from it by 2.6e-10 and at most 1.3e-9 (relative),
+  and the share of p_f differs from the share of p by at most 1.3e-10 in a class (limit 1e-5). The evaluation without
+  μ gives R1 0.935, 29 % above the value. A p without the tie weight moves R1 of the box only by 8.2e-4 (relative),
+  because the tie keeps the sum of μ; bessel_max detects it (1.45). The phase-resolved loss (phasemap_batch.py,
+  phase_extra.py) also carries μ; no test covers it on the fraction surface.
 - Tests: test_plan421.py and test_study.py: 164 passed, 7 skipped (the 5 of before and the 2 K5 tests: no RUN_K5, no
   GPU), exit code 0 (2a45802). test_plan421.py with the print of the values (d2946b4): 6 passed, 2 skipped, exit
   code 0 (the log above).
@@ -9490,10 +9502,10 @@ an error as the evidence of the exit code, and the test of the moment weight in 
 **Status.** Covered for D0 (d) by gate 1: V1 at q 16 in the K5 line, through the preparation from saturation and 2
 stages, without a stall and without a Bloch sample (K5 only, n 1 for each L_eff). Open: a check as 4.20 stage B
 (the fine-mesh reference) and as stage C with V1; the set-up time and the memory at 152³ and 156³; the tilts of the
-free cut cells; the change of the loss against V2; a test of the weight of p_f and of the phase-resolved loss; the
-full run of the four test files. PLAN 4.21 still names V2 and holds the wrong sentence of "Evaluation" and the K5
-condition; the revised plan changes them. Next: the revised PLAN 4.21 for the go of Chris (on the box first a check
-as 4.20 stage C with V1, then the 12 runs; D1 … D6). No box was rented.
+free cut cells; the change of the loss against V2; a test of the weight of the phase-resolved loss. The
+revised PLAN 4.21 (2026-11-07) changes V2 to V1, the sentence of "Evaluation" and the K5 condition, and puts a check
+of V1 (stages B and C of 4.20 again, with V1) before the 12 runs; the 12 runs need a separate go after the check. The
+plan waits for the go of Chris. No box was rented.
 
 ### 7.14 Wall measure: method test on synthetic states (2026-10-03, local, no GPU)
 
