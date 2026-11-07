@@ -3658,6 +3658,13 @@ condition.
   linked, D3 (i) with pro and con, the stop of the instances by vast.ai at zero credit, the notices to Chris as the
   watcher gives them, P1 marked decided. Credit 17.67 $ at 11:46 UTC; with the 2-GPU box it would be empty after about
   18 h (estimate), Part 1 needs about 25 … 32 h. No rent (no eligible offer).
+- 2026-11-07, Chris ("B") on my options for host 381795 (excluded since 2026-10-28 after two image-pull fails of
+  machine 147583): rent its 4-GPU offer, machine 148664 (4 × V100 32 GB, 202 GB host memory, 0.268 $ per h,
+  deverified; P1 (c) for this rent). diag a2f9b26 (query on this machine, deverified allowed for it); auto420.py
+  rented instance 59587038 at 14:47 UTC. B1 failed: the image pull stayed at "Retrying" (layer 6b55bfaf2c7e) for
+  30 min, as in October; auto420.py destroyed the box (0.51 h, 0.146 $; budget for failed boxes 0.146 of 1 $; 0
+  instances). The host is excluded again, the query of P1 (b) is back (diag b636c21); auto420.py waits for an offer
+  and rents without a further step. The instances of the other session ended at about 13:00 UTC; credit 17.17 $.
 
 ## 5. Optional step 3: mesh control (separate go)
 
